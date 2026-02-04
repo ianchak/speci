@@ -7,12 +7,24 @@
  */
 
 import { createInterface } from 'node:readline';
-import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
-import { resolve, basename } from 'node:path';
+import {
+  existsSync,
+  mkdirSync,
+  writeFileSync,
+  copyFileSync,
+  readdirSync,
+  statSync,
+} from 'node:fs';
+import { resolve, basename, join, relative } from 'node:path';
 import { log } from '../utils/logger.js';
 import { renderBanner } from '../ui/banner.js';
 import { colorize } from '../ui/colors.js';
-import { getDefaults, type SpeciConfig } from '../config.js';
+import {
+  getDefaults,
+  getAgentsTemplatePath,
+  GITHUB_AGENTS_DIR,
+  type SpeciConfig,
+} from '../config.js';
 
 /**
  * Options for the init command
@@ -20,6 +32,7 @@ import { getDefaults, type SpeciConfig } from '../config.js';
 export interface InitOptions {
   yes?: boolean; // Skip prompts, use defaults
   verbose?: boolean; // Show detailed output
+  updateAgents?: boolean; // Force update agent files even if they exist
 }
 
 /**
@@ -132,11 +145,13 @@ function checkExistingFiles(config: SpeciConfig): {
   configExists: boolean;
   tasksExists: boolean;
   logsExists: boolean;
+  agentsExist: boolean;
 } {
   return {
     configExists: existsSync('speci.config.json'),
     tasksExists: existsSync(config.paths.tasks),
     logsExists: existsSync(config.paths.logs),
+    agentsExist: existsSync(GITHUB_AGENTS_DIR),
   };
 }
 
@@ -144,10 +159,12 @@ function checkExistingFiles(config: SpeciConfig): {
  * Display summary of actions to be taken
  * @param config - Config to display
  * @param existing - Existing files flags
+ * @param updateAgents - Whether to force update agent files
  */
 function displayActionSummary(
   config: SpeciConfig,
-  existing: ReturnType<typeof checkExistingFiles>
+  existing: ReturnType<typeof checkExistingFiles>,
+  updateAgents: boolean = false
 ): void {
   console.log();
   log.info('The following actions will be performed:');
@@ -172,6 +189,22 @@ function displayActionSummary(
   } else {
     console.log(
       colorize(`  ✓ Create ${config.paths.logs}/ directory`, 'success')
+    );
+  }
+
+  if (existing.agentsExist) {
+    if (updateAgents) {
+      console.log(
+        colorize(`  ✓ Update agent files in ${GITHUB_AGENTS_DIR}/`, 'success')
+      );
+    } else {
+      log.warn(
+        `  ${GITHUB_AGENTS_DIR}/ already exists (will skip, use --update-agents to overwrite)`
+      );
+    }
+  } else {
+    console.log(
+      colorize(`  ✓ Copy agent files to ${GITHUB_AGENTS_DIR}/`, 'success')
     );
   }
 
@@ -238,6 +271,76 @@ async function createFiles(
 }
 
 /**
+ * Recursively copy a directory
+ * @param src - Source directory path
+ * @param dest - Destination directory path
+ * @returns Number of files copied
+ */
+function copyDirectoryRecursive(src: string, dest: string): number {
+  let fileCount = 0;
+
+  // Create destination directory
+  mkdirSync(dest, { recursive: true, mode: 0o755 });
+
+  // Read source directory contents
+  const entries = readdirSync(src);
+
+  for (const entry of entries) {
+    const srcPath = join(src, entry);
+    const destPath = join(dest, entry);
+    const stat = statSync(srcPath);
+
+    if (stat.isDirectory()) {
+      // Recursively copy subdirectories
+      fileCount += copyDirectoryRecursive(srcPath, destPath);
+    } else if (stat.isFile()) {
+      // Copy file
+      copyFileSync(srcPath, destPath);
+      const relativePath = relative(getAgentsTemplatePath(), srcPath);
+      log.debug(`Copied: ${relativePath}`);
+      fileCount++;
+    }
+  }
+
+  return fileCount;
+}
+
+/**
+ * Copy agent files to .github/copilot/agents/
+ * This allows copilot CLI to use --agent flag with agent names
+ * Recursively copies entire agents template directory including subagents
+ * @param existing - Existing files flags
+ * @param forceUpdate - Force update even if agents exist
+ */
+async function copyAgentFiles(
+  existing: ReturnType<typeof checkExistingFiles>,
+  forceUpdate: boolean = false
+): Promise<void> {
+  if (existing.agentsExist && !forceUpdate) {
+    log.debug(`Skipping agent files copy: ${GITHUB_AGENTS_DIR} already exists`);
+    return;
+  }
+
+  try {
+    const templateDir = getAgentsTemplatePath();
+
+    if (!existsSync(templateDir)) {
+      throw new Error(`Agent templates directory not found: ${templateDir}`);
+    }
+
+    // Recursively copy entire agents directory
+    const fileCount = copyDirectoryRecursive(templateDir, GITHUB_AGENTS_DIR);
+
+    const action = existing.agentsExist ? 'Updated' : 'Copied';
+    log.success(`${action} ${fileCount} agent files to ${GITHUB_AGENTS_DIR}/`);
+  } catch (error) {
+    throw new Error(
+      `Failed to copy agent files: ${error instanceof Error ? error.message : String(error)}`
+    );
+  }
+}
+
+/**
  * Display success message and next steps
  */
 function displaySuccess(): void {
@@ -286,13 +389,16 @@ export async function init(options: InitOptions = {}): Promise<void> {
     const existing = checkExistingFiles(config);
 
     // Display action summary
-    displayActionSummary(config, existing);
+    displayActionSummary(config, existing, options.updateAgents);
 
     // Create directories
     await createDirectories(config, existing);
 
     // Create files
     await createFiles(config, existing);
+
+    // Copy agent files to .github/copilot/agents/
+    await copyAgentFiles(existing, options.updateAgents);
 
     // Display success and next steps
     displaySuccess();

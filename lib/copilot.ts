@@ -10,7 +10,6 @@
 
 import { spawn } from 'node:child_process';
 import type { SpeciConfig } from './config.js';
-import { resolveAgentPath } from './config.js';
 import { log } from './utils/logger.js';
 
 /**
@@ -182,20 +181,12 @@ export async function runAgent(
     }
 
     try {
-      const agentPath = resolveAgentPath(
-        config,
-        agentName as
-          | 'plan'
-          | 'task'
-          | 'refactor'
-          | 'impl'
-          | 'review'
-          | 'fix'
-          | 'tidy'
-      );
+      // Use the agent name directly (e.g., 'speci-plan')
+      // Copilot CLI looks for agents in .github/copilot/agents/
+      const agentFileName = `speci-${agentName}`;
       const args = buildCopilotArgs(config, {
         interactive: true,
-        agent: agentPath,
+        agent: agentFileName,
       });
 
       log.debug(`Spawning copilot: copilot ${args.join(' ')}`);

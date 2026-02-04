@@ -39,4 +39,6 @@ coverage/
 tmp/
 temp/
 *.tmp
+
+.github
 speci.config.json

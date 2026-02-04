@@ -642,3 +642,8 @@ export function getAgentsTemplatePath(): string {
 export function getSubagentsTemplatePath(): string {
   return join(TEMPLATES_DIR, 'agents', 'subagents');
 }
+
+/**
+ * GitHub Copilot agents directory path (relative to project root)
+ */
+export const GITHUB_AGENTS_DIR = '.github/copilot/agents';

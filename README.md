@@ -82,6 +82,7 @@ speci init [options]
 **Options:**
 
 - `-y, --yes` - Accept all defaults without prompts
+- `-u, --update-agents` - Update agent files even if they already exist
 - `-v, --verbose` - Show detailed output
 
 **Creates:**
@@ -89,6 +90,7 @@ speci init [options]
 - `speci.config.json` - Configuration file
 - `docs/tasks/` - Task definition directory
 - `.speci-logs/` - Log file directory
+- `.github/copilot/agents/` - Copilot agent definitions
 
 **Examples:**
 
@@ -98,6 +100,9 @@ speci init
 
 # Quick setup with defaults
 speci init --yes
+
+# Update agent files to latest version
+speci init --update-agents
 
 # Short alias version
 speci i -y

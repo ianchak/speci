@@ -63,6 +63,7 @@ program
   .alias('i')
   .description('Initialize Speci in current project')
   .option('-y, --yes', 'Accept all defaults')
+  .option('-u, --update-agents', 'Update agent files even if they exist')
   .option('-v, --verbose', 'Show detailed output')
   .addHelpText(
     'after',
@@ -71,6 +72,7 @@ Examples:
   $ speci init              Interactive setup wizard
   $ speci init --yes        Quick setup with defaults
   $ speci i -y              Force initialize with defaults
+  $ speci init -u           Update agent files to latest version
 `
   )
   .action(init);

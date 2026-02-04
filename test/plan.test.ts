@@ -100,7 +100,7 @@ describe('plan command', () => {
         .spyOn(copilotModule, 'spawnCopilot')
         .mockResolvedValue(0);
 
-      await plan().catch(() => {
+      await plan({ prompt: 'test plan' }).catch(() => {
         // Ignore process.exit error
       });
 
@@ -120,7 +120,7 @@ describe('plan command', () => {
         .spyOn(copilotModule, 'spawnCopilot')
         .mockResolvedValue(0);
 
-      await plan({ agent: 'custom-plan.md' }).catch(() => {
+      await plan({ agent: 'custom-plan.md', prompt: 'test plan' }).catch(() => {
         // Ignore process.exit error
       });
 
@@ -134,7 +134,7 @@ describe('plan command', () => {
     });
 
     it('should exit with error when agent file not found', async () => {
-      await plan({ agent: 'nonexistent.md' }).catch(() => {
+      await plan({ agent: 'nonexistent.md', prompt: 'test plan' }).catch(() => {
         // Ignore process.exit error
       });
 
@@ -148,7 +148,7 @@ describe('plan command', () => {
         .spyOn(copilotModule, 'spawnCopilot')
         .mockResolvedValue(0);
 
-      await plan().catch(() => {
+      await plan({ prompt: 'test plan' }).catch(() => {
         // Ignore process.exit error
       });
 
@@ -172,7 +172,7 @@ describe('plan command', () => {
         .spyOn(copilotModule, 'spawnCopilot')
         .mockResolvedValue(0);
 
-      await plan().catch(() => {
+      await plan({ prompt: 'test plan' }).catch(() => {
         // Ignore process.exit error
       });
 
@@ -187,7 +187,7 @@ describe('plan command', () => {
         .spyOn(copilotModule, 'spawnCopilot')
         .mockResolvedValue(0);
 
-      await plan({ output: 'plan.md' }).catch(() => {
+      await plan({ output: 'plan.md', prompt: 'test plan' }).catch(() => {
         // Ignore process.exit error
       });
 
@@ -202,7 +202,7 @@ describe('plan command', () => {
     it('should exit with code 0 on success', async () => {
       vi.spyOn(copilotModule, 'spawnCopilot').mockResolvedValue(0);
 
-      await plan().catch(() => {
+      await plan({ prompt: 'test plan' }).catch(() => {
         // Ignore process.exit error
       });
 
@@ -212,7 +212,7 @@ describe('plan command', () => {
     it('should exit with copilot exit code on failure', async () => {
       vi.spyOn(copilotModule, 'spawnCopilot').mockResolvedValue(42);
 
-      await plan().catch(() => {
+      await plan({ prompt: 'test plan' }).catch(() => {
         // Ignore process.exit error
       });
 
@@ -221,24 +221,27 @@ describe('plan command', () => {
   });
 
   describe('options handling', () => {
-    it('should accept empty options', async () => {
+    it('should accept prompt option', async () => {
       const spawnSpy = vi
         .spyOn(copilotModule, 'spawnCopilot')
         .mockResolvedValue(0);
 
-      await plan({}).catch(() => {
+      await plan({ prompt: 'test plan' }).catch(() => {
         // Ignore process.exit error
       });
 
       expect(spawnSpy).toHaveBeenCalled();
     });
 
-    it('should accept no options', async () => {
+    it('should accept input option', async () => {
+      // Create input file
+      writeFileSync('spec.md', '# Specification');
+
       const spawnSpy = vi
         .spyOn(copilotModule, 'spawnCopilot')
         .mockResolvedValue(0);
 
-      await plan().catch(() => {
+      await plan({ input: ['spec.md'] }).catch(() => {
         // Ignore process.exit error
       });
 
@@ -252,7 +255,7 @@ describe('plan command', () => {
         .spyOn(copilotModule, 'spawnCopilot')
         .mockResolvedValue(0);
 
-      await plan().catch(() => {
+      await plan({ prompt: 'test plan' }).catch(() => {
         // Ignore process.exit error
       });
 
