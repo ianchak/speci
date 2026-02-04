@@ -9,7 +9,7 @@
  */
 
 import { createRequire } from 'node:module';
-import { ANSI } from './palette.js';
+import { HEX_COLORS } from './palette.js';
 import { colorize, supportsColor } from './colors.js';
 
 // Use createRequire for reliable JSON imports in ESM (works in both runtime and tests)
@@ -44,8 +44,41 @@ export interface BannerOptions {
 }
 
 /**
+ * Parse hex color to RGB tuple
+ */
+function parseHex(hex: string): [number, number, number] {
+  return [
+    parseInt(hex.slice(1, 3), 16),
+    parseInt(hex.slice(3, 5), 16),
+    parseInt(hex.slice(5, 7), 16),
+  ];
+}
+
+/**
+ * Interpolate between two hex colors
+ */
+function lerpColor(colorA: string, colorB: string, t: number): string {
+  const [r1, g1, b1] = parseHex(colorA);
+  const [r2, g2, b2] = parseHex(colorB);
+  const r = Math.round(r1 + (r2 - r1) * t);
+  const g = Math.round(g1 + (g2 - g1) * t);
+  const b = Math.round(b1 + (b2 - b1) * t);
+  return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`;
+}
+
+/**
+ * Convert hex color to ANSI RGB escape code
+ */
+function hexToAnsi(hex: string): string {
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  return `\x1b[38;2;${r};${g};${b}m`;
+}
+
+/**
  * Apply horizontal gradient to a line of text
- * Divides line into thirds: sky200 | sky400 | sky500
+ * Interpolates colors per-character: sky200 → sky400 → sky500
  *
  * @param line - Text line to apply gradient to
  * @returns Gradient-colored line (or plain text if colors disabled)
@@ -55,17 +88,35 @@ function applyGradient(line: string): string {
     return line;
   }
 
-  const len = line.length;
-  const third = Math.floor(len / 3);
-
-  const left = line.slice(0, third);
-  const middle = line.slice(third, third * 2);
-  const right = line.slice(third * 2);
+  const chars = [...line];
+  const width = chars.length;
+  if (width === 0) return line;
 
   return (
-    `${ANSI.sky200}${left}` +
-    `${ANSI.sky400}${middle}` +
-    `${ANSI.sky500}${right}${ANSI.reset}`
+    chars
+      .map((char, i) => {
+        // Skip coloring whitespace
+        if (char.trim() === '') return char;
+
+        const t = i / width;
+        let color: string;
+
+        if (t < 0.33) {
+          // Interpolate sky200 → sky400
+          const localT = t / 0.33;
+          color = lerpColor(HEX_COLORS.sky200, HEX_COLORS.sky400, localT);
+        } else if (t < 0.66) {
+          // Hold at sky400
+          color = HEX_COLORS.sky400;
+        } else {
+          // Interpolate sky400 → sky500
+          const localT = (t - 0.66) / 0.34;
+          color = lerpColor(HEX_COLORS.sky400, HEX_COLORS.sky500, localT);
+        }
+
+        return `${hexToAnsi(color)}${char}`;
+      })
+      .join('') + '\x1b[0m'
   );
 }
 
