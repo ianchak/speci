@@ -84,15 +84,15 @@ export async function task(options: TaskOptions): Promise<void> {
       requireGit: false,
     });
 
-    // Resolve agent path (override or config)
-    const agentPath = options.agent
-      ? options.agent
-      : resolveAgentPath(config, 'task');
+    // Resolve agent path (override filename or default)
+    const agentPath = resolveAgentPath('task', options.agent);
 
     // Validate agent file exists
     if (!existsSync(agentPath)) {
       log.error(`Agent file not found: ${agentPath}`);
-      log.info('Check config.agents.task or provide --agent flag');
+      log.info(
+        'Run "speci init" to create agents or provide --agent <filename>'
+      );
       process.exit(1);
     }
 

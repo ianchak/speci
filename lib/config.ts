@@ -7,7 +7,7 @@
  */
 
 import { existsSync, readFileSync } from 'node:fs';
-import { join, dirname, isAbsolute } from 'node:path';
+import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { log } from './utils/logger.js';
 
@@ -546,56 +546,33 @@ export function loadConfig(): SpeciConfig {
 }
 
 /**
- * Resolve agent path to either custom or bundled template
+ * Resolve agent path in .github/copilot/agents directory
  *
- * Checks config for custom agent path, falls back to bundled template
- * if custom path not found or doesn't exist.
+ * Agents must exist in .github/copilot/agents/ (created by `speci init`).
+ * Use --agent CLI flag to specify a different agent filename.
  *
- * @param config - Config object
  * @param agentName - Name of agent to resolve (e.g., 'impl', 'review')
- * @returns Absolute path to agent template file
- * @throws {Error} ERR-INP-02 if neither custom nor bundled agent exists
+ * @param overrideFilename - Optional filename override (e.g., 'my-custom.agent.md')
+ * @returns Absolute path to agent file in .github/copilot/agents/
  *
  * @example
  * ```typescript
- * const implPath = resolveAgentPath(config, 'impl');
- * // Returns: '/path/to/templates/agents/speci-impl.md'
+ * const implPath = resolveAgentPath('impl');
+ * // Returns: '/project/.github/copilot/agents/speci-impl.agent.md'
+ *
+ * const customPath = resolveAgentPath('impl', 'my-custom.agent.md');
+ * // Returns: '/project/.github/copilot/agents/my-custom.agent.md'
  * ```
  */
 export function resolveAgentPath(
-  config: SpeciConfig,
-  agentName: AgentName
+  agentName: AgentName,
+  overrideFilename?: string
 ): string {
-  const customPath = config.agents[agentName];
+  const filename = overrideFilename || `speci-${agentName}.agent.md`;
+  const agentPath = join(process.cwd(), GITHUB_AGENTS_DIR, filename);
 
-  // Check for custom agent path in config
-  if (customPath && typeof customPath === 'string') {
-    const absolutePath = isAbsolute(customPath)
-      ? customPath
-      : join(process.cwd(), customPath);
-
-    if (existsSync(absolutePath)) {
-      log.debug(`Using custom agent: ${absolutePath}`);
-      return absolutePath;
-    }
-
-    log.warn(
-      `Custom agent not found: ${customPath}, falling back to bundled agent`
-    );
-  }
-
-  // Fall back to bundled template
-  const bundledPath = join(TEMPLATES_DIR, 'agents', `speci-${agentName}.md`);
-
-  if (!existsSync(bundledPath)) {
-    throw new Error(
-      `Agent not found: speci-${agentName}.md. ` +
-        `Neither custom nor bundled agent exists.`
-    );
-  }
-
-  log.debug(`Using bundled agent: ${bundledPath}`);
-  return bundledPath;
+  log.debug(`Using agent: ${agentPath}`);
+  return agentPath;
 }
 
 /**

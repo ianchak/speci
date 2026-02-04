@@ -100,15 +100,15 @@ export async function refactor(options: RefactorOptions = {}): Promise<void> {
       scopePath = validateScope(options.scope);
     }
 
-    // Resolve agent path (override or config)
-    const agentPath = options.agent
-      ? options.agent
-      : resolveAgentPath(config, 'refactor');
+    // Resolve agent path (override filename or default)
+    const agentPath = resolveAgentPath('refactor', options.agent);
 
     // Validate agent file exists
     if (!existsSync(agentPath)) {
       log.error(`Agent file not found: ${agentPath}`);
-      log.info('Check config.agents.refactor or provide --agent flag');
+      log.info(
+        'Run "speci init" to create agents or provide --agent <filename>'
+      );
       process.exit(1);
     }
 

@@ -122,7 +122,7 @@ speci plan [options]
 
 - `-p, --prompt <text>` - Initial prompt describing what to plan
 - `-i, --input <files...>` - Input files for context (design docs, specs)
-- `-a, --agent <path>` - Use custom agent file
+- `-a, --agent <filename>` - Use custom agent file from `.github/copilot/agents/`
 - `-o, --output <path>` - Save plan to specific file
 - `-v, --verbose` - Show detailed output
 
@@ -143,8 +143,8 @@ speci plan -i spec.md -p "Focus on the authentication module"
 # Save plan to a specific file
 speci plan -i design.md -o docs/plan.md
 
-# Use custom agent
-speci p -a custom-agent.md -p "My feature"
+# Use custom agent from .github/copilot/agents/
+speci p -a my-custom-plan.agent.md -p "My feature"
 ```
 
 ### `speci task` (alias: `t`)
@@ -160,7 +160,7 @@ speci task --plan <path> [options]
 **Options:**
 
 - `-p, --plan <path>` - Path to plan file (required)
-- `-a, --agent <path>` - Use custom agent file
+- `-a, --agent <filename>` - Use custom agent file from `.github/copilot/agents/`
 - `-v, --verbose` - Show detailed output
 
 **Examples:**
@@ -187,7 +187,7 @@ speci refactor [options]
 
 - `-s, --scope <path>` - Directory or glob pattern to analyze
 - `-o, --output <path>` - Save refactoring plan to file
-- `-a, --agent <path>` - Use custom agent file
+- `-a, --agent <filename>` - Use custom agent file from `.github/copilot/agents/`
 - `-v, --verbose` - Show detailed output
 
 **Examples:**
@@ -321,15 +321,6 @@ The configuration file is created by `speci init` and can be customized:
     "logs": ".speci-logs",
     "lock": ".speci.lock"
   },
-  "agents": {
-    "plan": null,
-    "task": null,
-    "refactor": null,
-    "impl": null,
-    "review": null,
-    "fix": null,
-    "tidy": null
-  },
   "copilot": {
     "permissions": "allow-all",
     "model": null,
@@ -381,7 +372,7 @@ speci uses structured error codes for clear diagnostics:
 | Code       | Message                   | Solution                                |
 | ---------- | ------------------------- | --------------------------------------- |
 | ERR-INP-01 | Required argument missing | Check command usage with `--help`       |
-| ERR-INP-02 | Agent file not found      | Verify agent path or use bundled agents |
+| ERR-INP-02 | Agent file not found      | Run `speci init` or add agent to `.github/copilot/agents/` |
 | ERR-INP-03 | Config file is malformed  | Fix JSON syntax in speci.config.json    |
 | ERR-INP-04 | Config validation failed  | Check config against schema             |
 | ERR-INP-05 | Plan file not found       | Provide valid path with `--plan`        |

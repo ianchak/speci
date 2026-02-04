@@ -280,40 +280,16 @@ describe('config', () => {
   });
 
   describe('resolveAgentPath', () => {
-    it('should resolve to bundled path when agent is null', () => {
-      const config = getDefaults();
-      const path = resolveAgentPath(config, 'impl');
+    it('should resolve to .github/copilot/agents path', () => {
+      const path = resolveAgentPath('impl');
 
+      expect(path).toContain('.github');
+      expect(path).toContain('copilot');
       expect(path).toContain('agents');
-      expect(path).toContain('impl');
-    });
-
-    it('should resolve custom agent path when specified', () => {
-      const config = getDefaults();
-      const customDir = join(testDir, 'custom');
-      mkdirSync(customDir, { recursive: true });
-      writeFileSync(join(customDir, 'impl-agent.md'), '# Custom Agent');
-
-      config.agents.impl = 'custom/impl-agent.md';
-
-      const path = resolveAgentPath(config, 'impl');
-
-      expect(path).toContain('custom');
-      expect(path).toContain('impl-agent.md');
-    });
-
-    it('should fall back to bundled when custom agent not found', () => {
-      const config = getDefaults();
-      config.agents.impl = 'nonexistent/agent.md';
-
-      const path = resolveAgentPath(config, 'impl');
-      // Should fall back to bundled agent
-      expect(path).toContain('templates');
-      expect(path).toContain('speci-impl.md');
+      expect(path).toContain('speci-impl.agent.md');
     });
 
     it('should support all agent types', () => {
-      const config = getDefaults();
       const agentTypes = [
         'plan',
         'task',
@@ -322,12 +298,14 @@ describe('config', () => {
         'review',
         'fix',
         'tidy',
-      ];
+      ] as const;
 
       for (const agentType of agentTypes) {
-        const path = resolveAgentPath(config, agentType as 'impl');
+        const path = resolveAgentPath(agentType);
         expect(path).toBeTruthy();
         expect(path).toContain(agentType);
+        expect(path).toContain('.github');
+        expect(path).toContain('agents');
       }
     });
   });
@@ -587,41 +565,30 @@ describe('config', () => {
   });
 
   describe('resolveAgentPath', () => {
-    it('should return bundled path when custom agent is null', () => {
-      const config = getDefaults();
-      const path = resolveAgentPath(config, 'impl');
+    it('should return .github/copilot/agents path', () => {
+      const path = resolveAgentPath('impl');
 
-      expect(path).toContain('templates');
-      expect(path).toContain('speci-impl.md');
+      expect(path).toContain('.github');
+      expect(path).toContain('copilot');
+      expect(path).toContain('agents');
+      expect(path).toContain('speci-impl.agent.md');
     });
 
-    it('should return custom path when provided and exists', () => {
-      const customAgentPath = join(testDir, 'custom-impl.md');
-      writeFileSync(customAgentPath, '# Custom Agent');
+    it('should build correct path for each agent type', () => {
+      const agentTypes = [
+        'plan',
+        'task',
+        'refactor',
+        'impl',
+        'review',
+        'fix',
+        'tidy',
+      ] as const;
 
-      const config = getDefaults();
-      config.agents.impl = customAgentPath;
-
-      const path = resolveAgentPath(config, 'impl');
-      expect(path).toBe(customAgentPath);
-    });
-
-    it('should fall back to bundled when custom path does not exist', () => {
-      const config = getDefaults();
-      config.agents.impl = 'nonexistent/custom-impl.md';
-
-      const path = resolveAgentPath(config, 'impl');
-      expect(path).toContain('templates');
-      expect(path).toContain('speci-impl.md');
-    });
-
-    it('should throw if bundled agent also missing', () => {
-      const config = getDefaults();
-      // This would only happen if templates directory is corrupted
-      // We can't easily test this without mocking the filesystem
-      // so we'll test that valid agent names work instead
-      const path = resolveAgentPath(config, 'impl');
-      expect(path).toContain('speci-impl.md');
+      for (const agentType of agentTypes) {
+        const path = resolveAgentPath(agentType);
+        expect(path).toContain(`speci-${agentType}.agent.md`);
+      }
     });
   });
 
