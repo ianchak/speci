@@ -369,13 +369,13 @@ speci uses structured error codes for clear diagnostics:
 
 ### Input Errors (ERR-INP-\*)
 
-| Code       | Message                   | Solution                                |
-| ---------- | ------------------------- | --------------------------------------- |
-| ERR-INP-01 | Required argument missing | Check command usage with `--help`       |
+| Code       | Message                   | Solution                                                   |
+| ---------- | ------------------------- | ---------------------------------------------------------- |
+| ERR-INP-01 | Required argument missing | Check command usage with `--help`                          |
 | ERR-INP-02 | Agent file not found      | Run `speci init` or add agent to `.github/copilot/agents/` |
-| ERR-INP-03 | Config file is malformed  | Fix JSON syntax in speci.config.json    |
-| ERR-INP-04 | Config validation failed  | Check config against schema             |
-| ERR-INP-05 | Plan file not found       | Provide valid path with `--plan`        |
+| ERR-INP-03 | Config file is malformed  | Fix JSON syntax in speci.config.json                       |
+| ERR-INP-04 | Config validation failed  | Check config against schema                                |
+| ERR-INP-05 | Plan file not found       | Provide valid path with `--plan`                           |
 
 ### State Errors (ERR-STA-\*)
 
