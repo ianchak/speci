@@ -1,0 +1,36 @@
+{
+  "version": "1.0.0",
+  "_comment": "Speci CLI Configuration - Autonomous task loop orchestrator",
+
+  "paths": {
+    "progress": "docs/PROGRESS.md",
+    "tasks": "docs/tasks",
+    "logs": ".speci-logs",
+    "lock": ".speci-lock"
+  },
+
+  "agents": {
+    "plan": null,
+    "task": null,
+    "refactor": null,
+    "impl": null,
+    "review": null,
+    "fix": null,
+    "tidy": null
+  },
+
+  "copilot": {
+    "permissions": "allow-all",
+    "model": null,
+    "extraFlags": []
+  },
+
+  "gate": {
+    "commands": ["npm run lint", "npm run typecheck", "npm test"],
+    "maxFixAttempts": 5
+  },
+
+  "loop": {
+    "maxIterations": 100
+  }
+}
