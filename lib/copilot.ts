@@ -71,10 +71,13 @@ export function buildCopilotArgs(
 ): string[] {
   const args: string[] = [];
 
-  // Mode flag
+  // Mode flag - interactive and prompt can be used together
   if (options.interactive) {
     args.push('-i');
-  } else if (options.prompt) {
+  }
+
+  // Prompt flag - can be combined with interactive for initial message
+  if (options.prompt) {
     args.push('-p', options.prompt);
   }
 

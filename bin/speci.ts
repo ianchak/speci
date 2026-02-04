@@ -80,6 +80,11 @@ program
   .command('plan')
   .alias('p')
   .description('Generate implementation plan interactively')
+  .option('-p, --prompt <text>', 'Initial prompt describing what to plan')
+  .option(
+    '-i, --input <files...>',
+    'Input files for context (design docs, specs)'
+  )
   .option('-a, --agent <path>', 'Use custom agent file')
   .option('-o, --output <path>', 'Output plan to file')
   .option('-v, --verbose', 'Show detailed output')
@@ -87,9 +92,11 @@ program
     'after',
     `
 Examples:
-  $ speci plan                         Start interactive planning session
-  $ speci plan --output docs/plan.md   Save plan to specific file
-  $ speci p -a custom-agent.md         Use custom agent
+  $ speci plan -p "Build a REST API"              Plan with initial prompt
+  $ speci plan -i docs/design.md                  Plan using design doc as context
+  $ speci plan -i spec.md -p "Focus on auth"      Combine input files with prompt
+  $ speci plan -i design.md -o docs/plan.md       Save plan to specific file
+  $ speci p -a custom-agent.md -p "My feature"    Use custom agent
 `
   )
   .action(plan);

@@ -105,7 +105,7 @@ speci i -y
 
 ### `speci plan` (alias: `p`)
 
-Generate an implementation plan interactively using Copilot.
+Generate an implementation plan using Copilot with an initial prompt or input files.
 
 **Usage:**
 
@@ -115,21 +115,31 @@ speci plan [options]
 
 **Options:**
 
+- `-p, --prompt <text>` - Initial prompt describing what to plan
+- `-i, --input <files...>` - Input files for context (design docs, specs)
 - `-a, --agent <path>` - Use custom agent file
 - `-o, --output <path>` - Save plan to specific file
 - `-v, --verbose` - Show detailed output
 
+**Note:** At least `--prompt` or `--input` must be provided.
+
 **Examples:**
 
 ```bash
-# Start interactive planning session
-speci plan
+# Plan with an initial prompt
+speci plan -p "Build a REST API for user authentication"
 
-# Save plan to specific file
-speci plan --output docs/plan.md
+# Plan using a design doc as context
+speci plan -i docs/design.md
+
+# Combine input files with a prompt
+speci plan -i spec.md -p "Focus on the authentication module"
+
+# Save plan to a specific file
+speci plan -i design.md -o docs/plan.md
 
 # Use custom agent
-speci p -a custom-agent.md
+speci p -a custom-agent.md -p "My feature"
 ```
 
 ### `speci task` (alias: `t`)
