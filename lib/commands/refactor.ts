@@ -7,7 +7,7 @@
  */
 
 import { existsSync, statSync } from 'node:fs';
-import { isAbsolute, relative, resolve } from 'node:path';
+import { isAbsolute, resolve } from 'node:path';
 import { loadConfig, resolveAgentPath } from '../config.js';
 import { buildCopilotArgs, spawnCopilot } from '../copilot.js';
 import { preflight } from '../utils/preflight.js';
@@ -100,8 +100,12 @@ export async function refactor(options: RefactorOptions = {}): Promise<void> {
       scopePath = validateScope(options.scope);
     }
 
-    // Resolve agent path (override filename or default)
-    const agentPath = resolveAgentPath('refactor', options.agent);
+    const commandName = 'refactor';
+    const agentName = (options.agent || `speci-${commandName}`).replace(
+      /\.agent\.md$/,
+      ''
+    );
+    const agentPath = resolveAgentPath(commandName, options.agent);
 
     // Validate agent file exists
     if (!existsSync(agentPath)) {
@@ -112,12 +116,11 @@ export async function refactor(options: RefactorOptions = {}): Promise<void> {
       process.exit(1);
     }
 
-    // Display command info (show relative path for readability)
-    const displayAgentPath = relative(process.cwd(), agentPath) || agentPath;
+    // Display command info
     console.log(
       infoBox('Refactor Analysis', {
         Scope: scopePath || 'Entire project',
-        Agent: displayAgentPath,
+        Agent: `${agentName}.agent.md`,
         Mode: 'One-shot',
         Output: options.output || 'stdout',
       })
@@ -135,7 +138,7 @@ export async function refactor(options: RefactorOptions = {}): Promise<void> {
     const args = buildCopilotArgs(config, {
       interactive: false,
       prompt,
-      agent: agentPath,
+      agent: agentName,
       allowAll: true,
     });
 

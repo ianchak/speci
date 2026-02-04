@@ -7,7 +7,7 @@
  */
 
 import { existsSync } from 'node:fs';
-import { relative, resolve } from 'node:path';
+import { resolve } from 'node:path';
 import { loadConfig, resolveAgentPath } from '../config.js';
 import { buildCopilotArgs, spawnCopilot } from '../copilot.js';
 import { preflight } from '../utils/preflight.js';
@@ -79,8 +79,12 @@ export async function plan(options: PlanOptions = {}): Promise<void> {
       requireGit: false,
     });
 
-    // Resolve agent path (override filename or default)
-    const agentPath = resolveAgentPath('plan', options.agent);
+    const commandName = 'plan';
+    const agentName = (options.agent || `speci-${commandName}`).replace(
+      /\.agent\.md$/,
+      ''
+    );
+    const agentPath = resolveAgentPath(commandName, options.agent);
 
     // Validate agent file exists
     if (!existsSync(agentPath)) {
@@ -140,10 +144,8 @@ export async function plan(options: PlanOptions = {}): Promise<void> {
 
     const fullPrompt = promptParts.join('\n');
 
-    // Display command info (show relative path for readability)
-    const displayAgentPath = relative(process.cwd(), agentPath) || agentPath;
     displayCommandInfo(
-      displayAgentPath,
+      `${agentName}.agent.md`,
       options.output || 'stdout',
       inputFiles
     );
@@ -161,7 +163,7 @@ export async function plan(options: PlanOptions = {}): Promise<void> {
     const args = buildCopilotArgs(config, {
       interactive: true,
       prompt: fullPrompt || undefined,
-      agent: agentPath,
+      agent: agentName,
       allowAll: config.copilot.permissions === 'allow-all',
     });
 

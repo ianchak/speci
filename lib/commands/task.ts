@@ -84,8 +84,12 @@ export async function task(options: TaskOptions): Promise<void> {
       requireGit: false,
     });
 
-    // Resolve agent path (override filename or default)
-    const agentPath = resolveAgentPath('task', options.agent);
+    const commandName = 'task';
+    const agentName = (options.agent || `speci-${commandName}`).replace(
+      /\.agent\.md$/,
+      ''
+    );
+    const agentPath = resolveAgentPath(commandName, options.agent);
 
     // Validate agent file exists
     if (!existsSync(agentPath)) {
@@ -96,13 +100,12 @@ export async function task(options: TaskOptions): Promise<void> {
       process.exit(1);
     }
 
-    // Display command info (show relative paths for readability)
-    const displayAgentPath = relative(process.cwd(), agentPath) || agentPath;
+    // Display command info
     const displayPlanPath = relative(process.cwd(), planPath) || planPath;
     console.log(
       infoBox('Task Generation', {
         Plan: displayPlanPath,
-        Agent: displayAgentPath,
+        Agent: `${agentName}.agent.md`,
         Mode: 'One-shot',
       })
     );
@@ -112,7 +115,7 @@ export async function task(options: TaskOptions): Promise<void> {
     const args = buildCopilotArgs(config, {
       interactive: false,
       prompt: `Read the plan file at ${planPath} and generate implementation tasks.`,
-      agent: agentPath,
+      agent: agentName,
       allowAll: true,
     });
 
