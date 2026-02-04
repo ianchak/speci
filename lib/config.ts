@@ -623,4 +623,4 @@ export function getSubagentsTemplatePath(): string {
 /**
  * GitHub Copilot agents directory path (relative to project root)
  */
-export const GITHUB_AGENTS_DIR = '.github/copilot/agents';
+export const GITHUB_AGENTS_DIR = '.github/agents';
