@@ -7,7 +7,7 @@
  */
 
 import { existsSync, accessSync, constants } from 'node:fs';
-import { resolve } from 'node:path';
+import { relative, resolve } from 'node:path';
 import { loadConfig, resolveAgentPath } from '../config.js';
 import { buildCopilotArgs, spawnCopilot } from '../copilot.js';
 import { preflight } from '../utils/preflight.js';
@@ -96,11 +96,13 @@ export async function task(options: TaskOptions): Promise<void> {
       process.exit(1);
     }
 
-    // Display command info
+    // Display command info (show relative paths for readability)
+    const displayAgentPath = relative(process.cwd(), agentPath) || agentPath;
+    const displayPlanPath = relative(process.cwd(), planPath) || planPath;
     console.log(
       infoBox('Task Generation', {
-        Plan: planPath,
-        Agent: agentPath,
+        Plan: displayPlanPath,
+        Agent: displayAgentPath,
         Mode: 'One-shot',
       })
     );

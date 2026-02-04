@@ -7,7 +7,7 @@
  */
 
 import { existsSync, statSync } from 'node:fs';
-import { resolve, isAbsolute } from 'node:path';
+import { isAbsolute, relative, resolve } from 'node:path';
 import { loadConfig, resolveAgentPath } from '../config.js';
 import { buildCopilotArgs, spawnCopilot } from '../copilot.js';
 import { preflight } from '../utils/preflight.js';
@@ -112,11 +112,12 @@ export async function refactor(options: RefactorOptions = {}): Promise<void> {
       process.exit(1);
     }
 
-    // Display command info
+    // Display command info (show relative path for readability)
+    const displayAgentPath = relative(process.cwd(), agentPath) || agentPath;
     console.log(
       infoBox('Refactor Analysis', {
         Scope: scopePath || 'Entire project',
-        Agent: agentPath,
+        Agent: displayAgentPath,
         Mode: 'One-shot',
         Output: options.output || 'stdout',
       })

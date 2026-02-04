@@ -7,7 +7,7 @@
  */
 
 import { existsSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { relative, resolve } from 'node:path';
 import { loadConfig, resolveAgentPath } from '../config.js';
 import { buildCopilotArgs, spawnCopilot } from '../copilot.js';
 import { preflight } from '../utils/preflight.js';
@@ -140,8 +140,13 @@ export async function plan(options: PlanOptions = {}): Promise<void> {
 
     const fullPrompt = promptParts.join('\n');
 
-    // Display command info
-    displayCommandInfo(agentPath, options.output || 'stdout', inputFiles);
+    // Display command info (show relative path for readability)
+    const displayAgentPath = relative(process.cwd(), agentPath) || agentPath;
+    displayCommandInfo(
+      displayAgentPath,
+      options.output || 'stdout',
+      inputFiles
+    );
 
     // Display the initial prompt being sent
     console.log(colorize('─'.repeat(60), 'dim'));
