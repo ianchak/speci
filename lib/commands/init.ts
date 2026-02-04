@@ -245,9 +245,19 @@ function displaySuccess(): void {
   log.success('Speci initialization complete!');
   console.log();
   log.info('Next steps:');
-  console.log(colorize('  1. Add tasks to docs/tasks/', 'dim'));
-  console.log(colorize('  2. Update docs/PROGRESS.md with your tasks', 'dim'));
-  console.log(colorize('  3. Run: speci status', 'dim'));
+  console.log(colorize('  1. Generate your plan with: speci plan', 'dim'));
+  console.log(
+    colorize(
+      '  2. Generate your tasks and PROGRESS.md with: speci tasks',
+      'dim'
+    )
+  );
+  console.log(
+    colorize(
+      '  3. After a manual check start the implementation loop: speci run',
+      'dim'
+    )
+  );
   console.log();
 }
 
