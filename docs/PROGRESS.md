@@ -107,8 +107,8 @@ graph TD
 | -------- | ----------------------------------- | ----------- | ------------- | -------- | ---------- | ------------ | --------------- | --------------- | -------- |
 | TASK_010 | displayBanner() Conditional Animate | COMPLETE    | PASSED        | High     | S (≤2h)    | TASK_009     | SA-20260205-011 | RA-20260205-011 | 1        |
 | TASK_011 | No-Args Handler Async IIFE          | COMPLETE    | PASSED        | High     | S (≤2h)    | TASK_010     | SA-20260205-012 | RA-20260205-012 | 1        |
-| TASK_012 | PreAction Hook (No Changes)         | NOT STARTED | -             | Medium   | S (≤2h)    | TASK_010     | -               | -               | 0        |
-| TASK_013 | Static Banner Fallback              | IN REVIEW   | -             | High     | S (≤2h)    | TASK_009     | SA-20260205-013 | -               | 1        |
+| TASK_012 | PreAction Hook (No Changes)         | IN PROGRESS | -             | Medium   | S (≤2h)    | TASK_010     | SA-20260205-014 | -               | 1        |
+| TASK_013 | Static Banner Fallback              | COMPLETE    | PASSED        | High     | S (≤2h)    | TASK_009     | SA-20260205-013 | RA-20260206-001 | 1        |
 | MVT_M3   | Manual Verification Test            | NOT STARTED | -             | —        | 30 min     | TASK_010-013 | -               | -               | 0        |
 
 ### Dependencies
@@ -205,13 +205,13 @@ TASK_001 → TASK_002 → TASK_007 → TASK_008 → TASK_009 → TASK_010 → TA
 
 ## Subagent Tracking
 
-Last Subagent ID: SA-20260205-013
+Last Subagent ID: SA-20260205-014
 
 ---
 
 ## Review Tracking
 
-Last Review ID: RA-20260205-012
+Last Review ID: RA-20260206-001
 
 ---
 
@@ -219,16 +219,16 @@ Last Review ID: RA-20260205-012
 
 ### For Reviewer
 
-| Field             | Value                                                                                                |
-| ----------------- | ---------------------------------------------------------------------------------------------------- |
-| Task              | TASK_013                                                                                             |
-| Impl Agent        | SA-20260205-013                                                                                      |
-| Files Changed     | `lib/ui/banner-animation.ts`                                                                         |
-| Tests Added       | `test/banner-animation.test.ts` (5 new tests in "Static Banner Fallback (TASK_013)" describe block) |
-| Rework?           | No                                                                                                   |
-| Focus Areas       | Silent error handling - verify no console.error/warn in animation paths; fallback banner formatting |
-| Known Limitations | Cleanup errors (E-10) still logged - out of scope for animation fallback                            |
-| Gate Results      | format:✅ lint:✅ typecheck:✅ test:✅                                                               |
+| Field             | Value |
+| ----------------- | ----- |
+| Task              | -     |
+| Impl Agent        | -     |
+| Files Changed     | -     |
+| Tests Added       | -     |
+| Rework?           | -     |
+| Focus Areas       | -     |
+| Known Limitations | -     |
+| Gate Results      | -     |
 
 ### For Fix Agent
 
