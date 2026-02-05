@@ -47,6 +47,28 @@ export const FPS_TARGET = 60;
 export const MIN_TERMINAL_HEIGHT = 10;
 
 /**
+ * ANSI escape code constants for repeated sequences
+ * Performance optimization: avoid recomputing ANSI codes
+ */
+const ANSI_RESET = '\x1b[0m';
+const ANSI_CURSOR_UP_6 = '\x1b[6A';
+const ANSI_CURSOR_HIDE = '\x1b[?25l';
+const ANSI_CURSOR_SHOW = '\x1b[?25h';
+
+/**
+ * Gradient color cache for performance optimization
+ * Pre-computed gradient colors to avoid recalculation during animation
+ * Map key format: "line_col_startColor_endColor"
+ */
+const gradientCache = new Map<string, string>();
+
+/**
+ * Pre-allocated frame buffer for performance optimization
+ * Reused across all frame renders to avoid repeated allocations
+ */
+const frameBuffer: string[] = new Array(6);
+
+/**
  * Check if terminal height is sufficient for banner animation
  *
  * Banner requires:
@@ -129,6 +151,36 @@ function hexToAnsi(hex: string): string {
   const g = parseInt(hex.slice(3, 5), 16);
   const b = parseInt(hex.slice(5, 7), 16);
   return `\x1b[38;2;${r};${g};${b}m`;
+}
+
+/**
+ * Get cached gradient color or compute and cache it
+ * Performance optimization: reduces gradient computations from O(frames × chars) to O(chars)
+ *
+ * @param line - Line index (0-5)
+ * @param col - Column index (0-lineLength)
+ * @param positionRatio - Position ratio for gradient (0-1)
+ * @param colorA - Start color
+ * @param colorB - End color
+ * @returns Cached or computed ANSI color code
+ */
+function getCachedGradientColor(
+  line: number,
+  col: number,
+  positionRatio: number,
+  colorA: string,
+  colorB: string
+): string {
+  const cacheKey = `${line}_${col}_${colorA}_${colorB}`;
+
+  let ansiColor = gradientCache.get(cacheKey);
+  if (!ansiColor) {
+    const color = lerpColor(colorA, colorB, positionRatio);
+    ansiColor = hexToAnsi(color);
+    gradientCache.set(cacheKey, ansiColor);
+  }
+
+  return ansiColor;
 }
 
 /**
@@ -355,14 +407,14 @@ export function renderWaveFrame(progress: number): string[] {
   // Security: Clamp progress to [0.0, 1.0] to prevent array bounds violations
   const clampedProgress = Math.max(0, Math.min(1, progress));
 
-  const lines: string[] = [];
-
   try {
+    let lineIndex = 0;
     for (const line of BANNER_ART) {
       const lineLength = line.length;
       const revealIndex = Math.floor(clampedProgress * lineLength);
 
-      let renderedLine = '';
+      // Use array for string building (performance optimization)
+      const chars: string[] = [];
 
       for (let i = 0; i < lineLength; i++) {
         const char = line[i];
@@ -371,30 +423,34 @@ export function renderWaveFrame(progress: number): string[] {
           // Revealed character: apply gradient
           const positionRatio = i / (lineLength - 1);
 
-          // Two-stop gradient: sky-200 → sky-500
-          const color = lerpColor(
+          // Use cached gradient color (performance optimization)
+          const ansiColor = getCachedGradientColor(
+            lineIndex,
+            i,
+            positionRatio,
             HEX_COLORS.sky200,
-            HEX_COLORS.sky500,
-            positionRatio
+            HEX_COLORS.sky500
           );
-          const ansiColor = hexToAnsi(color);
 
-          // Wrap character with ANSI color code + reset
-          renderedLine += `${ansiColor}${char}\x1b[0m`;
+          // Build character with ANSI color code + reset
+          chars.push(ansiColor, char, ANSI_RESET);
         } else {
           // Unrevealed character: render as space (invisible)
-          renderedLine += ' ';
+          chars.push(' ');
         }
       }
 
-      lines.push(renderedLine);
+      // Join array into string (performance optimization)
+      frameBuffer[lineIndex] = chars.join('');
+      lineIndex++;
     }
   } catch {
     // E-13: Gradient computation failure - return fallback (static banner lines, silent)
     return BANNER_ART.map((line) => line);
   }
 
-  return lines;
+  // Return a copy to prevent cross-frame contamination
+  return [...frameBuffer];
 }
 
 /**
@@ -433,12 +489,13 @@ export function renderFadeFrame(progress: number): string[] {
   // Security: Clamp progress to [0.0, 1.0] to prevent array bounds violations
   const clampedProgress = Math.max(0, Math.min(1, progress));
 
-  const lines: string[] = [];
-
   try {
+    let lineIndex = 0;
     for (const line of BANNER_ART) {
       const lineLength = line.length;
-      let renderedLine = '';
+
+      // Use array for string building (performance optimization)
+      const chars: string[] = [];
 
       for (let i = 0; i < lineLength; i++) {
         const char = line[i];
@@ -455,18 +512,21 @@ export function renderFadeFrame(progress: number): string[] {
         const fadedColor = lerpColor('#000000', targetColor, clampedProgress);
         const ansiColor = hexToAnsi(fadedColor);
 
-        // Wrap character with ANSI color code + reset
-        renderedLine += `${ansiColor}${char}\x1b[0m`;
+        // Build character with ANSI color code + reset
+        chars.push(ansiColor, char, ANSI_RESET);
       }
 
-      lines.push(renderedLine);
+      // Join array into string (performance optimization)
+      frameBuffer[lineIndex] = chars.join('');
+      lineIndex++;
     }
   } catch {
     // E-13: Gradient computation failure - return fallback (static banner lines, silent)
     return BANNER_ART.map((line) => line);
   }
 
-  return lines;
+  // Return a copy to prevent cross-frame contamination
+  return [...frameBuffer];
 }
 
 /**
@@ -505,14 +565,14 @@ export function renderSweepFrame(progress: number): string[] {
   // Security: Clamp progress to [0.0, 1.0] to prevent array bounds violations
   const clampedProgress = Math.max(0, Math.min(1, progress));
 
-  const lines: string[] = [];
-
   try {
+    let lineIndex = 0;
     for (const line of BANNER_ART) {
       const lineLength = line.length;
       const revealIndex = Math.floor(clampedProgress * lineLength);
 
-      let renderedLine = '';
+      // Use array for string building (performance optimization)
+      const chars: string[] = [];
 
       for (let i = 0; i < lineLength; i++) {
         const char = line[i];
@@ -521,30 +581,34 @@ export function renderSweepFrame(progress: number): string[] {
           // Revealed character: apply gradient
           const positionRatio = i / (lineLength - 1);
 
-          // Two-stop gradient: sky-200 → sky-500
-          const color = lerpColor(
+          // Use cached gradient color (performance optimization)
+          const ansiColor = getCachedGradientColor(
+            lineIndex,
+            i,
+            positionRatio,
             HEX_COLORS.sky200,
-            HEX_COLORS.sky500,
-            positionRatio
+            HEX_COLORS.sky500
           );
-          const ansiColor = hexToAnsi(color);
 
-          // Wrap character with ANSI color code + reset
-          renderedLine += `${ansiColor}${char}\x1b[0m`;
+          // Build character with ANSI color code + reset
+          chars.push(ansiColor, char, ANSI_RESET);
         } else {
           // Unrevealed character: render as space (hidden)
-          renderedLine += ' ';
+          chars.push(' ');
         }
       }
 
-      lines.push(renderedLine);
+      // Join array into string (performance optimization)
+      frameBuffer[lineIndex] = chars.join('');
+      lineIndex++;
     }
   } catch {
     // E-13: Gradient computation failure - return fallback (static banner lines, silent)
     return BANNER_ART.map((line) => line);
   }
 
-  return lines;
+  // Return a copy to prevent cross-frame contamination
+  return [...frameBuffer];
 }
 
 /**
@@ -623,7 +687,7 @@ export async function runAnimationLoop(
 
         if (!isFirstFrame) {
           // Clear previous frame (cursor up 6 lines)
-          process.stdout.write('\x1b[6A');
+          process.stdout.write(ANSI_CURSOR_UP_6);
         }
 
         // Write final frame
@@ -640,7 +704,7 @@ export async function runAnimationLoop(
 
       if (!isFirstFrame) {
         // Clear previous frame (move cursor up 6 lines to overwrite)
-        process.stdout.write('\x1b[6A');
+        process.stdout.write(ANSI_CURSOR_UP_6);
       } else {
         isFirstFrame = false;
       }
@@ -741,7 +805,7 @@ export async function animateBanner(): Promise<void> {
       animState.isRunning = false;
 
       // Show cursor
-      process.stdout.write('\x1b[?25h');
+      process.stdout.write(ANSI_CURSOR_SHOW);
 
       // Restore terminal state if captured
       if (terminalSnapshot) {
@@ -774,7 +838,7 @@ export async function animateBanner(): Promise<void> {
 
     // Step 3: Cursor Hide (E-8)
     try {
-      process.stdout.write('\x1b[?25l'); // ANSI: Hide cursor
+      process.stdout.write(ANSI_CURSOR_HIDE); // ANSI: Hide cursor
     } catch {
       // E-8: Cursor hide failed - continue silently
       // Animation will work without hidden cursor (just less polished)
@@ -796,7 +860,7 @@ export async function animateBanner(): Promise<void> {
       // E-6: Animation loop exception - fallback to static banner (silent)
       // Step 6: Error Fallback
       // Clear animation output and render static banner with version
-      process.stdout.write('\x1b[6A'); // Move up 6 lines
+      process.stdout.write(ANSI_CURSOR_UP_6); // Move up 6 lines
       console.log('\n' + renderBanner({ showVersion: true }) + '\n');
     }
   } finally {

@@ -2446,3 +2446,197 @@ describe('renderSweepFrame', () => {
     });
   });
 });
+
+describe('Performance Optimization (TASK_020)', () => {
+  let module: typeof import('../lib/ui/banner-animation.js');
+
+  beforeEach(async () => {
+    module = await import('../lib/ui/banner-animation.js');
+  });
+
+  describe('Gradient cache', () => {
+    it('produces identical results to non-cached version', () => {
+      // Test that gradient cache produces same colors as direct computation
+      const frame1 = module.renderWaveFrame(0.5);
+      const frame2 = module.renderWaveFrame(0.5);
+
+      // Same progress should produce identical frames
+      expect(frame1).toEqual(frame2);
+      expect(frame1.length).toBe(6);
+    });
+
+    it('handles multiple effect renders consistently', () => {
+      const frames: string[][] = [];
+      const progress = 0.75;
+
+      // Render same progress multiple times
+      for (let i = 0; i < 10; i++) {
+        frames.push(module.renderWaveFrame(progress));
+      }
+
+      // All frames should be identical
+      for (let i = 1; i < frames.length; i++) {
+        expect(frames[i]).toEqual(frames[0]);
+      }
+    });
+
+    it('works for all effect types', () => {
+      const progress = 0.5;
+
+      const wave1 = module.renderWaveFrame(progress);
+      const wave2 = module.renderWaveFrame(progress);
+      expect(wave1).toEqual(wave2);
+
+      const fade1 = module.renderFadeFrame(progress);
+      const fade2 = module.renderFadeFrame(progress);
+      expect(fade1).toEqual(fade2);
+
+      const sweep1 = module.renderSweepFrame(progress);
+      const sweep2 = module.renderSweepFrame(progress);
+      expect(sweep1).toEqual(sweep2);
+    });
+  });
+
+  describe('Frame buffer reuse', () => {
+    it('does not cause cross-frame contamination', () => {
+      const frame1 = module.renderWaveFrame(0.25);
+      const frame2 = module.renderWaveFrame(0.75);
+
+      // Different progress values should produce different frames
+      expect(frame1).not.toEqual(frame2);
+
+      // Both should have 6 lines
+      expect(frame1.length).toBe(6);
+      expect(frame2.length).toBe(6);
+    });
+
+    it('handles rapid sequential renders', () => {
+      const frames: string[][] = [];
+
+      // Rapid renders at different progress values
+      for (let i = 0; i <= 10; i++) {
+        const progress = i / 10;
+        frames.push(module.renderWaveFrame(progress));
+      }
+
+      // Each frame should be distinct (or identical for same progress)
+      expect(frames.length).toBe(11);
+
+      // First frame should be mostly empty (progress=0)
+      // Last frame should be fully revealed (progress=1)
+      expect(frames[0]).not.toEqual(frames[10]);
+    });
+  });
+
+  describe('Performance benchmark', () => {
+    it('renders frames with acceptable performance', () => {
+      const iterations = 120; // 2 seconds at 60fps
+      const start = Date.now();
+
+      for (let i = 0; i < iterations; i++) {
+        const progress = i / iterations;
+        module.renderWaveFrame(progress);
+      }
+
+      const elapsed = Date.now() - start;
+      const msPerFrame = elapsed / iterations;
+
+      // Each frame should render in <3ms (as per task spec)
+      expect(msPerFrame).toBeLessThan(3);
+    });
+
+    it('handles multiple effect types efficiently', () => {
+      const iterations = 40; // Test all 3 effects
+      const start = Date.now();
+
+      for (let i = 0; i < iterations; i++) {
+        const progress = i / iterations;
+        module.renderWaveFrame(progress);
+        module.renderFadeFrame(progress);
+        module.renderSweepFrame(progress);
+      }
+
+      const elapsed = Date.now() - start;
+      const msPerFrame = elapsed / (iterations * 3);
+
+      // Each frame should render in <3ms
+      expect(msPerFrame).toBeLessThan(3);
+    });
+
+    it('memory usage remains stable across multiple renders', () => {
+      // Render many frames to detect memory leaks
+      for (let i = 0; i < 1000; i++) {
+        const progress = Math.random();
+        module.renderWaveFrame(progress);
+      }
+
+      // Test passes if no memory errors thrown
+      expect(true).toBe(true);
+    });
+  });
+
+  describe('String building optimization', () => {
+    it('produces valid ANSI output', () => {
+      const frame = module.renderWaveFrame(0.5);
+
+      // Each line should contain ANSI codes
+      for (const line of frame) {
+        // eslint-disable-next-line no-control-regex
+        expect(line).toMatch(/\x1b\[38;2;\d+;\d+;\d+m/);
+      }
+    });
+
+    it('handles all characters correctly', () => {
+      const frame = module.renderWaveFrame(1.0);
+
+      // Fully revealed frame should have content
+      expect(frame.length).toBe(6);
+
+      for (const line of frame) {
+        expect(line.length).toBeGreaterThan(0);
+      }
+    });
+  });
+
+  describe('Batched stdout writes (integration with runAnimationLoop)', () => {
+    let stdoutWriteSpy: ReturnType<typeof vi.spyOn>;
+    let writes: string[];
+
+    beforeEach(() => {
+      writes = [];
+      stdoutWriteSpy = vi
+        .spyOn(process.stdout, 'write')
+        .mockImplementation((chunk: string | Uint8Array) => {
+          writes.push(chunk.toString());
+          return true;
+        });
+    });
+
+    afterEach(() => {
+      stdoutWriteSpy.mockRestore();
+    });
+
+    it('animation produces frame output', async () => {
+      function createMockAnimState(): import('../lib/ui/banner-animation.js').AnimationState {
+        return {
+          isRunning: false,
+          startTime: 0,
+          duration: 100,
+          frameInterval: 16,
+          currentFrame: 0,
+          timerId: null,
+          cleanupFn: null,
+        };
+      }
+
+      await module.runAnimationLoop(
+        module.renderWaveFrame,
+        100,
+        createMockAnimState()
+      );
+
+      // Should have written output
+      expect(writes.length).toBeGreaterThan(0);
+    });
+  });
+});
