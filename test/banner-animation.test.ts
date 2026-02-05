@@ -199,3 +199,158 @@ describe('Gradient Utilities (Internal Functions)', () => {
     });
   });
 });
+
+describe('Terminal Height Validation', () => {
+  describe('MIN_TERMINAL_HEIGHT constant', () => {
+    it('should define MIN_TERMINAL_HEIGHT constant', async () => {
+      const module = await import('../lib/ui/banner-animation.js');
+      expect(module.MIN_TERMINAL_HEIGHT).toBeDefined();
+    });
+
+    it('should equal 10 lines', async () => {
+      const module = await import('../lib/ui/banner-animation.js');
+      expect(module.MIN_TERMINAL_HEIGHT).toBe(10);
+    });
+
+    it('should be a number', async () => {
+      const module = await import('../lib/ui/banner-animation.js');
+      expect(typeof module.MIN_TERMINAL_HEIGHT).toBe('number');
+    });
+  });
+
+  describe('hasMinimumHeight', () => {
+    it('should export hasMinimumHeight function', async () => {
+      const module = await import('../lib/ui/banner-animation.js');
+      expect(module.hasMinimumHeight).toBeDefined();
+      expect(typeof module.hasMinimumHeight).toBe('function');
+    });
+
+    it('should return false when rows < 10', async () => {
+      const module = await import('../lib/ui/banner-animation.js');
+      const originalRows = process.stdout.rows;
+
+      try {
+        // Test with rows = 5
+        Object.defineProperty(process.stdout, 'rows', {
+          value: 5,
+          configurable: true,
+        });
+        expect(module.hasMinimumHeight()).toBe(false);
+
+        // Test with rows = 9
+        Object.defineProperty(process.stdout, 'rows', {
+          value: 9,
+          configurable: true,
+        });
+        expect(module.hasMinimumHeight()).toBe(false);
+      } finally {
+        // Restore original value
+        Object.defineProperty(process.stdout, 'rows', {
+          value: originalRows,
+          configurable: true,
+        });
+      }
+    });
+
+    it('should return true when rows >= 10', async () => {
+      const module = await import('../lib/ui/banner-animation.js');
+      const originalRows = process.stdout.rows;
+
+      try {
+        // Test with rows = 10
+        Object.defineProperty(process.stdout, 'rows', {
+          value: 10,
+          configurable: true,
+        });
+        expect(module.hasMinimumHeight()).toBe(true);
+
+        // Test with rows = 80
+        Object.defineProperty(process.stdout, 'rows', {
+          value: 80,
+          configurable: true,
+        });
+        expect(module.hasMinimumHeight()).toBe(true);
+      } finally {
+        // Restore original value
+        Object.defineProperty(process.stdout, 'rows', {
+          value: originalRows,
+          configurable: true,
+        });
+      }
+    });
+
+    it('should return false when rows is undefined (non-TTY)', async () => {
+      const module = await import('../lib/ui/banner-animation.js');
+      const originalRows = process.stdout.rows;
+
+      try {
+        // Simulate non-TTY environment where rows is undefined
+        Object.defineProperty(process.stdout, 'rows', {
+          value: undefined,
+          configurable: true,
+        });
+        expect(module.hasMinimumHeight()).toBe(false);
+      } finally {
+        // Restore original value
+        Object.defineProperty(process.stdout, 'rows', {
+          value: originalRows,
+          configurable: true,
+        });
+      }
+    });
+
+    it('should handle edge case: rows = 0', async () => {
+      const module = await import('../lib/ui/banner-animation.js');
+      const originalRows = process.stdout.rows;
+
+      try {
+        Object.defineProperty(process.stdout, 'rows', {
+          value: 0,
+          configurable: true,
+        });
+        expect(module.hasMinimumHeight()).toBe(false);
+      } finally {
+        Object.defineProperty(process.stdout, 'rows', {
+          value: originalRows,
+          configurable: true,
+        });
+      }
+    });
+
+    it('should handle edge case: rows = 1', async () => {
+      const module = await import('../lib/ui/banner-animation.js');
+      const originalRows = process.stdout.rows;
+
+      try {
+        Object.defineProperty(process.stdout, 'rows', {
+          value: 1,
+          configurable: true,
+        });
+        expect(module.hasMinimumHeight()).toBe(false);
+      } finally {
+        Object.defineProperty(process.stdout, 'rows', {
+          value: originalRows,
+          configurable: true,
+        });
+      }
+    });
+
+    it('should handle very large terminal height', async () => {
+      const module = await import('../lib/ui/banner-animation.js');
+      const originalRows = process.stdout.rows;
+
+      try {
+        Object.defineProperty(process.stdout, 'rows', {
+          value: 1000,
+          configurable: true,
+        });
+        expect(module.hasMinimumHeight()).toBe(true);
+      } finally {
+        Object.defineProperty(process.stdout, 'rows', {
+          value: originalRows,
+          configurable: true,
+        });
+      }
+    });
+  });
+});

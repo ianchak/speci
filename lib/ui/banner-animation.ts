@@ -42,6 +42,33 @@ export const FRAME_INTERVAL = 16;
 export const FPS_TARGET = 60;
 
 /**
+ * Minimum terminal height required for banner animation
+ *
+ * Banner requires:
+ * - 6 lines: ASCII art (BANNER_ART)
+ * - 1 line: Version number
+ * - 3 lines: Padding (top/bottom clearance)
+ *
+ * Total: 10 lines minimum
+ */
+export const MIN_TERMINAL_HEIGHT = 10;
+
+/**
+ * Check if terminal height is sufficient for banner animation
+ *
+ * Banner requires:
+ * - 6 lines: ASCII art (BANNER_ART)
+ * - 1 line: Version number
+ * - 3 lines: Padding (top/bottom clearance)
+ *
+ * @returns true if terminal height >= 10 lines, false otherwise
+ * @remarks Returns false if process.stdout.rows is undefined (non-TTY)
+ */
+export function hasMinimumHeight(): boolean {
+  return (process.stdout.rows ?? 0) >= MIN_TERMINAL_HEIGHT;
+}
+
+/**
  * Parse hex color string to RGB tuple
  *
  * Extracts 6 hex digits from color string (e.g., "#0ea5e9" → [14, 165, 233])
