@@ -45,11 +45,13 @@ describe('TASK_012: PreAction Hook (No Changes)', () => {
       const speciContent = fs.readFileSync('bin/speci.ts', 'utf-8');
 
       // Find displayBanner call in preAction hook - multi-line pattern
-      const hookMatch = speciContent.match(/\.hook\('preAction'[\s\S]+?}\s*\);/);
+      const hookMatch = speciContent.match(
+        /\.hook\('preAction'[\s\S]+?}\s*\);/
+      );
       expect(hookMatch).toBeTruthy();
 
-      // Verify no await before displayBanner()
-      expect(hookMatch![0]).not.toMatch(/await\s+displayBanner\(\)/);
+      // Verify no await before displayBanner
+      expect(hookMatch![0]).not.toMatch(/await\s+displayBanner\(/);
     });
   });
 
@@ -59,14 +61,16 @@ describe('TASK_012: PreAction Hook (No Changes)', () => {
       const speciContent = fs.readFileSync('bin/speci.ts', 'utf-8');
 
       // Find displayBanner call in preAction hook - multi-line pattern
-      const hookMatch = speciContent.match(/\.hook\('preAction'[\s\S]+?}\s*\);/);
+      const hookMatch = speciContent.match(
+        /\.hook\('preAction'[\s\S]+?}\s*\);/
+      );
       expect(hookMatch).toBeTruthy();
 
-      // Verify displayBanner() is called as statement, not assigned
-      expect(hookMatch![0]).toMatch(/displayBanner\(\);/);
-      expect(hookMatch![0]).not.toMatch(/const\s+\w+\s*=\s*displayBanner\(\)/);
-      expect(hookMatch![0]).not.toMatch(/let\s+\w+\s*=\s*displayBanner\(\)/);
-      expect(hookMatch![0]).not.toMatch(/var\s+\w+\s*=\s*displayBanner\(\)/);
+      // Verify displayBanner is called as statement, not assigned
+      expect(hookMatch![0]).toMatch(/displayBanner\(/);
+      expect(hookMatch![0]).not.toMatch(/const\s+\w+\s*=\s*displayBanner\(/);
+      expect(hookMatch![0]).not.toMatch(/let\s+\w+\s*=\s*displayBanner\(/);
+      expect(hookMatch![0]).not.toMatch(/var\s+\w+\s*=\s*displayBanner\(/);
     });
   });
 
@@ -84,7 +88,7 @@ describe('TASK_012: PreAction Hook (No Changes)', () => {
 
       // Verify displayBanner function signature
       const funcMatch = speciContent.match(
-        /function\s+displayBanner\s*\(\s*\)\s*:\s*([^{]+)/
+        /function\s+displayBanner\s*\([^)]*\)\s*:\s*([^{]+)/
       );
       expect(funcMatch).toBeTruthy();
 
@@ -157,7 +161,7 @@ describe('TASK_012: PreAction Hook (No Changes)', () => {
 
       // Verify preAction hook exists and calls displayBanner
       expect(speciContent).toMatch(/\.hook\('preAction'/);
-      expect(speciContent).toMatch(/displayBanner\(\)/);
+      expect(speciContent).toMatch(/displayBanner\(/);
     });
 
     it('should maintain separation between invocation paths', async () => {

@@ -128,16 +128,16 @@ graph TD
 
 ## Milestone: M4 - Polish
 
-| Task ID  | Title                          | Status      | Priority | Complexity | Dependencies                           |
-| -------- | ------------------------------ | ----------- | -------- | ---------- | -------------------------------------- |
-| TASK_014 | Additional Animation Effects   | NOT STARTED | Medium   | M (2-4h)   | TASK_007                               |
-| TASK_015 | Effect Randomization           | NOT STARTED | Low      | S (≤2h)    | TASK_014                               |
-| TASK_016 | Version Number Animation       | NOT STARTED | Low      | S (≤2h)    | TASK_009                               |
-| TASK_017 | SPECI_NO_ANIMATION Variable    | IN REVIEW   | High     | S (≤2h)    | TASK_005                               | SA-20260205-015 | -               | 1        |
-| TASK_018 | --no-color Flag Respect        | NOT STARTED | High     | S (≤2h)    | TASK_010                               |
-| TASK_019 | Cleanup Interrupted Animations | NOT STARTED | High     | M (2-4h)   | TASK_009                               |
-| TASK_020 | Performance Optimization       | NOT STARTED | Medium   | M (2-4h)   | TASK_007, TASK_008, TASK_009, TASK_014 |
-| MVT_M4   | Manual Verification Test       | NOT STARTED | —        | 45 min     | TASK_014-020                           |
+| Task ID  | Title                          | Status      | Review Status | Priority | Complexity | Dependencies                           | Assigned To     | Reviewed By     | Attempts |
+| -------- | ------------------------------ | ----------- | ------------- | -------- | ---------- | -------------------------------------- | --------------- | --------------- | -------- |
+| TASK_014 | Additional Animation Effects   | NOT STARTED | -             | Medium   | M (2-4h)   | TASK_007                               | -               | -               | 0        |
+| TASK_015 | Effect Randomization           | NOT STARTED | -             | Low      | S (≤2h)    | TASK_014                               | -               | -               | 0        |
+| TASK_016 | Version Number Animation       | NOT STARTED | -             | Low      | S (≤2h)    | TASK_009                               | -               | -               | 0        |
+| TASK_017 | SPECI_NO_ANIMATION Variable    | COMPLETE    | PASSED        | High     | S (≤2h)    | TASK_005                               | SA-20260205-015 | RA-20260206-003 | 1        |
+| TASK_018 | --no-color Flag Respect        | IN PROGRESS | -             | High     | S (≤2h)    | TASK_010                               | SA-20260205-016 | -               | 1        |
+| TASK_019 | Cleanup Interrupted Animations | NOT STARTED | -             | High     | M (2-4h)   | TASK_009                               | -               | -               | 0        |
+| TASK_020 | Performance Optimization       | NOT STARTED | -             | Medium   | M (2-4h)   | TASK_007, TASK_008, TASK_009, TASK_014 | -               | -               | 0        |
+| MVT_M4   | Manual Verification Test       | NOT STARTED | -             | —        | 45 min     | TASK_014-020                           | -               | -               | 0        |
 
 ### Dependencies
 
@@ -165,11 +165,11 @@ graph TD
 
 ## Milestone: M5 - Verification
 
-| Task ID  | Title                         | Status      | Priority | Complexity | Dependencies              |
-| -------- | ----------------------------- | ----------- | -------- | ---------- | ------------------------- |
-| TASK_021 | Animation Timing Verification | NOT STARTED | High     | M (2-4h)   | TASK_001-020 (All phases) |
-| TASK_022 | Regression Tests              | NOT STARTED | High     | S (≤2h)    | None                      |
-| MVT_M5   | Manual Verification Test      | NOT STARTED | —        | 30 min     | TASK_021-023              |
+| Task ID  | Title                         | Status      | Review Status | Priority | Complexity | Dependencies              | Assigned To | Reviewed By | Attempts |
+| -------- | ----------------------------- | ----------- | ------------- | -------- | ---------- | ------------------------- | ----------- | ----------- | -------- |
+| TASK_021 | Animation Timing Verification | NOT STARTED | -             | High     | M (2-4h)   | TASK_001-020 (All phases) | -           | -           | 0        |
+| TASK_022 | Regression Tests              | NOT STARTED | -             | High     | S (≤2h)    | None                      | -           | -           | 0        |
+| MVT_M5   | Manual Verification Test      | NOT STARTED | -             | —        | 30 min     | TASK_021-023              | -           | -           | 0        |
 
 ### Dependencies
 
@@ -205,13 +205,13 @@ TASK_001 → TASK_002 → TASK_007 → TASK_008 → TASK_009 → TASK_010 → TA
 
 ## Subagent Tracking
 
-Last Subagent ID: SA-20260205-015
+Last Subagent ID: SA-20260205-016
 
 ---
 
 ## Review Tracking
 
-Last Review ID: RA-20260206-002
+Last Review ID: RA-20260206-003
 
 ---
 
@@ -219,16 +219,16 @@ Last Review ID: RA-20260206-002
 
 ### For Reviewer
 
-| Field             | Value                                                           |
-| ----------------- | --------------------------------------------------------------- |
-| Task              | TASK_017                                                        |
-| Impl Agent        | SA-20260205-015                                                 |
-| Files Changed     | `test/banner-animation.test.ts`, `README.md`                    |
-| Tests Added       | `test/banner-animation.test.ts` (2 new tests)                   |
-| Rework?           | No                                                              |
-| Focus Areas       | Verify SPECI_NO_ANIMATION truthiness tests ('0', 'false'); Verify README documentation accuracy |
-| Known Limitations | None - implementation already existed, only tests and docs added |
-| Gate Results      | format:✅ lint:✅ typecheck:✅ test:✅                          |
+| Field             | Value |
+| ----------------- | ----- |
+| Task              | -     |
+| Impl Agent        | -     |
+| Files Changed     | -     |
+| Tests Added       | -     |
+| Rework?           | -     |
+| Focus Areas       | -     |
+| Known Limitations | -     |
+| Gate Results      | -     |
 
 ### For Fix Agent
 

@@ -23,13 +23,15 @@ import { setVerbose, debug } from '../lib/utils/logger.js';
  *
  * Conditionally animates the banner when appropriate conditions are met.
  * Returns a Promise when animation is enabled, or void when displaying static banner.
+ *
+ * @param options - Optional configuration for banner display
  */
-function displayBanner(): Promise<void> | void {
+function displayBanner(options?: { color?: boolean }): Promise<void> | void {
   const {
     animateBanner,
     shouldAnimate,
   } = require('../lib/ui/banner-animation.js'); // eslint-disable-line @typescript-eslint/no-require-imports
-  if (shouldAnimate()) {
+  if (shouldAnimate(options)) {
     return animateBanner();
   } else {
     console.log('\n' + renderBanner({ showVersion: true }) + '\n');
@@ -64,7 +66,7 @@ program
       args.includes('--version') ||
       args.includes('-V');
     if (!isHelpOrVersion) {
-      displayBanner();
+      displayBanner({ color: opts.color });
     }
   });
 
@@ -241,7 +243,7 @@ program.on('command:*', (operands) => {
 // Show banner and help when no arguments provided
 if (process.argv.length <= 2) {
   (async () => {
-    const result = displayBanner();
+    const result = displayBanner({ color: program.opts().color });
     if (result instanceof Promise) {
       await result;
     }

@@ -217,6 +217,14 @@ export type AnimationEffect = (progress: number) => string[];
 export type CleanupFn = () => void;
 
 /**
+ * Options for shouldAnimate() detection
+ */
+export interface AnimateOptions {
+  /** Whether color output is enabled (from --no-color flag) */
+  color?: boolean;
+}
+
+/**
  * Determine if banner animation should run based on terminal capabilities
  *
  * Animation requires:
@@ -224,14 +232,21 @@ export type CleanupFn = () => void;
  * - TTY environment (process.stdout.isTTY)
  * - NO_COLOR not set (respects user preference)
  * - SPECI_NO_ANIMATION not set (CLI-specific disable)
+ * - --no-color flag not set (CLI flag)
  * - Terminal width >= 40 characters (minimum banner width)
  * - Terminal height >= 10 lines (minimum for animation display)
  *
  * If any condition fails, returns false to trigger static banner fallback.
  *
+ * @param options - Optional configuration for animation detection
  * @returns true if animation should run, false for static banner fallback
  */
-export function shouldAnimate(): boolean {
+export function shouldAnimate(options?: AnimateOptions): boolean {
+  // Check --no-color flag (CLI-level disable)
+  if (options?.color === false) {
+    return false;
+  }
+
   // E-2: Check color support
   if (!supportsColor()) {
     return false;

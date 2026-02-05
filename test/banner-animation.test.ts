@@ -494,6 +494,12 @@ describe('shouldAnimate() Detection', () => {
       expect(module.shouldAnimate()).toBe(false);
     });
 
+    it('returns false when --no-color flag is set (color: false)', async () => {
+      const module = await import('../lib/ui/banner-animation.js');
+
+      expect(module.shouldAnimate({ color: false })).toBe(false);
+    });
+
     it('returns false when width < 40 (E-4)', async () => {
       const module = await import('../lib/ui/banner-animation.js');
 
@@ -731,6 +737,70 @@ describe('shouldAnimate() Detection', () => {
         configurable: true,
       });
       expect(module.shouldAnimate()).toBe(true); // 80 >= 40, 24 >= 10
+    });
+  });
+
+  describe('--no-color flag support', () => {
+    beforeEach(async () => {
+      const colorsModule = await import('../lib/ui/colors.js');
+
+      // Setup baseline: all conditions true
+      vi.spyOn(colorsModule, 'supportsColor').mockReturnValue(true);
+      Object.defineProperty(process.stdout, 'isTTY', {
+        value: true,
+        configurable: true,
+      });
+      Object.defineProperty(process.stdout, 'columns', {
+        value: 80,
+        configurable: true,
+      });
+      Object.defineProperty(process.stdout, 'rows', {
+        value: 24,
+        configurable: true,
+      });
+      delete process.env.NO_COLOR;
+      delete process.env.SPECI_NO_ANIMATION;
+    });
+
+    it('returns false when color: false option is passed', async () => {
+      const module = await import('../lib/ui/banner-animation.js');
+
+      expect(module.shouldAnimate({ color: false })).toBe(false);
+    });
+
+    it('returns true when color: true option is passed and all conditions met', async () => {
+      const module = await import('../lib/ui/banner-animation.js');
+
+      expect(module.shouldAnimate({ color: true })).toBe(true);
+    });
+
+    it('returns true when no options passed (backward compatibility)', async () => {
+      const module = await import('../lib/ui/banner-animation.js');
+
+      expect(module.shouldAnimate()).toBe(true);
+    });
+
+    it('returns true when empty options object passed', async () => {
+      const module = await import('../lib/ui/banner-animation.js');
+
+      expect(module.shouldAnimate({})).toBe(true);
+    });
+
+    it('color: false takes precedence over all other conditions', async () => {
+      const module = await import('../lib/ui/banner-animation.js');
+
+      // Even with perfect conditions, color: false should disable animation
+      expect(module.shouldAnimate({ color: false })).toBe(false);
+    });
+
+    it('color: true does not override other failing conditions', async () => {
+      const module = await import('../lib/ui/banner-animation.js');
+
+      // Set NO_COLOR environment variable
+      process.env.NO_COLOR = '1';
+
+      // color: true should not override NO_COLOR
+      expect(module.shouldAnimate({ color: true })).toBe(false);
     });
   });
 });
