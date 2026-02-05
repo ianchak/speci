@@ -107,7 +107,7 @@ graph TD
 | -------- | ----------------------------------- | ----------- | ------------- | -------- | ---------- | ------------ | --------------- | --------------- | -------- |
 | TASK_010 | displayBanner() Conditional Animate | COMPLETE    | PASSED        | High     | S (≤2h)    | TASK_009     | SA-20260205-011 | RA-20260205-011 | 1        |
 | TASK_011 | No-Args Handler Async IIFE          | COMPLETE    | PASSED        | High     | S (≤2h)    | TASK_010     | SA-20260205-012 | RA-20260205-012 | 1        |
-| TASK_012 | PreAction Hook (No Changes)         | IN PROGRESS | -             | Medium   | S (≤2h)    | TASK_010     | SA-20260205-014 | -               | 1        |
+| TASK_012 | PreAction Hook (No Changes)         | IN REVIEW   | -             | Medium   | S (≤2h)    | TASK_010     | SA-20260205-014 | -               | 1        |
 | TASK_013 | Static Banner Fallback              | COMPLETE    | PASSED        | High     | S (≤2h)    | TASK_009     | SA-20260205-013 | RA-20260206-001 | 1        |
 | MVT_M3   | Manual Verification Test            | NOT STARTED | -             | —        | 30 min     | TASK_010-013 | -               | -               | 0        |
 
@@ -219,16 +219,16 @@ Last Review ID: RA-20260206-001
 
 ### For Reviewer
 
-| Field             | Value |
-| ----------------- | ----- |
-| Task              | -     |
-| Impl Agent        | -     |
-| Files Changed     | -     |
-| Tests Added       | -     |
-| Rework?           | -     |
-| Focus Areas       | -     |
-| Known Limitations | -     |
-| Gate Results      | -     |
+| Field             | Value                                                                                                     |
+| ----------------- | --------------------------------------------------------------------------------------------------------- |
+| Task              | TASK_012                                                                                                  |
+| Impl Agent        | SA-20260205-014                                                                                           |
+| Files Changed     | None (verification task)                                                                                  |
+| Tests Added       | `test/preaction-hook.test.ts` (16 new tests)                                                              |
+| Rework?           | No                                                                                                        |
+| Focus Areas       | Verify preAction hook code unchanged, test coverage validates backward compatibility                      |
+| Known Limitations | No code changes made (verification task confirms design works as intended without modifications)          |
+| Gate Results      | format:✅ lint:✅ typecheck:✅ test:✅ (16/16 passed, 11 pre-existing failures unrelated)                |
 
 ### For Fix Agent
 
