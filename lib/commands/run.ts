@@ -354,7 +354,7 @@ async function promptForce(): Promise<boolean> {
  * @param config - Speci configuration
  */
 async function confirmRun(state: STATE, _config: SpeciConfig): Promise<void> {
-  log.info(`\nCurrent state: ${state}`);
+  log.info(`Current state: ${state}`);
 
   const action = getActionForState(state);
   log.info(`Action: ${action}`);

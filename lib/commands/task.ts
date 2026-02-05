@@ -113,7 +113,6 @@ export async function task(options: TaskOptions): Promise<void> {
 
     // Build Copilot args for one-shot mode with plan context
     const args = buildCopilotArgs(config, {
-      interactive: false,
       prompt: `Read the plan file at ${planPath} and generate implementation tasks.`,
       agent: agentName,
       allowAll: true,

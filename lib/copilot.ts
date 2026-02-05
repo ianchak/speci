@@ -2,8 +2,7 @@
  * Copilot CLI Wrapper Module
  *
  * Provides a clean interface for invoking GitHub Copilot CLI with:
- * - Interactive mode (-i flag) for full terminal passthrough
- * - One-shot mode (-p flag) for non-interactive agent execution
+ * - One-shot mode (-p flag) for agent execution
  * - Retry logic with exponential backoff for transient failures
  * - Proper stdio handling and process spawning
  */
@@ -28,7 +27,6 @@ export type CommandName =
  * Options for building copilot CLI arguments
  */
 export interface CopilotArgsOptions {
-  interactive: boolean;
   prompt?: string;
   agent?: string;
   allowAll?: boolean;
@@ -71,12 +69,6 @@ const DEFAULT_RETRY_POLICY: RetryPolicy = {
  * @param config - Speci configuration
  * @param options - Argument building options
  * @returns Array of CLI arguments
- *
- * @example
- * ```typescript
- * const args = buildCopilotArgs(config, { interactive: true });
- * // Returns: ['-i', '--allow-all']
- * ```
  */
 export function buildCopilotArgs(
   config: SpeciConfig,
@@ -84,20 +76,7 @@ export function buildCopilotArgs(
 ): string[] {
   const args: string[] = [];
 
-  // Mode flag - interactive takes optional prompt argument
-  // Non-interactive uses -p flag separately
-  if (options.interactive) {
-    if (options.prompt) {
-      // Interactive mode with initial prompt: -i "prompt"
-      args.push('-i', options.prompt);
-    } else {
-      // Interactive mode without prompt
-      args.push('-i');
-    }
-  } else if (options.prompt) {
-    // Non-interactive mode with prompt: -p "prompt"
-    args.push('-p', options.prompt);
-  }
+  args.push('-p', options.prompt || '');
 
   // Agent flag
   if (options.agent) {
@@ -205,7 +184,7 @@ export async function runAgent(
       // Copilot CLI looks for agents in .github/copilot/agents/
       const agentFileName = `speci-${agentName}`;
       const args = buildCopilotArgs(config, {
-        interactive: true,
+        prompt: '',
         agent: agentFileName,
         command: agentName as CommandName,
       });

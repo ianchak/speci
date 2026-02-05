@@ -161,7 +161,6 @@ export async function plan(options: PlanOptions = {}): Promise<void> {
 
     // Build Copilot args - one-shot mode with prompt
     const args = buildCopilotArgs(config, {
-      interactive: false,
       prompt: fullPrompt || undefined,
       agent: agentName,
       allowAll: config.copilot.permissions === 'allow-all',

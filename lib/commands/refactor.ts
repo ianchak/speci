@@ -136,7 +136,6 @@ export async function refactor(options: RefactorOptions = {}): Promise<void> {
 
     // Build Copilot args for one-shot mode
     const args = buildCopilotArgs(config, {
-      interactive: false,
       prompt,
       agent: agentName,
       allowAll: true,
