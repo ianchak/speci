@@ -81,7 +81,6 @@ speci init [options]
 
 **Options:**
 
-- `-y, --yes` - Accept all defaults without prompts
 - `-u, --update-agents` - Update agent files even if they already exist
 - `-v, --verbose` - Show detailed output
 
@@ -95,17 +94,14 @@ speci init [options]
 **Examples:**
 
 ```bash
-# Interactive setup wizard
+# Initialize with defaults
 speci init
-
-# Quick setup with defaults
-speci init --yes
 
 # Update agent files to latest version
 speci init --update-agents
 
 # Short alias version
-speci i -y
+speci i
 ```
 
 ### `speci plan` (alias: `p`)

@@ -38,9 +38,9 @@ describe('init command', () => {
     }
   });
 
-  describe('default behavior with --yes flag', () => {
+  describe('default behavior', () => {
     it('should create speci.config.json with default values', async () => {
-      await init({ yes: true });
+      await init();
 
       expect(existsSync('speci.config.json')).toBe(true);
 
@@ -55,14 +55,14 @@ describe('init command', () => {
     });
 
     it('should create required directories', async () => {
-      await init({ yes: true });
+      await init();
 
       expect(existsSync(join(testDir, 'docs', 'tasks'))).toBe(true);
       expect(existsSync(join(testDir, '.speci-logs'))).toBe(true);
     });
 
     it('should use default gate commands', async () => {
-      await init({ yes: true });
+      await init();
 
       const configContent = readFileSync('speci.config.json', 'utf8');
       const config = JSON.parse(configContent);
@@ -76,7 +76,7 @@ describe('init command', () => {
     });
 
     it('should include all default agent paths as null', async () => {
-      await init({ yes: true });
+      await init();
 
       const configContent = readFileSync('speci.config.json', 'utf8');
       const config = JSON.parse(configContent);
@@ -93,7 +93,7 @@ describe('init command', () => {
     });
 
     it('should include default copilot settings', async () => {
-      await init({ yes: true });
+      await init();
 
       const configContent = readFileSync('speci.config.json', 'utf8');
       const config = JSON.parse(configContent);
@@ -104,7 +104,7 @@ describe('init command', () => {
     });
 
     it('should include default loop settings', async () => {
-      await init({ yes: true });
+      await init();
 
       const configContent = readFileSync('speci.config.json', 'utf8');
       const config = JSON.parse(configContent);
@@ -121,7 +121,7 @@ describe('init command', () => {
         JSON.stringify({ custom: 'data' }, null, 2)
       );
 
-      await expect(init({ yes: true })).resolves.not.toThrow();
+      await expect(init()).resolves.not.toThrow();
 
       // Verify original content preserved
       const content = readFileSync('speci.config.json', 'utf8');
@@ -135,7 +135,7 @@ describe('init command', () => {
       const customContent = '# My Custom Progress File';
       writeFileSync('docs/PROGRESS.md', customContent);
 
-      await expect(init({ yes: true })).resolves.not.toThrow();
+      await expect(init()).resolves.not.toThrow();
 
       // Verify original content preserved
       const content = readFileSync('docs/PROGRESS.md', 'utf8');
@@ -147,7 +147,7 @@ describe('init command', () => {
       mkdirSync('docs/tasks', { recursive: true });
       mkdirSync('.speci-logs', { recursive: true });
 
-      await expect(init({ yes: true })).resolves.not.toThrow();
+      await expect(init()).resolves.not.toThrow();
 
       // Directories should still exist
       expect(existsSync('docs/tasks')).toBe(true);
@@ -156,8 +156,8 @@ describe('init command', () => {
 
     it('should be idempotent (safe to run multiple times)', async () => {
       // Run init twice
-      await init({ yes: true });
-      await expect(init({ yes: true })).resolves.not.toThrow();
+      await init();
+      await expect(init()).resolves.not.toThrow();
 
       // Verify config still exists and is valid
       expect(existsSync('speci.config.json')).toBe(true);
@@ -171,7 +171,7 @@ describe('init command', () => {
       // Test that proper error messages are provided
       // In actual usage, OS-level permission errors would occur
       // This test verifies the error handling path exists
-      await expect(init({ yes: true })).resolves.not.toThrow();
+      await expect(init()).resolves.not.toThrow();
     });
 
     it('should skip if config file exists as directory', async () => {
@@ -180,7 +180,7 @@ describe('init command', () => {
       mkdirSync('speci.config.json', { recursive: true });
 
       // Init should skip the config file but still succeed
-      await expect(init({ yes: true })).resolves.not.toThrow();
+      await expect(init()).resolves.not.toThrow();
 
       // Config file should not be created (directory still exists)
       expect(existsSync('speci.config.json')).toBe(true);
@@ -190,11 +190,11 @@ describe('init command', () => {
   describe('edge cases', () => {
     it('should handle empty directory name', async () => {
       // This tests that basename() doesn't fail on edge cases
-      await expect(init({ yes: true })).resolves.not.toThrow();
+      await expect(init()).resolves.not.toThrow();
     });
 
     it('should create parent directories for progress file', async () => {
-      await init({ yes: true });
+      await init();
 
       // Verify docs directory was created
       expect(existsSync(join(testDir, 'docs'))).toBe(true);
@@ -202,8 +202,8 @@ describe('init command', () => {
 
     it('should handle very deep nested paths', async () => {
       // Config would use deeply nested path if user specified it
-      // Since we're using --yes, this tests the default behavior
-      await init({ yes: true });
+      // Since we're using defaults, this tests the default behavior
+      await init();
 
       expect(existsSync('docs/tasks')).toBe(true);
     });
@@ -211,7 +211,7 @@ describe('init command', () => {
 
   describe('configuration merging', () => {
     it('should merge with defaults correctly', async () => {
-      await init({ yes: true });
+      await init();
 
       const config = JSON.parse(readFileSync('speci.config.json', 'utf8'));
       const defaults = getDefaults();
@@ -228,7 +228,7 @@ describe('init command', () => {
 
   describe('file permissions and format', () => {
     it('should create JSON files with proper formatting', async () => {
-      await init({ yes: true });
+      await init();
 
       const content = readFileSync('speci.config.json', 'utf8');
 
@@ -245,7 +245,7 @@ describe('init command', () => {
 
   describe('verbose mode', () => {
     it('should accept verbose option without errors', async () => {
-      await expect(init({ yes: true, verbose: true })).resolves.not.toThrow();
+      await expect(init({ verbose: true })).resolves.not.toThrow();
     });
   });
 });
