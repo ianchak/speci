@@ -45,7 +45,7 @@ function displayCommandInfo(
 ): void {
   const content = [
     colorize('Agent:', 'sky400') + ` ${agentPath}`,
-    colorize('Mode:', 'sky400') + ' Interactive',
+    colorize('Mode:', 'sky400') + ' One-shot',
     colorize('Output:', 'sky400') + ` ${outputPath}`,
   ];
   if (inputFiles && inputFiles.length > 0) {
@@ -159,9 +159,9 @@ export async function plan(options: PlanOptions = {}): Promise<void> {
     console.log(colorize('─'.repeat(60), 'dim'));
     console.log();
 
-    // Build Copilot args - always interactive, with prompt as initial message
+    // Build Copilot args - one-shot mode with prompt
     const args = buildCopilotArgs(config, {
-      interactive: true,
+      interactive: false,
       prompt: fullPrompt || undefined,
       agent: agentName,
       allowAll: config.copilot.permissions === 'allow-all',
