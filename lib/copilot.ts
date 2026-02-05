@@ -28,10 +28,9 @@ export type CommandName =
  */
 export interface CopilotArgsOptions {
   prompt?: string;
-  agent?: string;
+  agent: string;
   allowAll?: boolean;
-  /** Command name for per-command model lookup */
-  command?: CommandName;
+  command: CommandName;
 }
 
 /**
@@ -76,12 +75,10 @@ export function buildCopilotArgs(
 ): string[] {
   const args: string[] = [];
 
-  args.push('-p', options.prompt || '');
+  args.push('-p', options.prompt || 'Execute agent instructions');
 
   // Agent flag
-  if (options.agent) {
-    args.push(`--agent=${options.agent}`);
-  }
+  args.push(`--agent=${options.agent}`);
 
   // Permission flag
   const { permissions } = config.copilot;
@@ -92,9 +89,7 @@ export function buildCopilotArgs(
   }
 
   // Model flag - per-command model takes precedence over general model
-  const commandModel = options.command
-    ? config.copilot.models?.[options.command]
-    : null;
+  const commandModel = config.copilot.models?.[options.command];
   const model = commandModel || config.copilot.model;
   if (model) {
     args.push('--model', model);
@@ -184,7 +179,6 @@ export async function runAgent(
       // Copilot CLI looks for agents in .github/copilot/agents/
       const agentFileName = `speci-${agentName}`;
       const args = buildCopilotArgs(config, {
-        prompt: '',
         agent: agentFileName,
         command: agentName as CommandName,
       });

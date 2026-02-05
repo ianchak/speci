@@ -48,7 +48,10 @@ describe('copilot', () => {
 
   describe('buildCopilotArgs', () => {
     it('should build args for one-shot mode with empty prompt by default', () => {
-      const options: CopilotArgsOptions = {};
+      const options: CopilotArgsOptions = {
+        agent: 'test-agent',
+        command: 'plan',
+      };
 
       const args = buildCopilotArgs(config, options);
 
@@ -59,6 +62,8 @@ describe('copilot', () => {
     it('should build args for one-shot mode with prompt', () => {
       const options: CopilotArgsOptions = {
         prompt: 'test prompt',
+        agent: 'test-agent',
+        command: 'plan',
       };
 
       const args = buildCopilotArgs(config, options);
@@ -71,6 +76,7 @@ describe('copilot', () => {
     it('should include agent flag when agent specified', () => {
       const options: CopilotArgsOptions = {
         agent: '/path/to/agent.md',
+        command: 'plan',
       };
 
       const args = buildCopilotArgs(config, options);
@@ -80,7 +86,10 @@ describe('copilot', () => {
 
     it('should include --allow-all flag for allow-all permission', () => {
       config.copilot.permissions = 'allow-all';
-      const options: CopilotArgsOptions = {};
+      const options: CopilotArgsOptions = {
+        agent: 'test-agent',
+        command: 'plan',
+      };
 
       const args = buildCopilotArgs(config, options);
 
@@ -90,7 +99,10 @@ describe('copilot', () => {
 
     it('should include --yolo flag for yolo permission', () => {
       config.copilot.permissions = 'yolo';
-      const options: CopilotArgsOptions = {};
+      const options: CopilotArgsOptions = {
+        agent: 'test-agent',
+        command: 'plan',
+      };
 
       const args = buildCopilotArgs(config, options);
 
@@ -100,7 +112,10 @@ describe('copilot', () => {
 
     it('should not include permission flag for strict mode', () => {
       config.copilot.permissions = 'strict';
-      const options: CopilotArgsOptions = {};
+      const options: CopilotArgsOptions = {
+        agent: 'test-agent',
+        command: 'plan',
+      };
 
       const args = buildCopilotArgs(config, options);
 
@@ -110,7 +125,10 @@ describe('copilot', () => {
 
     it('should include model flag when model is configured', () => {
       config.copilot.model = 'gpt-4';
-      const options: CopilotArgsOptions = {};
+      const options: CopilotArgsOptions = {
+        agent: 'test-agent',
+        command: 'plan',
+      };
 
       const args = buildCopilotArgs(config, options);
 
@@ -122,6 +140,7 @@ describe('copilot', () => {
       config.copilot.model = 'gpt-4'; // default model
       config.copilot.models.plan = 'claude-opus-4.5'; // per-command model
       const options: CopilotArgsOptions = {
+        agent: 'test-agent',
         command: 'plan',
       };
 
@@ -136,6 +155,7 @@ describe('copilot', () => {
       config.copilot.model = 'gpt-4'; // default model
       config.copilot.models.task = null; // no per-command model
       const options: CopilotArgsOptions = {
+        agent: 'test-agent',
         command: 'task',
       };
 
@@ -149,6 +169,7 @@ describe('copilot', () => {
       config.copilot.model = null;
       config.copilot.models.refactor = null;
       const options: CopilotArgsOptions = {
+        agent: 'test-agent',
         command: 'refactor',
       };
 
@@ -159,7 +180,10 @@ describe('copilot', () => {
 
     it('should append extra flags from config', () => {
       config.copilot.extraFlags = ['--verbose', '--debug'];
-      const options: CopilotArgsOptions = {};
+      const options: CopilotArgsOptions = {
+        agent: 'test-agent',
+        command: 'plan',
+      };
 
       const args = buildCopilotArgs(config, options);
 
