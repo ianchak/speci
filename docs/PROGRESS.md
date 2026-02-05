@@ -130,7 +130,7 @@ graph TD
 
 | Task ID  | Title                          | Status      | Review Status | Priority | Complexity | Dependencies                           | Assigned To     | Reviewed By     | Attempts |
 | -------- | ------------------------------ | ----------- | ------------- | -------- | ---------- | -------------------------------------- | --------------- | --------------- | -------- |
-| TASK_014 | Additional Animation Effects   | IN PROGRESS | -             | Medium   | M (2-4h)   | TASK_007                               | SA-20260205-019 | -               | 1        |
+| TASK_014 | Additional Animation Effects   | IN REVIEW   | -             | Medium   | M (2-4h)   | TASK_007                               | SA-20260205-019 | -               | 1        |
 | TASK_015 | Effect Randomization           | NOT STARTED | -             | Low      | S (≤2h)    | TASK_014                               | -               | -               | 0        |
 | TASK_016 | Version Number Animation       | NOT STARTED | -             | Low      | S (≤2h)    | TASK_009                               | -               | -               | 0        |
 | TASK_017 | SPECI_NO_ANIMATION Variable    | COMPLETE    | PASSED        | High     | S (≤2h)    | TASK_005                               | SA-20260205-015 | RA-20260206-003 | 1        |
@@ -219,16 +219,16 @@ Last Review ID: RA-20260206-006
 
 ### For Reviewer
 
-| Field             | Value |
-| ----------------- | ----- |
-| Task              | -     |
-| Impl Agent        | -     |
-| Files Changed     | -     |
-| Tests Added       | -     |
-| Rework?           | -     |
-| Focus Areas       | -     |
-| Known Limitations | -     |
-| Gate Results      | -     |
+| Field             | Value                                                                                                |
+| ----------------- | ---------------------------------------------------------------------------------------------------- |
+| Task              | TASK_014                                                                                             |
+| Impl Agent        | SA-20260205-019                                                                                      |
+| Files Changed     | `lib/ui/banner-animation.ts`                                                                         |
+| Tests Added       | `test/banner-animation.test.ts` (18 new tests)                                                       |
+| Rework?           | No                                                                                                   |
+| Focus Areas       | Color interpolation logic in fade effect; threshold-based reveal in sweep effect; error handling E-13|
+| Known Limitations | Effects not yet integrated into effect selection (TASK_015); no caching optimization yet (TASK_020)  |
+| Gate Results      | format:✅ lint:✅ typecheck:✅ test:✅                                                                |
 
 ### For Fix Agent
 
