@@ -133,7 +133,7 @@ graph TD
 | TASK_014 | Additional Animation Effects   | NOT STARTED | Medium   | M (2-4h)   | TASK_007                               |
 | TASK_015 | Effect Randomization           | NOT STARTED | Low      | S (≤2h)    | TASK_014                               |
 | TASK_016 | Version Number Animation       | NOT STARTED | Low      | S (≤2h)    | TASK_009                               |
-| TASK_017 | SPECI_NO_ANIMATION Variable    | IN PROGRESS | High     | S (≤2h)    | TASK_005                               | SA-20260205-015 | -               | 1        |
+| TASK_017 | SPECI_NO_ANIMATION Variable    | IN REVIEW   | High     | S (≤2h)    | TASK_005                               | SA-20260205-015 | -               | 1        |
 | TASK_018 | --no-color Flag Respect        | NOT STARTED | High     | S (≤2h)    | TASK_010                               |
 | TASK_019 | Cleanup Interrupted Animations | NOT STARTED | High     | M (2-4h)   | TASK_009                               |
 | TASK_020 | Performance Optimization       | NOT STARTED | Medium   | M (2-4h)   | TASK_007, TASK_008, TASK_009, TASK_014 |
@@ -219,16 +219,16 @@ Last Review ID: RA-20260206-002
 
 ### For Reviewer
 
-| Field             | Value |
-| ----------------- | ----- |
-| Task              | -     |
-| Impl Agent        | -     |
-| Files Changed     | -     |
-| Tests Added       | -     |
-| Rework?           | -     |
-| Focus Areas       | -     |
-| Known Limitations | -     |
-| Gate Results      | -     |
+| Field             | Value                                                           |
+| ----------------- | --------------------------------------------------------------- |
+| Task              | TASK_017                                                        |
+| Impl Agent        | SA-20260205-015                                                 |
+| Files Changed     | `test/banner-animation.test.ts`, `README.md`                    |
+| Tests Added       | `test/banner-animation.test.ts` (2 new tests)                   |
+| Rework?           | No                                                              |
+| Focus Areas       | Verify SPECI_NO_ANIMATION truthiness tests ('0', 'false'); Verify README documentation accuracy |
+| Known Limitations | None - implementation already existed, only tests and docs added |
+| Gate Results      | format:✅ lint:✅ typecheck:✅ test:✅                          |
 
 ### For Fix Agent
 
