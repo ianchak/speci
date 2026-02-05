@@ -5,7 +5,7 @@
  * including imports, constants, and basic module integrity.
  */
 
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 
 describe('Banner Animation Module', () => {
   describe('Module Import', () => {
@@ -351,6 +351,359 @@ describe('Terminal Height Validation', () => {
           configurable: true,
         });
       }
+    });
+  });
+});
+
+describe('shouldAnimate() Detection', () => {
+  // Store original values to restore after tests
+  let originalIsTTY: boolean | undefined;
+  let originalColumns: number | undefined;
+  let originalRows: number | undefined;
+  let originalNoColor: string | undefined;
+  let originalSpeciNoAnimation: string | undefined;
+
+  beforeEach(async () => {
+    // Store original values
+    originalIsTTY = process.stdout.isTTY;
+    originalColumns = process.stdout.columns;
+    originalRows = process.stdout.rows;
+    originalNoColor = process.env.NO_COLOR;
+    originalSpeciNoAnimation = process.env.SPECI_NO_ANIMATION;
+  });
+
+  afterEach(() => {
+    // Restore original values
+    Object.defineProperty(process.stdout, 'isTTY', {
+      value: originalIsTTY,
+      configurable: true,
+    });
+    Object.defineProperty(process.stdout, 'columns', {
+      value: originalColumns,
+      configurable: true,
+    });
+    Object.defineProperty(process.stdout, 'rows', {
+      value: originalRows,
+      configurable: true,
+    });
+
+    if (originalNoColor === undefined) {
+      delete process.env.NO_COLOR;
+    } else {
+      process.env.NO_COLOR = originalNoColor;
+    }
+
+    if (originalSpeciNoAnimation === undefined) {
+      delete process.env.SPECI_NO_ANIMATION;
+    } else {
+      process.env.SPECI_NO_ANIMATION = originalSpeciNoAnimation;
+    }
+  });
+
+  describe('all conditions met (happy path)', () => {
+    it('returns true when all conditions are met', async () => {
+      const module = await import('../lib/ui/banner-animation.js');
+      const colorsModule = await import('../lib/ui/colors.js');
+
+      // Mock supportsColor to return true
+      vi.spyOn(colorsModule, 'supportsColor').mockReturnValue(true);
+
+      // Set all conditions to pass
+      Object.defineProperty(process.stdout, 'isTTY', {
+        value: true,
+        configurable: true,
+      });
+      Object.defineProperty(process.stdout, 'columns', {
+        value: 80,
+        configurable: true,
+      });
+      Object.defineProperty(process.stdout, 'rows', {
+        value: 24,
+        configurable: true,
+      });
+
+      delete process.env.NO_COLOR;
+      delete process.env.SPECI_NO_ANIMATION;
+
+      expect(module.shouldAnimate()).toBe(true);
+    });
+  });
+
+  describe('individual condition failures', () => {
+    beforeEach(async () => {
+      const colorsModule = await import('../lib/ui/colors.js');
+
+      // Setup baseline: all conditions true
+      vi.spyOn(colorsModule, 'supportsColor').mockReturnValue(true);
+      Object.defineProperty(process.stdout, 'isTTY', {
+        value: true,
+        configurable: true,
+      });
+      Object.defineProperty(process.stdout, 'columns', {
+        value: 80,
+        configurable: true,
+      });
+      Object.defineProperty(process.stdout, 'rows', {
+        value: 24,
+        configurable: true,
+      });
+      delete process.env.NO_COLOR;
+      delete process.env.SPECI_NO_ANIMATION;
+    });
+
+    it('returns false when color not supported (E-2)', async () => {
+      const module = await import('../lib/ui/banner-animation.js');
+      const colorsModule = await import('../lib/ui/colors.js');
+
+      vi.spyOn(colorsModule, 'supportsColor').mockReturnValue(false);
+      expect(module.shouldAnimate()).toBe(false);
+    });
+
+    it('returns false when not TTY (E-1)', async () => {
+      const module = await import('../lib/ui/banner-animation.js');
+
+      Object.defineProperty(process.stdout, 'isTTY', {
+        value: false,
+        configurable: true,
+      });
+      expect(module.shouldAnimate()).toBe(false);
+    });
+
+    it('returns false when NO_COLOR set (E-3)', async () => {
+      const module = await import('../lib/ui/banner-animation.js');
+
+      process.env.NO_COLOR = '1';
+      expect(module.shouldAnimate()).toBe(false);
+    });
+
+    it('returns false when SPECI_NO_ANIMATION set', async () => {
+      const module = await import('../lib/ui/banner-animation.js');
+
+      process.env.SPECI_NO_ANIMATION = '1';
+      expect(module.shouldAnimate()).toBe(false);
+    });
+
+    it('returns false when width < 40 (E-4)', async () => {
+      const module = await import('../lib/ui/banner-animation.js');
+
+      Object.defineProperty(process.stdout, 'columns', {
+        value: 39,
+        configurable: true,
+      });
+      expect(module.shouldAnimate()).toBe(false);
+    });
+
+    it('returns false when height < 10 (E-5)', async () => {
+      const module = await import('../lib/ui/banner-animation.js');
+
+      Object.defineProperty(process.stdout, 'rows', {
+        value: 9,
+        configurable: true,
+      });
+      expect(module.shouldAnimate()).toBe(false);
+    });
+  });
+
+  describe('environment variable truthiness', () => {
+    beforeEach(async () => {
+      const colorsModule = await import('../lib/ui/colors.js');
+
+      // Setup baseline
+      vi.spyOn(colorsModule, 'supportsColor').mockReturnValue(true);
+      Object.defineProperty(process.stdout, 'isTTY', {
+        value: true,
+        configurable: true,
+      });
+      Object.defineProperty(process.stdout, 'columns', {
+        value: 80,
+        configurable: true,
+      });
+      Object.defineProperty(process.stdout, 'rows', {
+        value: 24,
+        configurable: true,
+      });
+    });
+
+    it('NO_COLOR with empty string is falsy (animation enabled)', async () => {
+      const module = await import('../lib/ui/banner-animation.js');
+
+      process.env.NO_COLOR = '';
+      delete process.env.SPECI_NO_ANIMATION;
+      expect(module.shouldAnimate()).toBe(true);
+    });
+
+    it('NO_COLOR=0 disables animation (string "0" is truthy)', async () => {
+      const module = await import('../lib/ui/banner-animation.js');
+
+      process.env.NO_COLOR = '0';
+      delete process.env.SPECI_NO_ANIMATION;
+      expect(module.shouldAnimate()).toBe(false);
+    });
+
+    it('NO_COLOR=false disables animation (string "false" is truthy)', async () => {
+      const module = await import('../lib/ui/banner-animation.js');
+
+      process.env.NO_COLOR = 'false';
+      delete process.env.SPECI_NO_ANIMATION;
+      expect(module.shouldAnimate()).toBe(false);
+    });
+
+    it('SPECI_NO_ANIMATION with empty string is falsy (animation enabled)', async () => {
+      const module = await import('../lib/ui/banner-animation.js');
+
+      delete process.env.NO_COLOR;
+      process.env.SPECI_NO_ANIMATION = '';
+      expect(module.shouldAnimate()).toBe(true);
+    });
+
+    it('SPECI_NO_ANIMATION=1 disables animation', async () => {
+      const module = await import('../lib/ui/banner-animation.js');
+
+      delete process.env.NO_COLOR;
+      process.env.SPECI_NO_ANIMATION = '1';
+      expect(module.shouldAnimate()).toBe(false);
+    });
+  });
+
+  describe('dimension fallbacks', () => {
+    beforeEach(async () => {
+      const colorsModule = await import('../lib/ui/colors.js');
+
+      // Setup baseline
+      vi.spyOn(colorsModule, 'supportsColor').mockReturnValue(true);
+      Object.defineProperty(process.stdout, 'isTTY', {
+        value: true,
+        configurable: true,
+      });
+      delete process.env.NO_COLOR;
+      delete process.env.SPECI_NO_ANIMATION;
+    });
+
+    it('uses default width 80 when columns undefined', async () => {
+      const module = await import('../lib/ui/banner-animation.js');
+
+      Object.defineProperty(process.stdout, 'columns', {
+        value: undefined,
+        configurable: true,
+      });
+      Object.defineProperty(process.stdout, 'rows', {
+        value: 24,
+        configurable: true,
+      });
+      expect(module.shouldAnimate()).toBe(true); // 80 >= 40
+    });
+
+    it('uses default height 24 when rows undefined', async () => {
+      const module = await import('../lib/ui/banner-animation.js');
+
+      Object.defineProperty(process.stdout, 'columns', {
+        value: 80,
+        configurable: true,
+      });
+      Object.defineProperty(process.stdout, 'rows', {
+        value: undefined,
+        configurable: true,
+      });
+      expect(module.shouldAnimate()).toBe(true); // 24 >= 10
+    });
+
+    it('returns false for explicitly narrow terminal even with default', async () => {
+      const module = await import('../lib/ui/banner-animation.js');
+
+      Object.defineProperty(process.stdout, 'columns', {
+        value: 30,
+        configurable: true,
+      });
+      Object.defineProperty(process.stdout, 'rows', {
+        value: 24,
+        configurable: true,
+      });
+      expect(module.shouldAnimate()).toBe(false);
+    });
+  });
+
+  describe('edge cases', () => {
+    beforeEach(async () => {
+      const colorsModule = await import('../lib/ui/colors.js');
+
+      // Setup baseline
+      vi.spyOn(colorsModule, 'supportsColor').mockReturnValue(true);
+      Object.defineProperty(process.stdout, 'isTTY', {
+        value: true,
+        configurable: true,
+      });
+      delete process.env.NO_COLOR;
+      delete process.env.SPECI_NO_ANIMATION;
+    });
+
+    it('accepts exactly width 40 (boundary)', async () => {
+      const module = await import('../lib/ui/banner-animation.js');
+
+      Object.defineProperty(process.stdout, 'columns', {
+        value: 40,
+        configurable: true,
+      });
+      Object.defineProperty(process.stdout, 'rows', {
+        value: 24,
+        configurable: true,
+      });
+      expect(module.shouldAnimate()).toBe(true);
+    });
+
+    it('accepts exactly height 10 (boundary)', async () => {
+      const module = await import('../lib/ui/banner-animation.js');
+
+      Object.defineProperty(process.stdout, 'columns', {
+        value: 80,
+        configurable: true,
+      });
+      Object.defineProperty(process.stdout, 'rows', {
+        value: 10,
+        configurable: true,
+      });
+      expect(module.shouldAnimate()).toBe(true);
+    });
+
+    it('rejects width 39 (below boundary)', async () => {
+      const module = await import('../lib/ui/banner-animation.js');
+
+      Object.defineProperty(process.stdout, 'columns', {
+        value: 39,
+        configurable: true,
+      });
+      Object.defineProperty(process.stdout, 'rows', {
+        value: 24,
+        configurable: true,
+      });
+      expect(module.shouldAnimate()).toBe(false);
+    });
+
+    it('rejects height 9 (below boundary)', async () => {
+      const module = await import('../lib/ui/banner-animation.js');
+
+      Object.defineProperty(process.stdout, 'columns', {
+        value: 80,
+        configurable: true,
+      });
+      Object.defineProperty(process.stdout, 'rows', {
+        value: 9,
+        configurable: true,
+      });
+      expect(module.shouldAnimate()).toBe(false);
+    });
+
+    it('handles both dimensions undefined (defaults pass)', async () => {
+      const module = await import('../lib/ui/banner-animation.js');
+
+      Object.defineProperty(process.stdout, 'columns', {
+        value: undefined,
+        configurable: true,
+      });
+      Object.defineProperty(process.stdout, 'rows', {
+        value: undefined,
+        configurable: true,
+      });
+      expect(module.shouldAnimate()).toBe(true); // 80 >= 40, 24 >= 10
     });
   });
 });

@@ -19,8 +19,6 @@ import { BANNER_ART } from './banner.js';
 // @ts-expect-error - Will be used in TASK_004 and later
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { terminalState } from './terminal.js';
-// @ts-expect-error - Will be used in TASK_005 and later
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { supportsColor } from './colors.js';
 // @ts-expect-error - Will be used in TASK_019
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -228,8 +226,59 @@ export type AnimationEffect = (progress: number) => string[];
  */
 export type CleanupFn = () => void;
 
+/**
+ * Determine if banner animation should run based on terminal capabilities
+ *
+ * Animation requires:
+ * - Color support (via supportsColor())
+ * - TTY environment (process.stdout.isTTY)
+ * - NO_COLOR not set (respects user preference)
+ * - SPECI_NO_ANIMATION not set (CLI-specific disable)
+ * - Terminal width >= 40 characters (minimum banner width)
+ * - Terminal height >= 10 lines (minimum for animation display)
+ *
+ * If any condition fails, returns false to trigger static banner fallback.
+ *
+ * @returns true if animation should run, false for static banner fallback
+ */
+export function shouldAnimate(): boolean {
+  // E-2: Check color support
+  if (!supportsColor()) {
+    return false;
+  }
+
+  // E-1: Check TTY (must be interactive terminal, not pipe/redirect)
+  if (!process.stdout.isTTY) {
+    return false;
+  }
+
+  // E-3: Check NO_COLOR environment variable (universal color disable)
+  if (process.env.NO_COLOR) {
+    return false;
+  }
+
+  // Check SPECI_NO_ANIMATION (CLI-specific animation disable)
+  if (process.env.SPECI_NO_ANIMATION) {
+    return false;
+  }
+
+  // E-4: Check terminal width (banner requires 40 columns minimum)
+  const width = process.stdout.columns ?? 80;
+  if (width < 40) {
+    return false;
+  }
+
+  // E-5: Check terminal height (animation requires 10 rows minimum)
+  const height = process.stdout.rows ?? 24;
+  if (height < 10) {
+    return false;
+  }
+
+  // All checks passed - animation eligible
+  return true;
+}
+
 // Placeholder for future implementation
 // Future tasks will add:
-// - shouldAnimate() function (TASK_004, TASK_005)
 // - Animation effect functions (TASK_007, TASK_008)
 // - animateBanner() orchestrator (TASK_009)
