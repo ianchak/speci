@@ -291,9 +291,6 @@ export function shouldAnimate(): boolean {
  *
  * @internal
  */
-// Used in TASK_008, currently unused but needed for future animation loop
-// @ts-expect-error - TS6133: Will be used in TASK_008
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 async function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
@@ -378,7 +375,106 @@ export function renderWaveFrame(progress: number): string[] {
   return lines;
 }
 
+/**
+ * Run animation loop with frame rendering and timing control
+ *
+ * Executes animation from start to finish, rendering frames at ~60fps target.
+ * Uses time-based progress (not frame count) to ensure consistent duration
+ * regardless of individual frame timing jitter.
+ *
+ * Algorithm:
+ * 1. Record start time
+ * 2. Loop until progress >= 1.0:
+ *    a. Calculate progress: (now - start) / duration
+ *    b. Render frame: call effect(progress)
+ *    c. Clear previous frame: cursor up 6 lines
+ *    d. Write new frame: 6 lines + newlines
+ *    e. Sleep: FRAME_INTERVAL ms
+ * 3. Render final frame at progress=1.0
+ * 4. Exit
+ *
+ * Performance: HOT PATH - executes ~120 iterations (2s × 60fps)
+ * - Each iteration: 1 progress calc, 1 effect call, 12 stdout writes, 1 sleep
+ * - Total: 1,440 I/O operations per animation
+ *
+ * Security:
+ * - Duration parameter clamped to [100, 5000]ms to prevent resource exhaustion
+ * - Frame count bounded by duration/FRAME_INTERVAL (max ~300 frames at 5000ms)
+ * - Progress >= 1.0 termination guarantees loop exit (no infinite loops)
+ * - Stdout writes are write-only, no terminal input read
+ *
+ * @param effect - Frame rendering function (typically renderWaveFrame)
+ * @param duration - Animation duration in milliseconds (clamped to [100, 5000]ms)
+ * @returns Promise that resolves when animation completes
+ * @throws Error if stdout operations fail (E-6), propagated to caller for fallback
+ *
+ * @example
+ * await runAnimationLoop(renderWaveFrame, 2000);  // 2-second wave animation
+ *
+ * @internal
+ */
+// Used in TASK_009, currently unused but needed for future animateBanner() orchestrator
+export async function runAnimationLoop(
+  effect: (progress: number) => string[],
+  duration: number
+): Promise<void> {
+  // Security: Clamp duration to prevent resource exhaustion (DoS)
+  const clampedDuration = Math.max(100, Math.min(5000, duration));
+
+  const startTime = Date.now();
+  let isFirstFrame = true;
+
+  // E-6: Loop exception handling - catch and propagate stdout/effect errors
+  // eslint-disable-next-line no-useless-catch
+  try {
+    // eslint-disable-next-line no-constant-condition
+    while (true) {
+      const elapsed = Date.now() - startTime;
+      const progress = elapsed / clampedDuration;
+
+      // Termination condition: animation complete
+      if (progress >= 1.0) {
+        // Render final frame at exactly progress=1.0
+        const finalFrame = effect(1.0);
+
+        if (!isFirstFrame) {
+          // Clear previous frame (cursor up 6 lines)
+          process.stdout.write('\x1b[6A');
+        }
+
+        // Write final frame
+        for (const line of finalFrame) {
+          process.stdout.write(line + '\n');
+        }
+
+        break; // Exit loop
+      }
+
+      // Render current frame
+      const frame = effect(progress);
+
+      if (!isFirstFrame) {
+        // Clear previous frame (move cursor up 6 lines to overwrite)
+        process.stdout.write('\x1b[6A');
+      } else {
+        isFirstFrame = false;
+      }
+
+      // Write frame to stdout (6 lines)
+      for (const line of frame) {
+        process.stdout.write(line + '\n');
+      }
+
+      // Frame delay for ~60fps
+      await sleep(FRAME_INTERVAL);
+    }
+  } catch (error) {
+    // E-6: Loop exception (stdout write failure, effect error, etc.)
+    // Propagate to caller (animateBanner) for fallback handling
+    throw error;
+  }
+}
+
 // Placeholder for future implementation
 // Future tasks will add:
-// - Animation loop (TASK_008)
 // - animateBanner() orchestrator (TASK_009)

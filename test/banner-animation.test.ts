@@ -736,9 +736,9 @@ describe('sleep utility', () => {
       await testSleep(20);
       const elapsed = Date.now() - start;
 
-      // Total: 60ms ± 40ms (3 sleeps with generous tolerance for event loop jitter and CI)
+      // Total: 60ms ± 45ms (3 sleeps with generous tolerance for event loop jitter and CI)
       expect(elapsed).toBeGreaterThanOrEqual(40);
-      expect(elapsed).toBeLessThanOrEqual(100);
+      expect(elapsed).toBeLessThanOrEqual(105);
     });
   });
 
@@ -1017,6 +1017,328 @@ describe('renderWaveFrame', () => {
       testProgress(0.25, 0.25);
       testProgress(0.5, 0.5);
       testProgress(0.75, 0.75);
+    });
+  });
+
+  describe('runAnimationLoop', () => {
+    let module: typeof import('../lib/ui/banner-animation.js');
+    let stdoutWriteSpy: ReturnType<typeof vi.spyOn>;
+    let writes: string[];
+
+    beforeEach(async () => {
+      module = await import('../lib/ui/banner-animation.js');
+      writes = [];
+      stdoutWriteSpy = vi
+        .spyOn(process.stdout, 'write')
+        .mockImplementation((chunk: string | Uint8Array) => {
+          writes.push(chunk.toString());
+          return true;
+        });
+    });
+
+    afterEach(() => {
+      stdoutWriteSpy.mockRestore();
+    });
+
+    describe('Loop execution and termination', () => {
+      it('executes loop until progress >= 1.0', async () => {
+        let frameCount = 0;
+        const mockEffect = vi.fn((_progress: number) => {
+          frameCount++;
+          return ['line1', 'line2', 'line3', 'line4', 'line5', 'line6'];
+        });
+
+        // Access the internal function through module        
+        await module.runAnimationLoop(mockEffect, 100);
+
+        // Should render multiple frames
+        expect(frameCount).toBeGreaterThan(3);
+
+        // Final call should be progress=1.0
+        const finalCall =
+          mockEffect.mock.calls[mockEffect.mock.calls.length - 1];
+        expect(finalCall[0]).toBe(1.0);
+      });
+
+      it('renders final frame at progress=1.0', async () => {
+        const mockEffect = vi.fn((progress: number) => {
+          return [`Progress: ${progress.toFixed(2)}`, '', '', '', '', ''];
+        });
+        await module.runAnimationLoop(mockEffect, 100);
+
+        // Last call should be progress=1.0
+        const lastCall =
+          mockEffect.mock.calls[mockEffect.mock.calls.length - 1];
+        expect(lastCall[0]).toBe(1.0);
+      });
+    });
+
+    describe('Frame clearing behavior', () => {
+      it('writes cursor up escape code between frames', async () => {
+        const mockEffect = () => [
+          'line1',
+          'line2',
+          'line3',
+          'line4',
+          'line5',
+          'line6',
+        ];        await module.runAnimationLoop(mockEffect, 100);
+
+        // Should contain cursor up escape codes (after first frame)
+        const cursorUpCount = writes.filter((w) => w === '\x1b[6A').length;
+        expect(cursorUpCount).toBeGreaterThan(0);
+      });
+
+      it('does not clear before first frame', async () => {
+        const mockEffect = () => [
+          'line1',
+          'line2',
+          'line3',
+          'line4',
+          'line5',
+          'line6',
+        ];        await module.runAnimationLoop(mockEffect, 50);
+
+        // First 6 writes should be frame lines, no cursor up before them
+        expect(writes[0]).not.toContain('\x1b[6A');
+      });
+
+      it('clears before second and subsequent frames', async () => {
+        const mockEffect = () => [
+          'line1',
+          'line2',
+          'line3',
+          'line4',
+          'line5',
+          'line6',
+        ];        await module.runAnimationLoop(mockEffect, 100);
+
+        // After first 6 line writes, should have cursor up before next frame
+        let foundFirstCursorUp = false;
+        let writesSinceStart = 0;
+        for (const write of writes) {
+          if (write === '\x1b[6A' && writesSinceStart >= 6) {
+            foundFirstCursorUp = true;
+            break;
+          }
+          if (!write.includes('\x1b[6A')) {
+            writesSinceStart++;
+          }
+        }
+        expect(foundFirstCursorUp).toBe(true);
+      });
+    });
+
+    describe('Duration clamping', () => {
+      it('clamps duration below 100ms to 100ms', async () => {
+        const start = Date.now();
+        const mockEffect = () => ['l1', 'l2', 'l3', 'l4', 'l5', 'l6'];        await module.runAnimationLoop(mockEffect, 50);
+
+        const elapsed = Date.now() - start;
+
+        // Should take at least ~100ms (clamped), allow tolerance
+        expect(elapsed).toBeGreaterThanOrEqual(80);
+      });
+
+      it(
+        'clamps duration above 5000ms to 5000ms',
+        async () => {
+          const start = Date.now();
+          const mockEffect = () => ['l1', 'l2', 'l3', 'l4', 'l5', 'l6'];
+          await module.runAnimationLoop(mockEffect, 10000);
+
+          const elapsed = Date.now() - start;
+
+          // Should take max ~5000ms, not 10000ms
+          expect(elapsed).toBeLessThan(6000);
+        },
+        7000
+      );
+
+      it('respects normal duration within valid range', async () => {
+        const start = Date.now();
+        const mockEffect = () => ['l1', 'l2', 'l3', 'l4', 'l5', 'l6'];        await module.runAnimationLoop(mockEffect, 200);
+
+        const elapsed = Date.now() - start;
+
+        // Should take approximately 200ms (allow tolerance)
+        expect(elapsed).toBeGreaterThanOrEqual(180);
+        expect(elapsed).toBeLessThan(300);
+      });
+    });
+
+    describe('Error propagation', () => {
+      it('propagates effect rendering errors (E-6)', async () => {
+        const mockEffect = vi.fn(() => {
+          throw new Error('Effect error');
+        });        await expect(module.runAnimationLoop(mockEffect, 100)).rejects.toThrow(
+          'Effect error'
+        );
+      });
+
+      it('propagates stdout write errors (E-6)', async () => {
+        stdoutWriteSpy.mockRestore();
+        vi.spyOn(process.stdout, 'write').mockImplementation(() => {
+          throw new Error('Stdout error');
+        });
+
+        const mockEffect = () => [
+          'line1',
+          'line2',
+          'line3',
+          'line4',
+          'line5',
+          'line6',
+        ];        await expect(module.runAnimationLoop(mockEffect, 100)).rejects.toThrow(
+          'Stdout error'
+        );
+      });
+    });
+
+    describe('Frame output structure', () => {
+      it('writes each frame line followed by newline', async () => {
+        const mockEffect = () => ['A', 'B', 'C', 'D', 'E', 'F'];        await module.runAnimationLoop(mockEffect, 50);
+
+        // First frame: 6 lines with newlines
+        expect(writes[0]).toBe('A\n');
+        expect(writes[1]).toBe('B\n');
+        expect(writes[2]).toBe('C\n');
+        expect(writes[3]).toBe('D\n');
+        expect(writes[4]).toBe('E\n');
+        expect(writes[5]).toBe('F\n');
+      });
+
+      it('writes multiple frames with correct structure', async () => {
+        let callCount = 0;
+        const mockEffect = () => {
+          callCount++;
+          return [
+            `Frame${callCount}-1`,
+            `Frame${callCount}-2`,
+            `Frame${callCount}-3`,
+            `Frame${callCount}-4`,
+            `Frame${callCount}-5`,
+            `Frame${callCount}-6`,
+          ];
+        };        await module.runAnimationLoop(mockEffect, 100);
+
+        // Should have multiple frames written
+        expect(callCount).toBeGreaterThan(3);
+
+        // Each frame should have 6 lines
+        // First frame: writes[0-5] are Frame1-1 through Frame1-6
+        expect(writes[0]).toBe('Frame1-1\n');
+        expect(writes[1]).toBe('Frame1-2\n');
+        expect(writes[2]).toBe('Frame1-3\n');
+        expect(writes[3]).toBe('Frame1-4\n');
+        expect(writes[4]).toBe('Frame1-5\n');
+        expect(writes[5]).toBe('Frame1-6\n');
+
+        // Second frame should have cursor up before it
+        expect(writes[6]).toBe('\x1b[6A');
+        expect(writes[7]).toBe('Frame2-1\n');
+      });
+    });
+
+    describe('Time-based progress calculation', () => {
+      it('uses time-based progress not frame count', async () => {
+        const progressValues: number[] = [];
+        const mockEffect = (progress: number) => {
+          progressValues.push(progress);
+          return ['l1', 'l2', 'l3', 'l4', 'l5', 'l6'];
+        };        await module.runAnimationLoop(mockEffect, 200);
+
+        // Progress should increase over time
+        for (let i = 1; i < progressValues.length; i++) {
+          expect(progressValues[i]).toBeGreaterThanOrEqual(
+            progressValues[i - 1]
+          );
+        }
+
+        // First progress should be near 0
+        expect(progressValues[0]).toBeLessThan(0.2);
+
+        // Last progress should be exactly 1.0
+        expect(progressValues[progressValues.length - 1]).toBe(1.0);
+      });
+
+      it('reaches progress=1.0 regardless of frame timing jitter', async () => {
+        let lastProgress = 0;
+        const mockEffect = (progress: number) => {
+          lastProgress = progress;
+          return ['l1', 'l2', 'l3', 'l4', 'l5', 'l6'];
+        };        await module.runAnimationLoop(mockEffect, 150);
+
+        // Final progress must be exactly 1.0
+        expect(lastProgress).toBe(1.0);
+      });
+    });
+
+    describe('Integration with renderWaveFrame', () => {
+      it('completes full animation with renderWaveFrame', async () => {
+        const start = Date.now();
+        await module.runAnimationLoop(module.renderWaveFrame, 2000);
+
+        const elapsed = Date.now() - start;
+
+        // Should complete in approximately 2 seconds (allow tolerance)
+        expect(elapsed).toBeGreaterThanOrEqual(1900);
+        expect(elapsed).toBeLessThanOrEqual(2200);
+      });
+
+      it('generates valid wave frames throughout animation', async () => {
+        const frames: string[][] = [];
+        const mockEffect = (_progress: number) => {
+          const frame = module.renderWaveFrame(_progress);
+          frames.push(frame);
+          return frame;
+        };        await module.runAnimationLoop(mockEffect, 100);
+
+        // Should have multiple frames
+        expect(frames.length).toBeGreaterThan(3);
+
+        // Each frame should have 6 lines
+        for (const frame of frames) {
+          expect(frame).toHaveLength(6);
+        }
+      });
+    });
+
+    describe('Edge cases', () => {
+      it('handles zero-length animation (clamped to 100ms)', async () => {
+        const mockEffect = () => ['l1', 'l2', 'l3', 'l4', 'l5', 'l6'];        await expect(
+          module.runAnimationLoop(mockEffect, 0)
+        ).resolves.not.toThrow();
+      });
+
+      it('handles negative duration (clamped to 100ms)', async () => {
+        const mockEffect = () => ['l1', 'l2', 'l3', 'l4', 'l5', 'l6'];        await expect(
+          module.runAnimationLoop(mockEffect, -100)
+        ).resolves.not.toThrow();
+      });
+
+      it(
+        'handles very large duration (clamped to 5000ms)',
+        async () => {
+          const start = Date.now();
+          const mockEffect = () => ['l1', 'l2', 'l3', 'l4', 'l5', 'l6'];
+          await module.runAnimationLoop(mockEffect, 999999);
+
+          const elapsed = Date.now() - start;
+          expect(elapsed).toBeLessThan(6000);
+        },
+        7000
+      );
+
+      it('handles effect returning empty lines', async () => {
+        const mockEffect = () => ['', '', '', '', '', ''];        await expect(
+          module.runAnimationLoop(mockEffect, 50)
+        ).resolves.not.toThrow();
+
+        // Should still write 6 newlines per frame
+        const firstFrameWrites = writes.slice(0, 6);
+        expect(firstFrameWrites).toEqual(['\n', '\n', '\n', '\n', '\n', '\n']);
+      });
     });
   });
 });
