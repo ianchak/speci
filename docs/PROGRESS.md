@@ -130,7 +130,7 @@ graph TD
 
 | Task ID  | Title                          | Status      | Review Status | Priority | Complexity | Dependencies                           | Assigned To     | Reviewed By     | Attempts |
 | -------- | ------------------------------ | ----------- | ------------- | -------- | ---------- | -------------------------------------- | --------------- | --------------- | -------- |
-| TASK_014 | Additional Animation Effects   | NOT STARTED | -             | Medium   | M (2-4h)   | TASK_007                               | -               | -               | 0        |
+| TASK_014 | Additional Animation Effects   | IN PROGRESS | -             | Medium   | M (2-4h)   | TASK_007                               | SA-20260205-019 | -               | 1        |
 | TASK_015 | Effect Randomization           | NOT STARTED | -             | Low      | S (≤2h)    | TASK_014                               | -               | -               | 0        |
 | TASK_016 | Version Number Animation       | NOT STARTED | -             | Low      | S (≤2h)    | TASK_009                               | -               | -               | 0        |
 | TASK_017 | SPECI_NO_ANIMATION Variable    | COMPLETE    | PASSED        | High     | S (≤2h)    | TASK_005                               | SA-20260205-015 | RA-20260206-003 | 1        |
@@ -168,7 +168,7 @@ graph TD
 | Task ID  | Title                         | Status      | Review Status | Priority | Complexity | Dependencies              | Assigned To | Reviewed By | Attempts |
 | -------- | ----------------------------- | ----------- | ------------- | -------- | ---------- | ------------------------- | ----------- | ----------- | -------- |
 | TASK_021 | Animation Timing Verification | NOT STARTED | -             | High     | M (2-4h)   | TASK_001-020 (All phases) | -           | -           | 0        |
-| TASK_022 | Regression Tests              | IN REVIEW   | -             | High     | S (≤2h)    | None                      | SA-20260205-018 | -           | 1        |
+| TASK_022 | Regression Tests              | COMPLETE    | PASSED        | High     | S (≤2h)    | None                      | SA-20260205-018 | RA-20260206-006 | 1        |
 | MVT_M5   | Manual Verification Test      | NOT STARTED | -             | —        | 30 min     | TASK_021-023              | -           | -           | 0        |
 
 ### Dependencies
@@ -205,13 +205,13 @@ TASK_001 → TASK_002 → TASK_007 → TASK_008 → TASK_009 → TASK_010 → TA
 
 ## Subagent Tracking
 
-Last Subagent ID: SA-20260205-018
+Last Subagent ID: SA-20260205-019
 
 ---
 
 ## Review Tracking
 
-Last Review ID: RA-20260206-005
+Last Review ID: RA-20260206-006
 
 ---
 
@@ -219,16 +219,16 @@ Last Review ID: RA-20260206-005
 
 ### For Reviewer
 
-| Field             | Value                                                                                          |
-| ----------------- | ---------------------------------------------------------------------------------------------- |
-| Task              | TASK_022                                                                                       |
-| Impl Agent        | SA-20260205-018                                                                                |
-| Files Changed     | None (verification task)                                                                       |
-| Tests Added       | `test/regression/banner-backward-compatibility.test.ts` (21 new tests)                         |
-| Rework?           | No - initial implementation                                                                    |
-| Focus Areas       | Verify backward compatibility validation is comprehensive and all acceptance criteria are met  |
-| Known Limitations | This is a verification task - no code changes made to source files                             |
-| Gate Results      | format:✅ lint:✅ typecheck:✅ test:✅ (786 tests pass)                                         |
+| Field             | Value |
+| ----------------- | ----- |
+| Task              | -     |
+| Impl Agent        | -     |
+| Files Changed     | -     |
+| Tests Added       | -     |
+| Rework?           | -     |
+| Focus Areas       | -     |
+| Known Limitations | -     |
+| Gate Results      | -     |
 
 ### For Fix Agent
 

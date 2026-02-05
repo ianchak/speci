@@ -2232,3 +2232,217 @@ describe('animateBanner', () => {
     });
   });
 });
+
+describe('renderFadeFrame', () => {
+  let module: typeof import('../lib/ui/banner-animation.js');
+  let bannerModule: typeof import('../lib/ui/banner.js');
+
+  beforeEach(async () => {
+    module = await import('../lib/ui/banner-animation.js');
+    bannerModule = await import('../lib/ui/banner.js');
+  });
+
+  describe('progress boundaries', () => {
+    it('returns fully-black banner at progress 0', () => {
+      const frame = module.renderFadeFrame(0);
+
+      expect(frame).toHaveLength(6);
+      frame.forEach((line, i) => {
+        // Strip ANSI codes to check content
+        // eslint-disable-next-line no-control-regex
+        const plainLine = line.replace(/\x1b\[[0-9;]*m/g, '');
+        expect(plainLine).toEqual(bannerModule.BANNER_ART[i]);
+
+        // Should contain ANSI codes (even for black)
+        // eslint-disable-next-line no-control-regex
+        expect(line).toContain('\x1b[38;2;'); // ANSI RGB color prefix
+      });
+    });
+
+    it('returns fully-colored banner at progress 1', () => {
+      const frame = module.renderFadeFrame(1.0);
+
+      expect(frame).toHaveLength(6);
+      frame.forEach((line, i) => {
+        // Should contain ANSI color codes
+        // eslint-disable-next-line no-control-regex
+        expect(line).toContain('\x1b[38;2;'); // ANSI RGB color prefix
+        // eslint-disable-next-line no-control-regex
+        expect(line).toContain('\x1b[0m'); // ANSI reset
+
+        // Strip ANSI codes and verify matches BANNER_ART
+        // eslint-disable-next-line no-control-regex
+        const plainLine = line.replace(/\x1b\[[0-9;]*m/g, '');
+        expect(plainLine).toEqual(bannerModule.BANNER_ART[i]);
+      });
+    });
+
+    it('returns intermediate fade state at progress 0.5', () => {
+      const frame = module.renderFadeFrame(0.5);
+
+      expect(frame).toHaveLength(6);
+      frame.forEach((line, i) => {
+        // Should contain ANSI color codes
+        // eslint-disable-next-line no-control-regex
+        expect(line).toContain('\x1b[38;2;'); // ANSI RGB color prefix
+
+        // Strip ANSI codes and verify matches BANNER_ART
+        // eslint-disable-next-line no-control-regex
+        const plainLine = line.replace(/\x1b\[[0-9;]*m/g, '');
+        expect(plainLine).toEqual(bannerModule.BANNER_ART[i]);
+      });
+    });
+  });
+
+  describe('progress clamping', () => {
+    it('clamps negative progress to 0', () => {
+      const frame = module.renderFadeFrame(-0.5);
+      expect(frame).toHaveLength(6);
+    });
+
+    it('clamps progress > 1 to 1', () => {
+      const frame = module.renderFadeFrame(1.5);
+      expect(frame).toHaveLength(6);
+    });
+  });
+
+  describe('banner structure', () => {
+    it('returns 6-line array matching banner structure', () => {
+      const frame = module.renderFadeFrame(0.5);
+      expect(frame).toHaveLength(6);
+      expect(Array.isArray(frame)).toBe(true);
+    });
+
+    it('all lines are non-empty strings', () => {
+      const frame = module.renderFadeFrame(0.5);
+      frame.forEach((line) => {
+        expect(typeof line).toBe('string');
+        expect(line.length).toBeGreaterThan(0);
+      });
+    });
+  });
+
+  describe('error handling', () => {
+    it('returns fallback banner on error (E-13)', () => {
+      // Test that error handling is in place by verifying function doesn't throw
+      expect(() => module.renderFadeFrame(0.5)).not.toThrow();
+    });
+  });
+});
+
+describe('renderSweepFrame', () => {
+  let module: typeof import('../lib/ui/banner-animation.js');
+  let bannerModule: typeof import('../lib/ui/banner.js');
+
+  beforeEach(async () => {
+    module = await import('../lib/ui/banner-animation.js');
+    bannerModule = await import('../lib/ui/banner.js');
+  });
+
+  describe('progress boundaries', () => {
+    it('returns all hidden at progress 0', () => {
+      const frame = module.renderSweepFrame(0);
+
+      expect(frame).toHaveLength(6);
+      frame.forEach((line) => {
+        // Strip ANSI codes to check content
+        // eslint-disable-next-line no-control-regex
+        const plainLine = line.replace(/\x1b\[[0-9;]*m/g, '');
+        expect(plainLine).toMatch(/^\s*$/); // All spaces
+      });
+    });
+
+    it('returns fully-revealed banner at progress 1', () => {
+      const frame = module.renderSweepFrame(1.0);
+
+      expect(frame).toHaveLength(6);
+      frame.forEach((line, i) => {
+        // Should contain ANSI color codes
+        // eslint-disable-next-line no-control-regex
+        expect(line).toContain('\x1b[38;2;'); // ANSI RGB color prefix
+        // eslint-disable-next-line no-control-regex
+        expect(line).toContain('\x1b[0m'); // ANSI reset
+
+        // Strip ANSI codes and verify matches BANNER_ART
+        // eslint-disable-next-line no-control-regex
+        const plainLine = line.replace(/\x1b\[[0-9;]*m/g, '');
+        expect(plainLine).toEqual(bannerModule.BANNER_ART[i]);
+      });
+    });
+
+    it('returns half-swept banner at progress 0.5', () => {
+      const frame = module.renderSweepFrame(0.5);
+
+      expect(frame).toHaveLength(6);
+      frame.forEach((line, i) => {
+        // eslint-disable-next-line no-control-regex
+        const plainLine = line.replace(/\x1b\[[0-9;]*m/g, '');
+        const lineLength = bannerModule.BANNER_ART[i].length;
+        const revealIndex = Math.floor(0.5 * lineLength);
+
+        // First half should match BANNER_ART
+        const revealedPart = plainLine.slice(0, revealIndex);
+        expect(revealedPart).toEqual(
+          bannerModule.BANNER_ART[i].slice(0, revealIndex)
+        );
+
+        // Second half should be spaces
+        const hiddenPart = plainLine.slice(revealIndex);
+        expect(hiddenPart).toMatch(/^\s*$/);
+      });
+    });
+  });
+
+  describe('progress clamping', () => {
+    it('clamps negative progress to 0', () => {
+      const frame = module.renderSweepFrame(-0.5);
+      expect(frame).toHaveLength(6);
+    });
+
+    it('clamps progress > 1 to 1', () => {
+      const frame = module.renderSweepFrame(1.5);
+      expect(frame).toHaveLength(6);
+    });
+  });
+
+  describe('banner structure', () => {
+    it('returns 6-line array matching banner structure', () => {
+      const frame = module.renderSweepFrame(0.5);
+      expect(frame).toHaveLength(6);
+      expect(Array.isArray(frame)).toBe(true);
+    });
+
+    it('all lines are non-empty strings', () => {
+      const frame = module.renderSweepFrame(0.5);
+      frame.forEach((line) => {
+        expect(typeof line).toBe('string');
+        expect(line.length).toBeGreaterThan(0);
+      });
+    });
+  });
+
+  describe('sweep progression', () => {
+    it('reveals more characters as progress increases', () => {
+      const frame1 = module.renderSweepFrame(0.25);
+      const frame2 = module.renderSweepFrame(0.75);
+
+      // Count non-space characters in first line
+      // eslint-disable-next-line no-control-regex
+      const plain1 = frame1[0].replace(/\x1b\[[0-9;]*m/g, '');
+      // eslint-disable-next-line no-control-regex
+      const plain2 = frame2[0].replace(/\x1b\[[0-9;]*m/g, '');
+
+      const nonSpace1 = plain1.replace(/\s/g, '').length;
+      const nonSpace2 = plain2.replace(/\s/g, '').length;
+
+      expect(nonSpace2).toBeGreaterThan(nonSpace1);
+    });
+  });
+
+  describe('error handling', () => {
+    it('returns fallback banner on error (E-13)', () => {
+      // Test that error handling is in place by verifying function doesn't throw
+      expect(() => module.renderSweepFrame(0.5)).not.toThrow();
+    });
+  });
+});

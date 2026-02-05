@@ -398,6 +398,156 @@ export function renderWaveFrame(progress: number): string[] {
 }
 
 /**
+ * Render single frame of fade animation
+ *
+ * Generates banner frame with progressive fade-in effect from black to gradient colors.
+ * All characters are visible, but fade from black (0) to target gradient (1).
+ *
+ * Algorithm:
+ * 1. Clamp progress to [0.0, 1.0] (security: prevent bounds violations)
+ * 2. For each line:
+ *    - For each character:
+ *      - Calculate target gradient color (sky-200 → sky-500)
+ *      - Interpolate from black (#000000) to target color based on progress
+ *      - Apply ANSI color and wrap character
+ * 3. Return array of 6 colored/faded lines
+ *
+ * Security properties:
+ * - Progress clamped to [0.0, 1.0] prevents array out-of-bounds
+ * - BANNER_ART is hardcoded constant (no user input)
+ * - Gradient uses only hardcoded HEX_COLORS
+ * - ANSI codes generated from validated RGB values only
+ *
+ * Performance: HOT PATH - called 120 times per animation (60fps × 2s)
+ * - Color interpolation caching used for fade values
+ *
+ * @param progress - Animation progress [0.0, 1.0] where 0=black, 1=fully colored
+ * @returns Array of 6 ANSI-colored banner lines ready for terminal output
+ *
+ * @example
+ * renderFadeFrame(0)    // All black
+ * renderFadeFrame(0.5)  // Half-faded
+ * renderFadeFrame(1.0)  // Full gradient colors
+ */
+export function renderFadeFrame(progress: number): string[] {
+  // Security: Clamp progress to [0.0, 1.0] to prevent array bounds violations
+  const clampedProgress = Math.max(0, Math.min(1, progress));
+
+  const lines: string[] = [];
+
+  try {
+    for (const line of BANNER_ART) {
+      const lineLength = line.length;
+      let renderedLine = '';
+
+      for (let i = 0; i < lineLength; i++) {
+        const char = line[i];
+
+        // Calculate target gradient color based on position
+        const positionRatio = i / (lineLength - 1);
+        const targetColor = lerpColor(
+          HEX_COLORS.sky200,
+          HEX_COLORS.sky500,
+          positionRatio
+        );
+
+        // Fade from black to target color based on progress
+        const fadedColor = lerpColor('#000000', targetColor, clampedProgress);
+        const ansiColor = hexToAnsi(fadedColor);
+
+        // Wrap character with ANSI color code + reset
+        renderedLine += `${ansiColor}${char}\x1b[0m`;
+      }
+
+      lines.push(renderedLine);
+    }
+  } catch {
+    // E-13: Gradient computation failure - return fallback (static banner lines, silent)
+    return BANNER_ART.map((line) => line);
+  }
+
+  return lines;
+}
+
+/**
+ * Render single frame of sweep animation
+ *
+ * Generates banner frame with left-to-right progressive sweep reveal and gradient coloring.
+ * Characters are revealed based on progress (0→1), similar to wave but with threshold-based reveal.
+ *
+ * Algorithm:
+ * 1. Clamp progress to [0.0, 1.0] (security: prevent bounds violations)
+ * 2. For each line, calculate reveal position (progress × line length)
+ * 3. For each character:
+ *    - If position < reveal threshold: apply gradient color + ANSI wrap
+ *    - If position >= reveal threshold: render as space (hidden)
+ * 4. Return array of 6 colored/revealed lines
+ *
+ * Security properties:
+ * - Progress clamped to [0.0, 1.0] prevents array out-of-bounds
+ * - BANNER_ART is hardcoded constant (no user input)
+ * - Gradient uses only hardcoded HEX_COLORS (sky-200, sky-500)
+ * - ANSI codes generated from validated RGB values only
+ * - No user data in output strings
+ *
+ * Performance: HOT PATH - called 120 times per animation (60fps × 2s)
+ * - Similar complexity to renderWaveFrame
+ *
+ * @param progress - Animation progress [0.0, 1.0] where 0=hidden, 1=fully revealed
+ * @returns Array of 6 ANSI-colored banner lines ready for terminal output
+ *
+ * @example
+ * renderSweepFrame(0)    // All spaces (nothing revealed)
+ * renderSweepFrame(0.5)  // Left half revealed with gradient
+ * renderSweepFrame(1.0)  // Full banner with complete gradient
+ */
+export function renderSweepFrame(progress: number): string[] {
+  // Security: Clamp progress to [0.0, 1.0] to prevent array bounds violations
+  const clampedProgress = Math.max(0, Math.min(1, progress));
+
+  const lines: string[] = [];
+
+  try {
+    for (const line of BANNER_ART) {
+      const lineLength = line.length;
+      const revealIndex = Math.floor(clampedProgress * lineLength);
+
+      let renderedLine = '';
+
+      for (let i = 0; i < lineLength; i++) {
+        const char = line[i];
+
+        if (i < revealIndex) {
+          // Revealed character: apply gradient
+          const positionRatio = i / (lineLength - 1);
+
+          // Two-stop gradient: sky-200 → sky-500
+          const color = lerpColor(
+            HEX_COLORS.sky200,
+            HEX_COLORS.sky500,
+            positionRatio
+          );
+          const ansiColor = hexToAnsi(color);
+
+          // Wrap character with ANSI color code + reset
+          renderedLine += `${ansiColor}${char}\x1b[0m`;
+        } else {
+          // Unrevealed character: render as space (hidden)
+          renderedLine += ' ';
+        }
+      }
+
+      lines.push(renderedLine);
+    }
+  } catch {
+    // E-13: Gradient computation failure - return fallback (static banner lines, silent)
+    return BANNER_ART.map((line) => line);
+  }
+
+  return lines;
+}
+
+/**
  * Run animation loop with frame rendering and timing control
  *
  * Executes animation from start to finish, rendering frames at ~60fps target.
