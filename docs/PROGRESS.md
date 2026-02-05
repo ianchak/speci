@@ -75,14 +75,14 @@ graph TD
 
 ## Milestone: M2 - Core Implementation
 
-| Task ID  | Title                        | Status      | Review Status | Priority | Complexity | Dependencies       | Assigned To     | Attempts |
-| -------- | ---------------------------- | ----------- | ------------- | -------- | ---------- | ------------------ | --------------- | -------- |
-| TASK_005 | shouldAnimate() Detection    | IN REVIEW   | -             | High     | S (≤2h)    | TASK_001           | SA-20260205-005 | 1        |
-| TASK_006 | Sleep Utility                | NOT STARTED | -             | High     | S (≤2h)    | TASK_001           | -               | 0        |
-| TASK_007 | Wave Reveal Effect           | NOT STARTED | -             | High     | M (2-4h)   | TASK_001, TASK_002 | -               | 0        |
-| TASK_008 | Animation Loop               | NOT STARTED | -             | High     | M (2-4h)   | TASK_006, TASK_007 | -               | 0        |
-| TASK_009 | animateBanner() Orchestrator | NOT STARTED | -             | High     | L (4-8h)   | TASK_005, TASK_008 | -               | 0        |
-| MVT_M2   | Manual Verification Test     | NOT STARTED | -             | —        | 30 min     | TASK_005-009       | -               | 0        |
+| Task ID  | Title                        | Status      | Review Status | Priority | Complexity | Dependencies       | Assigned To     | Reviewed By     | Attempts |
+| -------- | ---------------------------- | ----------- | ------------- | -------- | ---------- | ------------------ | --------------- | --------------- | -------- |
+| TASK_005 | shouldAnimate() Detection    | COMPLETE    | PASSED        | High     | S (≤2h)    | TASK_001           | SA-20260205-005 | RA-20260205-005 | 1        |
+| TASK_006 | Sleep Utility                | IN PROGRESS | -             | High     | S (≤2h)    | TASK_001           | SA-20260205-006 | -               | 1        |
+| TASK_007 | Wave Reveal Effect           | NOT STARTED | -             | High     | M (2-4h)   | TASK_001, TASK_002 | -               | -               | 0        |
+| TASK_008 | Animation Loop               | NOT STARTED | -             | High     | M (2-4h)   | TASK_006, TASK_007 | -               | -               | 0        |
+| TASK_009 | animateBanner() Orchestrator | NOT STARTED | -             | High     | L (4-8h)   | TASK_005, TASK_008 | -               | -               | 0        |
+| MVT_M2   | Manual Verification Test     | NOT STARTED | -             | —        | 30 min     | TASK_005-009       | -               | -               | 0        |
 
 ### Dependencies
 
@@ -205,13 +205,13 @@ TASK_001 → TASK_002 → TASK_007 → TASK_008 → TASK_009 → TASK_010 → TA
 
 ## Subagent Tracking
 
-Last Subagent ID: SA-20260205-005
+Last Subagent ID: SA-20260205-006
 
 ---
 
 ## Review Tracking
 
-Last Review ID: RA-20260205-004
+Last Review ID: RA-20260205-005
 
 ---
 
@@ -219,16 +219,16 @@ Last Review ID: RA-20260205-004
 
 ### For Reviewer
 
-| Field             | Value                                                                                                                                    |
-| ----------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
-| Task              | TASK_005                                                                                                                                 |
-| Impl Agent        | SA-20260205-005                                                                                                                          |
-| Files Changed     | `lib/ui/banner-animation.ts`                                                                                                             |
-| Tests Added       | `test/banner-animation.test.ts` (25 new tests)                                                                                           |
-| Rework?           | No                                                                                                                                       |
-| Focus Areas       | Environment variable truthiness logic, dimension fallback behavior, short-circuit evaluation order                                       |
-| Known Limitations | No dynamic terminal resize monitoring, all-or-nothing animation decision, no logging for disabled animation reasons                      |
-| Gate Results      | format:✅ lint:✅ typecheck:✅ test:✅                                                                                                   |
+| Field             | Value |
+| ----------------- | ----- |
+| Task              | -     |
+| Impl Agent        | -     |
+| Files Changed     | -     |
+| Tests Added       | -     |
+| Rework?           | -     |
+| Focus Areas       | -     |
+| Known Limitations | -     |
+| Gate Results      | -     |
 
 ### For Fix Agent
 

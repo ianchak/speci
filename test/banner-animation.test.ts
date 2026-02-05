@@ -707,3 +707,107 @@ describe('shouldAnimate() Detection', () => {
     });
   });
 });
+
+describe('sleep utility', () => {
+  describe('basic timing', () => {
+    it('resolves after specified duration (with tolerance)', async () => {
+      const { sleep } = await import('../lib/ui/banner-animation.js');
+
+      const start = Date.now();
+      await sleep(50);
+      const elapsed = Date.now() - start;
+
+      // Allow ±15ms tolerance for event loop jitter and CI environments
+      expect(elapsed).toBeGreaterThanOrEqual(35);
+      expect(elapsed).toBeLessThanOrEqual(65);
+    });
+
+    it('accumulates delays correctly in consecutive calls', async () => {
+      const { sleep } = await import('../lib/ui/banner-animation.js');
+
+      const start = Date.now();
+      await sleep(20);
+      await sleep(20);
+      await sleep(20);
+      const elapsed = Date.now() - start;
+
+      // Total: 60ms ± 40ms (3 sleeps with generous tolerance for event loop jitter and CI)
+      expect(elapsed).toBeGreaterThanOrEqual(40);
+      expect(elapsed).toBeLessThanOrEqual(100);
+    });
+  });
+
+  describe('edge cases', () => {
+    it('handles zero delay (immediate resolution)', async () => {
+      const { sleep } = await import('../lib/ui/banner-animation.js');
+
+      const start = Date.now();
+      await sleep(0);
+      const elapsed = Date.now() - start;
+
+      // Should resolve quickly (allow generous tolerance for test overhead and CI)
+      expect(elapsed).toBeLessThanOrEqual(25);
+    });
+
+    it('handles minimal delay (1ms)', async () => {
+      const { sleep } = await import('../lib/ui/banner-animation.js');
+
+      const start = Date.now();
+      await sleep(1);
+      const elapsed = Date.now() - start;
+
+      // May round to next timer tick (allow tolerance for event loop)
+      expect(elapsed).toBeLessThanOrEqual(25);
+    });
+  });
+
+  describe('Promise behavior', () => {
+    it('returns Promise<void>', async () => {
+      const { sleep } = await import('../lib/ui/banner-animation.js');
+
+      const promise = sleep(10);
+      expect(promise).toBeInstanceOf(Promise);
+      await promise; // Should resolve without value
+    });
+
+    it('can be used with Promise.race', async () => {
+      const { sleep } = await import('../lib/ui/banner-animation.js');
+
+      const timeout = sleep(100);
+      const immediate = Promise.resolve('done');
+
+      const result = await Promise.race([timeout, immediate]);
+      expect(result).toBe('done'); // Immediate wins
+    });
+
+    it('can be cancelled via Promise.race timeout', async () => {
+      const { sleep } = await import('../lib/ui/banner-animation.js');
+
+      const longSleep = sleep(1000);
+      const shortSleep = sleep(50);
+
+      // Short sleep completes first, effective cancellation of long sleep
+      await Promise.race([longSleep, shortSleep]);
+      // Test passes if no timeout occurs
+    });
+  });
+
+  describe('animation frame interval', () => {
+    it('supports 60fps frame timing (16ms)', async () => {
+      const { sleep } = await import('../lib/ui/banner-animation.js');
+
+      const start = Date.now();
+
+      // Simulate 5 frames at 60fps
+      for (let i = 0; i < 5; i++) {
+        await sleep(16);
+      }
+
+      const elapsed = Date.now() - start;
+
+      // 5 frames × 16ms = 80ms ± 80ms tolerance (very generous for CI and high-load environments)
+      expect(elapsed).toBeGreaterThanOrEqual(40);
+      expect(elapsed).toBeLessThanOrEqual(160);
+    });
+  });
+});

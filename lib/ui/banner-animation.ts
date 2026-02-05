@@ -278,6 +278,29 @@ export function shouldAnimate(): boolean {
   return true;
 }
 
+/**
+ * Async sleep utility for animation frame delays
+ *
+ * Wraps setTimeout in a Promise to enable async/await syntax for frame timing.
+ * Used exclusively in animation loop for frame rate control (~60fps target).
+ *
+ * Timing accuracy depends on Node.js event loop scheduling. Actual delay may
+ * be slightly longer than requested due to event loop latency. Tests should
+ * use tolerance ranges (e.g., ms ± 10ms) rather than exact timing assertions.
+ *
+ * @param ms - Delay duration in milliseconds (typically FRAME_INTERVAL = 16ms)
+ * @returns Promise that resolves after delay completes
+ *
+ * @example
+ * // In animation loop
+ * await sleep(FRAME_INTERVAL);  // Wait ~16ms before next frame
+ *
+ * @internal - Exported only for testing, not part of public API
+ */
+export async function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 // Placeholder for future implementation
 // Future tasks will add:
 // - Animation effect functions (TASK_007, TASK_008)
