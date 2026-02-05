@@ -463,9 +463,9 @@ Read .github/agents/subagents/plan_refine_security.prompt.md and execute for PLA
 
 ---
 
-## PHASE 7: Interactive Open Questions Resolution (ORCHESTRATOR HANDLES DIRECTLY)
+## PHASE 7: Automatic Open Questions Resolution (ORCHESTRATOR HANDLES DIRECTLY)
 
-**CRITICAL: This phase is handled by YOU (the orchestrator), NOT a subagent.**
+**CRITICAL: This phase is handled by YOU (the orchestrator), NOT a subagent. No user input required.**
 
 After Round 9 completes, you MUST:
 
@@ -478,7 +478,7 @@ Read the plan file and extract ALL open questions from Section 14.
 For each question, determine:
 
 1. **AUTO-RESOLVE**: Has a definitive answer from codebase analysis (e.g., "What testing framework is used?" → can be determined by reading package.json)
-2. **ASK USER**: Requires user judgment or preference (e.g., "Should we use optimistic or pessimistic locking?")
+2. **DEFER**: Requires user judgment, preference, or cannot be determined from codebase (e.g., "Should we use optimistic or pessimistic locking?")
 
 ### Step 3: Auto-Resolve Definitive Questions
 
@@ -488,45 +488,29 @@ For questions with definitive answers:
 - Update the plan file directly (Section 1.5 Assumptions or relevant section)
 - Remove from Section 14
 
-### Step 4: Ask User Questions One-by-One
+### Step 4: Defer Undecidable Questions
 
-For each question requiring user input, present it in this EXACT format:
+For questions that cannot be definitively answered from codebase analysis:
 
-```
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-OPEN QUESTION [X of Y]: [Short title]
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+1. **Make a reasonable default decision** based on:
+   - Common industry practices
+   - Patterns already used in the codebase
+   - Simplest viable approach
+2. **Document the decision** in Section 1.5 (Assumptions) with format:
+   ```
+   - **[Question Topic]**: [Decision made]. (Auto-deferred: [brief rationale for default choice])
+   ```
+3. **Add implementation note** in Section 14 replacing the question:
+   ```
+   ### Deferred Decisions
+   | Question | Default Decision | Rationale | Override Instructions |
+   | -------- | ---------------- | --------- | --------------------- |
+   | [Question] | [Decision] | [Why this default] | [How to change if needed] |
+   ```
 
-Context:
-[Explain why this question matters and what it affects in the plan]
+### Step 5: Proceed to Final Validation
 
-Question:
-[The actual question]
-
-Options:
-  A) [First option with brief explanation]
-  B) [Second option with brief explanation]
-  C) [Third option if applicable]
-
-★ RECOMMENDED: [A/B/C] - [Brief reason why this is recommended]
-
-Your choice (A/B/C, or type custom answer, or press Enter for recommended):
-```
-
-**WAIT for user response before proceeding to the next question.**
-
-### Step 5: Update Plan Based on User Answers
-
-After EACH user response:
-
-1. Update the relevant section of the plan based on their answer
-2. Document the decision in Section 1.5 (Assumptions) with note: "User decision: [answer]"
-3. Remove the question from Section 14
-4. Proceed to next question
-
-### Step 6: Proceed to Final Validation
-
-Only after ALL questions are resolved (either auto-resolved or user-answered), proceed to Round 10.
+After ALL questions are either auto-resolved or deferred with documented defaults, proceed to Round 10.
 
 ---
 
