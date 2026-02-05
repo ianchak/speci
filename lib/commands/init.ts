@@ -1,12 +1,10 @@
 /**
  * Init Command Module
  *
- * Provides interactive project setup for new Speci users.
+ * Provides a project setup for new Speci users.
  * Creates speci.config.json, directory structure, and initial files.
- * Uses Node.js readline for zero-dependency interactive prompts.
  */
 
-import { createInterface } from 'node:readline';
 import {
   existsSync,
   mkdirSync,
@@ -15,7 +13,7 @@ import {
   readdirSync,
   statSync,
 } from 'node:fs';
-import { resolve, basename, join, relative } from 'node:path';
+import { join, relative } from 'node:path';
 import { log } from '../utils/logger.js';
 import { renderBanner } from '../ui/banner.js';
 import { colorize } from '../ui/colors.js';
@@ -30,110 +28,8 @@ import {
  * Options for the init command
  */
 export interface InitOptions {
-  yes?: boolean; // Skip prompts, use defaults
   verbose?: boolean; // Show detailed output
   updateAgents?: boolean; // Force update agent files even if they exist
-}
-
-/**
- * Prompt user for input with default value
- * @param question - Question to ask
- * @param defaultValue - Default value if no input provided
- * @returns User's answer or default value
- */
-async function prompt(question: string, defaultValue: string): Promise<string> {
-  const rl = createInterface({
-    input: process.stdin,
-    output: process.stdout,
-  });
-
-  return new Promise((resolve) => {
-    const styled = `${colorize(question, 'sky400')} ${colorize(`(${defaultValue})`, 'dim')}: `;
-    rl.question(styled, (answer) => {
-      rl.close();
-      resolve(answer.trim() || defaultValue);
-    });
-  });
-}
-
-/**
- * Validate path to ensure it's safe (no path traversal outside project)
- * @param input - Path to validate
- * @returns Validated path
- * @throws Error if path attempts to escape project directory
- */
-function validatePath(input: string): string {
-  const normalized = resolve(process.cwd(), input);
-  const projectRoot = process.cwd();
-
-  // Check if normalized path starts with project root
-  if (!normalized.startsWith(projectRoot)) {
-    throw new Error(
-      `Invalid path: ${input} attempts to escape project directory`
-    );
-  }
-
-  return input;
-}
-
-/**
- * Gather configuration through interactive prompts
- * @returns Partial config with user answers
- */
-async function gatherConfig(): Promise<Partial<SpeciConfig>> {
-  // Project name is prompted but not used in config (for future enhancement)
-  await prompt('Project name', basename(process.cwd()));
-
-  const progressPath = validatePath(
-    await prompt('Progress file path', 'docs/PROGRESS.md')
-  );
-
-  const tasksPath = validatePath(
-    await prompt('Tasks directory path', 'docs/tasks')
-  );
-
-  const logsPath = validatePath(
-    await prompt('Logs directory path', '.speci-logs')
-  );
-
-  const gateCommands = await prompt(
-    'Gate commands (comma-separated)',
-    'npm run lint, npm run typecheck, npm test'
-  );
-
-  return {
-    paths: {
-      progress: progressPath,
-      tasks: tasksPath,
-      logs: logsPath,
-      lock: '.speci-lock',
-    },
-    gate: {
-      commands: gateCommands.split(',').map((cmd) => cmd.trim()),
-      maxFixAttempts: 3,
-    },
-  };
-}
-
-/**
- * Merge user config with defaults
- * @param userConfig - Partial config from user
- * @returns Full config merged with defaults
- */
-function mergeWithDefaults(userConfig: Partial<SpeciConfig>): SpeciConfig {
-  const defaults = getDefaults();
-
-  return {
-    ...defaults,
-    paths: {
-      ...defaults.paths,
-      ...userConfig.paths,
-    },
-    gate: {
-      ...defaults.gate,
-      ...userConfig.gate,
-    },
-  };
 }
 
 /**
@@ -166,21 +62,20 @@ function displayActionSummary(
   existing: ReturnType<typeof checkExistingFiles>,
   updateAgents: boolean = false
 ): void {
-  console.log();
-  log.info('The following actions will be performed:');
-  console.log();
-
   if (existing.configExists) {
     log.warn('  speci.config.json already exists (will skip)');
   } else {
-    console.log(colorize('  ✓ Create speci.config.json', 'success'));
+    console.log(colorize('    speci.config.json will be created', 'success'));
   }
 
   if (existing.tasksExists) {
     log.warn(`  ${config.paths.tasks}/ already exists (will skip)`);
   } else {
     console.log(
-      colorize(`  ✓ Create ${config.paths.tasks}/ directory`, 'success')
+      colorize(
+        `    ${config.paths.tasks}/ directory will be created`,
+        'success'
+      )
     );
   }
 
@@ -188,14 +83,17 @@ function displayActionSummary(
     log.warn(`  ${config.paths.logs}/ already exists (will skip)`);
   } else {
     console.log(
-      colorize(`  ✓ Create ${config.paths.logs}/ directory`, 'success')
+      colorize(`    ${config.paths.logs}/ directory will be created`, 'success')
     );
   }
 
   if (existing.agentsExist) {
     if (updateAgents) {
       console.log(
-        colorize(`  ✓ Update agent files in ${GITHUB_AGENTS_DIR}/`, 'success')
+        colorize(
+          `    ${GITHUB_AGENTS_DIR}/ directory will be updated`,
+          'success'
+        )
       );
     } else {
       log.warn(
@@ -204,7 +102,7 @@ function displayActionSummary(
     }
   } else {
     console.log(
-      colorize(`  ✓ Copy agent files to ${GITHUB_AGENTS_DIR}/`, 'success')
+      colorize(`    ${GITHUB_AGENTS_DIR}/ directory will be updated`, 'success')
     );
   }
 
@@ -332,7 +230,9 @@ async function copyAgentFiles(
     const fileCount = copyDirectoryRecursive(templateDir, GITHUB_AGENTS_DIR);
 
     const action = existing.agentsExist ? 'Updated' : 'Copied';
-    log.success(`${action} ${fileCount} agent files to ${GITHUB_AGENTS_DIR}/`);
+    log.success(
+      `${action} ${fileCount} agent files inside ${GITHUB_AGENTS_DIR}/`
+    );
   } catch (error) {
     throw new Error(
       `Failed to copy agent files: ${error instanceof Error ? error.message : String(error)}`
@@ -344,8 +244,6 @@ async function copyAgentFiles(
  * Display success message and next steps
  */
 function displaySuccess(): void {
-  console.log();
-  log.success('Speci initialization complete!');
   console.log();
   log.info('Next steps:');
   console.log(colorize('  1. Generate your plan with: speci plan', 'dim'));
@@ -377,13 +275,8 @@ export async function init(options: InitOptions = {}): Promise<void> {
     log.info('Initializing Speci in current directory...');
     console.log();
 
-    // Gather configuration (prompts or defaults)
-    const userConfig = options.yes
-      ? { paths: getDefaults().paths, gate: getDefaults().gate }
-      : await gatherConfig();
-
-    // Merge with defaults
-    const config = mergeWithDefaults(userConfig);
+    // Use default configuration
+    const config = getDefaults();
 
     // Check existing files
     const existing = checkExistingFiles(config);

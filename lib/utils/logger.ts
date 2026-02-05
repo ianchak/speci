@@ -96,6 +96,14 @@ export const log = {
       console.log(colorize(`[${getTimestamp()}] DEBUG: ${message}`, 'dim'));
     }
   },
+
+  /**
+   * Log muted message (dim styled, for less important info)
+   * @param message - Message to log in muted style
+   */
+  muted(message: string): void {
+    console.log(colorize(message, 'dim'));
+  },
 };
 
 /**
