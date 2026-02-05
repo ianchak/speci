@@ -41,6 +41,15 @@ export interface SpeciConfig {
   copilot: {
     permissions: 'allow-all' | 'yolo' | 'strict' | 'none';
     model: string | null;
+    models: {
+      plan: string | null;
+      task: string | null;
+      refactor: string | null;
+      impl: string | null;
+      review: string | null;
+      fix: string | null;
+      tidy: string | null;
+    };
     extraFlags: string[];
   };
   gate: {
@@ -93,6 +102,15 @@ export function getDefaults(): SpeciConfig {
     copilot: {
       permissions: 'allow-all',
       model: null,
+      models: {
+        plan: null,
+        task: null,
+        refactor: null,
+        impl: null,
+        review: null,
+        fix: null,
+        tidy: null,
+      },
       extraFlags: [],
     },
     gate: {

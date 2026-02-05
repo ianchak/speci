@@ -144,6 +144,15 @@ describe('config', () => {
         copilot: {
           permissions: 'invalid' as 'allow-all',
           model: null,
+          models: {
+            plan: null,
+            task: null,
+            refactor: null,
+            impl: null,
+            review: null,
+            fix: null,
+            tidy: null,
+          },
           extraFlags: [],
         },
       };

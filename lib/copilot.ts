@@ -13,6 +13,18 @@ import type { SpeciConfig } from './config.js';
 import { log } from './utils/logger.js';
 
 /**
+ * Command names that can have per-command model configuration
+ */
+export type CommandName =
+  | 'plan'
+  | 'task'
+  | 'refactor'
+  | 'impl'
+  | 'review'
+  | 'fix'
+  | 'tidy';
+
+/**
  * Options for building copilot CLI arguments
  */
 export interface CopilotArgsOptions {
@@ -20,6 +32,8 @@ export interface CopilotArgsOptions {
   prompt?: string;
   agent?: string;
   allowAll?: boolean;
+  /** Command name for per-command model lookup */
+  command?: CommandName;
 }
 
 /**
@@ -98,10 +112,16 @@ export function buildCopilotArgs(
     args.push('--yolo');
   }
 
-  // Model flag
-  if (config.copilot.model) {
-    args.push('--model', config.copilot.model);
+  // Model flag - per-command model takes precedence over general model
+  const commandModel = options.command
+    ? config.copilot.models?.[options.command]
+    : null;
+  const model = commandModel || config.copilot.model;
+  if (model) {
+    args.push('--model', model);
   }
+
+  args.push('--no-ask-user');
 
   // Extra flags
   args.push(...config.copilot.extraFlags);
@@ -187,6 +207,7 @@ export async function runAgent(
       const args = buildCopilotArgs(config, {
         interactive: true,
         agent: agentFileName,
+        command: agentName as CommandName,
       });
 
       log.debug(`Spawning copilot: copilot ${args.join(' ')}`);

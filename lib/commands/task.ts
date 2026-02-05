@@ -117,6 +117,7 @@ export async function task(options: TaskOptions): Promise<void> {
       prompt: `Read the plan file at ${planPath} and generate implementation tasks.`,
       agent: agentName,
       allowAll: true,
+      command: commandName,
     });
 
     // Spawn Copilot with stdio:inherit

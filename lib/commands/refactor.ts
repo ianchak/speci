@@ -140,6 +140,7 @@ export async function refactor(options: RefactorOptions = {}): Promise<void> {
       prompt,
       agent: agentName,
       allowAll: true,
+      command: commandName,
     });
 
     // Spawn Copilot with stdio:inherit

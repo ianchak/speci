@@ -122,6 +122,39 @@ describe('copilot', () => {
       expect(args).toContain('gpt-4');
     });
 
+    it('should use per-command model when command is specified', () => {
+      config.copilot.model = 'gpt-4'; // default model
+      config.copilot.models.plan = 'claude-opus-4.5'; // per-command model
+      const options: CopilotArgsOptions = { interactive: true, command: 'plan' };
+
+      const args = buildCopilotArgs(config, options);
+
+      expect(args).toContain('--model');
+      expect(args).toContain('claude-opus-4.5');
+      expect(args).not.toContain('gpt-4');
+    });
+
+    it('should fall back to default model when per-command model is null', () => {
+      config.copilot.model = 'gpt-4'; // default model
+      config.copilot.models.task = null; // no per-command model
+      const options: CopilotArgsOptions = { interactive: true, command: 'task' };
+
+      const args = buildCopilotArgs(config, options);
+
+      expect(args).toContain('--model');
+      expect(args).toContain('gpt-4');
+    });
+
+    it('should not include model flag when both default and per-command are null', () => {
+      config.copilot.model = null;
+      config.copilot.models.refactor = null;
+      const options: CopilotArgsOptions = { interactive: true, command: 'refactor' };
+
+      const args = buildCopilotArgs(config, options);
+
+      expect(args).not.toContain('--model');
+    });
+
     it('should append extra flags from config', () => {
       config.copilot.extraFlags = ['--verbose', '--debug'];
       const options: CopilotArgsOptions = { interactive: true };
