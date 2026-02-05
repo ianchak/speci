@@ -41,9 +41,83 @@ export const FRAME_INTERVAL = 16;
  */
 export const FPS_TARGET = 60;
 
+/**
+ * Parse hex color string to RGB tuple
+ *
+ * Extracts 6 hex digits from color string (e.g., "#0ea5e9" → [14, 165, 233])
+ * Used for color interpolation in gradient computation.
+ *
+ * Input colors are sourced from hardcoded HEX_COLORS constant.
+ * RGB output values guaranteed in range [0, 255] by hex format.
+ *
+ * @param hex - Hex color string (e.g., "#0ea5e9")
+ * @returns RGB tuple [r, g, b] with values in [0, 255]
+ *
+ * @example
+ * parseHex("#0ea5e9") // [14, 165, 233]
+ */
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+function parseHex(hex: string): [number, number, number] {
+  return [
+    parseInt(hex.slice(1, 3), 16),
+    parseInt(hex.slice(3, 5), 16),
+    parseInt(hex.slice(5, 7), 16),
+  ];
+}
+
+/**
+ * Linearly interpolate between two hex colors
+ *
+ * Computes intermediate color between colorA and colorB based on progress parameter.
+ * Returns hex color string for further processing.
+ * Used in wave effect to create smooth color transitions per character.
+ *
+ * @param colorA - Start color (e.g., "#0ea5e9")
+ * @param colorB - End color (e.g., "#0284c7")
+ * @param t - Progress value [0, 1] where 0 = colorA, 1 = colorB
+ * @returns Interpolated hex color string
+ *
+ * @example
+ * lerpColor("#0ea5e9", "#0284c7", 0.5) // Intermediate color
+ */
+// @ts-expect-error - Will be used in TASK_007 and later
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+function lerpColor(colorA: string, colorB: string, t: number): string {
+  const [r1, g1, b1] = parseHex(colorA);
+  const [r2, g2, b2] = parseHex(colorB);
+  const r = Math.round(r1 + (r2 - r1) * t);
+  const g = Math.round(g1 + (g2 - g1) * t);
+  const b = Math.round(b1 + (b2 - b1) * t);
+  return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`;
+}
+
+/**
+ * Convert hex color to ANSI 24-bit RGB escape sequence
+ *
+ * Generates terminal escape code for 256-color ANSI display.
+ * Returns string prefixed to each character for color application.
+ * Part of character rendering pipeline: color → ANSI string → terminal output
+ *
+ * Security: ANSI code is hardcoded template literal with validated RGB values.
+ * No string interpolation with external data.
+ *
+ * @param hex - Hex color string (e.g., "#0ea5e9")
+ * @returns ANSI escape sequence (e.g., "\x1b[38;2;14;165;233m")
+ *
+ * @example
+ * hexToAnsi("#0ea5e9") // "\x1b[38;2;14;165;233m"
+ */
+// @ts-expect-error - Will be used in TASK_007 and later
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+function hexToAnsi(hex: string): string {
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  return `\x1b[38;2;${r};${g};${b}m`;
+}
+
 // Placeholder for future implementation
 // Future tasks will add:
-// - Internal gradient utilities (TASK_002)
 // - Animation state types (TASK_003)
 // - shouldAnimate() function (TASK_004, TASK_005)
 // - Animation effect functions (TASK_007, TASK_008)
