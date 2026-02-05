@@ -116,9 +116,93 @@ function hexToAnsi(hex: string): string {
   return `\x1b[38;2;${r};${g};${b}m`;
 }
 
+/**
+ * Animation timing and behavior configuration.
+ *
+ * Passed to animateBanner() to customize animation behavior.
+ * All fields are optional with sensible defaults applied internally.
+ */
+export interface AnimationOptions {
+  /** Total animation duration in milliseconds (default: 2000ms) */
+  duration?: number;
+
+  /** Target frames per second for animation smoothness (default: 60fps = 16ms per frame) */
+  fps?: number;
+
+  /** Whether to display version number after animation completes (default: true) */
+  showVersion?: boolean;
+
+  /** Specific animation effect to use (default: random selection from available effects) */
+  effect?: 'wave' | 'fade' | 'sweep';
+}
+
+/**
+ * Internal animation state tracking.
+ *
+ * Manages animation lifecycle, timing, and cleanup during execution.
+ * Local to animateBanner() function scope, not shared globally.
+ */
+export interface AnimationState {
+  /** Indicates if animation is currently executing */
+  isRunning: boolean;
+
+  /** Animation start timestamp from Date.now() for progress calculation */
+  startTime: number;
+
+  /** Total animation duration in milliseconds (from options or default) */
+  duration: number;
+
+  /** Target milliseconds per frame for timing loop (calculated from fps) */
+  frameInterval: number;
+
+  /** Frame counter incremented each iteration (for debugging/logging) */
+  currentFrame: number;
+
+  /** Timer handle from setTimeout/setInterval for cleanup on interruption */
+  timerId: NodeJS.Timeout | null;
+
+  /** Registered cleanup function reference for unregistering on completion */
+  cleanupFn: CleanupFn | null;
+}
+
+/**
+ * Frame rendering output structure.
+ *
+ * Returned by effect functions (wave, fade, sweep) and consumed by animation loop.
+ * Contains ready-to-write terminal output with positioning metadata.
+ */
+export interface FrameData {
+  /** Banner lines for this frame with ANSI color codes applied (array of 6 strings) */
+  lines: string[];
+
+  /** Animation progress ratio from 0.0 (start) to 1.0 (complete) */
+  progress: number;
+
+  /** Terminal cursor row position to write from (for proper positioning) */
+  cursorRow: number;
+}
+
+/**
+ * Animation effect function signature.
+ *
+ * Effect functions implement visual animation logic (wave reveal, fade in, sweep).
+ * Receives progress ratio, returns array of formatted banner lines.
+ *
+ * @param progress - Animation progress from 0.0 to 1.0
+ * @returns Array of 6 banner lines with ANSI color codes applied for current progress
+ */
+export type AnimationEffect = (progress: number) => string[];
+
+/**
+ * Cleanup function type for signal handler registration.
+ *
+ * Registered via registerCleanup() to handle Ctrl+C and process termination.
+ * Must restore terminal state and clear any active timers.
+ */
+export type CleanupFn = () => void;
+
 // Placeholder for future implementation
 // Future tasks will add:
-// - Animation state types (TASK_003)
 // - shouldAnimate() function (TASK_004, TASK_005)
 // - Animation effect functions (TASK_007, TASK_008)
 // - animateBanner() orchestrator (TASK_009)
