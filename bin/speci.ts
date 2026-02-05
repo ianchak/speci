@@ -240,8 +240,13 @@ program.on('command:*', (operands) => {
 
 // Show banner and help when no arguments provided
 if (process.argv.length <= 2) {
-  displayBanner();
-  program.help();
+  (async () => {
+    const result = displayBanner();
+    if (result instanceof Promise) {
+      await result;
+    }
+    program.help();
+  })();
 }
 
 // Parse command line arguments
