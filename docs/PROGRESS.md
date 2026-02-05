@@ -81,7 +81,7 @@ graph TD
 | TASK_006 | Sleep Utility                | COMPLETE    | PASSED        | High     | S (≤2h)    | TASK_001           | SA-20260205-007 | RA-20260205-007 | 3        |
 | TASK_007 | Wave Reveal Effect           | COMPLETE    | PASSED        | High     | M (2-4h)   | TASK_001, TASK_002 | SA-20260205-008 | RA-20260205-008 | 1        |
 | TASK_008 | Animation Loop               | COMPLETE    | PASSED        | High     | M (2-4h)   | TASK_006, TASK_007 | SA-20260205-009 | RA-20260205-009 | 1        |
-| TASK_009 | animateBanner() Orchestrator | IN PROGRESS | -             | High     | L (4-8h)   | TASK_005, TASK_008 | SA-20260205-010 | -               | 1        |
+| TASK_009 | animateBanner() Orchestrator | COMPLETE    | PASSED        | High     | L (4-8h)   | TASK_005, TASK_008 | SA-20260205-010 | RA-20260205-010 | 1        |
 | MVT_M2   | Manual Verification Test     | NOT STARTED | -             | —        | 30 min     | TASK_005-009       | -               | -               | 0        |
 
 ### Dependencies
@@ -105,7 +105,7 @@ graph TD
 
 | Task ID  | Title                               | Status      | Priority | Complexity | Dependencies |
 | -------- | ----------------------------------- | ----------- | -------- | ---------- | ------------ |
-| TASK_010 | displayBanner() Conditional Animate | NOT STARTED | High     | S (≤2h)    | TASK_009     |
+| TASK_010 | displayBanner() Conditional Animate | IN REVIEW   | High     | S (≤2h)    | TASK_009     | SA-20260205-011 | -               | 1        |
 | TASK_011 | No-Args Handler Async IIFE          | NOT STARTED | High     | S (≤2h)    | TASK_010     |
 | TASK_012 | PreAction Hook (No Changes)         | NOT STARTED | Medium   | S (≤2h)    | TASK_010     |
 | TASK_013 | Static Banner Fallback              | NOT STARTED | High     | S (≤2h)    | TASK_009     |
@@ -205,13 +205,13 @@ TASK_001 → TASK_002 → TASK_007 → TASK_008 → TASK_009 → TASK_010 → TA
 
 ## Subagent Tracking
 
-Last Subagent ID: SA-20260205-010
+Last Subagent ID: SA-20260205-011
 
 ---
 
 ## Review Tracking
 
-Last Review ID: RA-20260205-009
+Last Review ID: RA-20260205-010
 
 ---
 
@@ -219,16 +219,16 @@ Last Review ID: RA-20260205-009
 
 ### For Reviewer
 
-| Field             | Value |
-| ----------------- | ----- |
-| Task              | -     |
-| Impl Agent        | -     |
-| Files Changed     | -     |
-| Tests Added       | -     |
-| Rework?           | -     |
-| Focus Areas       | -     |
-| Known Limitations | -     |
-| Gate Results      | -     |
+| Field             | Value                                                                                                                           |
+| ----------------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| Task              | TASK_010                                                                                                                        |
+| Impl Agent        | SA-20260205-011                                                                                                                 |
+| Files Changed     | `bin/speci.ts`                                                                                                                  |
+| Tests Added       | None (manual testing only per task spec)                                                                                        |
+| Rework?           | No                                                                                                                              |
+| Focus Areas       | Return type `Promise<void> \| void`, require() usage with eslint-disable, conditional animation vs static banner logic         |
+| Known Limitations | No automated tests added (task spec marked "Skip Test-First"). Manual verification needed for both animation and static modes. |
+| Gate Results      | format:✅ lint:✅ typecheck:✅ test:✅                                                                                          |
 
 ### For Fix Agent
 

@@ -20,9 +20,20 @@ import { setVerbose, debug } from '../lib/utils/logger.js';
 
 /**
  * Display the application banner
+ *
+ * Conditionally animates the banner when appropriate conditions are met.
+ * Returns a Promise when animation is enabled, or void when displaying static banner.
  */
-function displayBanner(): void {
-  console.log('\n' + renderBanner({ showVersion: true }) + '\n');
+function displayBanner(): Promise<void> | void {
+  const {
+    animateBanner,
+    shouldAnimate,
+  } = require('../lib/ui/banner-animation.js'); // eslint-disable-line @typescript-eslint/no-require-imports
+  if (shouldAnimate()) {
+    return animateBanner();
+  } else {
+    console.log('\n' + renderBanner({ showVersion: true }) + '\n');
+  }
 }
 
 const program = new Command();
