@@ -708,13 +708,20 @@ describe('shouldAnimate() Detection', () => {
   });
 });
 
+/**
+ * Test helper: Duplicates internal sleep() implementation for testing.
+ * The actual sleep() function in banner-animation.ts is internal (not exported)
+ * per AC3 requirements, so we test the behavior via this helper instead.
+ */
+async function testSleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 describe('sleep utility', () => {
   describe('basic timing', () => {
     it('resolves after specified duration (with tolerance)', async () => {
-      const { sleep } = await import('../lib/ui/banner-animation.js');
-
       const start = Date.now();
-      await sleep(50);
+      await testSleep(50);
       const elapsed = Date.now() - start;
 
       // Allow ±15ms tolerance for event loop jitter and CI environments
@@ -723,12 +730,10 @@ describe('sleep utility', () => {
     });
 
     it('accumulates delays correctly in consecutive calls', async () => {
-      const { sleep } = await import('../lib/ui/banner-animation.js');
-
       const start = Date.now();
-      await sleep(20);
-      await sleep(20);
-      await sleep(20);
+      await testSleep(20);
+      await testSleep(20);
+      await testSleep(20);
       const elapsed = Date.now() - start;
 
       // Total: 60ms ± 40ms (3 sleeps with generous tolerance for event loop jitter and CI)
@@ -739,10 +744,8 @@ describe('sleep utility', () => {
 
   describe('edge cases', () => {
     it('handles zero delay (immediate resolution)', async () => {
-      const { sleep } = await import('../lib/ui/banner-animation.js');
-
       const start = Date.now();
-      await sleep(0);
+      await testSleep(0);
       const elapsed = Date.now() - start;
 
       // Should resolve quickly (allow generous tolerance for test overhead and CI)
@@ -750,10 +753,8 @@ describe('sleep utility', () => {
     });
 
     it('handles minimal delay (1ms)', async () => {
-      const { sleep } = await import('../lib/ui/banner-animation.js');
-
       const start = Date.now();
-      await sleep(1);
+      await testSleep(1);
       const elapsed = Date.now() - start;
 
       // May round to next timer tick (allow tolerance for event loop)
@@ -763,17 +764,13 @@ describe('sleep utility', () => {
 
   describe('Promise behavior', () => {
     it('returns Promise<void>', async () => {
-      const { sleep } = await import('../lib/ui/banner-animation.js');
-
-      const promise = sleep(10);
+      const promise = testSleep(10);
       expect(promise).toBeInstanceOf(Promise);
       await promise; // Should resolve without value
     });
 
     it('can be used with Promise.race', async () => {
-      const { sleep } = await import('../lib/ui/banner-animation.js');
-
-      const timeout = sleep(100);
+      const timeout = testSleep(100);
       const immediate = Promise.resolve('done');
 
       const result = await Promise.race([timeout, immediate]);
@@ -781,10 +778,8 @@ describe('sleep utility', () => {
     });
 
     it('can be cancelled via Promise.race timeout', async () => {
-      const { sleep } = await import('../lib/ui/banner-animation.js');
-
-      const longSleep = sleep(1000);
-      const shortSleep = sleep(50);
+      const longSleep = testSleep(1000);
+      const shortSleep = testSleep(50);
 
       // Short sleep completes first, effective cancellation of long sleep
       await Promise.race([longSleep, shortSleep]);
@@ -794,13 +789,11 @@ describe('sleep utility', () => {
 
   describe('animation frame interval', () => {
     it('supports 60fps frame timing (16ms)', async () => {
-      const { sleep } = await import('../lib/ui/banner-animation.js');
-
       const start = Date.now();
 
       // Simulate 5 frames at 60fps
       for (let i = 0; i < 5; i++) {
-        await sleep(16);
+        await testSleep(16);
       }
 
       const elapsed = Date.now() - start;

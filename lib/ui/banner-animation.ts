@@ -295,9 +295,12 @@ export function shouldAnimate(): boolean {
  * // In animation loop
  * await sleep(FRAME_INTERVAL);  // Wait ~16ms before next frame
  *
- * @internal - Exported only for testing, not part of public API
+ * @internal
  */
-export async function sleep(ms: number): Promise<void> {
+// Used in TASK_008, currently unused but needed for future animation loop
+// @ts-expect-error - TS6133: Will be used in TASK_008
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+async function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
