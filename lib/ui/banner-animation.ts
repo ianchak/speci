@@ -294,16 +294,28 @@ export function shouldAnimate(options?: AnimateOptions): boolean {
  * use tolerance ranges (e.g., ms ± 10ms) rather than exact timing assertions.
  *
  * @param ms - Delay duration in milliseconds (typically FRAME_INTERVAL = 16ms)
+ * @param state - Optional animation state for timer tracking (enables cleanup on interruption)
  * @returns Promise that resolves after delay completes
  *
  * @example
  * // In animation loop
- * await sleep(FRAME_INTERVAL);  // Wait ~16ms before next frame
+ * await sleep(FRAME_INTERVAL, state);  // Wait ~16ms before next frame
  *
  * @internal
  */
-async function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
+async function sleep(ms: number, state?: AnimationState): Promise<void> {
+  return new Promise((resolve) => {
+    const timerId = setTimeout(() => {
+      if (state) {
+        state.timerId = null;
+      }
+      resolve();
+    }, ms);
+
+    if (state) {
+      state.timerId = timerId;
+    }
+  });
 }
 
 /**
@@ -415,23 +427,30 @@ export function renderWaveFrame(progress: number): string[] {
  *
  * @param effect - Frame rendering function (typically renderWaveFrame)
  * @param duration - Animation duration in milliseconds (clamped to [100, 5000]ms)
+ * @param state - Animation state for timer tracking (enables cleanup on interruption)
  * @returns Promise that resolves when animation completes
  * @throws Error if stdout operations fail (E-6), propagated to caller for fallback
  *
  * @example
- * await runAnimationLoop(renderWaveFrame, 2000);  // 2-second wave animation
+ * await runAnimationLoop(renderWaveFrame, 2000, state);  // 2-second wave animation
  *
  * @internal
  */
 // Used in TASK_009, currently unused but needed for future animateBanner() orchestrator
 export async function runAnimationLoop(
   effect: (progress: number) => string[],
-  duration: number
+  duration: number,
+  state: AnimationState
 ): Promise<void> {
   // Security: Clamp duration to prevent resource exhaustion (DoS)
   const clampedDuration = Math.max(100, Math.min(5000, duration));
 
-  const startTime = Date.now();
+  state.isRunning = true;
+  state.startTime = Date.now();
+  state.duration = clampedDuration;
+  state.currentFrame = 0;
+
+  const startTime = state.startTime;
   let isFirstFrame = true;
 
   // E-6: Loop exception handling - catch and propagate stdout/effect errors
@@ -439,6 +458,11 @@ export async function runAnimationLoop(
   try {
     // eslint-disable-next-line no-constant-condition
     while (true) {
+      // Check if cleanup was called (signal interruption)
+      if (!state.isRunning) {
+        break; // Exit loop on interruption
+      }
+
       const elapsed = Date.now() - startTime;
       const progress = elapsed / clampedDuration;
 
@@ -457,6 +481,7 @@ export async function runAnimationLoop(
           process.stdout.write(line + '\n');
         }
 
+        state.isRunning = false;
         break; // Exit loop
       }
 
@@ -475,11 +500,14 @@ export async function runAnimationLoop(
         process.stdout.write(line + '\n');
       }
 
+      state.currentFrame++;
+
       // Frame delay for ~60fps
-      await sleep(FRAME_INTERVAL);
+      await sleep(FRAME_INTERVAL, state);
     }
   } catch (error) {
     // E-6: Loop exception (stdout write failure, effect error, etc.)
+    state.isRunning = false;
     // Propagate to caller (animateBanner) for fallback handling
     throw error;
   }
@@ -539,9 +567,29 @@ export async function animateBanner(): Promise<void> {
   let terminalSnapshot: ReturnType<typeof terminalState.capture> | null = null;
   let cleanupRegistered = false;
 
+  // Animation state for timer tracking and cleanup
+  const animState: AnimationState = {
+    isRunning: false,
+    startTime: 0,
+    duration: duration,
+    frameInterval: FRAME_INTERVAL,
+    currentFrame: 0,
+    timerId: null,
+    cleanupFn: null,
+  };
+
   // Cleanup handler: idempotent, signal-safe
   const cleanup = () => {
     try {
+      // Clear active timer if animation interrupted
+      if (animState.timerId !== null) {
+        clearTimeout(animState.timerId);
+        animState.timerId = null;
+      }
+
+      // Mark animation as stopped
+      animState.isRunning = false;
+
       // Show cursor
       process.stdout.write('\x1b[?25h');
 
@@ -561,6 +609,8 @@ export async function animateBanner(): Promise<void> {
       console.error('Cleanup error:', error);
     }
   };
+
+  animState.cleanupFn = cleanup;
 
   try {
     // Step 2: Terminal State Capture (E-7)
@@ -591,7 +641,7 @@ export async function animateBanner(): Promise<void> {
 
     // Step 5: Animation Execution (E-6)
     try {
-      await runAnimationLoop(renderWaveFrame, duration);
+      await runAnimationLoop(renderWaveFrame, duration, animState);
     } catch {
       // E-6: Animation loop exception - fallback to static banner (silent)
       // Step 6: Error Fallback
