@@ -54,6 +54,28 @@ This file is the **ONLY** place findings are stored. Subagents MUST edit this fi
 
 ---
 
+## Subagent Prompt Files
+
+Store each subagent prompt in its own file under `.github/agents/subagents/`. This keeps orchestrator context minimal while giving subagents full instructions.
+
+| File                                    | Purpose                                       |
+| --------------------------------------- | --------------------------------------------- |
+| `plan_requirements_deep_dive.prompt.md` | Analyzes requirements (Phase 3)               |
+| `plan_codebase_context.prompt.md`       | Gathers codebase context (Phase 4)            |
+| `plan_initial_planner.prompt.md`        | Creates initial implementation plan (Phase 5) |
+| `plan_refine_requirements.prompt.md`    | Round 1: Requirements completeness            |
+| `plan_refine_architecture.prompt.md`    | Round 2: Architecture validation              |
+| `plan_refine_dataflow.prompt.md`        | Round 3: Data flow analysis                   |
+| `plan_refine_errors.prompt.md`          | Round 4: Error handling                       |
+| `plan_refine_edgecases.prompt.md`       | Round 5: Edge cases deep dive                 |
+| `plan_refine_testing.prompt.md`         | Round 6: Testing coverage                     |
+| `plan_refine_integration.prompt.md`     | Round 7: Integration points                   |
+| `plan_refine_performance.prompt.md`     | Round 8: Performance review                   |
+| `plan_refine_security.prompt.md`        | Round 9: Security review                      |
+| `plan_refine_final.prompt.md`           | Round 10: Final validation                    |
+
+---
+
 ## EXECUTION STARTS HERE - DO NOT SKIP ANY PHASE
 
 **START NOW**: Read the user's prompt, extract the feature requirements, and execute Phase 1 immediately.
@@ -269,35 +291,12 @@ After searching, use `replace_string_in_file` to update the plan's Section 2.1 w
 
 **Orchestrator Action**: Dispatch ONE subagent to analyze requirements.
 
+**Subagent Prompt File**: `.github/agents/subagents/plan_requirements_deep_dive.prompt.md`
+
+**Spawn Command**:
+
 ```
-runSubagent prompt:
-
-MISSION: Requirements Deep Dive
-PLAN FILE: [absolute path to plan document]
-
-You are a Requirements Analyst. Your job is to deeply analyze the requirements and UPDATE THE PLAN FILE directly.
-
-READ the plan file first to get the raw requirements from Section 0.
-
-ANALYZE and then EDIT the plan file to fill in:
-- Section 1.1: Functional Requirements (atomic breakdown)
-- Section 1.2: Non-Functional Requirements (performance, usability, etc.)
-- Section 1.3: Implicit Requirements (things not stated but needed)
-- Section 1.4: Scope Boundaries (what's in/out)
-- Section 1.5: Assumptions (what you're assuming)
-
-Also add any discovered edge cases to Section 8 and risks to Section 12.
-
-CRITICAL: Use `replace_string_in_file` or `multi_replace_string_in_file` to write findings INTO THE PLAN FILE.
-
-Your analysis should answer:
-- What must the system DO? (functional)
-- How must it BEHAVE? (non-functional)
-- What could go wrong? (edge cases, errors)
-- What's unclear? (add to Section 14: Open Questions)
-
-FINAL REPORT FORMAT:
-"Phase 3 complete: [X] functional reqs, [Y] non-functional reqs, [Z] open questions added. Sections modified: 1.1, 1.2, 1.3, 1.4, 1.5, 8, 12, 14"
+Read .github/agents/subagents/plan_requirements_deep_dive.prompt.md and execute for PLAN FILE: [absolute path to plan document]
 ```
 
 ### Phase 3 Validation Gate
@@ -318,36 +317,12 @@ FINAL REPORT FORMAT:
 
 **Orchestrator Action**: Dispatch ONE subagent to gather codebase context.
 
+**Subagent Prompt File**: `.github/agents/subagents/plan_codebase_context.prompt.md`
+
+**Spawn Command**:
+
 ```
-runSubagent prompt:
-
-MISSION: Codebase Context Mining
-PLAN FILE: [absolute path to plan document]
-RELEVANT DIRECTORIES: [list from Phase 2]
-
-You are a Codebase Analyst. Your job is to understand existing code patterns and UPDATE THE PLAN FILE directly.
-
-READ the plan file first to understand the requirements (Sections 0-1).
-
-SEARCH the codebase for:
-- Similar existing implementations
-- Patterns and conventions used
-- Types and interfaces to reuse
-- Integration points
-
-Then EDIT the plan file to fill in:
-- Section 2.1: Relevant Existing Code (file paths with brief descriptions)
-- Section 2.2: Patterns to Follow (naming, structure, architecture)
-- Section 2.3: Types to Reuse (existing interfaces, type utilities)
-- Section 2.4: Integration Points (modules this will interact with)
-- Section 2.5: Constraints & Anti-Patterns (what to avoid)
-
-CRITICAL: Use `replace_string_in_file` or `multi_replace_string_in_file` to write findings INTO THE PLAN FILE.
-
-Focus on PATTERNS and CONVENTIONS that must be followed, not implementation details.
-
-FINAL REPORT FORMAT:
-"Phase 4 complete: [X] relevant files documented, [Y] patterns identified, [Z] types to reuse. Sections modified: 2.1, 2.2, 2.3, 2.4, 2.5"
+Read .github/agents/subagents/plan_codebase_context.prompt.md and execute for PLAN FILE: [absolute path to plan document], RELEVANT DIRECTORIES: [list from Phase 2]
 ```
 
 ### Phase 4 Validation Gate
@@ -368,37 +343,12 @@ FINAL REPORT FORMAT:
 
 **Orchestrator Action**: Dispatch ONE subagent to create the initial implementation plan.
 
+**Subagent Prompt File**: `.github/agents/subagents/plan_initial_planner.prompt.md`
+
+**Spawn Command**:
+
 ```
-runSubagent prompt:
-
-MISSION: Create Initial Implementation Plan
-PLAN FILE: [absolute path to plan document]
-
-You are an Implementation Planner. Your job is to create a complete initial plan by EDITING THE PLAN FILE.
-
-READ the plan file to understand:
-- Requirements (Sections 0-1)
-- Codebase context (Section 2)
-
-Then EDIT the plan file to fill in:
-- Section 3: Technical Architecture (components, data flow, state)
-- Section 4: Implementation Steps (phased, ordered tasks with file paths)
-- Section 5: File Changes (specific new/modified files)
-- Section 6: Data Structures (TypeScript types/interfaces)
-- Section 7: API Contracts (function signatures with params/returns)
-- Section 10: Testing Strategy (specific test cases)
-- Section 11: Dependencies (packages and internal modules)
-
-Update Section Metadata:
-- Status: INITIAL_PLAN
-- Current Phase: 5 - Initial Plan Complete
-
-CRITICAL: Use `replace_string_in_file` or `multi_replace_string_in_file` to write your plan INTO THE PLAN FILE.
-
-Make the plan ACTIONABLE - each step should be implementable independently.
-
-FINAL REPORT FORMAT:
-"Phase 5 complete: [X] implementation steps, [Y] new files, [Z] modified files, [W] test cases. Sections modified: 3, 4, 5, 6, 7, 10, 11, Metadata"
+Read .github/agents/subagents/plan_initial_planner.prompt.md and execute for PLAN FILE: [absolute path to plan document]
 ```
 
 ### Phase 5 Validation Gate
@@ -423,241 +373,92 @@ FINAL REPORT FORMAT:
 
 ### Round 1: Requirements Completeness
 
+**Subagent Prompt File**: `.github/agents/subagents/plan_refine_requirements.prompt.md`
+
+**Spawn Command**:
+
 ```
-runSubagent prompt:
-
-MISSION: Refinement Round 1 - Requirements Completeness
-PLAN FILE: [absolute path to plan document]
-
-READ the entire plan file.
-
-VERIFY: Every requirement in Section 1 maps to at least one implementation step in Section 4.
-
-EDIT the plan file:
-- Add any missing implementation steps
-- Add any missing requirements discovered
-- Update Section 13 Refinement Log, Round 1 row with findings and changes
-
-CRITICAL: Use `replace_string_in_file` to write all findings INTO THE PLAN FILE.
-
-FINAL REPORT: "Round 1 complete: [X] gaps found, [Y] steps added. Sections modified: [list]"
+Read .github/agents/subagents/plan_refine_requirements.prompt.md and execute for PLAN FILE: [absolute path to plan document]
 ```
 
 ### Round 2: Architecture Validation
 
+**Subagent Prompt File**: `.github/agents/subagents/plan_refine_architecture.prompt.md`
+
+**Spawn Command**:
+
 ```
-runSubagent prompt:
-
-MISSION: Refinement Round 2 - Architecture Validation
-PLAN FILE: [absolute path to plan document]
-
-READ the entire plan file.
-
-VALIDATE:
-- Component boundaries are clear and logical
-- No circular dependencies
-- Scalability considerations addressed
-- Architecture matches existing codebase patterns (Section 2.2)
-
-EDIT the plan file:
-- Fix any architectural issues in Section 3
-- Update implementation steps if architecture changes
-- Update Section 13 Refinement Log, Round 2 row
-
-CRITICAL: Use `replace_string_in_file` to write all findings INTO THE PLAN FILE.
-
-FINAL REPORT: "Round 2 complete: [X] issues found, [Y] fixes applied. Sections modified: [list]"
+Read .github/agents/subagents/plan_refine_architecture.prompt.md and execute for PLAN FILE: [absolute path to plan document]
 ```
 
 ### Round 3: Data Flow Analysis
 
+**Subagent Prompt File**: `.github/agents/subagents/plan_refine_dataflow.prompt.md`
+
+**Spawn Command**:
+
 ```
-runSubagent prompt:
-
-MISSION: Refinement Round 3 - Data Flow Analysis
-PLAN FILE: [absolute path to plan document]
-
-READ the entire plan file.
-
-TRACE data flow through the entire system:
-- Where does data originate?
-- How does it transform?
-- Where is it consumed?
-- Are there race conditions?
-- Is state properly synchronized?
-
-EDIT the plan file:
-- Enhance Section 3.2 Data Flow with detailed trace
-- Add any missing data transformation steps
-- Document state synchronization requirements
-- Update Section 13 Refinement Log, Round 3 row
-
-CRITICAL: Use `replace_string_in_file` to write all findings INTO THE PLAN FILE.
-
-FINAL REPORT: "Round 3 complete: [X] data flows traced, [Y] sync points identified. Sections modified: [list]"
+Read .github/agents/subagents/plan_refine_dataflow.prompt.md and execute for PLAN FILE: [absolute path to plan document]
 ```
 
 ### Round 4: Error Handling
 
+**Subagent Prompt File**: `.github/agents/subagents/plan_refine_errors.prompt.md`
+
+**Spawn Command**:
+
 ```
-runSubagent prompt:
-
-MISSION: Refinement Round 4 - Error Handling
-PLAN FILE: [absolute path to plan document]
-
-READ the entire plan file.
-
-IDENTIFY all error scenarios:
-- Network failures
-- Invalid input
-- State corruption
-- Race conditions
-- Resource exhaustion
-
-EDIT the plan file:
-- Fill Section 9 Error Handling table completely
-- Add error handling to implementation steps
-- Update Section 13 Refinement Log, Round 4 row
-
-CRITICAL: Use `replace_string_in_file` to write all findings INTO THE PLAN FILE.
-
-FINAL REPORT: "Round 4 complete: [X] error scenarios documented. Sections modified: [list]"
+Read .github/agents/subagents/plan_refine_errors.prompt.md and execute for PLAN FILE: [absolute path to plan document]
 ```
 
 ### Round 5: Edge Cases
 
+**Subagent Prompt File**: `.github/agents/subagents/plan_refine_edgecases.prompt.md`
+
+**Spawn Command**:
+
 ```
-runSubagent prompt:
-
-MISSION: Refinement Round 5 - Edge Cases Deep Dive
-PLAN FILE: [absolute path to plan document]
-
-READ the entire plan file.
-
-EXHAUSTIVELY identify edge cases:
-- Empty/null/undefined states
-- Boundary conditions (min/max values)
-- Concurrent operations
-- Timing issues
-- User interruptions
-- Partial failures
-
-EDIT the plan file:
-- Fill Section 8 Edge Cases table completely
-- Each edge case must have handling strategy and test case
-- Update Section 13 Refinement Log, Round 5 row
-
-CRITICAL: Use `replace_string_in_file` to write all findings INTO THE PLAN FILE.
-
-FINAL REPORT: "Round 5 complete: [X] edge cases documented with test cases. Sections modified: [list]"
+Read .github/agents/subagents/plan_refine_edgecases.prompt.md and execute for PLAN FILE: [absolute path to plan document]
 ```
 
 ### Round 6: Testing Coverage
 
+**Subagent Prompt File**: `.github/agents/subagents/plan_refine_testing.prompt.md`
+
+**Spawn Command**:
+
 ```
-runSubagent prompt:
-
-MISSION: Refinement Round 6 - Testing Coverage
-PLAN FILE: [absolute path to plan document]
-
-READ the entire plan file.
-
-VERIFY test coverage:
-- Every implementation step has corresponding tests
-- All edge cases (Section 8) have test cases
-- All error scenarios (Section 9) are tested
-- Integration points are tested
-
-EDIT the plan file:
-- Expand Section 10 with specific test cases
-- Add test file paths to Section 5 File Changes
-- Update Section 13 Refinement Log, Round 6 row
-
-CRITICAL: Use `replace_string_in_file` to write all findings INTO THE PLAN FILE.
-
-FINAL REPORT: "Round 6 complete: [X] test cases added, [Y]% coverage estimated. Sections modified: [list]"
+Read .github/agents/subagents/plan_refine_testing.prompt.md and execute for PLAN FILE: [absolute path to plan document]
 ```
 
 ### Round 7: Integration Points
 
+**Subagent Prompt File**: `.github/agents/subagents/plan_refine_integration.prompt.md`
+
+**Spawn Command**:
+
 ```
-runSubagent prompt:
-
-MISSION: Refinement Round 7 - Integration Points
-PLAN FILE: [absolute path to plan document]
-
-READ the entire plan file.
-
-ANALYZE all integration boundaries:
-- API contracts between components
-- Event/message interfaces
-- Shared state access
-- External system interactions
-
-EDIT the plan file:
-- Enhance Section 7 API Contracts with all interfaces
-- Verify Section 2.4 Integration Points are addressed
-- Add integration tests to Section 10
-- Update Section 13 Refinement Log, Round 7 row
-
-CRITICAL: Use `replace_string_in_file` to write all findings INTO THE PLAN FILE.
-
-FINAL REPORT: "Round 7 complete: [X] API contracts defined, [Y] integration tests added. Sections modified: [list]"
+Read .github/agents/subagents/plan_refine_integration.prompt.md and execute for PLAN FILE: [absolute path to plan document]
 ```
 
 ### Round 8: Performance
 
+**Subagent Prompt File**: `.github/agents/subagents/plan_refine_performance.prompt.md`
+
+**Spawn Command**:
+
 ```
-runSubagent prompt:
-
-MISSION: Refinement Round 8 - Performance Review
-PLAN FILE: [absolute path to plan document]
-
-READ the entire plan file.
-
-IDENTIFY performance concerns:
-- Hot paths and bottlenecks
-- Memory allocation patterns
-- Unnecessary re-renders/computations
-- Large data handling
-- Caching opportunities
-
-EDIT the plan file:
-- Add performance considerations to relevant implementation steps
-- Add performance risks to Section 12
-- Note optimization opportunities
-- Update Section 13 Refinement Log, Round 8 row
-
-CRITICAL: Use `replace_string_in_file` to write all findings INTO THE PLAN FILE.
-
-FINAL REPORT: "Round 8 complete: [X] bottlenecks identified, [Y] optimizations suggested. Sections modified: [list]"
+Read .github/agents/subagents/plan_refine_performance.prompt.md and execute for PLAN FILE: [absolute path to plan document]
 ```
 
 ### Round 9: Security Review
 
+**Subagent Prompt File**: `.github/agents/subagents/plan_refine_security.prompt.md`
+
+**Spawn Command**:
+
 ```
-runSubagent prompt:
-
-MISSION: Refinement Round 9 - Security Review
-PLAN FILE: [absolute path to plan document]
-
-READ the entire plan file.
-
-CHECK for security implications:
-- Input validation
-- Data sanitization
-- Access control
-- Sensitive data handling
-- Injection vulnerabilities
-
-EDIT the plan file:
-- Add security requirements to implementation steps
-- Add security risks to Section 12
-- Update Section 13 Refinement Log, Round 9 row
-
-CRITICAL: Use `replace_string_in_file` to write all findings INTO THE PLAN FILE.
-
-FINAL REPORT: "Round 9 complete: [X] security concerns identified, [Y] mitigations added. Sections modified: [list]"
+Read .github/agents/subagents/plan_refine_security.prompt.md and execute for PLAN FILE: [absolute path to plan document]
 ```
 
 ---
@@ -731,32 +532,12 @@ Only after ALL questions are resolved (either auto-resolved or user-answered), p
 
 ### Round 10: Final Validation (Post-Questions)
 
+**Subagent Prompt File**: `.github/agents/subagents/plan_refine_final.prompt.md`
+
+**Spawn Command**:
+
 ```
-runSubagent prompt:
-
-MISSION: Refinement Round 10 - Final Validation
-PLAN FILE: [absolute path to plan document]
-
-READ the entire plan file.
-
-FINAL QUALITY CHECK (all questions should already be resolved):
-- All sections are complete (no remaining placeholder text)
-- No contradictions between sections
-- Implementation steps are properly ordered
-- Dependencies are correct
-- Section 14 should be empty or contain only informational notes
-- All user decisions from Phase 7 are properly reflected in the plan
-- Plan is ready for execution
-
-EDIT the plan file:
-- Fix any remaining issues
-- Update Metadata: Status: COMPLETE, Current Phase: FINALIZED
-- Update Section 13 Refinement Log, Round 10 row
-- Add final confidence assessment to Metadata
-
-CRITICAL: Use `replace_string_in_file` to write all findings INTO THE PLAN FILE.
-
-FINAL REPORT: "Round 10 complete: [X] issues fixed. Status: COMPLETE. Confidence: [HIGH/MEDIUM/LOW]"
+Read .github/agents/subagents/plan_refine_final.prompt.md and execute for PLAN FILE: [absolute path to plan document]
 ```
 
 ---

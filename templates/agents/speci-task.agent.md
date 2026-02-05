@@ -59,7 +59,7 @@ docs/
     ├── TASK_001_*.md
     ├── MVT_M1_*.md
     └── ...
-.github/prompts/subagents/         # Subagent prompt files
+.github/agents/subagents/          # Subagent prompt files
     ├── task_generator.prompt.md
     ├── task_reviewer.prompt.md
     ├── mvt_generator.prompt.md
@@ -143,13 +143,13 @@ PHASE 3: CLEANUP
 └── Report summary
 ```
 
-### Orchestrator Prompt (LEAN VERSION)
+### Orchestrator Prompt
 
 ```markdown
 <SOURCE>{user-provided-path}</SOURCE>
 <CONTEXT>{user-provided-context or empty}</CONTEXT>
 <STATE>docs/GENERATION_STATE.md</STATE>
-<SUBAGENT_PROMPTS>.github/prompts/subagents/</SUBAGENT_PROMPTS>
+<SUBAGENT_PROMPTS>.github/agents/subagents/</SUBAGENT_PROMPTS>
 
 You are the orchestration agent. Your job is coordination only.
 
@@ -168,14 +168,14 @@ You are the orchestration agent. Your job is coordination only.
 
 **GENERATION LOOP:**
 For each milestone in <STATE>:
-For each feature: 1. Spawn subagent: "Read .github/prompts/subagents/task_generator.prompt.md and generate TASK_XXX for [feature] in milestone [M]" 2. Update <STATE> 3. Spawn subagent: "Read .github/prompts/subagents/task_reviewer.prompt.md and review TASK_XXX" 4. Update <STATE>
+For each feature: 1. Spawn subagent: "Read .github/agents/subagents/task_generator.prompt.md and generate TASK_XXX for [feature] in milestone [M]" 2. Update <STATE> 3. Spawn subagent: "Read .github/agents/subagents/task_reviewer.prompt.md and review TASK_XXX" 4. Update <STATE>
 
-After all features: 5. Spawn subagent: "Read .github/prompts/subagents/mvt_generator.prompt.md and generate MVT_MX" 6. Update <STATE>
+After all features: 5. Spawn subagent: "Read .github/agents/subagents/mvt_generator.prompt.md and generate MVT_MX" 6. Update <STATE>
 
 **FINALIZATION:**
 
-1. Spawn: "Read .github/prompts/subagents/progress_generator.prompt.md and create PROGRESS.md"
-2. Spawn: "Read .github/prompts/subagents/final_reviewer.prompt.md and validate alignment"
+1. Spawn: "Read .github/agents/subagents/progress_generator.prompt.md and create PROGRESS.md"
+2. Spawn: "Read .github/agents/subagents/final_reviewer.prompt.md and validate alignment"
 
 **COMPLETION:**
 
@@ -187,7 +187,7 @@ After all features: 5. Spawn subagent: "Read .github/prompts/subagents/mvt_gener
 
 ## Subagent Prompt Files
 
-Store each subagent prompt in its own file under `.github/prompts/subagents/`. This keeps orchestrator context minimal while giving subagents full instructions.
+Store each subagent prompt in its own file under `.github/agents/subagents/`. This keeps orchestrator context minimal while giving subagents full instructions.
 
 | File                           | Purpose                     |
 | ------------------------------ | --------------------------- |
@@ -206,7 +206,7 @@ When spawning subagents, keep the prompt minimal. The subagent reads full instru
 **Pattern:**
 
 ```
-"Read .github/prompts/subagents/{name}.prompt.md and execute.
+"Read .github/agents/subagents/{name}.prompt.md and execute.
 Target: {specific target}
 Context: {minimal context needed}"
 ```
@@ -216,7 +216,7 @@ Context: {minimal context needed}"
 ```markdown
 # Task Generator
 
-"Read .github/prompts/subagents/task_generator.prompt.md and execute.
+"Read .github/agents/subagents/task_generator.prompt.md and execute.
 Source: docs/my_spec.md
 Context: REST API with Express.js
 Target: TASK_003 for 'Selection Manager' in M1
@@ -224,32 +224,32 @@ Source ref: §2.3"
 
 # Task Reviewer
 
-"Read .github/prompts/subagents/task_reviewer.prompt.md and execute.
+"Read .github/agents/subagents/task_reviewer.prompt.md and execute.
 Source: docs/my_spec.md
 Context: REST API with Express.js
 Target: docs/tasks/TASK_003_selection_manager.md"
 
 # MVT Generator
 
-"Read .github/prompts/subagents/mvt_generator.prompt.md and execute.
+"Read .github/agents/subagents/mvt_generator.prompt.md and execute.
 Source: docs/my_spec.md
 Context: REST API with Express.js
 Target: MVT_M1 covering TASK_001-005"
 
 # Progress Generator
 
-"Read .github/prompts/subagents/progress_generator.prompt.md and execute.
+"Read .github/agents/subagents/progress_generator.prompt.md and execute.
 Source: docs/my_spec.md"
 
 # Final Reviewer
 
-"Read .github/prompts/subagents/final_reviewer.prompt.md and execute.
+"Read .github/agents/subagents/final_reviewer.prompt.md and execute.
 Source: docs/my_spec.md"
 ```
 
 ---
 
-## Task Format Reference (Brief)
+## Task Format Reference
 
 ```markdown
 # TASK_XXX: [Name]
@@ -291,7 +291,7 @@ Source: docs/my_spec.md"
 
 ---
 
-## MVT Format Reference (Brief)
+## MVT Format Reference
 
 ```markdown
 # MVT_MX: [Milestone] - Manual Verification Test
@@ -331,7 +331,7 @@ Source: docs/my_spec.md"
 
 ### Subagents (Full Context, Isolated)
 
-- Read instructions from `.github/prompts/subagents/`
+- Read instructions from `.github/agents/subagents/`
 - Update GENERATION_STATE.md on complete
 - Return summary to orchestrator
 
@@ -362,13 +362,3 @@ Source: docs/my_spec.md"
 4. PROGRESS.md created
 5. Final review ≥8/10
 6. GENERATION_STATE.md deleted
-
----
-
-## Quick Start
-
-1. Create subagent prompts in `.github/prompts/subagents/`
-2. Ensure plan at `docs/plan.md`
-3. Run orchestrator with `#runSubagent` access
-4. Monitor `docs/GENERATION_STATE.md`
-5. Output: `docs/tasks/`, `docs/PROGRESS.md`
