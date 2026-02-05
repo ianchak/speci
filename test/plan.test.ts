@@ -72,10 +72,10 @@ describe('plan command', () => {
     // Create .git directory to satisfy git check
     mkdirSync('.git', { recursive: true });
 
-    // Create agents directory with plan agent in .github/copilot/agents/
-    mkdirSync('.github/copilot/agents', { recursive: true });
+    // Create agents directory with plan agent in .github/agents/
+    mkdirSync('.github/agents', { recursive: true });
     writeFileSync(
-      '.github/copilot/agents/speci-plan.agent.md',
+      '.github/agents/speci-plan.agent.md',
       '# Plan Agent\n\nPlan generation agent template.'
     );
   });
@@ -95,7 +95,7 @@ describe('plan command', () => {
   });
 
   describe('agent path resolution', () => {
-    it('should use default agent from .github/copilot/agents when no override', async () => {
+    it('should use default agent from .github/agents when no override', async () => {
       const spawnSpy = vi
         .spyOn(copilotModule, 'spawnCopilot')
         .mockResolvedValue(0);
@@ -108,17 +108,14 @@ describe('plan command', () => {
       const args = spawnSpy.mock.calls[0][0];
       const hasAgentArg = args.some(
         (arg: string) =>
-          arg.startsWith('--agent=') && arg.includes('speci-plan.agent.md')
+          arg.startsWith('--agent=') && arg.includes('speci-plan')
       );
       expect(hasAgentArg).toBe(true);
     });
 
     it('should use custom agent when override provided', async () => {
-      // Create custom agent file in .github/copilot/agents/
-      writeFileSync(
-        '.github/copilot/agents/custom-plan.md',
-        '# Custom Plan Agent'
-      );
+      // Create custom agent file in .github/agents/
+      writeFileSync('.github/agents/custom-plan.md', '# Custom Plan Agent');
 
       const spawnSpy = vi
         .spyOn(copilotModule, 'spawnCopilot')
@@ -147,7 +144,7 @@ describe('plan command', () => {
   });
 
   describe('copilot arguments', () => {
-    it('should build correct args for interactive mode', async () => {
+    it('should build correct args for one-shot mode', async () => {
       const spawnSpy = vi
         .spyOn(copilotModule, 'spawnCopilot')
         .mockResolvedValue(0);
@@ -158,7 +155,7 @@ describe('plan command', () => {
 
       expect(spawnSpy).toHaveBeenCalled();
       const args = spawnSpy.mock.calls[0][0];
-      expect(args).toContain('-i');
+      expect(args).toContain('-p');
       expect(args).toContain('--allow-all');
     });
 

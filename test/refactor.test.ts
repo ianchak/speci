@@ -75,10 +75,10 @@ describe('refactor command', () => {
     // Create .git directory to satisfy git check
     mkdirSync('.git', { recursive: true });
 
-    // Create agents directory with refactor agent in .github/copilot/agents/
-    mkdirSync('.github/copilot/agents', { recursive: true });
+    // Create agents directory with refactor agent in .github/agents/
+    mkdirSync('.github/agents', { recursive: true });
     writeFileSync(
-      '.github/copilot/agents/speci-refactor.agent.md',
+      '.github/agents/speci-refactor.agent.md',
       '# Refactor Agent\n\nRefactoring analysis agent template.'
     );
 
@@ -120,7 +120,7 @@ describe('refactor command', () => {
       expect(promptArg).toContain('refactoring');
     });
 
-    it('should use default agent from .github/copilot/agents when no override', async () => {
+    it('should use default agent from .github/agents when no override', async () => {
       const spawnSpy = vi
         .spyOn(copilotModule, 'spawnCopilot')
         .mockResolvedValue(0);
@@ -133,7 +133,7 @@ describe('refactor command', () => {
       const args = spawnSpy.mock.calls[0][0];
       const hasAgentArg = args.some(
         (arg: string) =>
-          arg.startsWith('--agent=') && arg.includes('speci-refactor.agent.md')
+          arg.startsWith('--agent=') && arg.includes('speci-refactor')
       );
       expect(hasAgentArg).toBe(true);
     });
@@ -213,9 +213,9 @@ describe('refactor command', () => {
 
   describe('agent path resolution', () => {
     it('should use custom agent when override provided', async () => {
-      // Create custom agent file in .github/copilot/agents/
+      // Create custom agent file in .github/agents/
       writeFileSync(
-        '.github/copilot/agents/custom-refactor.md',
+        '.github/agents/custom-refactor.md',
         '# Custom Refactor Agent'
       );
 

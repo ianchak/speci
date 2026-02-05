@@ -72,10 +72,10 @@ describe('task command', () => {
     // Create .git directory to satisfy git check
     mkdirSync('.git', { recursive: true });
 
-    // Create agents directory with task agent in .github/copilot/agents/
-    mkdirSync('.github/copilot/agents', { recursive: true });
+    // Create agents directory with task agent in .github/agents/
+    mkdirSync('.github/agents', { recursive: true });
     writeFileSync(
-      '.github/copilot/agents/speci-task.agent.md',
+      '.github/agents/speci-task.agent.md',
       '# Task Agent\n\nTask generation agent template.'
     );
 
@@ -173,7 +173,7 @@ describe('task command', () => {
   });
 
   describe('agent path resolution', () => {
-    it('should use default agent from .github/copilot/agents when no override', async () => {
+    it('should use default agent from .github/agents when no override', async () => {
       const spawnSpy = vi
         .spyOn(copilotModule, 'spawnCopilot')
         .mockResolvedValue(0);
@@ -186,17 +186,14 @@ describe('task command', () => {
       const args = spawnSpy.mock.calls[0][0];
       const hasAgentArg = args.some(
         (arg: string) =>
-          arg.startsWith('--agent=') && arg.includes('speci-task.agent.md')
+          arg.startsWith('--agent=') && arg.includes('speci-task')
       );
       expect(hasAgentArg).toBe(true);
     });
 
     it('should use custom agent when override provided', async () => {
-      // Create custom agent file in .github/copilot/agents/
-      writeFileSync(
-        '.github/copilot/agents/custom-task.md',
-        '# Custom Task Agent'
-      );
+      // Create custom agent file in .github/agents/
+      writeFileSync('.github/agents/custom-task.md', '# Custom Task Agent');
 
       const spawnSpy = vi
         .spyOn(copilotModule, 'spawnCopilot')

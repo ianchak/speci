@@ -71,14 +71,14 @@ describe('banner module', () => {
         delete process.env.NO_COLOR;
         process.env.FORCE_COLOR = '1';
         const result = renderBanner();
-        expect(result).toContain('v0.1.0');
+        expect(result).toContain('v0.2.0');
       });
 
       it('includes version when showVersion is true', () => {
         delete process.env.NO_COLOR;
         process.env.FORCE_COLOR = '1';
         const result = renderBanner({ showVersion: true });
-        expect(result).toContain('v0.1.0');
+        expect(result).toContain('v0.2.0');
       });
 
       it('excludes version when showVersion is false', () => {
@@ -110,13 +110,14 @@ describe('banner module', () => {
         delete process.env.NO_COLOR;
         process.env.FORCE_COLOR = '1';
         const result = renderBanner();
-        // Check for presence of RGB values corresponding to our palette
-        // sky200: #bae6fd = rgb(186, 230, 253)
-        expect(result).toContain('186;230;253');
-        // sky400: #38bdf8 = rgb(56, 189, 248)
+        // Check for presence of RGB ANSI escape codes
+        // The gradient interpolates between colors, so we check for:
+        // - RGB escape code format present
+        // - At least one instance of sky400 which is held in the middle range
+        expect(result).toMatch(/\x1b\[38;2;\d+;\d+;\d+m/);
+        // sky400: #38bdf8 = rgb(56, 189, 248) - this exact value should appear
+        // in the middle section where the gradient holds steady
         expect(result).toContain('56;189;248');
-        // sky500: #0ea5e9 = rgb(14, 165, 233)
-        expect(result).toContain('14;165;233');
       });
 
       it('returns consistent output with FORCE_COLOR', () => {

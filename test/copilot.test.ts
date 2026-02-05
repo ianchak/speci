@@ -125,7 +125,10 @@ describe('copilot', () => {
     it('should use per-command model when command is specified', () => {
       config.copilot.model = 'gpt-4'; // default model
       config.copilot.models.plan = 'claude-opus-4.5'; // per-command model
-      const options: CopilotArgsOptions = { interactive: true, command: 'plan' };
+      const options: CopilotArgsOptions = {
+        interactive: true,
+        command: 'plan',
+      };
 
       const args = buildCopilotArgs(config, options);
 
@@ -137,7 +140,10 @@ describe('copilot', () => {
     it('should fall back to default model when per-command model is null', () => {
       config.copilot.model = 'gpt-4'; // default model
       config.copilot.models.task = null; // no per-command model
-      const options: CopilotArgsOptions = { interactive: true, command: 'task' };
+      const options: CopilotArgsOptions = {
+        interactive: true,
+        command: 'task',
+      };
 
       const args = buildCopilotArgs(config, options);
 
@@ -148,7 +154,10 @@ describe('copilot', () => {
     it('should not include model flag when both default and per-command are null', () => {
       config.copilot.model = null;
       config.copilot.models.refactor = null;
-      const options: CopilotArgsOptions = { interactive: true, command: 'refactor' };
+      const options: CopilotArgsOptions = {
+        interactive: true,
+        command: 'refactor',
+      };
 
       const args = buildCopilotArgs(config, options);
 

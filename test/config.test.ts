@@ -289,11 +289,10 @@ describe('config', () => {
   });
 
   describe('resolveAgentPath', () => {
-    it('should resolve to .github/copilot/agents path', () => {
+    it('should resolve to .github/agents path', () => {
       const path = resolveAgentPath('impl');
 
       expect(path).toContain('.github');
-      expect(path).toContain('copilot');
       expect(path).toContain('agents');
       expect(path).toContain('speci-impl.agent.md');
     });
@@ -574,11 +573,10 @@ describe('config', () => {
   });
 
   describe('resolveAgentPath', () => {
-    it('should return .github/copilot/agents path', () => {
+    it('should return .github/agents path', () => {
       const path = resolveAgentPath('impl');
 
       expect(path).toContain('.github');
-      expect(path).toContain('copilot');
       expect(path).toContain('agents');
       expect(path).toContain('speci-impl.agent.md');
     });
