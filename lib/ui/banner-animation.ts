@@ -13,9 +13,8 @@
  */
 
 // These imports will be used in future tasks
-// @ts-expect-error - Will be used in TASK_002 and later
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { BANNER_ART } from './banner.js';
+import { HEX_COLORS } from './palette.js';
 // @ts-expect-error - Will be used in TASK_004 and later
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { terminalState } from './terminal.js';
@@ -81,7 +80,6 @@ export function hasMinimumHeight(): boolean {
  * @example
  * parseHex("#0ea5e9") // [14, 165, 233]
  */
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function parseHex(hex: string): [number, number, number] {
   return [
     parseInt(hex.slice(1, 3), 16),
@@ -105,8 +103,6 @@ function parseHex(hex: string): [number, number, number] {
  * @example
  * lerpColor("#0ea5e9", "#0284c7", 0.5) // Intermediate color
  */
-// @ts-expect-error - Will be used in TASK_007 and later
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function lerpColor(colorA: string, colorB: string, t: number): string {
   const [r1, g1, b1] = parseHex(colorA);
   const [r2, g2, b2] = parseHex(colorB);
@@ -132,8 +128,6 @@ function lerpColor(colorA: string, colorB: string, t: number): string {
  * @example
  * hexToAnsi("#0ea5e9") // "\x1b[38;2;14;165;233m"
  */
-// @ts-expect-error - Will be used in TASK_007 and later
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function hexToAnsi(hex: string): string {
   const r = parseInt(hex.slice(1, 3), 16);
   const g = parseInt(hex.slice(3, 5), 16);
@@ -304,7 +298,87 @@ async function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+/**
+ * Render single frame of wave reveal animation
+ *
+ * Generates banner frame with progressive left-to-right reveal and gradient coloring.
+ * Characters are revealed based on progress (0→1), with Ice Blue gradient applied.
+ *
+ * Algorithm:
+ * 1. Clamp progress to [0.0, 1.0] (security: prevent bounds violations)
+ * 2. For each line, calculate reveal position (progress × line length)
+ * 3. For each character:
+ *    - If revealed: apply gradient color (sky-200 → sky-500) + ANSI wrap
+ *    - If unrevealed: render as space (invisible)
+ * 4. Return array of 6 colored/revealed lines
+ *
+ * Security properties:
+ * - Progress clamped to [0.0, 1.0] prevents array out-of-bounds
+ * - BANNER_ART is hardcoded constant (no user input)
+ * - Gradient uses only hardcoded HEX_COLORS (sky-200, sky-400, sky-500)
+ * - ANSI codes generated from validated RGB values only
+ * - No user data in output strings
+ *
+ * Performance: HOT PATH - called 120 times per animation (60fps × 2s)
+ * - 6 lines × 40 chars = 240 gradient computations per frame
+ * - Total: 28,800 color calculations per animation
+ *
+ * @param progress - Animation progress [0.0, 1.0] where 0=hidden, 1=fully revealed
+ * @returns Array of 6 ANSI-colored banner lines ready for terminal output
+ *
+ * @example
+ * renderWaveFrame(0)    // All spaces (nothing revealed)
+ * renderWaveFrame(0.5)  // Left half revealed with gradient
+ * renderWaveFrame(1.0)  // Full banner with complete gradient
+ */
+export function renderWaveFrame(progress: number): string[] {
+  // Security: Clamp progress to [0.0, 1.0] to prevent array bounds violations
+  const clampedProgress = Math.max(0, Math.min(1, progress));
+
+  const lines: string[] = [];
+
+  try {
+    for (const line of BANNER_ART) {
+      const lineLength = line.length;
+      const revealIndex = Math.floor(clampedProgress * lineLength);
+
+      let renderedLine = '';
+
+      for (let i = 0; i < lineLength; i++) {
+        const char = line[i];
+
+        if (i < revealIndex) {
+          // Revealed character: apply gradient
+          const positionRatio = i / (lineLength - 1);
+
+          // Two-stop gradient: sky-200 → sky-500
+          const color = lerpColor(
+            HEX_COLORS.sky200,
+            HEX_COLORS.sky500,
+            positionRatio
+          );
+          const ansiColor = hexToAnsi(color);
+
+          // Wrap character with ANSI color code + reset
+          renderedLine += `${ansiColor}${char}\x1b[0m`;
+        } else {
+          // Unrevealed character: render as space (invisible)
+          renderedLine += ' ';
+        }
+      }
+
+      lines.push(renderedLine);
+    }
+  } catch (error) {
+    // E-13: Gradient computation failure - return fallback (static banner)
+    console.error('Wave effect error:', error);
+    return BANNER_ART.map((line) => line);
+  }
+
+  return lines;
+}
+
 // Placeholder for future implementation
 // Future tasks will add:
-// - Animation effect functions (TASK_007, TASK_008)
+// - Animation loop (TASK_008)
 // - animateBanner() orchestrator (TASK_009)

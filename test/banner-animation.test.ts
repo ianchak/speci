@@ -804,3 +804,219 @@ describe('sleep utility', () => {
     });
   });
 });
+
+describe('renderWaveFrame', () => {
+  let module: typeof import('../lib/ui/banner-animation.js');
+  let bannerModule: typeof import('../lib/ui/banner.js');
+
+  beforeEach(async () => {
+    module = await import('../lib/ui/banner-animation.js');
+    bannerModule = await import('../lib/ui/banner.js');
+  });
+
+  describe('progress boundaries', () => {
+    it('returns all spaces at progress 0 (nothing revealed)', () => {
+      const frame = module.renderWaveFrame(0);
+
+      expect(frame).toHaveLength(6); // 6 banner lines
+      frame.forEach((line) => {
+        // Strip ANSI codes to check content
+        // eslint-disable-next-line no-control-regex
+        const plainLine = line.replace(/\x1b\[[0-9;]*m/g, '');
+        expect(plainLine).toMatch(/^\s*$/); // All spaces
+      });
+    });
+
+    it('returns fully colored banner at progress 1 (fully revealed)', () => {
+      const frame = module.renderWaveFrame(1.0);
+
+      expect(frame).toHaveLength(6);
+      frame.forEach((line, i) => {
+        // Should contain ANSI color codes
+        // eslint-disable-next-line no-control-regex
+        expect(line).toContain('\x1b[38;2;'); // ANSI RGB color prefix
+        // eslint-disable-next-line no-control-regex
+        expect(line).toContain('\x1b[0m'); // ANSI reset
+
+        // Strip ANSI codes and verify matches BANNER_ART
+        // eslint-disable-next-line no-control-regex
+        const plainLine = line.replace(/\x1b\[[0-9;]*m/g, '');
+        expect(plainLine).toEqual(bannerModule.BANNER_ART[i]);
+      });
+    });
+
+    it('returns half-revealed banner at progress 0.5', () => {
+      const frame = module.renderWaveFrame(0.5);
+
+      expect(frame).toHaveLength(6);
+      frame.forEach((line, i) => {
+        // eslint-disable-next-line no-control-regex
+        const plainLine = line.replace(/\x1b\[[0-9;]*m/g, '');
+        const lineLength = bannerModule.BANNER_ART[i].length;
+        const revealIndex = Math.floor(0.5 * lineLength);
+
+        // First half should match BANNER_ART
+        const revealed = plainLine.slice(0, revealIndex);
+        const expected = bannerModule.BANNER_ART[i].slice(0, revealIndex);
+        expect(revealed).toEqual(expected);
+
+        // Second half should be spaces
+        const unrevealed = plainLine.slice(revealIndex);
+        expect(unrevealed).toMatch(/^\s+$/);
+      });
+    });
+  });
+
+  describe('progress clamping', () => {
+    it('clamps negative progress to 0', () => {
+      const frame = module.renderWaveFrame(-0.5);
+      // eslint-disable-next-line no-control-regex
+      const plainLine = frame[0].replace(/\x1b\[[0-9;]*m/g, '');
+      expect(plainLine).toMatch(/^\s*$/); // Same as progress 0
+    });
+
+    it('clamps progress > 1.0 to 1.0', () => {
+      const frame = module.renderWaveFrame(1.5);
+      // eslint-disable-next-line no-control-regex
+      const plainLine = frame[0].replace(/\x1b\[[0-9;]*m/g, '');
+      expect(plainLine).toEqual(bannerModule.BANNER_ART[0]); // Same as progress 1.0
+    });
+
+    it('handles NaN progress (coerces to 0)', () => {
+      const frame = module.renderWaveFrame(NaN);
+      // eslint-disable-next-line no-control-regex
+      const plainLine = frame[0].replace(/\x1b\[[0-9;]*m/g, '');
+      expect(plainLine).toMatch(/^\s*$/);
+    });
+
+    it('handles Infinity progress (clamps to 1.0)', () => {
+      const frame = module.renderWaveFrame(Infinity);
+      // eslint-disable-next-line no-control-regex
+      const plainLine = frame[0].replace(/\x1b\[[0-9;]*m/g, '');
+      expect(plainLine).toEqual(bannerModule.BANNER_ART[0]);
+    });
+  });
+
+  describe('gradient color application', () => {
+    it('applies gradient across revealed characters', () => {
+      const frame = module.renderWaveFrame(1.0); // Full reveal
+
+      // First line should have gradient colors
+      const firstLine = frame[0];
+
+      // Count ANSI color codes - should have one per non-space character
+      // eslint-disable-next-line no-control-regex
+      const colorMatches = firstLine.match(/\x1b\[38;2;/g);
+      expect(colorMatches).toBeTruthy();
+      expect(colorMatches!.length).toBeGreaterThan(0);
+    });
+
+    it('applies ANSI reset after each character', () => {
+      const frame = module.renderWaveFrame(1.0);
+
+      // Count ANSI reset codes in first line
+      // eslint-disable-next-line no-control-regex
+      const resetCount = (frame[0].match(/\x1b\[0m/g) || []).length;
+      expect(resetCount).toBe(bannerModule.BANNER_ART[0].length); // One reset per character
+    });
+
+    it('gradient interpolates from left to right', () => {
+      const frame = module.renderWaveFrame(1.0);
+
+      // Extract all color codes from first line
+      // eslint-disable-next-line no-control-regex
+      const colorMatches = [
+        // eslint-disable-next-line no-control-regex
+        ...frame[0].matchAll(/\x1b\[38;2;(\d+);(\d+);(\d+)m/g),
+      ];
+      expect(colorMatches.length).toBeGreaterThan(1);
+
+      // First and last colors should be different (gradient applied)
+      const firstColor = `${colorMatches[0][1]},${colorMatches[0][2]},${colorMatches[0][3]}`;
+      const lastColor = `${colorMatches[colorMatches.length - 1][1]},${colorMatches[colorMatches.length - 1][2]},${colorMatches[colorMatches.length - 1][3]}`;
+      expect(firstColor).not.toEqual(lastColor);
+    });
+  });
+
+  describe('line structure', () => {
+    it('returns exactly 6 lines', () => {
+      expect(module.renderWaveFrame(0)).toHaveLength(6);
+      expect(module.renderWaveFrame(0.5)).toHaveLength(6);
+      expect(module.renderWaveFrame(1.0)).toHaveLength(6);
+    });
+
+    it('each line is non-empty string', () => {
+      const frame = module.renderWaveFrame(0.5);
+      frame.forEach((line) => {
+        expect(typeof line).toBe('string');
+        expect(line.length).toBeGreaterThan(0);
+      });
+    });
+
+    it('preserves BANNER_ART line order', () => {
+      const frame = module.renderWaveFrame(1.0);
+      frame.forEach((line, i) => {
+        // eslint-disable-next-line no-control-regex
+        const plainLine = line.replace(/\x1b\[[0-9;]*m/g, '');
+        expect(plainLine).toEqual(bannerModule.BANNER_ART[i]);
+      });
+    });
+
+    it('maintains correct line length after stripping ANSI codes', () => {
+      const frame = module.renderWaveFrame(0.5);
+      frame.forEach((line, i) => {
+        // eslint-disable-next-line no-control-regex
+        const plainLine = line.replace(/\x1b\[[0-9;]*m/g, '');
+        expect(plainLine.length).toBe(bannerModule.BANNER_ART[i].length);
+      });
+    });
+  });
+
+  describe('reveal progression', () => {
+    it('reveals more characters as progress increases', () => {
+      const frame0 = module.renderWaveFrame(0);
+      const frame25 = module.renderWaveFrame(0.25);
+      const frame50 = module.renderWaveFrame(0.5);
+      const frame75 = module.renderWaveFrame(0.75);
+      const frame100 = module.renderWaveFrame(1.0);
+
+      // Count non-space characters (revealed)
+      const countRevealed = (frame: string[]) => {
+        // eslint-disable-next-line no-control-regex
+        const plainLine = frame[0].replace(/\x1b\[[0-9;]*m/g, '');
+        return plainLine.replace(/\s/g, '').length;
+      };
+
+      const count0 = countRevealed(frame0);
+      const count25 = countRevealed(frame25);
+      const count50 = countRevealed(frame50);
+      const count75 = countRevealed(frame75);
+      const count100 = countRevealed(frame100);
+
+      // Progressive reveal: more characters as progress increases
+      expect(count0).toBeLessThanOrEqual(count25);
+      expect(count25).toBeLessThanOrEqual(count50);
+      expect(count50).toBeLessThanOrEqual(count75);
+      expect(count75).toBeLessThanOrEqual(count100);
+    });
+
+    it('reveals approximately correct percentage at various progress values', () => {
+      const testProgress = (progress: number, expectedRatio: number) => {
+        const frame = module.renderWaveFrame(progress);
+        // eslint-disable-next-line no-control-regex
+        const plainLine = frame[0].replace(/\x1b\[[0-9;]*m/g, '');
+        const revealed = plainLine.replace(/\s/g, '').length;
+        const total = bannerModule.BANNER_ART[0].replace(/\s/g, '').length;
+        const actualRatio = revealed / total;
+
+        // Allow some tolerance due to floor() in reveal calculation
+        expect(actualRatio).toBeGreaterThanOrEqual(expectedRatio - 0.1);
+        expect(actualRatio).toBeLessThanOrEqual(expectedRatio + 0.1);
+      };
+
+      testProgress(0.25, 0.25);
+      testProgress(0.5, 0.5);
+      testProgress(0.75, 0.75);
+    });
+  });
+});

@@ -78,8 +78,8 @@ graph TD
 | Task ID  | Title                        | Status      | Review Status | Priority | Complexity | Dependencies       | Assigned To     | Reviewed By     | Attempts |
 | -------- | ---------------------------- | ----------- | ------------- | -------- | ---------- | ------------------ | --------------- | --------------- | -------- |
 | TASK_005 | shouldAnimate() Detection    | COMPLETE    | PASSED        | High     | S (≤2h)    | TASK_001           | SA-20260205-005 | RA-20260205-005 | 1        |
-| TASK_006 | Sleep Utility                | IN PROGRESS | FAILED        | High     | S (≤2h)    | TASK_001           | SA-20260205-007 | RA-20260205-006 | 3        |
-| TASK_007 | Wave Reveal Effect           | NOT STARTED | -             | High     | M (2-4h)   | TASK_001, TASK_002 | -               | -               | 0        |
+| TASK_006 | Sleep Utility                | COMPLETE    | PASSED        | High     | S (≤2h)    | TASK_001           | SA-20260205-007 | RA-20260205-007 | 3        |
+| TASK_007 | Wave Reveal Effect           | IN PROGRESS | -             | High     | M (2-4h)   | TASK_001, TASK_002 | SA-20260205-008 | -               | 1        |
 | TASK_008 | Animation Loop               | NOT STARTED | -             | High     | M (2-4h)   | TASK_006, TASK_007 | -               | -               | 0        |
 | TASK_009 | animateBanner() Orchestrator | NOT STARTED | -             | High     | L (4-8h)   | TASK_005, TASK_008 | -               | -               | 0        |
 | MVT_M2   | Manual Verification Test     | NOT STARTED | -             | —        | 30 min     | TASK_005-009       | -               | -               | 0        |
@@ -205,13 +205,13 @@ TASK_001 → TASK_002 → TASK_007 → TASK_008 → TASK_009 → TASK_010 → TA
 
 ## Subagent Tracking
 
-Last Subagent ID: SA-20260205-007
+Last Subagent ID: SA-20260205-008
 
 ---
 
 ## Review Tracking
 
-Last Review ID: RA-20260205-006
+Last Review ID: RA-20260205-007
 
 ---
 
@@ -232,82 +232,20 @@ Last Review ID: RA-20260205-006
 
 ### For Fix Agent
 
-| Field           | Value                                                                                           |
-| --------------- | ----------------------------------------------------------------------------------------------- |
-| Task            | TASK_006                                                                                        |
-| Task Goal       | Implement internal sleep() utility for animation frame delays with Promise-based async control  |
-| Review Agent    | RA-20260205-006                                                                                 |
-| Failed Gate     | none (all gates passed, but AC3 NOT MET)                                                        |
-| Primary Error   | `lib/ui/banner-animation.ts:300` - sleep() is exported but AC3 requires it to be internal      |
-| Root Cause Hint | Function marked @internal JSDoc but still exported. Need to remove export keyword completely.   |
-| Do NOT          | Change test strategy, timing logic, JSDoc content, or add complex export patterns               |
+| Field           | Value |
+| --------------- | ----- |
+| Task            | -     |
+| Task Goal       | -     |
+| Review Agent    | -     |
+| Failed Gate     | -     |
+| Primary Error   | -     |
+| Root Cause Hint | -     |
+| Do NOT          | -     |
 
 ---
 
 ## Review Failure Notes
 
-### Review Failure Notes
-
-**Task:** TASK_006 - Sleep Utility
-**Task Goal:** Implement internal sleep() utility for animation frame delays with Promise-based async control
-**Review Agent:** RA-20260205-006
-
----
-
-#### Blocking Issues (must fix to pass)
-
-1. **AC3 NOT MET: Function is exported when it should be internal**
-   - Location: `lib/ui/banner-animation.ts:300`
-   - Expected: `async function sleep(ms: number): Promise<void>` (no export keyword)
-   - Actual: `export async function sleep(ms: number): Promise<void>`
-   - Fix: Remove `export` keyword from function declaration. The @internal JSDoc tag is not sufficient to satisfy AC3 which explicitly requires the function NOT be exported.
-
-2. **Testing Strategy Issue: Tests rely on exported function**
-   - Location: `test/banner-animation.test.ts:714` and throughout sleep utility tests
-   - Expected: Tests should not import/access internal functions directly
-   - Actual: Tests import sleep via `const { sleep } = await import('../lib/ui/banner-animation.js')`
-   - Fix: Either (A) test sleep() behavior indirectly through animation loop integration tests in future tasks, OR (B) duplicate the sleep implementation in test file as a test helper to verify expected behavior, OR (C) if testing internal functions is required, use a test-only export pattern (e.g., separate exports for test environment)
-
----
-
-#### Non-Blocking Issues (fix if time permits)
-
-None - implementation is otherwise excellent with comprehensive tests, proper JSDoc, correct types, and good timing tolerance handling.
-
----
-
-#### What Passed Review
-
-- AC1: Function signature correct ✓ `async function sleep(ms: number): Promise<void>`
-- AC2: Implementation correct ✓ `return new Promise(resolve => setTimeout(resolve, ms))`
-- AC4: Usage context documented ✓ (will be used in runAnimationLoop)
-- AC5: JSDoc complete and well-written ✓ (excellent documentation of timing characteristics)
-- AC6: Unit tests comprehensive ✓ (8 test cases with proper tolerances)
-- AC7: TypeScript compilation succeeds ✓
-- AC8: No external dependencies ✓
-- Verification gates: lint ✓, typecheck ✓, test ✓ (all passed)
-- Code quality: Excellent - clean implementation, no any types, proper error handling
-- Test coverage: Comprehensive - basic timing, edge cases, Promise behavior, frame interval simulation
-
----
-
-#### Fix Agent Instructions
-
-1. **Start with:** Decide on export strategy. The task spec says "internal (not exported)" but tests need access. Review the task notes (line 258-266 in TASK_006_sleep_utility.md) which clearly state the function should NOT be exported. The proper fix is likely option B or C above.
-
-2. **Recommended approach:** Remove export keyword and create test helper that duplicates the implementation for testing purposes. This maintains the "not exported" requirement while preserving test coverage. Alternative: use a test-only export mechanism if the project has established patterns for this.
-
-3. **Verify:** After fix, confirm `Object.keys(require('./lib/ui/banner-animation.js')).includes('sleep')` returns `false` as per Manual Verification checklist (line 230).
-
-4. **Context:** This is a timing primitive for the animation loop (TASK_008). The decision to make it internal is architectural - it keeps the public API surface minimal and focused on banner animation functions only.
-
-5. **Do NOT:** 
-   - Change the sleep() implementation itself (it's correct)
-   - Change JSDoc content (it's excellent)
-   - Change test timing tolerances (they're appropriate for CI)
-   - Add complex conditional exports or build-time logic
-   - Over-engineer the solution - simple approach is best
-
----
+(No active review failures - all issues addressed)
 
 
