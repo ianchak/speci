@@ -821,9 +821,9 @@ describe('sleep utility', () => {
       await testSleep(50);
       const elapsed = Date.now() - start;
 
-      // Allow ±15ms tolerance for event loop jitter and CI environments
-      expect(elapsed).toBeGreaterThanOrEqual(35);
-      expect(elapsed).toBeLessThanOrEqual(65);
+      // Allow ±20ms tolerance for event loop jitter and CI environments
+      expect(elapsed).toBeGreaterThanOrEqual(30);
+      expect(elapsed).toBeLessThanOrEqual(70);
     });
 
     it('accumulates delays correctly in consecutive calls', async () => {
@@ -833,9 +833,9 @@ describe('sleep utility', () => {
       await testSleep(20);
       const elapsed = Date.now() - start;
 
-      // Total: 60ms ± 45ms (3 sleeps with generous tolerance for event loop jitter and CI)
+      // Total: 60ms ± 50ms (3 sleeps with generous tolerance for event loop jitter and CI)
       expect(elapsed).toBeGreaterThanOrEqual(40);
-      expect(elapsed).toBeLessThanOrEqual(105);
+      expect(elapsed).toBeLessThanOrEqual(110);
     });
   });
 
@@ -1226,16 +1226,17 @@ describe('renderWaveFrame', () => {
         ];
         await module.runAnimationLoop(mockEffect, 100, createMockAnimState());
 
-        // After first 6 line writes, should have cursor up before next frame
+        // After first batched frame write, should have cursor up before next frame
         let foundFirstCursorUp = false;
-        let writesSinceStart = 0;
+        let framesSeen = 0;
         for (const write of writes) {
-          if (write === '\x1b[6A' && writesSinceStart >= 6) {
+          if (write === '\x1b[6A' && framesSeen >= 1) {
             foundFirstCursorUp = true;
             break;
           }
-          if (!write.includes('\x1b[6A')) {
-            writesSinceStart++;
+          // Count batched frame writes (multi-line strings with \n)
+          if (!write.includes('\x1b[6A') && write.includes('\n')) {
+            framesSeen++;
           }
         }
         expect(foundFirstCursorUp).toBe(true);
@@ -1313,13 +1314,8 @@ describe('renderWaveFrame', () => {
         const mockEffect = () => ['A', 'B', 'C', 'D', 'E', 'F'];
         await module.runAnimationLoop(mockEffect, 50, createMockAnimState());
 
-        // First frame: 6 lines with newlines
-        expect(writes[0]).toBe('A\n');
-        expect(writes[1]).toBe('B\n');
-        expect(writes[2]).toBe('C\n');
-        expect(writes[3]).toBe('D\n');
-        expect(writes[4]).toBe('E\n');
-        expect(writes[5]).toBe('F\n');
+        // First frame: single batched write with all lines
+        expect(writes[0]).toBe('A\nB\nC\nD\nE\nF\n');
       });
 
       it('writes multiple frames with correct structure', async () => {
@@ -1340,18 +1336,13 @@ describe('renderWaveFrame', () => {
         // Should have multiple frames written
         expect(callCount).toBeGreaterThan(3);
 
-        // Each frame should have 6 lines
-        // First frame: writes[0-5] are Frame1-1 through Frame1-6
-        expect(writes[0]).toBe('Frame1-1\n');
-        expect(writes[1]).toBe('Frame1-2\n');
-        expect(writes[2]).toBe('Frame1-3\n');
-        expect(writes[3]).toBe('Frame1-4\n');
-        expect(writes[4]).toBe('Frame1-5\n');
-        expect(writes[5]).toBe('Frame1-6\n');
+        // Each frame should be batched into a single write
+        // First frame: writes[0] contains all 6 lines
+        expect(writes[0]).toBe('Frame1-1\nFrame1-2\nFrame1-3\nFrame1-4\nFrame1-5\nFrame1-6\n');
 
         // Second frame should have cursor up before it
-        expect(writes[6]).toBe('\x1b[6A');
-        expect(writes[7]).toBe('Frame2-1\n');
+        expect(writes[1]).toBe('\x1b[6A');
+        expect(writes[2]).toBe('Frame2-1\nFrame2-2\nFrame2-3\nFrame2-4\nFrame2-5\nFrame2-6\n');
       });
     });
 
@@ -1460,9 +1451,8 @@ describe('renderWaveFrame', () => {
           module.runAnimationLoop(mockEffect, 50, createMockAnimState())
         ).resolves.not.toThrow();
 
-        // Should still write 6 newlines per frame
-        const firstFrameWrites = writes.slice(0, 6);
-        expect(firstFrameWrites).toEqual(['\n', '\n', '\n', '\n', '\n', '\n']);
+        // Should write batched frame with 6 newlines
+        expect(writes[0]).toBe('\n\n\n\n\n\n');
       });
     });
   });

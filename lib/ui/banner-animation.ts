@@ -690,10 +690,8 @@ export async function runAnimationLoop(
           process.stdout.write(ANSI_CURSOR_UP_6);
         }
 
-        // Write final frame
-        for (const line of finalFrame) {
-          process.stdout.write(line + '\n');
-        }
+        // Write final frame (batched: single write per frame)
+        process.stdout.write(finalFrame.join('\n') + '\n');
 
         state.isRunning = false;
         break; // Exit loop
@@ -709,10 +707,8 @@ export async function runAnimationLoop(
         isFirstFrame = false;
       }
 
-      // Write frame to stdout (6 lines)
-      for (const line of frame) {
-        process.stdout.write(line + '\n');
-      }
+      // Write frame to stdout (batched: single write per frame)
+      process.stdout.write(frame.join('\n') + '\n');
 
       state.currentFrame++;
 

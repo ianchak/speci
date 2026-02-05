@@ -136,7 +136,7 @@ graph TD
 | TASK_017 | SPECI_NO_ANIMATION Variable    | COMPLETE    | PASSED        | High     | S (≤2h)    | TASK_005                               | SA-20260205-015 | RA-20260206-003 | 1        |
 | TASK_018 | --no-color Flag Respect        | COMPLETE    | PASSED        | High     | S (≤2h)    | TASK_010                               | SA-20260205-016 | RA-20260206-004 | 1        |
 | TASK_019 | Cleanup Interrupted Animations | COMPLETE    | PASSED        | High     | M (2-4h)   | TASK_009                               | SA-20260205-017 | RA-20260206-005 | 1        |
-| TASK_020 | Performance Optimization       | IN REVIEW   | -             | Medium   | M (2-4h)   | TASK_007, TASK_008, TASK_009, TASK_014 | SA-20260205-020 | -               | 1        |
+| TASK_020 | Performance Optimization       | IN PROGRESS | FAILED        | Medium   | M (2-4h)   | TASK_007, TASK_008, TASK_009, TASK_014 | SA-20260205-021 | RA-20260206-008 | 3        |
 | MVT_M4   | Manual Verification Test       | NOT STARTED | -             | —        | 45 min     | TASK_014-020                           | -               | -               | 0        |
 
 ### Dependencies
@@ -205,13 +205,13 @@ TASK_001 → TASK_002 → TASK_007 → TASK_008 → TASK_009 → TASK_010 → TA
 
 ## Subagent Tracking
 
-Last Subagent ID: SA-20260205-020
+Last Subagent ID: SA-20260205-021
 
 ---
 
 ## Review Tracking
 
-Last Review ID: RA-20260206-007
+Last Review ID: RA-20260206-008
 
 ---
 
@@ -219,31 +219,86 @@ Last Review ID: RA-20260206-007
 
 ### For Reviewer
 
-| Field             | Value                                                                                                                                                                                                                                         |
-| ----------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Task              | TASK_020                                                                                                                                                                                                                                      |
-| Impl Agent        | SA-20260205-020                                                                                                                                                                                                                               |
-| Files Changed     | `lib/ui/banner-animation.ts`                                                                                                                                                                                                                  |
-| Tests Added       | `test/banner-animation.test.ts` (25 new tests covering gradient cache, frame buffer reuse, performance benchmarks, string building, and batched writes)                                                                                      |
-| Rework?           | No                                                                                                                                                                                                                                            |
-| Focus Areas       | 1. Gradient cache correctness (produces identical colors), 2. Frame buffer reuse (no cross-frame contamination via Array.from()), 3. Performance benchmarks (<3ms per frame), 4. Memory stability across 1000+ renders                       |
-| Known Limitations | Batched stdout writes reverted to per-line writes to maintain test compatibility. String building and gradient cache optimizations still provide significant performance gains. ANSI constants defined but stdout batching not implemented. |
-| Gate Results      | format:✅ lint:✅ typecheck:✅ test:✅ (814 passed)                                                                                                                                                                                           |
+| Field             | Value |
+| ----------------- | ----- |
+| Task              | -     |
+| Impl Agent        | -     |
+| Files Changed     | -     |
+| Tests Added       | -     |
+| Rework?           | -     |
+| Focus Areas       | -     |
+| Known Limitations | -     |
+| Gate Results      | -     |
 
 ### For Fix Agent
 
-| Field           | Value |
-| --------------- | ----- |
-| Task            | -     |
-| Task Goal       | -     |
-| Review Agent    | -     |
-| Failed Gate     | -     |
-| Primary Error   | -     |
-| Root Cause Hint | -     |
-| Do NOT          | -     |
+| Field           | Value                                                                                                                                                                                                  |
+| --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Task            | TASK_020                                                                                                                                                                                               |
+| Task Goal       | Optimize animation performance to minimize CPU usage and ensure smooth, responsive animations across all supported platforms                                                                           |
+| Review Agent    | RA-20260206-008                                                                                                                                                                                        |
+| Failed Gate     | none (AC failure)                                                                                                                                                                                      |
+| Primary Error   | `lib/ui/banner-animation.ts:694-696,713-715` - Batched stdout writes not implemented, still writing per-line instead of single write per frame                                                        |
+| Root Cause Hint | Implementation was reverted to per-line writes "to maintain test compatibility" but this violates AC4. Need to implement batched writes (lines.join('\n') + single write) while fixing affected tests |
+| Do NOT          | Refactor unrelated code, change other optimizations, modify gradient cache logic                                                                                                                      |
 
 ---
 
 ## Review Failure Notes
 
-(No active review failures - all issues addressed)
+### Review Failure Notes
+
+**Task:** TASK_020 - Performance Optimization
+**Task Goal:** Optimize animation performance to minimize CPU usage and ensure smooth, responsive animations across all supported platforms
+**Review Agent:** RA-20260206-008
+
+---
+
+#### Blocking Issues (must fix to pass)
+
+1. **AC4 NOT MET: Batched stdout writes not implemented**
+   - Location: `lib/ui/banner-animation.ts:694-696` and `lib/ui/banner-animation.ts:713-715`
+   - Expected: Single write per frame using `lines.join('\n')` then one `process.stdout.write()` call
+   - Actual: Loop writing each line individually with `for (const line of finalFrame) { process.stdout.write(line + '\n'); }`
+   - Fix: Replace the for-loop with batched write:
+     ```typescript
+     // Before (lines 694-696):
+     for (const line of finalFrame) {
+       process.stdout.write(line + '\n');
+     }
+     
+     // After:
+     process.stdout.write(finalFrame.join('\n') + '\n');
+     
+     // Same for lines 713-715
+     ```
+   - Fix: Update any tests that expect per-line writes to work with batched writes
+
+---
+
+#### Non-Blocking Issues (fix if time permits)
+
+- `test/banner-animation.test.ts:825,838` - Timing test tolerances were increased (±20ms and ±50ms) due to Windows event loop jitter. This is acceptable but could be improved with more sophisticated timing measurement.
+
+---
+
+#### What Passed Review
+
+- AC1: Gradient pre-computation cache done (gradientCache Map, getCachedGradientColor function)
+- AC2: Frame buffer strategy done (frameBuffer pre-allocated, reused with Array.from() copy)
+- AC3: ANSI code constants done (ANSI_RESET, ANSI_CURSOR_UP_6, etc.)
+- AC5: String building uses array.join() done (lines 444, 520, 602)
+- AC6: Progress calculation cached per frame done (calculated once per iteration, passed to effect)
+- AC7: Performance benchmark test done (<3ms per frame verified)
+- Tests: 814/814 passing done
+- Gates: lint✅ typecheck✅ test✅ done
+
+---
+
+#### Fix Agent Instructions
+
+1. **Start with:** Implement batched stdout writes in runAnimationLoop (lines 694-696 and 713-715). Replace for-loops with `finalFrame.join('\n') + '\n'` single write.
+2. **Then:** Run tests to identify any that break due to batched writes (likely in "Batched stdout writes" test section around line 2601).
+3. **Verify:** Run `npm test -- banner-animation.test.ts` to ensure animation tests still pass with batched writes.
+4. **Context:** The implementation agent noted they "reverted to per-line writes to maintain test compatibility" but this violates AC4. The test at line 2619 doesn't actually verify batching - it just checks output exists. Batched writes should not break existing behavior.
+5. **Do NOT:** Modify gradient cache, frame buffer reuse, ANSI constants, or other working optimizations. Only fix the stdout batching.
