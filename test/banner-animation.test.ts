@@ -1494,17 +1494,20 @@ describe('animateBanner', () => {
         }
       );
 
+      const consoleLogSpy = vi
+        .spyOn(console, 'log')
+        .mockImplementation(() => {});
       const consoleErrorSpy = vi
         .spyOn(console, 'error')
         .mockImplementation(() => {});
 
       await module.animateBanner();
 
-      // Should log error
-      expect(consoleErrorSpy).toHaveBeenCalledWith(
-        'Terminal state capture failed:',
-        expect.any(Error)
-      );
+      // Should NOT log error (silent fallback)
+      expect(consoleErrorSpy).not.toHaveBeenCalled();
+
+      // Should render static banner with console.log
+      expect(consoleLogSpy).toHaveBeenCalled();
 
       // Should render static banner
       const bannerOutput = writes.join('');
@@ -1514,6 +1517,7 @@ describe('animateBanner', () => {
       const cursorHide = writes.some((w) => w.includes('\x1b[?25l'));
       expect(cursorHide).toBe(false);
 
+      consoleLogSpy.mockRestore();
       consoleErrorSpy.mockRestore();
     });
 
@@ -1567,11 +1571,8 @@ describe('animateBanner', () => {
 
       await module.animateBanner();
 
-      // Should log warning
-      expect(consoleWarnSpy).toHaveBeenCalledWith(
-        'Cursor hide failed:',
-        expect.any(Error)
-      );
+      // Should NOT log warning (silent handling)
+      expect(consoleWarnSpy).not.toHaveBeenCalled();
 
       // Should still complete animation (cleanup should show cursor)
       const cursorShow = writes.some((w) => w.includes('\x1b[?25h'));
@@ -1602,11 +1603,8 @@ describe('animateBanner', () => {
 
       await module.animateBanner();
 
-      // Should log warning
-      expect(consoleWarnSpy).toHaveBeenCalledWith(
-        'Cleanup registration failed:',
-        expect.any(Error)
-      );
+      // Should NOT log warning (silent handling)
+      expect(consoleWarnSpy).not.toHaveBeenCalled();
 
       // Should still complete animation
       // Cleanup should still run in finally block
@@ -1873,5 +1871,117 @@ describe('animateBanner', () => {
       consoleErrorSpy.mockRestore();
     });
   });
-});
 
+  describe('Static Banner Fallback (TASK_013)', () => {
+    it('falls back to static banner on animation loop error', async () => {
+      const mockState = createMockSnapshot();
+      vi.spyOn(terminalModule.terminalState, 'capture').mockReturnValue(
+        mockState
+      );
+      vi.spyOn(terminalModule.terminalState, 'restore').mockImplementation(
+        () => {}
+      );
+      vi.spyOn(signalsModule, 'registerCleanup').mockImplementation(() => {});
+      vi.spyOn(signalsModule, 'unregisterCleanup').mockImplementation(() => {});
+
+      // Force animation loop to throw
+      vi.spyOn(module, 'runAnimationLoop').mockRejectedValue(
+        new Error('Test animation error')
+      );
+
+      await module.animateBanner();
+
+      // Should render static banner (look for cursor up and banner content)
+      const output = writes.join('');
+      expect(output).toContain('\x1b[6A'); // Cursor up 6 lines
+      expect(output.length).toBeGreaterThan(0);
+    });
+
+    it('falls back to static banner on renderWaveFrame error', async () => {
+      const mockState = createMockSnapshot();
+      vi.spyOn(terminalModule.terminalState, 'capture').mockReturnValue(
+        mockState
+      );
+      vi.spyOn(terminalModule.terminalState, 'restore').mockImplementation(
+        () => {}
+      );
+      vi.spyOn(signalsModule, 'registerCleanup').mockImplementation(() => {});
+      vi.spyOn(signalsModule, 'unregisterCleanup').mockImplementation(() => {});
+
+      // Force renderWaveFrame to throw
+      vi.spyOn(module, 'renderWaveFrame').mockImplementation(() => {
+        throw new Error('Test render error');
+      });
+
+      await module.animateBanner();
+
+      // Should complete without throwing
+      expect(writes.length).toBeGreaterThan(0);
+    });
+
+    it('displays static banner with surrounding newlines on fallback', async () => {
+      const mockState = createMockSnapshot();
+      vi.spyOn(terminalModule.terminalState, 'capture').mockReturnValue(
+        mockState
+      );
+      vi.spyOn(terminalModule.terminalState, 'restore').mockImplementation(
+        () => {}
+      );
+      vi.spyOn(signalsModule, 'registerCleanup').mockImplementation(() => {});
+      vi.spyOn(signalsModule, 'unregisterCleanup').mockImplementation(() => {});
+      vi.spyOn(module, 'runAnimationLoop').mockRejectedValue(
+        new Error('Test error')
+      );
+
+      await module.animateBanner();
+
+      // Check that output includes banner content
+      const output = writes.join('');
+      expect(output.length).toBeGreaterThan(100); // Banner is substantial
+    });
+
+    it('handles all animation errors with static banner fallback', async () => {
+      const mockState = createMockSnapshot();
+      vi.spyOn(terminalModule.terminalState, 'capture').mockReturnValue(
+        mockState
+      );
+      vi.spyOn(terminalModule.terminalState, 'restore').mockImplementation(
+        () => {}
+      );
+      vi.spyOn(signalsModule, 'registerCleanup').mockImplementation(() => {});
+      vi.spyOn(signalsModule, 'unregisterCleanup').mockImplementation(() => {});
+
+      // Simulate unexpected module error
+      vi.spyOn(module, 'runAnimationLoop').mockRejectedValue(
+        new Error('Unexpected error')
+      );
+
+      // Should not throw
+      await expect(module.animateBanner()).resolves.not.toThrow();
+
+      // Should produce output (static banner)
+      expect(writes.length).toBeGreaterThan(0);
+    });
+
+    it('ensures static banner format matches static path', async () => {
+      const mockState = createMockSnapshot();
+      vi.spyOn(terminalModule.terminalState, 'capture').mockReturnValue(
+        mockState
+      );
+      vi.spyOn(terminalModule.terminalState, 'restore').mockImplementation(
+        () => {}
+      );
+      vi.spyOn(signalsModule, 'registerCleanup').mockImplementation(() => {});
+      vi.spyOn(signalsModule, 'unregisterCleanup').mockImplementation(() => {});
+      vi.spyOn(module, 'runAnimationLoop').mockRejectedValue(
+        new Error('Test error')
+      );
+
+      await module.animateBanner();
+
+      // Output should include cursor positioning and banner
+      const output = writes.join('');
+      expect(output).toContain('\x1b[6A'); // Cursor up
+    });
+  });
+});

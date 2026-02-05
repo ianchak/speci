@@ -362,9 +362,8 @@ export function renderWaveFrame(progress: number): string[] {
 
       lines.push(renderedLine);
     }
-  } catch (error) {
-    // E-13: Gradient computation failure - return fallback (static banner)
-    console.error('Wave effect error:', error);
+  } catch {
+    // E-13: Gradient computation failure - return fallback (static banner lines, silent)
     return BANNER_ART.map((line) => line);
   }
 
@@ -552,43 +551,38 @@ export async function animateBanner(): Promise<void> {
     // Step 2: Terminal State Capture (E-7)
     try {
       terminalSnapshot = terminalState.capture();
-    } catch (error) {
-      // E-7: Cannot capture terminal state - skip animation, use fallback
-      console.error('Terminal state capture failed:', error);
-      process.stdout.write(renderBanner() + '\n');
+    } catch {
+      // E-7: Cannot capture terminal state - skip animation, use fallback (silent)
+      console.log('\n' + renderBanner({ showVersion: true }) + '\n');
       return;
     }
 
     // Step 3: Cursor Hide (E-8)
     try {
       process.stdout.write('\x1b[?25l'); // ANSI: Hide cursor
-    } catch (error) {
-      // E-8: Cursor hide failed - log warning but continue
+    } catch {
+      // E-8: Cursor hide failed - continue silently
       // Animation will work without hidden cursor (just less polished)
-      console.warn('Cursor hide failed:', error);
     }
 
     // Step 4: Cleanup Registration (E-9)
     try {
       registerCleanup(cleanup);
       cleanupRegistered = true;
-    } catch (error) {
-      // E-9: Cleanup registration failed - log warning but continue
+    } catch {
+      // E-9: Cleanup registration failed - continue silently
       // Cleanup will still run in finally block, just not on signals
-      console.warn('Cleanup registration failed:', error);
     }
 
     // Step 5: Animation Execution (E-6)
     try {
       await runAnimationLoop(renderWaveFrame, duration);
-    } catch (error) {
-      // E-6: Animation loop exception - fallback to static banner
-      console.error('Animation error:', error);
-
+    } catch {
+      // E-6: Animation loop exception - fallback to static banner (silent)
       // Step 6: Error Fallback
-      // Clear animation output and render static banner
+      // Clear animation output and render static banner with version
       process.stdout.write('\x1b[6A'); // Move up 6 lines
-      process.stdout.write(renderBanner() + '\n');
+      console.log('\n' + renderBanner({ showVersion: true }) + '\n');
     }
   } finally {
     // Step 7: Guaranteed Cleanup

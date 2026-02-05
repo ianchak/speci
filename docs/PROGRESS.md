@@ -103,13 +103,13 @@ graph TD
 
 ## Milestone: M3 - Integration
 
-| Task ID  | Title                               | Status      | Priority | Complexity | Dependencies |
-| -------- | ----------------------------------- | ----------- | -------- | ---------- | ------------ |
-| TASK_010 | displayBanner() Conditional Animate | IN REVIEW   | High     | S (≤2h)    | TASK_009     | SA-20260205-011 | -               | 1        |
-| TASK_011 | No-Args Handler Async IIFE          | NOT STARTED | High     | S (≤2h)    | TASK_010     |
-| TASK_012 | PreAction Hook (No Changes)         | NOT STARTED | Medium   | S (≤2h)    | TASK_010     |
-| TASK_013 | Static Banner Fallback              | NOT STARTED | High     | S (≤2h)    | TASK_009     |
-| MVT_M3   | Manual Verification Test            | NOT STARTED | —        | 30 min     | TASK_010-013 |
+| Task ID  | Title                               | Status      | Review Status | Priority | Complexity | Dependencies | Assigned To     | Reviewed By     | Attempts |
+| -------- | ----------------------------------- | ----------- | ------------- | -------- | ---------- | ------------ | --------------- | --------------- | -------- |
+| TASK_010 | displayBanner() Conditional Animate | COMPLETE    | PASSED        | High     | S (≤2h)    | TASK_009     | SA-20260205-011 | RA-20260205-011 | 1        |
+| TASK_011 | No-Args Handler Async IIFE          | COMPLETE    | PASSED        | High     | S (≤2h)    | TASK_010     | SA-20260205-012 | RA-20260205-012 | 1        |
+| TASK_012 | PreAction Hook (No Changes)         | NOT STARTED | -             | Medium   | S (≤2h)    | TASK_010     | -               | -               | 0        |
+| TASK_013 | Static Banner Fallback              | IN PROGRESS | -             | High     | S (≤2h)    | TASK_009     | SA-20260205-013 | -               | 1        |
+| MVT_M3   | Manual Verification Test            | NOT STARTED | -             | —        | 30 min     | TASK_010-013 | -               | -               | 0        |
 
 ### Dependencies
 
@@ -205,13 +205,13 @@ TASK_001 → TASK_002 → TASK_007 → TASK_008 → TASK_009 → TASK_010 → TA
 
 ## Subagent Tracking
 
-Last Subagent ID: SA-20260205-011
+Last Subagent ID: SA-20260205-013
 
 ---
 
 ## Review Tracking
 
-Last Review ID: RA-20260205-010
+Last Review ID: RA-20260205-012
 
 ---
 
@@ -219,16 +219,16 @@ Last Review ID: RA-20260205-010
 
 ### For Reviewer
 
-| Field             | Value                                                                                                                           |
-| ----------------- | ------------------------------------------------------------------------------------------------------------------------------- |
-| Task              | TASK_010                                                                                                                        |
-| Impl Agent        | SA-20260205-011                                                                                                                 |
-| Files Changed     | `bin/speci.ts`                                                                                                                  |
-| Tests Added       | None (manual testing only per task spec)                                                                                        |
-| Rework?           | No                                                                                                                              |
-| Focus Areas       | Return type `Promise<void> \| void`, require() usage with eslint-disable, conditional animation vs static banner logic         |
-| Known Limitations | No automated tests added (task spec marked "Skip Test-First"). Manual verification needed for both animation and static modes. |
-| Gate Results      | format:✅ lint:✅ typecheck:✅ test:✅                                                                                          |
+| Field             | Value |
+| ----------------- | ----- |
+| Task              | -     |
+| Impl Agent        | -     |
+| Files Changed     | -     |
+| Tests Added       | -     |
+| Rework?           | -     |
+| Focus Areas       | -     |
+| Known Limitations | -     |
+| Gate Results      | -     |
 
 ### For Fix Agent
 
