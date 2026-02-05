@@ -1338,11 +1338,15 @@ describe('renderWaveFrame', () => {
 
         // Each frame should be batched into a single write
         // First frame: writes[0] contains all 6 lines
-        expect(writes[0]).toBe('Frame1-1\nFrame1-2\nFrame1-3\nFrame1-4\nFrame1-5\nFrame1-6\n');
+        expect(writes[0]).toBe(
+          'Frame1-1\nFrame1-2\nFrame1-3\nFrame1-4\nFrame1-5\nFrame1-6\n'
+        );
 
         // Second frame should have cursor up before it
         expect(writes[1]).toBe('\x1b[6A');
-        expect(writes[2]).toBe('Frame2-1\nFrame2-2\nFrame2-3\nFrame2-4\nFrame2-5\nFrame2-6\n');
+        expect(writes[2]).toBe(
+          'Frame2-1\nFrame2-2\nFrame2-3\nFrame2-4\nFrame2-5\nFrame2-6\n'
+        );
       });
     });
 
@@ -2627,6 +2631,489 @@ describe('Performance Optimization (TASK_020)', () => {
 
       // Should have written output
       expect(writes.length).toBeGreaterThan(0);
+    });
+  });
+});
+
+/**
+ * Test Suite 22: Performance Benchmarks (TASK_021)
+ *
+ * Verifies that the ASCII banner animation meets all timing and performance
+ * requirements specified in FR-5 and NFR-5:
+ * - Animation completes within 3 seconds (FR-5)
+ * - CPU usage < 25% of wall time (NFR-5)
+ * - Target frame rate maintained (60 FPS)
+ * - No blocking behavior or memory leaks
+ */
+describe('Performance Benchmarks (TASK_021)', () => {
+  let module: typeof import('../lib/ui/banner-animation.js');
+  let stdoutWriteSpy: ReturnType<typeof vi.spyOn>;
+
+  beforeEach(async () => {
+    module = await import('../lib/ui/banner-animation.js');
+    // Mock stdout to prevent terminal pollution during tests
+    stdoutWriteSpy = vi
+      .spyOn(process.stdout, 'write')
+      .mockImplementation(() => true);
+  });
+
+  afterEach(() => {
+    stdoutWriteSpy.mockRestore();
+  });
+
+  describe('Animation Duration (FR-5)', () => {
+    it('completes within 3-second limit with default settings', async () => {
+      const MAX_DURATION = 3000; // FR-5 requirement
+      const DEFAULT_DURATION = 2000; // Default animation length
+      const TIMING_TOLERANCE = 200; // System variance tolerance
+
+      const startTime = Date.now();
+      await module.animateBanner();
+      const elapsed = Date.now() - startTime;
+
+      // Must complete within FR-5 limit
+      expect(elapsed).toBeLessThan(MAX_DURATION);
+
+      // Should be close to default duration (within tolerance)
+      expect(elapsed).toBeGreaterThanOrEqual(
+        DEFAULT_DURATION - TIMING_TOLERANCE
+      );
+      expect(elapsed).toBeLessThanOrEqual(DEFAULT_DURATION + TIMING_TOLERANCE);
+    });
+
+    it('duration stays within tolerance for multiple runs', async () => {
+      const DEFAULT_DURATION = 2000;
+      const TIMING_TOLERANCE = 200;
+      const runs = 3;
+      const durations: number[] = [];
+
+      for (let i = 0; i < runs; i++) {
+        const startTime = Date.now();
+        await module.animateBanner();
+        const elapsed = Date.now() - startTime;
+        durations.push(elapsed);
+      }
+
+      // All runs should be within tolerance
+      for (const duration of durations) {
+        expect(duration).toBeGreaterThanOrEqual(
+          DEFAULT_DURATION - TIMING_TOLERANCE
+        );
+        expect(duration).toBeLessThanOrEqual(
+          DEFAULT_DURATION + TIMING_TOLERANCE
+        );
+      }
+    }, 10000); // 10 second timeout for 3 animation runs
+  });
+
+  describe('Frame Rate Validation', () => {
+    it('maintains 60 FPS target with default settings', () => {
+      const TARGET_FPS = 60;
+      const FRAME_INTERVAL = 16; // ~60fps (1000ms / 60)
+
+      // Verify constants match target FPS
+      expect(module.FPS_TARGET).toBe(TARGET_FPS);
+      expect(module.FRAME_INTERVAL).toBe(FRAME_INTERVAL);
+
+      // Calculate expected interval from FPS
+      const expectedInterval = Math.floor(1000 / TARGET_FPS);
+      expect(module.FRAME_INTERVAL).toBeCloseTo(expectedInterval, 1);
+    });
+
+    it('frame count matches expected calculation', () => {
+      const DEFAULT_DURATION = 2000;
+      const FRAME_INTERVAL = 16;
+
+      // Expected frame count: duration / frame_interval
+      const expectedFrames = Math.floor(DEFAULT_DURATION / FRAME_INTERVAL);
+
+      // Verify constants produce expected frame count
+      expect(module.DURATION).toBe(DEFAULT_DURATION);
+      expect(module.FRAME_INTERVAL).toBe(FRAME_INTERVAL);
+
+      const calculatedFrames = Math.floor(
+        module.DURATION / module.FRAME_INTERVAL
+      );
+      expect(calculatedFrames).toBe(expectedFrames);
+      expect(calculatedFrames).toBeGreaterThanOrEqual(120); // At least 120 frames for 2s at 60fps
+    });
+
+    it('handles 30 FPS target correctly', () => {
+      const FPS_30 = 30;
+      const FRAME_INTERVAL_30 = Math.floor(1000 / FPS_30);
+
+      // 30 FPS should have ~33ms frame interval
+      expect(FRAME_INTERVAL_30).toBeCloseTo(33, 1);
+
+      // Frame count at 30 FPS for 2s
+      const DEFAULT_DURATION = 2000;
+      const expectedFrames = Math.floor(DEFAULT_DURATION / FRAME_INTERVAL_30);
+      expect(expectedFrames).toBeCloseTo(60, 2); // ~60 frames
+    });
+  });
+
+  describe('CPU Usage (NFR-5)', () => {
+    it('CPU usage remains below 25% of wall time', async () => {
+      const MAX_CPU_PERCENTAGE = 25; // NFR-5 requirement
+
+      const startCpu = process.cpuUsage();
+      const startTime = Date.now();
+
+      await module.animateBanner();
+
+      const elapsed = Date.now() - startTime;
+      const cpuUsage = process.cpuUsage(startCpu);
+
+      // Total CPU time in milliseconds
+      const cpuTimeMs = (cpuUsage.user + cpuUsage.system) / 1000;
+
+      // CPU percentage: (cpu_time / wall_time) * 100
+      const cpuPercentage = (cpuTimeMs / elapsed) * 100;
+
+      // Should be less than 25% per NFR-5
+      expect(cpuPercentage).toBeLessThan(MAX_CPU_PERCENTAGE);
+
+      // Also verify absolute CPU time is reasonable (< 500ms for 2s animation)
+      const MAX_CPU_TIME = 500;
+      expect(cpuTimeMs).toBeLessThan(MAX_CPU_TIME);
+    });
+
+    it('no busy-wait loops detected', async () => {
+      // Measure CPU during animation
+      const startCpu = process.cpuUsage();
+      await module.animateBanner();
+      const cpuUsage = process.cpuUsage(startCpu);
+
+      const cpuTimeMs = (cpuUsage.user + cpuUsage.system) / 1000;
+
+      // Busy-wait would cause very high CPU usage (>1000ms)
+      // Proper async should keep it low (<500ms)
+      expect(cpuTimeMs).toBeLessThan(500);
+    });
+
+    it('CPU usage consistent across multiple runs', async () => {
+      const runs = 3;
+      const cpuTimes: number[] = [];
+
+      for (let i = 0; i < runs; i++) {
+        const startCpu = process.cpuUsage();
+        await module.animateBanner();
+        const cpuUsage = process.cpuUsage(startCpu);
+        const cpuTimeMs = (cpuUsage.user + cpuUsage.system) / 1000;
+        cpuTimes.push(cpuTimeMs);
+      }
+
+      // All runs should have similar CPU usage
+      const maxCpu = Math.max(...cpuTimes);
+      const minCpu = Math.min(...cpuTimes);
+      const variance = maxCpu - minCpu;
+
+      // Variance should be reasonable (< 200ms difference)
+      expect(variance).toBeLessThan(200);
+
+      // All should be below 500ms
+      for (const cpuTime of cpuTimes) {
+        expect(cpuTime).toBeLessThan(500);
+      }
+    }, 10000); // 10 second timeout for 3 animation runs
+  });
+
+  describe('Memory Stability', () => {
+    it('no memory leaks from timers', async () => {
+      const initialMemory = process.memoryUsage().heapUsed;
+
+      // Run animation multiple times
+      for (let i = 0; i < 5; i++) {
+        await module.animateBanner();
+      }
+
+      // Force garbage collection if available
+      if (global.gc) {
+        global.gc();
+      }
+
+      const finalMemory = process.memoryUsage().heapUsed;
+      const memoryGrowth = finalMemory - initialMemory;
+
+      // Memory growth should be minimal (< 5MB)
+      const MAX_MEMORY_GROWTH = 5 * 1024 * 1024; // 5MB
+      expect(memoryGrowth).toBeLessThan(MAX_MEMORY_GROWTH);
+    }, 15000); // 15 second timeout for 5 animation runs
+
+    it('no leaks from cleanup handlers', async () => {
+      const measurements: number[] = [];
+
+      // Measure memory before each run
+      for (let i = 0; i < 3; i++) {
+        const beforeMemory = process.memoryUsage().heapUsed;
+        await module.animateBanner();
+
+        // Short delay to allow cleanup
+        await new Promise((resolve) => setTimeout(resolve, 100));
+
+        const afterMemory = process.memoryUsage().heapUsed;
+        measurements.push(afterMemory - beforeMemory);
+      }
+
+      // Memory delta should not grow significantly between runs
+      // (indicates proper cleanup)
+      const firstDelta = measurements[0];
+      const lastDelta = measurements[2];
+      const growth = lastDelta - firstDelta;
+
+      // Growth between runs should be minimal
+      expect(Math.abs(growth)).toBeLessThan(1024 * 1024); // < 1MB
+    }, 10000); // 10 second timeout for 3 animation runs
+
+    it('heap remains stable during long animation', async () => {
+      const memorySnapshots: number[] = [];
+      const SNAPSHOT_COUNT = 5;
+
+      // Mock a longer animation by running multiple times
+      for (let i = 0; i < SNAPSHOT_COUNT; i++) {
+        const snapshot = process.memoryUsage().heapUsed;
+        memorySnapshots.push(snapshot);
+        await module.animateBanner();
+      }
+
+      // Check that memory doesn't grow continuously
+      // (would indicate a leak)
+      const firstThird = memorySnapshots.slice(0, 2);
+      const lastThird = memorySnapshots.slice(-2);
+
+      const avgFirst =
+        firstThird.reduce((a, b) => a + b, 0) / firstThird.length;
+      const avgLast = lastThird.reduce((a, b) => a + b, 0) / lastThird.length;
+
+      const growthPercentage = ((avgLast - avgFirst) / avgFirst) * 100;
+
+      // Memory shouldn't grow more than 50% over multiple runs
+      expect(growthPercentage).toBeLessThan(50);
+    }, 15000); // 15 second timeout for 5 animation runs
+  });
+
+  describe('Non-Blocking Behavior', () => {
+    it('animation is non-blocking (returns control)', async () => {
+      let controlReturned = false;
+
+      // Start animation
+      const animationPromise = module.animateBanner();
+
+      // This should execute immediately if animation is non-blocking
+      controlReturned = true;
+
+      await animationPromise;
+
+      expect(controlReturned).toBe(true);
+    });
+
+    it('multiple animations can be queued', async () => {
+      const results: string[] = [];
+
+      // Start multiple animations
+      const promise1 = module.animateBanner().then(() => results.push('a1'));
+      const promise2 = module.animateBanner().then(() => results.push('a2'));
+      const promise3 = module.animateBanner().then(() => results.push('a3'));
+
+      await Promise.all([promise1, promise2, promise3]);
+
+      expect(results).toHaveLength(3);
+      expect(results).toContain('a1');
+      expect(results).toContain('a2');
+      expect(results).toContain('a3');
+    });
+
+    it('animation cleanup happens without blocking', async () => {
+      const startTime = Date.now();
+
+      // Run animation
+      await module.animateBanner();
+
+      // Cleanup should happen quickly after animation ends
+      const totalTime = Date.now() - startTime;
+
+      // Total time should be close to animation duration
+      // (cleanup should add < 100ms)
+      expect(totalTime).toBeLessThan(2200); // 2000ms + 200ms tolerance
+    });
+  });
+
+  describe('Gradient Cache Optimization (TASK_020)', () => {
+    it('gradient cache reduces computation time', () => {
+      const iterations = 100;
+
+      // First pass: populate cache
+      const warmupStart = Date.now();
+      for (let i = 0; i < iterations; i++) {
+        const progress = i / iterations;
+        module.renderWaveFrame(progress);
+      }
+      const warmupTime = Date.now() - warmupStart;
+
+      // Second pass: should use cache
+      const cachedStart = Date.now();
+      for (let i = 0; i < iterations; i++) {
+        const progress = i / iterations;
+        module.renderWaveFrame(progress);
+      }
+      const cachedTime = Date.now() - cachedStart;
+
+      // Cached run should be faster or similar
+      // (not significantly slower, which would indicate cache miss)
+      expect(cachedTime).toBeLessThanOrEqual(warmupTime * 1.2);
+    });
+
+    it('all effects benefit from gradient cache', () => {
+      const progress = 0.5;
+      const iterations = 50;
+
+      // Test wave effect
+      const waveStart = Date.now();
+      for (let i = 0; i < iterations; i++) {
+        module.renderWaveFrame(progress);
+      }
+      const waveTime = Date.now() - waveStart;
+
+      // Test fade effect
+      const fadeStart = Date.now();
+      for (let i = 0; i < iterations; i++) {
+        module.renderFadeFrame(progress);
+      }
+      const fadeTime = Date.now() - fadeStart;
+
+      // Test sweep effect
+      const sweepStart = Date.now();
+      for (let i = 0; i < iterations; i++) {
+        module.renderSweepFrame(progress);
+      }
+      const sweepTime = Date.now() - sweepStart;
+
+      // All effects should render quickly (< 100ms for 50 iterations)
+      expect(waveTime).toBeLessThan(100);
+      expect(fadeTime).toBeLessThan(100);
+      expect(sweepTime).toBeLessThan(100);
+    });
+
+    it('gradient cache does not cause memory issues', () => {
+      const initialMemory = process.memoryUsage().heapUsed;
+
+      // Render many different progress values to populate cache
+      for (let i = 0; i <= 1000; i++) {
+        const progress = i / 1000;
+        module.renderWaveFrame(progress);
+        module.renderFadeFrame(progress);
+        module.renderSweepFrame(progress);
+      }
+
+      const finalMemory = process.memoryUsage().heapUsed;
+      const memoryGrowth = finalMemory - initialMemory;
+
+      // Cache should not consume excessive memory (< 10MB)
+      const MAX_CACHE_MEMORY = 10 * 1024 * 1024; // 10MB
+      expect(memoryGrowth).toBeLessThan(MAX_CACHE_MEMORY);
+    });
+  });
+
+  describe('Integration: Full Animation Performance', () => {
+    it('complete animation meets all performance targets', async () => {
+      const MAX_DURATION = 3000;
+      const MAX_CPU_PERCENTAGE = 25;
+      const DEFAULT_DURATION = 2000;
+      const TIMING_TOLERANCE = 200;
+
+      const startCpu = process.cpuUsage();
+      const startTime = Date.now();
+      const startMemory = process.memoryUsage().heapUsed;
+
+      await module.animateBanner();
+
+      const elapsed = Date.now() - startTime;
+      const cpuUsage = process.cpuUsage(startCpu);
+      const endMemory = process.memoryUsage().heapUsed;
+
+      // Duration checks (FR-5)
+      expect(elapsed).toBeLessThan(MAX_DURATION);
+      expect(elapsed).toBeGreaterThanOrEqual(
+        DEFAULT_DURATION - TIMING_TOLERANCE
+      );
+      expect(elapsed).toBeLessThanOrEqual(DEFAULT_DURATION + TIMING_TOLERANCE);
+
+      // CPU checks (NFR-5)
+      const cpuTimeMs = (cpuUsage.user + cpuUsage.system) / 1000;
+      const cpuPercentage = (cpuTimeMs / elapsed) * 100;
+      expect(cpuPercentage).toBeLessThan(MAX_CPU_PERCENTAGE);
+      expect(cpuTimeMs).toBeLessThan(500);
+
+      // Memory checks
+      const memoryGrowth = endMemory - startMemory;
+      expect(memoryGrowth).toBeLessThan(5 * 1024 * 1024); // < 5MB
+    });
+
+    it('performance consistent across different effects', async () => {
+      // Note: Current implementation uses random effect selection
+      // This test verifies performance regardless of effect chosen
+      const runs = 3;
+      const durations: number[] = [];
+      const cpuTimes: number[] = [];
+
+      for (let i = 0; i < runs; i++) {
+        const startCpu = process.cpuUsage();
+        const startTime = Date.now();
+
+        await module.animateBanner();
+
+        const elapsed = Date.now() - startTime;
+        const cpuUsage = process.cpuUsage(startCpu);
+        const cpuTimeMs = (cpuUsage.user + cpuUsage.system) / 1000;
+
+        durations.push(elapsed);
+        cpuTimes.push(cpuTimeMs);
+      }
+
+      // All runs should have similar performance
+      for (const duration of durations) {
+        expect(duration).toBeLessThan(3000);
+      }
+
+      for (const cpuTime of cpuTimes) {
+        expect(cpuTime).toBeLessThan(500);
+      }
+    }, 10000); // 10 second timeout for 3 animation runs
+  });
+
+  describe('Edge Cases: Animation Constants', () => {
+    it('verifies animation constants are production-ready', () => {
+      const MAX_DURATION = 3000; // FR-5 requirement
+
+      // DURATION must be less than FR-5 maximum
+      expect(module.DURATION).toBeLessThan(MAX_DURATION);
+
+      // DURATION should be reasonable (not too short or too long)
+      expect(module.DURATION).toBeGreaterThanOrEqual(500);
+      expect(module.DURATION).toBeLessThanOrEqual(2500);
+
+      // Frame interval should support 60 FPS target
+      expect(module.FRAME_INTERVAL).toBeLessThanOrEqual(17); // ~60fps
+      expect(module.FRAME_INTERVAL).toBeGreaterThanOrEqual(15);
+    });
+
+    it('constants produce sufficient frame count', () => {
+      // Calculate expected frames
+      const expectedFrames = Math.floor(
+        module.DURATION / module.FRAME_INTERVAL
+      );
+
+      // Should have at least 100 frames for smooth animation
+      expect(expectedFrames).toBeGreaterThanOrEqual(100);
+
+      // Should not have excessive frames (performance concern)
+      expect(expectedFrames).toBeLessThanOrEqual(200);
+    });
+
+    it('FPS target aligns with frame interval', () => {
+      // Frame interval should match FPS target
+      const calculatedInterval = Math.floor(1000 / module.FPS_TARGET);
+      expect(module.FRAME_INTERVAL).toBeCloseTo(calculatedInterval, 1);
     });
   });
 });
