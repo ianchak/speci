@@ -114,6 +114,7 @@ describe('banner module', () => {
         // The gradient interpolates between colors, so we check for:
         // - RGB escape code format present
         // - At least one instance of sky400 which is held in the middle range
+        // eslint-disable-next-line no-control-regex
         expect(result).toMatch(/\x1b\[38;2;\d+;\d+;\d+m/);
         // sky400: #38bdf8 = rgb(56, 189, 248) - this exact value should appear
         // in the middle section where the gradient holds steady

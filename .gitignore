@@ -42,4 +42,5 @@ temp/
 
 .github
 speci.config.json
+.speci-lock
 docs/
