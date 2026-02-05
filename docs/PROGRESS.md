@@ -79,7 +79,7 @@ graph TD
 | -------- | ---------------------------- | ----------- | ------------- | -------- | ---------- | ------------------ | --------------- | --------------- | -------- |
 | TASK_005 | shouldAnimate() Detection    | COMPLETE    | PASSED        | High     | S (≤2h)    | TASK_001           | SA-20260205-005 | RA-20260205-005 | 1        |
 | TASK_006 | Sleep Utility                | COMPLETE    | PASSED        | High     | S (≤2h)    | TASK_001           | SA-20260205-007 | RA-20260205-007 | 3        |
-| TASK_007 | Wave Reveal Effect           | IN PROGRESS | -             | High     | M (2-4h)   | TASK_001, TASK_002 | SA-20260205-008 | -               | 1        |
+| TASK_007 | Wave Reveal Effect           | IN REVIEW   | -             | High     | M (2-4h)   | TASK_001, TASK_002 | SA-20260205-008 | -               | 1        |
 | TASK_008 | Animation Loop               | NOT STARTED | -             | High     | M (2-4h)   | TASK_006, TASK_007 | -               | -               | 0        |
 | TASK_009 | animateBanner() Orchestrator | NOT STARTED | -             | High     | L (4-8h)   | TASK_005, TASK_008 | -               | -               | 0        |
 | MVT_M2   | Manual Verification Test     | NOT STARTED | -             | —        | 30 min     | TASK_005-009       | -               | -               | 0        |
@@ -219,16 +219,16 @@ Last Review ID: RA-20260205-007
 
 ### For Reviewer
 
-| Field             | Value |
-| ----------------- | ----- |
-| Task              | -     |
-| Impl Agent        | -     |
-| Files Changed     | -     |
-| Tests Added       | -     |
-| Rework?           | -     |
-| Focus Areas       | -     |
-| Known Limitations | -     |
-| Gate Results      | -     |
+| Field             | Value                                                                                                               |
+| ----------------- | ------------------------------------------------------------------------------------------------------------------- |
+| Task              | TASK_007                                                                                                            |
+| Impl Agent        | SA-20260205-008                                                                                                     |
+| Files Changed     | `lib/ui/banner-animation.ts`                                                                                        |
+| Tests Added       | `test/banner-animation.test.ts` (16 new tests in renderWaveFrame describe block)                                    |
+| Rework?           | No                                                                                                                  |
+| Focus Areas       | Verify gradient interpolation is smooth, progress clamping works correctly, ANSI codes are properly formatted       |
+| Known Limitations | Uses two-stop gradient (sky-200→sky-500); three-stop gradient deferred to Phase 4. No performance optimization yet. |
+| Gate Results      | format:✅ lint:✅ typecheck:✅ test:✅ (77/77 banner-animation tests passed)                                        |
 
 ### For Fix Agent
 
