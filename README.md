@@ -336,18 +336,19 @@ The configuration file is created by `speci init` and can be customized:
 
 Environment variables can override configuration file settings:
 
-| Variable                 | Config Path           | Description                        |
-| ------------------------ | --------------------- | ---------------------------------- |
-| `SPECI_PROGRESS_PATH`    | `paths.progress`      | Path to PROGRESS.md file           |
-| `SPECI_TASKS_PATH`       | `paths.tasks`         | Path to tasks directory            |
-| `SPECI_LOG_PATH`         | `paths.logs`          | Path to log directory              |
-| `SPECI_LOCK_PATH`        | `paths.lock`          | Path to lock file                  |
-| `SPECI_COPILOT_MODEL`    | `copilot.model`       | Copilot model to use               |
-| `SPECI_MAX_ITERATIONS`   | `loop.maxIterations`  | Maximum loop iterations            |
-| `SPECI_ENABLE_AUTO_FIX`  | `loop.enableAutoFix`  | Enable automatic gate fix attempts |
-| `SPECI_MAX_FIX_ATTEMPTS` | `gate.maxFixAttempts` | Maximum fix attempts               |
-| `SPECI_DEBUG`            | N/A                   | Enable debug logging (1 or true)   |
-| `NO_COLOR`               | N/A                   | Disable colored output             |
+| Variable                 | Config Path           | Description                                   |
+| ------------------------ | --------------------- | --------------------------------------------- |
+| `SPECI_PROGRESS_PATH`    | `paths.progress`      | Path to PROGRESS.md file                      |
+| `SPECI_TASKS_PATH`       | `paths.tasks`         | Path to tasks directory                       |
+| `SPECI_LOG_PATH`         | `paths.logs`          | Path to log directory                         |
+| `SPECI_LOCK_PATH`        | `paths.lock`          | Path to lock file                             |
+| `SPECI_COPILOT_MODEL`    | `copilot.model`       | Copilot model to use                          |
+| `SPECI_MAX_ITERATIONS`   | `loop.maxIterations`  | Maximum loop iterations                       |
+| `SPECI_ENABLE_AUTO_FIX`  | `loop.enableAutoFix`  | Enable automatic gate fix attempts            |
+| `SPECI_MAX_FIX_ATTEMPTS` | `gate.maxFixAttempts` | Maximum fix attempts                          |
+| `SPECI_DEBUG`            | N/A                   | Enable debug logging (1 or true)              |
+| `SPECI_NO_ANIMATION`     | N/A                   | Disable banner animation (any value disables) |
+| `NO_COLOR`               | N/A                   | Disable colored output                        |
 
 ## Error Codes
 

@@ -574,6 +574,22 @@ describe('shouldAnimate() Detection', () => {
       process.env.SPECI_NO_ANIMATION = '1';
       expect(module.shouldAnimate()).toBe(false);
     });
+
+    it('SPECI_NO_ANIMATION=0 disables animation (string "0" is truthy)', async () => {
+      const module = await import('../lib/ui/banner-animation.js');
+
+      delete process.env.NO_COLOR;
+      process.env.SPECI_NO_ANIMATION = '0';
+      expect(module.shouldAnimate()).toBe(false);
+    });
+
+    it('SPECI_NO_ANIMATION=false disables animation (string "false" is truthy)', async () => {
+      const module = await import('../lib/ui/banner-animation.js');
+
+      delete process.env.NO_COLOR;
+      process.env.SPECI_NO_ANIMATION = 'false';
+      expect(module.shouldAnimate()).toBe(false);
+    });
   });
 
   describe('dimension fallbacks', () => {
