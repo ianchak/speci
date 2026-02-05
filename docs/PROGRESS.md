@@ -78,7 +78,7 @@ graph TD
 | Task ID  | Title                        | Status      | Review Status | Priority | Complexity | Dependencies       | Assigned To     | Reviewed By     | Attempts |
 | -------- | ---------------------------- | ----------- | ------------- | -------- | ---------- | ------------------ | --------------- | --------------- | -------- |
 | TASK_005 | shouldAnimate() Detection    | COMPLETE    | PASSED        | High     | S (≤2h)    | TASK_001           | SA-20260205-005 | RA-20260205-005 | 1        |
-| TASK_006 | Sleep Utility                | IN PROGRESS | -             | High     | S (≤2h)    | TASK_001           | SA-20260205-006 | -               | 1        |
+| TASK_006 | Sleep Utility                | IN REVIEW   | -             | High     | S (≤2h)    | TASK_001           | SA-20260205-006 | -               | 1        |
 | TASK_007 | Wave Reveal Effect           | NOT STARTED | -             | High     | M (2-4h)   | TASK_001, TASK_002 | -               | -               | 0        |
 | TASK_008 | Animation Loop               | NOT STARTED | -             | High     | M (2-4h)   | TASK_006, TASK_007 | -               | -               | 0        |
 | TASK_009 | animateBanner() Orchestrator | NOT STARTED | -             | High     | L (4-8h)   | TASK_005, TASK_008 | -               | -               | 0        |
@@ -219,16 +219,16 @@ Last Review ID: RA-20260205-005
 
 ### For Reviewer
 
-| Field             | Value |
-| ----------------- | ----- |
-| Task              | -     |
-| Impl Agent        | -     |
-| Files Changed     | -     |
-| Tests Added       | -     |
-| Rework?           | -     |
-| Focus Areas       | -     |
-| Known Limitations | -     |
-| Gate Results      | -     |
+| Field             | Value                                                                                                          |
+| ----------------- | -------------------------------------------------------------------------------------------------------------- |
+| Task              | TASK_006                                                                                                       |
+| Impl Agent        | SA-20260205-006                                                                                                |
+| Files Changed     | `lib/ui/banner-animation.ts`                                                                                   |
+| Tests Added       | `test/banner-animation.test.ts` (8 new tests in sleep utility describe block)                                  |
+| Rework?           | No                                                                                                             |
+| Focus Areas       | Timing tolerances for CI environments, sleep() export marked @internal, Promise<void> return type correctness |
+| Known Limitations | Exported for testing only (not part of public API), tolerances generous for CI stability                       |
+| Gate Results      | format:✅ lint:✅ typecheck:✅ test:✅                                                                          |
 
 ### For Fix Agent
 
