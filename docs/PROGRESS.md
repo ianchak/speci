@@ -80,8 +80,8 @@ graph TD
 | TASK_005 | shouldAnimate() Detection    | COMPLETE    | PASSED        | High     | S (≤2h)    | TASK_001           | SA-20260205-005 | RA-20260205-005 | 1        |
 | TASK_006 | Sleep Utility                | COMPLETE    | PASSED        | High     | S (≤2h)    | TASK_001           | SA-20260205-007 | RA-20260205-007 | 3        |
 | TASK_007 | Wave Reveal Effect           | COMPLETE    | PASSED        | High     | M (2-4h)   | TASK_001, TASK_002 | SA-20260205-008 | RA-20260205-008 | 1        |
-| TASK_008 | Animation Loop               | IN PROGRESS | -             | High     | M (2-4h)   | TASK_006, TASK_007 | SA-20260205-009 | -               | 1        |
-| TASK_009 | animateBanner() Orchestrator | NOT STARTED | -             | High     | L (4-8h)   | TASK_005, TASK_008 | -               | -               | 0        |
+| TASK_008 | Animation Loop               | COMPLETE    | PASSED        | High     | M (2-4h)   | TASK_006, TASK_007 | SA-20260205-009 | RA-20260205-009 | 1        |
+| TASK_009 | animateBanner() Orchestrator | IN PROGRESS | -             | High     | L (4-8h)   | TASK_005, TASK_008 | SA-20260205-010 | -               | 1        |
 | MVT_M2   | Manual Verification Test     | NOT STARTED | -             | —        | 30 min     | TASK_005-009       | -               | -               | 0        |
 
 ### Dependencies
@@ -205,13 +205,13 @@ TASK_001 → TASK_002 → TASK_007 → TASK_008 → TASK_009 → TASK_010 → TA
 
 ## Subagent Tracking
 
-Last Subagent ID: SA-20260205-009
+Last Subagent ID: SA-20260205-010
 
 ---
 
 ## Review Tracking
 
-Last Review ID: RA-20260205-008
+Last Review ID: RA-20260205-009
 
 ---
 
