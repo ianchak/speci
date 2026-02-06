@@ -261,6 +261,32 @@ export interface FrameData {
 export type AnimationEffect = (progress: number) => string[];
 
 /**
+ * Available animation effects for random selection
+ */
+const ANIMATION_EFFECTS: AnimationEffect[] = [
+  renderWaveFrame,
+  renderFadeFrame,
+  renderSweepFrame,
+];
+
+/**
+ * Select a random animation effect
+ *
+ * Uses Math.random() to choose from available effects (wave, fade, sweep).
+ * Selection is uniform across all effects. Called once per animation invocation.
+ *
+ * @returns Randomly selected animation effect function
+ *
+ * @example
+ * const effect = selectRandomEffect();
+ * await runAnimationLoop(effect, duration, state);
+ */
+export function selectRandomEffect(): AnimationEffect {
+  const index = Math.floor(Math.random() * ANIMATION_EFFECTS.length);
+  return ANIMATION_EFFECTS[index];
+}
+
+/**
  * Cleanup function type for signal handler registration.
  *
  * Registered via registerCleanup() to handle Ctrl+C and process termination.
@@ -724,20 +750,21 @@ export async function runAnimationLoop(
 }
 
 /**
- * Animate the SPECI banner with wave reveal effect
+ * Animate the SPECI banner with random or specified effect
  *
  * Main public API for banner animation. Coordinates animation execution with
  * comprehensive error handling and graceful degradation to static banner.
  *
  * Orchestration pattern (adapted from monitor.ts TUI pattern):
  * 1. Input Validation: Clamp duration (100-5000ms) and fps (10-120fps) - E-15
- * 2. Terminal State Capture: Try-catch around terminalState.capture() - E-7
- * 3. Cursor Hide: Try-catch around hideCursor() - E-8
- * 4. Cleanup Registration: Idempotent cleanup handler - E-9, E-10, E-16
- * 5. Animation Execution: Try-catch around runAnimationLoop() - E-6
- * 6. Error Fallback: renderBanner() on any animation error - E-6, E-7
- * 7. Guaranteed Cleanup: Finally block for terminal restoration
- * 8. Timer Cleanup: Clear timerId in cleanup handler - E-12
+ * 2. Effect Selection: Random or manual override from options
+ * 3. Terminal State Capture: Try-catch around terminalState.capture() - E-7
+ * 4. Cursor Hide: Try-catch around hideCursor() - E-8
+ * 5. Cleanup Registration: Idempotent cleanup handler - E-9, E-10, E-16
+ * 6. Animation Execution: Try-catch around runAnimationLoop() - E-6
+ * 7. Error Fallback: renderBanner() on any animation error - E-6, E-7
+ * 8. Guaranteed Cleanup: Finally block for terminal restoration
+ * 9. Timer Cleanup: Clear timerId in cleanup handler - E-12
  *
  * Error Handling:
  * - E-6: Loop exceptions → fallback to static banner
@@ -756,23 +783,49 @@ export async function runAnimationLoop(
  * - No sensitive data access or disclosure
  * - Deterministic execution, no user input during animation
  *
+ * @param options - Optional animation configuration (duration, fps, effect)
  * @returns Promise that resolves when animation completes or fallback renders
  *
  * @example
  * // In bin/speci.ts displayBanner()
  * if (shouldAnimate()) {
- *   await animateBanner();
+ *   await animateBanner();  // Random effect
+ *   // or
+ *   await animateBanner({ effect: 'wave' });  // Specific effect
  * } else {
  *   renderBanner();
  * }
  */
-export async function animateBanner(): Promise<void> {
+export async function animateBanner(options?: AnimationOptions): Promise<void> {
   // Import renderBanner dynamically to avoid circular dependency
   const { renderBanner } = await import('./banner.js');
 
   // Step 1: Input Validation (E-15)
   // Note: Currently hardcoded, but validation pattern for future configurability
-  const duration = Math.max(100, Math.min(5000, DURATION));
+  const duration = Math.max(100, Math.min(5000, options?.duration ?? DURATION));
+
+  // Step 2: Effect Selection
+  // Use manual override if specified, otherwise select randomly
+  let selectedEffect: AnimationEffect;
+  if (options?.effect) {
+    // Manual override via options
+    switch (options.effect) {
+      case 'wave':
+        selectedEffect = renderWaveFrame;
+        break;
+      case 'fade':
+        selectedEffect = renderFadeFrame;
+        break;
+      case 'sweep':
+        selectedEffect = renderSweepFrame;
+        break;
+      default:
+        selectedEffect = selectRandomEffect();
+    }
+  } else {
+    // Random selection
+    selectedEffect = selectRandomEffect();
+  }
 
   let terminalSnapshot: ReturnType<typeof terminalState.capture> | null = null;
   let cleanupRegistered = false;
@@ -823,7 +876,7 @@ export async function animateBanner(): Promise<void> {
   animState.cleanupFn = cleanup;
 
   try {
-    // Step 2: Terminal State Capture (E-7)
+    // Step 3: Terminal State Capture (E-7)
     try {
       terminalSnapshot = terminalState.capture();
     } catch {
@@ -832,7 +885,7 @@ export async function animateBanner(): Promise<void> {
       return;
     }
 
-    // Step 3: Cursor Hide (E-8)
+    // Step 4: Cursor Hide (E-8)
     try {
       process.stdout.write(ANSI_CURSOR_HIDE); // ANSI: Hide cursor
     } catch {
@@ -840,7 +893,7 @@ export async function animateBanner(): Promise<void> {
       // Animation will work without hidden cursor (just less polished)
     }
 
-    // Step 4: Cleanup Registration (E-9)
+    // Step 5: Cleanup Registration (E-9)
     try {
       registerCleanup(cleanup);
       cleanupRegistered = true;
@@ -849,18 +902,18 @@ export async function animateBanner(): Promise<void> {
       // Cleanup will still run in finally block, just not on signals
     }
 
-    // Step 5: Animation Execution (E-6)
+    // Step 6: Animation Execution (E-6)
     try {
-      await runAnimationLoop(renderWaveFrame, duration, animState);
+      await runAnimationLoop(selectedEffect, duration, animState);
     } catch {
       // E-6: Animation loop exception - fallback to static banner (silent)
-      // Step 6: Error Fallback
+      // Step 7: Error Fallback
       // Clear animation output and render static banner with version
       process.stdout.write(ANSI_CURSOR_UP_6); // Move up 6 lines
       console.log('\n' + renderBanner({ showVersion: true }) + '\n');
     }
   } finally {
-    // Step 7: Guaranteed Cleanup
+    // Step 8: Guaranteed Cleanup
     // Always executes: success, error, or signal interruption
     cleanup();
   }

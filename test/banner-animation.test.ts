@@ -2635,6 +2635,116 @@ describe('Performance Optimization (TASK_020)', () => {
   });
 });
 
+describe('Effect Randomization', () => {
+  let module: typeof import('../lib/ui/banner-animation.js');
+  let originalMathRandom: () => number;
+
+  beforeEach(async () => {
+    module = await import('../lib/ui/banner-animation.js');
+    originalMathRandom = Math.random;
+  });
+
+  afterEach(() => {
+    // Restore original Math.random
+    Math.random = originalMathRandom;
+  });
+
+  describe('selectRandomEffect', () => {
+    it('should export selectRandomEffect function', () => {
+      expect(module.selectRandomEffect).toBeDefined();
+      expect(typeof module.selectRandomEffect).toBe('function');
+    });
+
+    it('selects wave effect when Math.random returns 0.0', () => {
+      Math.random = () => 0.0;
+      const effect = module.selectRandomEffect();
+      expect(effect).toBe(module.renderWaveFrame);
+    });
+
+    it('selects fade effect when Math.random returns 0.4', () => {
+      Math.random = () => 0.4;
+      const effect = module.selectRandomEffect();
+      expect(effect).toBe(module.renderFadeFrame);
+    });
+
+    it('selects sweep effect when Math.random returns 0.8', () => {
+      Math.random = () => 0.8;
+      const effect = module.selectRandomEffect();
+      expect(effect).toBe(module.renderSweepFrame);
+    });
+
+    it('selects effect at exact boundary (0.333...)', () => {
+      Math.random = () => 1 / 3;
+      const effect = module.selectRandomEffect();
+      // Should select fade (index 1)
+      expect(effect).toBe(module.renderFadeFrame);
+    });
+
+    it('selects effect at exact boundary (0.666...)', () => {
+      Math.random = () => 2 / 3;
+      const effect = module.selectRandomEffect();
+      // Should select sweep (index 2)
+      expect(effect).toBe(module.renderSweepFrame);
+    });
+
+    it('handles Math.random returning 0.99', () => {
+      Math.random = () => 0.99;
+      const effect = module.selectRandomEffect();
+      expect(effect).toBe(module.renderSweepFrame);
+    });
+
+    it('returns valid AnimationEffect function', () => {
+      const effect = module.selectRandomEffect();
+      expect(typeof effect).toBe('function');
+
+      // Verify it can be called and returns array of 6 strings
+      const frame = effect(0.5);
+      expect(Array.isArray(frame)).toBe(true);
+      expect(frame.length).toBe(6);
+    });
+
+    it('all effects in array are valid functions', () => {
+      const effects = [
+        module.renderWaveFrame,
+        module.renderFadeFrame,
+        module.renderSweepFrame,
+      ];
+
+      effects.forEach((effect) => {
+        expect(typeof effect).toBe('function');
+        const frame = effect(0.5);
+        expect(Array.isArray(frame)).toBe(true);
+        expect(frame.length).toBe(6);
+      });
+    });
+  });
+
+  describe('effect selection distribution', () => {
+    it('produces different effects across multiple calls with varying random values', () => {
+      const results = new Set();
+
+      // Test with different Math.random values
+      [0.1, 0.4, 0.8].forEach((value) => {
+        Math.random = () => value;
+        const effect = module.selectRandomEffect();
+        results.add(effect);
+      });
+
+      // Should have selected 3 different effects
+      expect(results.size).toBe(3);
+    });
+
+    it('consistently returns same effect for same Math.random value', () => {
+      Math.random = () => 0.5;
+
+      const effect1 = module.selectRandomEffect();
+      const effect2 = module.selectRandomEffect();
+
+      expect(effect1).toBe(effect2);
+    });
+  });
+});
+
 /**
  * Test Suite 22: Performance Benchmarks (TASK_021)
  *
