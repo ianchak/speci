@@ -860,7 +860,7 @@ export async function animateVersion(
  * Main public API for banner animation. Coordinates animation execution with
  * comprehensive error handling and graceful degradation to static banner.
  *
- * Orchestration pattern (adapted from monitor.ts TUI pattern):
+ * Orchestration pattern:
  * 1. Input Validation: Clamp duration (100-5000ms) and fps (10-120fps) - E-15
  * 2. Effect Selection: Random or manual override from options
  * 3. Terminal State Capture: Try-catch around terminalState.capture() - E-7

@@ -15,7 +15,6 @@ import { task } from '../lib/commands/task.js';
 import { refactor } from '../lib/commands/refactor.js';
 import { run } from '../lib/commands/run.js';
 import { status } from '../lib/commands/status.js';
-import monitor from '../lib/commands/monitor.js';
 import { findSimilarCommands } from '../lib/utils/suggest.js';
 import { setVerbose, debug } from '../lib/utils/logger.js';
 
@@ -208,26 +207,6 @@ Examples:
   )
   .action(status);
 
-// Monitor Command (alias: m)
-program
-  .command('monitor')
-  .alias('m')
-  .description('Real-time log viewer with TUI')
-  .option('-l, --log-file <path>', 'Custom log file to monitor')
-  .option('--poll-interval <ms>', 'Polling interval in milliseconds', parseInt)
-  .option('--max-lines <n>', 'Maximum lines to display', parseInt)
-  .option('-v, --verbose', 'Show detailed output')
-  .addHelpText(
-    'after',
-    `
-Examples:
-  $ speci monitor                      Monitor default log file
-  $ speci m                            Short alias version
-  $ speci monitor --max-lines 1000     Limit display buffer
-`
-  )
-  .action(monitor);
-
 // List of all available commands (for unknown command handling)
 const availableCommands = [
   'init',
@@ -236,7 +215,6 @@ const availableCommands = [
   'refactor',
   'run',
   'status',
-  'monitor',
 ];
 
 // Unknown command handler

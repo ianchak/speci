@@ -7,7 +7,6 @@ AI-powered implementation loop orchestrator for GitHub Copilot.
 - **Automated Implementation Loops** - Orchestrates Copilot-driven development workflows
 - **Gate Validation** - Runs lint, typecheck, and test commands before committing
 - **Progress Tracking** - Maintains state in PROGRESS.md with task completion tracking
-- **Real-time Monitoring** - TUI-based log viewer with live updates
 - **Beautiful CLI** - Ice Blue styling with unicode glyphs and ANSI colors
 
 ## Quick Start
@@ -266,41 +265,6 @@ speci run --dry-run
 ```
 
 **Note:** This command intentionally has no short alias for safety.
-
-### `speci monitor` (alias: `m`)
-
-Real-time TUI log viewer with live updates.
-
-**Usage:**
-
-```bash
-speci monitor [options]
-```
-
-**Options:**
-
-- `-l, --log-file <path>` - Custom log file to monitor
-- `--poll-interval <ms>` - Polling interval in milliseconds
-- `--max-lines <n>` - Maximum lines to display
-- `-v, --verbose` - Show detailed output
-
-**Examples:**
-
-```bash
-# Monitor default log file
-speci monitor
-
-# Short alias version
-speci m
-
-# Limit display buffer
-speci monitor --max-lines 1000
-```
-
-**Controls:**
-
-- Arrow keys / Page Up/Down - Scroll through log
-- `q` or `Ctrl+C` - Exit monitor
 
 ## Configuration
 
