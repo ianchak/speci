@@ -794,9 +794,12 @@ export async function animateVersion(
 
   // Get banner width for centering
   const bannerWidth = BANNER_ART[0].length;
-  const versionText = version;
+  const versionText = `v${version}`;
   const padding = Math.floor((bannerWidth - versionText.length) / 2);
   const centeredPrefix = ' '.repeat(padding);
+
+  // Matrix-style characters for shuffling effect
+  const matrixChars = '0123456789abcdef!@#$%^&*()+-=[]{}|;:,.<>?~';
 
   let isFirstFrame = true;
 
@@ -805,13 +808,31 @@ export async function animateVersion(
     const elapsed = Date.now() - startTime;
     const progress = Math.min(1.0, elapsed / duration);
 
-    // Fade from black to dim gray (using sky-500 but dimmed)
-    const targetColor = HEX_COLORS.sky500;
-    const fadedColor = lerpColor('#000000', targetColor, progress);
-    const ansiColor = hexToAnsi(fadedColor);
+    // Calculate how many characters are "locked in" (revealed)
+    const lockedCount = Math.floor(progress * versionText.length);
 
-    // Build version line
-    const versionLine = centeredPrefix + ansiColor + versionText + ANSI_RESET;
+    // Build the shuffled/revealed version string
+    let displayText = '';
+    for (let i = 0; i < versionText.length; i++) {
+      if (i < lockedCount) {
+        // Character is locked - show the real character
+        displayText += versionText[i];
+      } else if (i === lockedCount && progress < 1.0) {
+        // Current character being decoded - shuffle rapidly
+        const randomChar =
+          matrixChars[Math.floor(Math.random() * matrixChars.length)];
+        displayText += randomChar;
+      } else {
+        // Not yet reached - show random character
+        const randomChar =
+          matrixChars[Math.floor(Math.random() * matrixChars.length)];
+        displayText += randomChar;
+      }
+    }
+
+    // Apply dim color (matching static banner)
+    const ansiColor = hexToAnsi(HEX_COLORS.dim);
+    const versionLine = centeredPrefix + ansiColor + displayText + ANSI_RESET;
 
     if (!isFirstFrame) {
       // Move cursor up one line to overwrite previous frame
