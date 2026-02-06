@@ -3,7 +3,7 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { BANNER_ART, renderBanner } from '../lib/ui/banner.js';
+import { BANNER_ART, renderBanner, VERSION } from '../lib/ui/banner.js';
 
 describe('banner module', () => {
   // Store original environment
@@ -71,14 +71,14 @@ describe('banner module', () => {
         delete process.env.NO_COLOR;
         process.env.FORCE_COLOR = '1';
         const result = renderBanner();
-        expect(result).toContain('v0.2.0');
+        expect(result).toContain(`v${VERSION}`);
       });
 
       it('includes version when showVersion is true', () => {
         delete process.env.NO_COLOR;
         process.env.FORCE_COLOR = '1';
         const result = renderBanner({ showVersion: true });
-        expect(result).toContain('v0.2.0');
+        expect(result).toContain(`v${VERSION}`);
       });
 
       it('excludes version when showVersion is false', () => {

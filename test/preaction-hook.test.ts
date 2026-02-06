@@ -178,7 +178,7 @@ describe('TASK_012: PreAction Hook (No Changes)', () => {
 
       // Extract no-args handler - updated to match actual code structure
       const noArgsMatch = speciContent.match(
-        /if\s*\(\s*process\.argv\.length\s*<=\s*2\s*\)\s*{\s*\(\s*async\s*\(\)\s*=>/s
+        /if\s*\(\s*process\.argv\.length\s*<=\s*2\s*\)\s*\{[\s\S]*?\(\s*async\s*\(\)\s*=>/s
       );
       expect(noArgsMatch).toBeTruthy();
       expect(noArgsMatch![0]).toMatch(/async/);

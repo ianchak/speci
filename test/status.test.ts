@@ -60,10 +60,10 @@ describe('status command', () => {
     it('should parse WORK_LEFT state correctly', async () => {
       const progressContent = `# Progress
 
-| Task ID  | Title        | Priority | Status      |
-| -------- | ------------ | -------- | ----------- |
-| TASK_001 | Setup        | High     | COMPLETE    |
-| TASK_002 | Development  | High     | NOT STARTED |
+| Task ID  | Title        | Status      |
+| -------- | ------------ | ----------- |
+| TASK_001 | Setup        | COMPLETE    |
+| TASK_002 | Development  | NOT STARTED |
 `;
       writeFileSync(TEST_PROGRESS, progressContent, 'utf8');
       writeConfig();
@@ -77,10 +77,10 @@ describe('status command', () => {
     it('should parse IN_REVIEW state correctly', async () => {
       const progressContent = `# Progress
 
-| Task ID  | Title        | Priority | Status    |
-| -------- | ------------ | -------- | --------- |
-| TASK_001 | Setup        | High     | COMPLETE  |
-| TASK_002 | Development  | High     | IN_REVIEW |
+| Task ID  | Title        | Status    |
+| -------- | ------------ | --------- |
+| TASK_001 | Setup        | COMPLETE  |
+| TASK_002 | Development  | IN_REVIEW |
 `;
       writeFileSync(TEST_PROGRESS, progressContent, 'utf8');
       writeConfig();
@@ -94,10 +94,10 @@ describe('status command', () => {
     it('should parse BLOCKED state correctly', async () => {
       const progressContent = `# Progress
 
-| Task ID  | Title        | Priority | Status   |
-| -------- | ------------ | -------- | -------- |
-| TASK_001 | Setup        | High     | COMPLETE |
-| TASK_002 | Development  | High     | BLOCKED  |
+| Task ID  | Title        | Status   |
+| -------- | ------------ | -------- |
+| TASK_001 | Setup        | COMPLETE |
+| TASK_002 | Development  | BLOCKED  |
 `;
       writeFileSync(TEST_PROGRESS, progressContent, 'utf8');
       writeConfig();
@@ -111,10 +111,10 @@ describe('status command', () => {
     it('should parse DONE state correctly', async () => {
       const progressContent = `# Progress
 
-| Task ID  | Title        | Priority | Status   |
-| -------- | ------------ | -------- | -------- |
-| TASK_001 | Setup        | High     | COMPLETE |
-| TASK_002 | Development  | High     | COMPLETE |
+| Task ID  | Title        | Status   |
+| -------- | ------------ | -------- |
+| TASK_001 | Setup        | COMPLETE |
+| TASK_002 | Development  | COMPLETE |
 `;
       writeFileSync(TEST_PROGRESS, progressContent, 'utf8');
       writeConfig();
@@ -154,14 +154,14 @@ This is some malformed content
     it('should calculate task statistics correctly', async () => {
       const progressContent = `# Progress
 
-| Task ID  | Title       | Priority | Status      |
-| -------- | ----------- | -------- | ----------- |
-| TASK_001 | Task 1      | High     | COMPLETE    |
-| TASK_002 | Task 2      | High     | COMPLETE    |
-| TASK_003 | Task 3      | Medium   | NOT STARTED |
-| TASK_004 | Task 4      | High     | IN PROGRESS |
-| TASK_005 | Task 5      | Low      | IN_REVIEW   |
-| TASK_006 | Task 6      | Medium   | BLOCKED     |
+| Task ID  | Title  | Status      |
+| -------- | ------ | ----------- |
+| TASK_001 | Task 1 | COMPLETE    |
+| TASK_002 | Task 2 | COMPLETE    |
+| TASK_003 | Task 3 | NOT STARTED |
+| TASK_004 | Task 4 | IN PROGRESS |
+| TASK_005 | Task 5 | IN_REVIEW   |
+| TASK_006 | Task 6 | BLOCKED     |
 `;
       writeFileSync(TEST_PROGRESS, progressContent, 'utf8');
       writeConfig();
@@ -190,9 +190,9 @@ This is some malformed content
     it('should handle single task', async () => {
       const progressContent = `# Progress
 
-| Task ID  | Title  | Priority | Status   |
-| -------- | ------ | -------- | -------- |
-| TASK_001 | Task 1 | High     | COMPLETE |
+| Task ID  | Title  | Status   |
+| -------- | ------ | -------- |
+| TASK_001 | Task 1 | COMPLETE |
 `;
       writeFileSync(TEST_PROGRESS, progressContent, 'utf8');
       writeConfig();
@@ -209,9 +209,9 @@ This is some malformed content
     it('should output valid JSON when --json flag is specified', async () => {
       const progressContent = `# Progress
 
-| Task ID  | Title  | Priority | Status   |
-| -------- | ------ | -------- | -------- |
-| TASK_001 | Task 1 | High     | COMPLETE |
+| Task ID  | Title  | Status   |
+| -------- | ------ | -------- |
+| TASK_001 | Task 1 | COMPLETE |
 `;
       writeFileSync(TEST_PROGRESS, progressContent, 'utf8');
       writeConfig();
@@ -224,9 +224,9 @@ This is some malformed content
     it('should include all required fields in JSON output', async () => {
       const progressContent = `# Progress
 
-| Task ID  | Title  | Priority | Status   |
-| -------- | ------ | -------- | -------- |
-| TASK_001 | Task 1 | High     | COMPLETE |
+| Task ID  | Title  | Status   |
+| -------- | ------ | -------- |
+| TASK_001 | Task 1 | COMPLETE |
 `;
       writeFileSync(TEST_PROGRESS, progressContent, 'utf8');
       writeConfig();
@@ -243,6 +243,7 @@ This is some malformed content
       expect(jsonOutput.stats).toHaveProperty('blocked');
       expect(jsonOutput).toHaveProperty('lock');
       expect(jsonOutput.lock).toHaveProperty('isLocked');
+      expect(jsonOutput).toHaveProperty('currentTask');
     });
 
     it('should include error field if state is partial/corrupt', async () => {
@@ -260,9 +261,9 @@ This is some malformed content
     it('should detect locked state correctly', async () => {
       const progressContent = `# Progress
 
-| Task ID  | Title  | Priority | Status   |
-| -------- | ------ | -------- | -------- |
-| TASK_001 | Task 1 | High     | COMPLETE |
+| Task ID  | Title  | Status   |
+| -------- | ------ | -------- |
+| TASK_001 | Task 1 | COMPLETE |
 `;
       writeFileSync(TEST_PROGRESS, progressContent, 'utf8');
       writeConfig();
@@ -283,9 +284,9 @@ This is some malformed content
     it('should handle missing lock file', async () => {
       const progressContent = `# Progress
 
-| Task ID  | Title  | Priority | Status   |
-| -------- | ------ | -------- | -------- |
-| TASK_001 | Task 1 | High     | COMPLETE |
+| Task ID  | Title  | Status   |
+| -------- | ------ | -------- |
+| TASK_001 | Task 1 | COMPLETE |
 `;
       writeFileSync(TEST_PROGRESS, progressContent, 'utf8');
       writeConfig();
@@ -300,13 +301,88 @@ This is some malformed content
     });
   });
 
+  describe('current task', () => {
+    it('should return current task when IN PROGRESS', async () => {
+      const progressContent = `# Progress
+
+| Task ID  | Title       | Status      |
+| -------- | ----------- | ----------- |
+| TASK_001 | Setup       | COMPLETE    |
+| TASK_002 | Development | IN PROGRESS |
+`;
+      writeFileSync(TEST_PROGRESS, progressContent, 'utf8');
+      writeConfig();
+
+      await status({ json: true } as StatusOptions);
+
+      const jsonOutput = JSON.parse(consoleOutput[0]);
+      expect(jsonOutput.currentTask).not.toBeNull();
+      expect(jsonOutput.currentTask.id).toBe('TASK_002');
+      expect(jsonOutput.currentTask.title).toBe('Development');
+      expect(jsonOutput.currentTask.status).toBe('IN PROGRESS');
+    });
+
+    it('should return current task when IN_REVIEW', async () => {
+      const progressContent = `# Progress
+
+| Task ID  | Title       | Status    |
+| -------- | ----------- | --------- |
+| TASK_001 | Setup       | COMPLETE  |
+| TASK_002 | Development | IN_REVIEW |
+`;
+      writeFileSync(TEST_PROGRESS, progressContent, 'utf8');
+      writeConfig();
+
+      await status({ json: true } as StatusOptions);
+
+      const jsonOutput = JSON.parse(consoleOutput[0]);
+      expect(jsonOutput.currentTask).not.toBeNull();
+      expect(jsonOutput.currentTask.id).toBe('TASK_002');
+      expect(jsonOutput.currentTask.status).toBe('IN_REVIEW');
+    });
+
+    it('should return null when no active task', async () => {
+      const progressContent = `# Progress
+
+| Task ID  | Title       | Status      |
+| -------- | ----------- | ----------- |
+| TASK_001 | Setup       | COMPLETE    |
+| TASK_002 | Development | NOT STARTED |
+`;
+      writeFileSync(TEST_PROGRESS, progressContent, 'utf8');
+      writeConfig();
+
+      await status({ json: true } as StatusOptions);
+
+      const jsonOutput = JSON.parse(consoleOutput[0]);
+      expect(jsonOutput.currentTask).toBeNull();
+    });
+
+    it('should return null when all tasks complete', async () => {
+      const progressContent = `# Progress
+
+| Task ID  | Title       | Status   |
+| -------- | ----------- | -------- |
+| TASK_001 | Setup       | COMPLETE |
+| TASK_002 | Development | COMPLETE |
+`;
+      writeFileSync(TEST_PROGRESS, progressContent, 'utf8');
+      writeConfig();
+
+      await status({ json: true } as StatusOptions);
+
+      const jsonOutput = JSON.parse(consoleOutput[0]);
+      expect(jsonOutput.currentTask).toBeNull();
+    });
+  });
+
   describe('performance', () => {
     it('should respond in less than 100ms', async () => {
       const progressContent = `# Progress
 
-| Task ID  | Title  | Priority | Status   |
-| -------- | ------ | -------- | -------- |
-| TASK_001 | Task 1 | High     | COMPLETE |
+| Task ID  | Title  | Status   |
+| -------- | ------ | -------- |
+| TASK_001 | Task 1 | COMPLETE |
 `;
       writeFileSync(TEST_PROGRESS, progressContent, 'utf8');
       writeConfig();
@@ -321,9 +397,9 @@ This is some malformed content
     it('should use concurrent reads', async () => {
       const progressContent = `# Progress
 
-| Task ID  | Title  | Priority | Status   |
-| -------- | ------ | -------- | -------- |
-| TASK_001 | Task 1 | High     | COMPLETE |
+| Task ID  | Title  | Status   |
+| -------- | ------ | -------- |
+| TASK_001 | Task 1 | COMPLETE |
 `;
       writeFileSync(TEST_PROGRESS, progressContent, 'utf8');
       writeConfig();
@@ -344,10 +420,10 @@ This is some malformed content
     it('should render styled output by default', async () => {
       const progressContent = `# Progress
 
-| Task ID  | Title  | Priority | Status   |
-| -------- | ------ | -------- | -------- |
-| TASK_001 | Task 1 | High     | COMPLETE |
-| TASK_002 | Task 2 | High     | COMPLETE |
+| Task ID  | Title  | Status   |
+| -------- | ------ | -------- |
+| TASK_001 | Task 1 | COMPLETE |
+| TASK_002 | Task 2 | COMPLETE |
 `;
       writeFileSync(TEST_PROGRESS, progressContent, 'utf8');
       writeConfig();
@@ -361,10 +437,10 @@ This is some malformed content
     it('should display progress bar', async () => {
       const progressContent = `# Progress
 
-| Task ID  | Title  | Priority | Status      |
-| -------- | ------ | -------- | ----------- |
-| TASK_001 | Task 1 | High     | COMPLETE    |
-| TASK_002 | Task 2 | High     | NOT STARTED |
+| Task ID  | Title  | Status      |
+| -------- | ------ | ----------- |
+| TASK_001 | Task 1 | COMPLETE    |
+| TASK_002 | Task 2 | NOT STARTED |
 `;
       writeFileSync(TEST_PROGRESS, progressContent, 'utf8');
       writeConfig();
