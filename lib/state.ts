@@ -36,7 +36,7 @@ const PATTERNS = {
   BLOCKED: /TASK_\d+\s*\|.*BLOCKED/i,
   IN_REVIEW: /TASK_\d+\s*\|.*IN.REVIEW/i,
   WORK_LEFT: /TASK_\d+\s*\|.*(NOT STARTED|IN PROGRESS)/i,
-  TASK_ROW: /TASK_(\d+)\s*\|([^|]+)\|([^|]+)(?:\|([^|]+))?/i,
+  TASK_ROW: /^\s*\|\s*TASK_\d+\s*\|/i,
 } as const;
 
 // Priority order for state detection (highest to lowest)
@@ -123,15 +123,34 @@ export async function getTaskStats(config: SpeciConfig): Promise<TaskStats> {
     blocked: 0,
   };
 
+  // Valid task statuses (used to filter out non-task tables like Risk Areas)
+  const VALID_STATUSES = new Set([
+    'COMPLETE',
+    'COMPLETED',
+    'DONE',
+    'BLOCKED',
+    'IN_REVIEW',
+    'IN REVIEW',
+    'NOT STARTED',
+    'IN PROGRESS',
+  ]);
+
   for (const line of lines) {
-    // Match task rows: | TASK_001 | Description | Status | or | TASK_001 | Title | Priority | Status |
-    const match = line.match(PATTERNS.TASK_ROW);
-    if (!match) continue;
+    // Match task rows: | TASK_001 | Title | Status | ... |
+    if (!PATTERNS.TASK_ROW.test(line)) continue;
+
+    // Split on '|' — leading '|' produces empty first element
+    // Columns: ['', ' TASK_001 ', ' Title ', ' Status ', ...]
+    const cols = line.split('|');
+    if (cols.length < 4) continue;
+
+    // Status is always the 3rd data column (index 3 after split)
+    const status = cols[3].trim().toUpperCase();
+
+    // Skip rows that don't have a valid task status (e.g., Risk Areas table)
+    if (!VALID_STATUSES.has(status)) continue;
 
     stats.total++;
-
-    // Status is in the last captured group (either match[3] for 3 columns or match[4] for 4 columns)
-    const status = (match[4] || match[3]).trim().toUpperCase();
 
     if (status === 'COMPLETE' || status === 'COMPLETED' || status === 'DONE') {
       stats.completed++;

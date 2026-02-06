@@ -273,6 +273,26 @@ Some random text
       expect(stats.completed).toBe(2); // COMPLETED and DONE
       expect(stats.inReview).toBe(1);
     });
+
+    it('should parse multi-column rows and read status from 3rd column', async () => {
+      const content = `# Progress
+
+| Task ID  | Title                       | Status   | Review Status | Priority | Complexity | Dependencies | Assigned To     | Reviewed By     | Attempts |
+| -------- | --------------------------- | -------- | ------------- | -------- | ---------- | ------------ | --------------- | --------------- | -------- |
+| TASK_001 | Animation Module Structure  | COMPLETE | PASSED        | High     | S          | None         | SA-20260205-001 | RA-20260205-001 | 1        |
+| TASK_002 | Internal Gradient Utilities | COMPLETE | PASSED        | High     | S          | TASK_001     | SA-20260205-002 | RA-20260205-002 | 1        |
+| TASK_003 | Animation State Types       | NOT STARTED | -          | High     | S          | TASK_001     | -               | -               | 0        |
+| MVT_M1   | Manual Verification Test    | NOT STARTED | -          | —        | 15 min     | TASK_001-004 | -               | -               | 0        |
+`;
+      writeFileSync(mockConfig.paths.progress, content);
+      const stats = await getTaskStats(mockConfig);
+
+      expect(stats.total).toBe(3); // MVT rows are excluded
+      expect(stats.completed).toBe(2);
+      expect(stats.remaining).toBe(1); // TASK_003 only
+      expect(stats.inReview).toBe(0);
+      expect(stats.blocked).toBe(0);
+    });
   });
 
   describe('hasStatePattern', () => {
