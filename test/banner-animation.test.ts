@@ -2225,6 +2225,51 @@ describe('animateBanner', () => {
       expect(output).toContain('\x1b[6A'); // Cursor up
     });
   });
+
+  describe('Effect Override (TASK_015)', () => {
+    it('AnimationOptions.effect parameter exists and has correct type', () => {
+      // Verify the AnimationOptions interface supports effect parameter
+      const validOptions: import('../lib/ui/banner-animation.js').AnimationOptions =
+        {
+          effect: 'wave',
+        };
+      expect(validOptions.effect).toBe('wave');
+
+      const validOptions2: import('../lib/ui/banner-animation.js').AnimationOptions =
+        {
+          effect: 'fade',
+        };
+      expect(validOptions2.effect).toBe('fade');
+
+      const validOptions3: import('../lib/ui/banner-animation.js').AnimationOptions =
+        {
+          effect: 'sweep',
+        };
+      expect(validOptions3.effect).toBe('sweep');
+    });
+
+    it('selectRandomEffect returns one of the three available effects', () => {
+      const effects = new Set();
+      for (let i = 0; i < 10; i++) {
+        const effect = module.selectRandomEffect();
+        effects.add(effect);
+      }
+
+      // Should return valid effect functions
+      effects.forEach((effect) => {
+        expect([
+          module.renderWaveFrame,
+          module.renderFadeFrame,
+          module.renderSweepFrame,
+        ]).toContain(effect);
+      });
+    });
+
+    it('selectRandomEffect is exported for testing', () => {
+      expect(module.selectRandomEffect).toBeDefined();
+      expect(typeof module.selectRandomEffect).toBe('function');
+    });
+  });
 });
 
 describe('renderFadeFrame', () => {

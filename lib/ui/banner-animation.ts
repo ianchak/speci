@@ -800,6 +800,9 @@ export async function animateBanner(options?: AnimationOptions): Promise<void> {
   // Import renderBanner dynamically to avoid circular dependency
   const { renderBanner } = await import('./banner.js');
 
+  // Clear gradient cache before each animation to ensure consistent memory footprint
+  gradientCache.clear();
+
   // Step 1: Input Validation (E-15)
   // Note: Currently hardcoded, but validation pattern for future configurability
   const duration = Math.max(100, Math.min(5000, options?.duration ?? DURATION));
@@ -860,6 +863,11 @@ export async function animateBanner(options?: AnimationOptions): Promise<void> {
       if (terminalSnapshot) {
         terminalState.restore(terminalSnapshot);
         terminalSnapshot = null;
+      }
+
+      // Clear frame buffer to release string references
+      for (let i = 0; i < frameBuffer.length; i++) {
+        frameBuffer[i] = '';
       }
 
       // Unregister self
