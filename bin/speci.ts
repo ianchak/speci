@@ -8,6 +8,7 @@
 
 import { Command } from 'commander';
 import { renderBanner, VERSION } from '../lib/ui/banner.js';
+import { animateBanner, shouldAnimate } from '../lib/ui/banner-animation.js';
 import { init } from '../lib/commands/init.js';
 import { plan } from '../lib/commands/plan.js';
 import { task } from '../lib/commands/task.js';
@@ -27,12 +28,9 @@ import { setVerbose, debug } from '../lib/utils/logger.js';
  * @param options - Optional configuration for banner display
  */
 function displayBanner(options?: { color?: boolean }): Promise<void> | void {
-  const {
-    animateBanner,
-    shouldAnimate,
-  } = require('../lib/ui/banner-animation.js'); // eslint-disable-line @typescript-eslint/no-require-imports
   if (shouldAnimate(options)) {
-    return animateBanner();
+    console.log();
+    return animateBanner().then(() => console.log());
   } else {
     console.log('\n' + renderBanner({ showVersion: true }) + '\n');
   }
@@ -47,7 +45,7 @@ program
   .description('Speci CLI - AI-powered implementation loop orchestrator')
   .option('-v, --verbose', 'Enable verbose output')
   .option('--no-color', 'Disable colored output')
-  .hook('preAction', (_thisCommand) => {
+  .hook('preAction', async (_thisCommand) => {
     // Enable verbose mode if --verbose flag is set
     const opts = _thisCommand.opts();
     if (opts.verbose) {
@@ -66,7 +64,10 @@ program
       args.includes('--version') ||
       args.includes('-V');
     if (!isHelpOrVersion) {
-      displayBanner({ color: opts.color });
+      const result = displayBanner({ color: opts.color });
+      if (result instanceof Promise) {
+        await result;
+      }
     }
   });
 
@@ -249,7 +250,7 @@ if (process.argv.length <= 2) {
     }
     program.help();
   })();
+} else {
+  // Parse command line arguments (only when a command is provided)
+  program.parse(process.argv);
 }
-
-// Parse command line arguments
-program.parse(process.argv);

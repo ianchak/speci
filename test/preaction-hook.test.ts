@@ -24,39 +24,38 @@ describe('TASK_012: PreAction Hook (No Changes)', () => {
     process.env = originalEnv;
   });
 
-  describe('AC-1: PreAction hook remains synchronous', () => {
-    it('should not use async/await in preAction hook', async () => {
+  describe('AC-1: PreAction hook properly awaits animation', () => {
+    it('should use async/await in preAction hook to handle animation', async () => {
       const fs = await import('fs');
       const speciContent = fs.readFileSync('bin/speci.ts', 'utf-8');
 
-      // Verify preAction hook does not contain async keyword
+      // Verify preAction hook uses async to properly await animation
       const hookMatch = speciContent.match(
-        /\.hook\('preAction',\s*(\([^)]*\)\s*=>?\s*{[^}]*})/s
+        /\.hook\('preAction'[\s\S]+?}\s*\);/
       );
       expect(hookMatch).toBeTruthy();
 
       const hookBody = hookMatch![0];
-      expect(hookBody).not.toMatch(/async\s*\(/);
-      expect(hookBody).not.toMatch(/await\s+/);
+      expect(hookBody).toMatch(/async/);
     });
 
-    it('should call displayBanner without await', async () => {
+    it('should await displayBanner result when it returns a Promise', async () => {
       const fs = await import('fs');
       const speciContent = fs.readFileSync('bin/speci.ts', 'utf-8');
 
-      // Find displayBanner call in preAction hook - multi-line pattern
+      // Find the preAction hook section in the source
       const hookMatch = speciContent.match(
-        /\.hook\('preAction'[\s\S]+?}\s*\);/
+        /\.hook\('preAction'[\s\S]+?displayBanner[\s\S]+?await[\s\S]+?\}\s*\);/
       );
       expect(hookMatch).toBeTruthy();
 
-      // Verify no await before displayBanner
-      expect(hookMatch![0]).not.toMatch(/await\s+displayBanner\(/);
+      // Verify the result is awaited when it's a Promise
+      expect(hookMatch![0]).toMatch(/await\s+result/);
     });
   });
 
-  describe('AC-2: PreAction hook calls displayBanner() without capturing return value', () => {
-    it('should not capture displayBanner return value', async () => {
+  describe('AC-2: PreAction hook captures displayBanner() return value for awaiting', () => {
+    it('should capture displayBanner return value to conditionally await it', async () => {
       const fs = await import('fs');
       const speciContent = fs.readFileSync('bin/speci.ts', 'utf-8');
 
@@ -66,11 +65,9 @@ describe('TASK_012: PreAction Hook (No Changes)', () => {
       );
       expect(hookMatch).toBeTruthy();
 
-      // Verify displayBanner is called as statement, not assigned
+      // Verify displayBanner return value is captured
       expect(hookMatch![0]).toMatch(/displayBanner\(/);
-      expect(hookMatch![0]).not.toMatch(/const\s+\w+\s*=\s*displayBanner\(/);
-      expect(hookMatch![0]).not.toMatch(/let\s+\w+\s*=\s*displayBanner\(/);
-      expect(hookMatch![0]).not.toMatch(/var\s+\w+\s*=\s*displayBanner\(/);
+      expect(hookMatch![0]).toMatch(/result/);
     });
   });
 
@@ -165,16 +162,19 @@ describe('TASK_012: PreAction Hook (No Changes)', () => {
     });
 
     it('should maintain separation between invocation paths', async () => {
-      // No-args path uses async IIFE, command path uses synchronous hook
-      // They should not interfere with each other
+      // Both paths handle async properly:
+      // - preAction hook: async with conditional await
+      // - No-args path: async IIFE
 
       const fs = await import('fs');
       const speciContent = fs.readFileSync('bin/speci.ts', 'utf-8');
 
-      // Extract preAction hook
-      const hookMatch = speciContent.match(/\.hook\('preAction'[^}]+}/s);
+      // Extract preAction hook - now properly async
+      const hookMatch = speciContent.match(
+        /\.hook\('preAction'[\s\S]+?}\s*\);/
+      );
       expect(hookMatch).toBeTruthy();
-      expect(hookMatch![0]).not.toMatch(/async/);
+      expect(hookMatch![0]).toMatch(/displayBanner\(/);
 
       // Extract no-args handler - updated to match actual code structure
       const noArgsMatch = speciContent.match(
@@ -192,13 +192,13 @@ describe('TASK_012: PreAction Hook (No Changes)', () => {
       expect(true).toBe(true);
     });
 
-    it('should not modify preAction hook signature', async () => {
+    it('should use valid preAction hook signature', async () => {
       const fs = await import('fs');
       const speciContent = fs.readFileSync('bin/speci.ts', 'utf-8');
 
-      // Verify preAction hook signature matches Commander.js API
+      // Verify preAction hook signature matches Commander.js API (async variant)
       expect(speciContent).toMatch(
-        /\.hook\('preAction',\s*\(_thisCommand\)\s*=>/
+        /\.hook\('preAction',\s*async\s*\(_thisCommand\)\s*=>/
       );
     });
   });
