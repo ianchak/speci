@@ -208,14 +208,7 @@ Examples:
   .action(status);
 
 // List of all available commands (for unknown command handling)
-const availableCommands = [
-  'init',
-  'plan',
-  'task',
-  'refactor',
-  'run',
-  'status',
-];
+const availableCommands = ['init', 'plan', 'task', 'refactor', 'run', 'status'];
 
 // Unknown command handler
 program.on('command:*', (operands) => {
