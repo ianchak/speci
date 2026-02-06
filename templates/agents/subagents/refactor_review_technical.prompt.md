@@ -1,63 +1,28 @@
-Plan Review Loop - Review 2 of 5
+# Refactor Review Subagent - Review 2: Technical Accuracy Review
 
-CONTEXT:
+MISSION: Review the refactoring plan for technical accuracy
+PLAN FILE: Provided by orchestrator
 
-- Current refactoring plan: [include current plan content]
-- Review focus: Technical Accuracy & Feasibility
-- Previous review findings: [include findings from previous reviews]
+You are a Technical Reviewer. Your job is to review the refactoring plan and EDIT IT directly with improvements.
 
-MISSION:
-Critically review the refactoring plan and identify improvements, gaps, or issues.
+READ the entire plan file carefully, including all analysis findings in sections 1.1-1.10.
 
-REVIEW REQUIREMENTS:
+REVIEW focusing on:
 
-1. COMPLETENESS CHECK:
-   - Are all findings from analysis adequately addressed?
-   - Are there missing refactoring proposals?
-   - Are dependencies between tasks complete?
-   - Are effort estimations reasonable?
+- Are technical assessments accurate?
+- Are proposed solutions technically sound?
+- Are there any incorrect assumptions about the code?
+- Are complexity assessments realistic?
+- Are suggested patterns appropriate for this codebase?
+- Are there better alternative approaches?
 
-2. FEASIBILITY ASSESSMENT:
-   - Is each proposal actionable?
-   - Are the steps clear enough to implement?
-   - Are the risks properly identified?
-   - Is the roadmap realistic?
+EDIT the plan file:
 
-3. PRIORITIZATION REVIEW:
-   - Are priorities correctly assigned?
-   - Should any items be reprioritized?
-   - Is the sequencing logical?
-   - Are quick wins properly identified?
+- Correct any technical inaccuracies in sections 1.1-1.10
+- Improve solution suggestions where better alternatives exist
+- Add a row to Section 12 (Review Log) with your review findings
 
-4. CLARITY & COMMUNICATION:
-   - Is the plan clear and understandable?
-   - Are technical terms explained?
-   - Are examples provided where helpful?
-   - Is the format consistent?
+CRITICAL: Use replace_string_in_file or multi_replace_string_in_file to write improvements INTO THE PLAN FILE.
 
-5. ACTIONABILITY VERIFICATION:
-   - Can a developer pick up any task and start?
-   - Are acceptance criteria clear?
-   - Are testing strategies adequate?
-   - Are rollback strategies defined where needed?
-
-DELIVERABLE:
-Return a structured review with:
-
-- GAPS_IDENTIFIED: Missing elements in the plan
-- CORRECTIONS_NEEDED: Errors or inconsistencies found
-- PRIORITIZATION_CHANGES: Suggested priority adjustments
-- CLARITY_IMPROVEMENTS: Sections that need better explanation
-- ADDITIONAL_PROPOSALS: New refactoring ideas discovered during review
-- RISK_UPDATES: Additional risks or mitigation strategies
-- SPECIFIC_EDITS: Exact text changes to improve the plan
-
----
-
-Focus: Technical correctness and implementability
-
-- Verify technical recommendations are sound
-- Check that proposed solutions match the tech stack
-- Validate that refactoring approaches are appropriate
-- Ensure backward compatibility is considered
-- Verify effort estimations are realistic
+FINAL REPORT FORMAT:
+"Review 2 complete: [summary of improvements made]. Updated sections: [list]"

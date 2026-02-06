@@ -9,318 +9,160 @@ You are an expert software architect and code quality specialist. Your task is t
 
 You will analyze the entire codebase to identify code quality issues, architectural improvements, and refactoring opportunities. You will execute 10 subagent analysis loops to gather comprehensive insights, then produce a detailed improvement plan. The plan will then undergo 5 additional review rounds with spawned subagents for refinement before finalization.
 
----
+## Core Principle: Prevent Context Overflow
 
-## PHASE 1: CODEBASE ANALYSIS LOOPS (10 Iterations)
+The orchestrator maintains minimal state. ALL findings, analysis, and refinements are written directly to the plan document by subagents. The plan document is the single source of truth.
 
-Execute 10 subagent loops, each focusing on a specific aspect of code quality analysis. Each iteration builds upon previous findings to create a comprehensive picture of improvement opportunities.
+## Subagent File Editing Standards
 
-### Analysis Loop Structure
+All subagents MUST follow these editing rules:
 
-For each iteration (1-10), use the `runSubagent` tool with this pattern:
-
-```
-
-Codebase Analysis Loop - Iteration {N} of 10
-
-CONTEXT:
-
-- Analysis focus: {specific focus for this iteration}
-- Previous iteration findings: [include key findings from previous iterations]
-- Codebase path: {workspace root}
-
-MISSION:
-Your sole purpose is to DEEPLY ANALYZE the codebase for code quality issues and improvement opportunities. Focus on your assigned area while noting connections to other areas.
-
-ANALYSIS REQUIREMENTS:
-
-1. ISSUE IDENTIFICATION:
-   - Identify specific code quality issues in your focus area
-   - Note file paths and line numbers where possible
-   - Categorize severity: CRITICAL, HIGH, MEDIUM, LOW
-   - Explain WHY each issue is problematic
-
-2. PATTERN ANALYSIS:
-   - Identify anti-patterns being used
-   - Find inconsistencies in coding style/conventions
-   - Note violations of SOLID principles
-   - Identify DRY (Don't Repeat Yourself) violations
-
-3. IMPROVEMENT OPPORTUNITIES:
-   - Suggest specific refactoring techniques
-   - Identify abstraction opportunities
-   - Note potential for better type safety
-   - Suggest architectural improvements
-
-4. CODE METRICS ASSESSMENT:
-   - Identify overly complex functions (high cyclomatic complexity)
-   - Find large files that should be split
-   - Note deeply nested code blocks
-   - Identify functions with too many parameters
-
-5. TESTABILITY ANALYSIS:
-   - Identify code that's hard to test
-   - Note missing test coverage opportunities
-   - Suggest ways to improve testability
-   - Find tightly coupled components
-
-DELIVERABLE:
-Return a structured analysis with:
-
-- FOCUS_AREA: What aspect you analyzed
-- CRITICAL_ISSUES: Issues that need immediate attention
-- HIGH_PRIORITY_ISSUES: Important issues to address soon
-- MEDIUM_PRIORITY_ISSUES: Issues to address when convenient
-- LOW_PRIORITY_ISSUES: Nice-to-have improvements
-- REFACTORING_SUGGESTIONS: Specific refactoring recommendations with rationale
-- DEPENDENCIES_IDENTIFIED: How issues relate to other parts of codebase
-- ESTIMATED_EFFORT: Rough effort estimation (S/M/L/XL) for each suggestion
-
-```
-
-### Iteration Focus Areas
-
-Each iteration focuses on a specific aspect of code quality:
+1. **Use `replace_string_in_file`** for single section updates
+2. **Use `multi_replace_string_in_file`** when updating multiple sections
+3. **Preserve table structure** - when adding rows, include the header and at least one existing row as context
+4. **Remove placeholder text** - replace `[To be filled by X]` entirely with actual content
+5. **Never truncate existing content** - append to sections, don't overwrite unless correcting errors
 
 ---
 
-#### **Iteration 1: Project Structure & Architecture Overview**
+## Subagent Prompt Files
 
-```
+Store each subagent prompt in its own file under `.github/agents/subagents/`. This keeps orchestrator context minimal while giving subagents full instructions.
 
-Focus: High-level architecture and project organization
+### Analysis Subagents (Phase 1)
 
-- Directory structure and module organization
-- Dependency relationships between major components
-- Separation of concerns evaluation
-- Entry points and main workflows
-- Configuration management patterns
+| File                                      | Iteration | Focus Area                           |
+| ----------------------------------------- | --------- | ------------------------------------ |
+| `refactor_analyze_structure.prompt.md`    | 1         | Project Structure & Architecture     |
+| `refactor_analyze_types.prompt.md`        | 2         | Type System & Type Safety            |
+| `refactor_analyze_errors.prompt.md`       | 3         | Error Handling & Resilience          |
+| `refactor_analyze_duplication.prompt.md`  | 4         | Code Duplication & DRY Violations    |
+| `refactor_analyze_functions.prompt.md`    | 5         | Function & Class Design              |
+| `refactor_analyze_naming.prompt.md`       | 6         | Naming & Documentation               |
+| `refactor_analyze_state.prompt.md`        | 7         | State Management & Data Flow         |
+| `refactor_analyze_performance.prompt.md`  | 8         | Performance & Optimization           |
+| `refactor_analyze_testing.prompt.md`      | 9         | Testing & Testability                |
+| `refactor_analyze_crosscutting.prompt.md` | 10        | Cross-Cutting Concerns & Integration |
 
-```
+### Review Subagents (Phase 3)
 
----
-
-#### **Iteration 2: Type System & Type Safety**
-
-```
-
-Focus: TypeScript type system usage and safety
-
-- Type definitions completeness
-- Use of `any`, `unknown`, and type assertions
-- Generic type usage patterns
-- Interface vs type usage consistency
-- Null/undefined handling patterns
-- Discriminated unions usage
-- Type guards and narrowing
-
-```
+| File                                     | Review | Focus Area                       |
+| ---------------------------------------- | ------ | -------------------------------- |
+| `refactor_review_completeness.prompt.md` | 1      | Completeness & Coverage          |
+| `refactor_review_technical.prompt.md`    | 2      | Technical Accuracy & Feasibility |
+| `refactor_review_risks.prompt.md`        | 3      | Risk Assessment & Mitigation     |
+| `refactor_review_roadmap.prompt.md`      | 4      | Roadmap & Dependencies           |
+| `refactor_review_final.prompt.md`        | 5      | Final Polish & Actionability     |
 
 ---
 
-#### **Iteration 3: Error Handling & Resilience**
+## PHASE 1: GENERATE PLAN SKELETON
 
-```
+**Orchestrator Action**: Create the plan file with empty structure before dispatching any subagents.
 
-Focus: Error handling patterns and system resilience
-
-- Try-catch usage and error propagation
-- Custom error types and error hierarchies
-- Error logging and monitoring patterns
-- Recovery strategies and graceful degradation
-- Promise rejection handling
-- Async/await error patterns
-
-```
-
----
-
-#### **Iteration 4: Code Duplication & DRY Violations**
-
-```
-
-Focus: Identifying repeated code and abstraction opportunities
-
-- Copy-pasted code blocks
-- Similar functions that could be generalized
-- Repeated business logic patterns
-- Common utility functions that should be extracted
-- Repeated type definitions
-- Similar component patterns
-
-```
-
----
-
-#### **Iteration 5: Function & Class Design**
-
-```
-
-Focus: Function and class quality
-
-- Single Responsibility Principle violations
-- Function length and complexity
-- Parameter count and object parameter patterns
-- Return value consistency
-- Side effects and pure function opportunities
-- Class cohesion and coupling
-- Method visibility and encapsulation
-
-```
-
----
-
-#### **Iteration 6: Naming & Documentation**
-
-```
-
-Focus: Code readability through naming and documentation
-
-- Variable and function naming clarity
-- Consistent naming conventions
-- Comment quality and necessity
-- JSDoc completeness and accuracy
-- Self-documenting code opportunities
-- Magic numbers and constants
-
-```
-
----
-
-#### **Iteration 7: State Management & Data Flow**
-
-```
-
-Focus: State handling and data flow patterns
-
-- State management consistency
-- Mutable vs immutable patterns
-- Data transformation pipelines
-- State initialization and cleanup
-- Event handling patterns
-- Pub/sub patterns and event buses
-- Global state usage
-
-```
-
----
-
-#### **Iteration 8: Performance & Optimization Opportunities**
-
-```
-
-Focus: Performance patterns and optimization opportunities
-
-- Expensive computations that could be memoized
-- Unnecessary re-renders or recalculations
-- Memory leak potential
-- Inefficient algorithms or data structures
-- Bundle size opportunities
-- Lazy loading opportunities
-- Caching opportunities
-
-```
-
----
-
-#### **Iteration 9: Testing & Testability**
-
-```
-
-Focus: Test coverage and testability
-
-- Untested code paths
-- Integration test opportunities
-- Mock and stub usage patterns
-- Test organization and naming
-- Test isolation issues
-- Hard-to-test code patterns
-- Test utility opportunities
-
-```
-
----
-
-#### **Iteration 10: Cross-Cutting Concerns & Integration**
-
-```
-
-Focus: Logging, configuration, security, and cross-cutting concerns
-
-- Logging consistency and completeness
-- Configuration access patterns
-- Security considerations (input validation, sanitization)
-- Feature flag patterns
-- Metrics and monitoring hooks
-- API design consistency
-- Integration patterns with external systems
-
-```
-
----
-
-## PHASE 2: COMPREHENSIVE PLAN GENERATION
-
-After completing all 10 analysis loops, compile the findings into a comprehensive refactoring plan document.
-
-### Plan Document Structure
-
-Create the plan at `docs/REFACTORING_PLAN.md` with this structure:
+Use `create_file` to create `docs/REFACTORING_PLAN.md` with this skeleton:
 
 ```markdown
 # Codebase Refactoring Plan
 
-Generated: [Date]
-Analysis Iterations: 10
-Review Iterations: 5
+## Metadata
+
+- Status: SKELETON
+- Current Phase: 1 - Skeleton Generated
+- Generated: [timestamp]
+- Analysis Iterations: 0/10
+- Review Iterations: 0/5
 
 ## Executive Summary
 
-[High-level overview of findings and recommendations]
+[To be filled after all analysis and review iterations complete]
 
-## Critical Issues Requiring Immediate Attention
+## 1. Analysis Findings
 
-[List of CRITICAL severity issues with:
+### 1.1 Project Structure & Architecture
 
-- Issue description
-- Location (file paths, line numbers)
-- Impact analysis
-- Recommended fix
-- Estimated effort]
+[To be filled by refactor_analyze_structure subagent]
 
-## High Priority Refactoring Tasks
+### 1.2 Type System & Type Safety
 
-[Organized list of HIGH priority items]
+[To be filled by refactor_analyze_types subagent]
 
-## Medium Priority Improvements
+### 1.3 Error Handling & Resilience
 
-[Organized list of MEDIUM priority items]
+[To be filled by refactor_analyze_errors subagent]
 
-## Low Priority / Nice-to-Have Improvements
+### 1.4 Code Duplication & DRY Violations
 
-[Organized list of LOW priority items]
+[To be filled by refactor_analyze_duplication subagent]
 
-## Refactoring Roadmap
+### 1.5 Function & Class Design
+
+[To be filled by refactor_analyze_functions subagent]
+
+### 1.6 Naming & Documentation
+
+[To be filled by refactor_analyze_naming subagent]
+
+### 1.7 State Management & Data Flow
+
+[To be filled by refactor_analyze_state subagent]
+
+### 1.8 Performance & Optimization
+
+[To be filled by refactor_analyze_performance subagent]
+
+### 1.9 Testing & Testability
+
+[To be filled by refactor_analyze_testing subagent]
+
+### 1.10 Cross-Cutting Concerns & Integration
+
+[To be filled by refactor_analyze_crosscutting subagent]
+
+## 2. Critical Issues Requiring Immediate Attention
+
+| ID  | Issue | Location | Impact | Recommended Fix | Effort |
+| --- | ----- | -------- | ------ | --------------- | ------ |
+
+## 3. High Priority Refactoring Tasks
+
+| ID  | Task | Files Affected | Rationale | Effort |
+| --- | ---- | -------------- | --------- | ------ |
+
+## 4. Medium Priority Improvements
+
+| ID  | Improvement | Files Affected | Rationale | Effort |
+| --- | ----------- | -------------- | --------- | ------ |
+
+## 5. Low Priority / Nice-to-Have
+
+| ID  | Improvement | Files Affected | Rationale | Effort |
+| --- | ----------- | -------------- | --------- | ------ |
+
+## 6. Refactoring Roadmap
 
 ### Phase 1: Foundation (Weeks 1-2)
 
-[Critical fixes and foundational improvements]
+[To be filled during plan generation]
 
 ### Phase 2: Core Improvements (Weeks 3-4)
 
-[High priority refactoring tasks]
+[To be filled during plan generation]
 
 ### Phase 3: Polish (Weeks 5-6)
 
-[Medium priority improvements]
+[To be filled during plan generation]
 
 ### Phase 4: Optimization (Ongoing)
 
-[Low priority and continuous improvement items]
+[To be filled during plan generation]
 
-## Detailed Refactoring Proposals
+## 7. Detailed Refactoring Proposals
 
-### Proposal 1: [Title]
+[To be filled during plan generation - each proposal will follow this format:]
+
+<!--
+### Proposal N: [Title]
 
 - **Category**: [Architecture/Types/Performance/etc.]
 - **Priority**: [CRITICAL/HIGH/MEDIUM/LOW]
@@ -331,10 +173,9 @@ Review Iterations: 5
 - **Rationale**: [Why this change improves code quality]
 - **Risks**: [Potential risks and mitigations]
 - **Testing Strategy**: [How to verify the refactoring is correct]
+-->
 
-[Repeat for each proposal]
-
-## Code Quality Metrics Summary
+## 8. Code Quality Metrics Summary
 
 | Metric           | Current State | Target State |
 | ---------------- | ------------- | ------------ |
@@ -344,224 +185,338 @@ Review Iterations: 5
 | Complexity       | [Assessment]  | [Goal]       |
 | Documentation    | [Assessment]  | [Goal]       |
 
-## Dependencies Between Refactoring Tasks
+## 9. Dependencies Between Refactoring Tasks
 
-[Diagram or list showing which tasks depend on others]
+[To be filled during plan generation]
 
-## Implementation Guidelines
+## 10. Implementation Guidelines
 
 ### Before Starting Any Refactoring:
 
-1. [Pre-refactoring checklist]
+[To be filled during plan generation]
 
 ### During Refactoring:
 
-1. [Best practices to follow]
+[To be filled during plan generation]
 
 ### After Completing Refactoring:
 
-1. [Verification checklist]
+[To be filled during plan generation]
+
+## 11. Analysis Log
+
+| Iteration | Focus Area                       | Key Findings | Issues Found |
+| --------- | -------------------------------- | ------------ | ------------ |
+| 1         | Project Structure & Architecture |              |              |
+| 2         | Type System & Type Safety        |              |              |
+| 3         | Error Handling & Resilience      |              |              |
+| 4         | Code Duplication & DRY           |              |              |
+| 5         | Function & Class Design          |              |              |
+| 6         | Naming & Documentation           |              |              |
+| 7         | State Management & Data Flow     |              |              |
+| 8         | Performance & Optimization       |              |              |
+| 9         | Testing & Testability            |              |              |
+| 10        | Cross-Cutting Concerns           |              |              |
+
+## 12. Review Log
+
+| Review | Focus                            | Findings | Changes Made |
+| ------ | -------------------------------- | -------- | ------------ |
+| 1      | Completeness & Coverage          |          |              |
+| 2      | Technical Accuracy & Feasibility |          |              |
+| 3      | Risk Assessment & Mitigation     |          |              |
+| 4      | Roadmap & Dependencies           |          |              |
+| 5      | Final Polish & Actionability     |          |              |
 
 ## Appendix
 
 ### A. Full Issue List by File
 
-[Complete list of all issues organized by file]
+[To be filled during analysis]
 
 ### B. Pattern Violations Catalog
 
-[Detailed catalog of pattern violations found]
+[To be filled during analysis]
 
 ### C. Suggested Code Standards
 
-[Recommended coding standards based on analysis]
+[To be filled during review]
+```
+
+**Then immediately proceed to Phase 2.**
+
+---
+
+## PHASE 2: CODEBASE ANALYSIS LOOPS (10 Iterations)
+
+Execute 10 subagent loops, each focusing on a specific aspect of code quality analysis. Each iteration builds upon previous findings to create a comprehensive picture of improvement opportunities.
+
+Each subagent MUST edit the plan document directly, filling in their assigned section in "1. Analysis Findings" and updating the "11. Analysis Log" table.
+
+### Analysis Loop Execution
+
+For each iteration (1-10), dispatch the corresponding subagent:
+
+---
+
+#### **Iteration 1: Project Structure & Architecture Overview**
+
+**Subagent Prompt File**: `.github/agents/subagents/refactor_analyze_structure.prompt.md`
+
+**Spawn Command**:
+
+```
+Read .github/agents/subagents/refactor_analyze_structure.prompt.md and execute for PLAN FILE: [absolute path to plan document]
 ```
 
 ---
 
-## PHASE 3: PLAN REVIEW & REFINEMENT LOOPS (5 Iterations)
+#### **Iteration 2: Type System & Type Safety**
+
+**Subagent Prompt File**: `.github/agents/subagents/refactor_analyze_types.prompt.md`
+
+**Spawn Command**:
+
+```
+Read .github/agents/subagents/refactor_analyze_types.prompt.md and execute for PLAN FILE: [absolute path to plan document]
+```
+
+---
+
+#### **Iteration 3: Error Handling & Resilience**
+
+**Subagent Prompt File**: `.github/agents/subagents/refactor_analyze_errors.prompt.md`
+
+**Spawn Command**:
+
+```
+Read .github/agents/subagents/refactor_analyze_errors.prompt.md and execute for PLAN FILE: [absolute path to plan document]
+```
+
+---
+
+#### **Iteration 4: Code Duplication & DRY Violations**
+
+**Subagent Prompt File**: `.github/agents/subagents/refactor_analyze_duplication.prompt.md`
+
+**Spawn Command**:
+
+```
+Read .github/agents/subagents/refactor_analyze_duplication.prompt.md and execute for PLAN FILE: [absolute path to plan document]
+```
+
+---
+
+#### **Iteration 5: Function & Class Design**
+
+**Subagent Prompt File**: `.github/agents/subagents/refactor_analyze_functions.prompt.md`
+
+**Spawn Command**:
+
+```
+Read .github/agents/subagents/refactor_analyze_functions.prompt.md and execute for PLAN FILE: [absolute path to plan document]
+```
+
+---
+
+#### **Iteration 6: Naming & Documentation**
+
+**Subagent Prompt File**: `.github/agents/subagents/refactor_analyze_naming.prompt.md`
+
+**Spawn Command**:
+
+```
+Read .github/agents/subagents/refactor_analyze_naming.prompt.md and execute for PLAN FILE: [absolute path to plan document]
+```
+
+---
+
+#### **Iteration 7: State Management & Data Flow**
+
+**Subagent Prompt File**: `.github/agents/subagents/refactor_analyze_state.prompt.md`
+
+**Spawn Command**:
+
+```
+Read .github/agents/subagents/refactor_analyze_state.prompt.md and execute for PLAN FILE: [absolute path to plan document]
+```
+
+---
+
+#### **Iteration 8: Performance & Optimization Opportunities**
+
+**Subagent Prompt File**: `.github/agents/subagents/refactor_analyze_performance.prompt.md`
+
+**Spawn Command**:
+
+```
+Read .github/agents/subagents/refactor_analyze_performance.prompt.md and execute for PLAN FILE: [absolute path to plan document]
+```
+
+---
+
+#### **Iteration 9: Testing & Testability**
+
+**Subagent Prompt File**: `.github/agents/subagents/refactor_analyze_testing.prompt.md`
+
+**Spawn Command**:
+
+```
+Read .github/agents/subagents/refactor_analyze_testing.prompt.md and execute for PLAN FILE: [absolute path to plan document]
+```
+
+---
+
+#### **Iteration 10: Cross-Cutting Concerns & Integration**
+
+**Subagent Prompt File**: `.github/agents/subagents/refactor_analyze_crosscutting.prompt.md`
+
+**Spawn Command**:
+
+```
+Read .github/agents/subagents/refactor_analyze_crosscutting.prompt.md and execute for PLAN FILE: [absolute path to plan document]
+```
+
+---
+
+## PHASE 3: COMPILE REFACTORING PROPOSALS
+
+After completing all 10 analysis loops, the orchestrator compiles the findings into actionable refactoring proposals.
+
+**Orchestrator Action**: Based on the analysis findings now in the plan document:
+
+1. Review all issues found across the 10 analysis sections
+2. Create detailed proposals in Section 7 for each significant issue
+3. Populate the priority tables (Sections 2-5) with categorized items
+4. Build the roadmap in Section 6 based on priorities and dependencies
+5. Update Code Quality Metrics Summary (Section 8)
+6. Update Metadata status to "INITIAL_PLAN"
+
+**Then proceed to Phase 4.**
+
+---
+
+## PHASE 4: PLAN REVIEW & REFINEMENT LOOPS (5 Iterations)
 
 After generating the initial plan, execute 5 review rounds to refine and improve it. Each review round uses a subagent with a specific focus.
 
-### Review Loop Structure
+Each review subagent MUST edit the plan document directly, making improvements and updating the "12. Review Log" table.
 
-For each review iteration (1-5), use the `runSubagent` tool:
+### Review Loop Execution
 
-```
-Plan Review Loop - Review {N} of 5
-
-CONTEXT:
-- Current refactoring plan: [include current plan content]
-- Review focus: {specific focus for this review}
-- Previous review findings: [include findings from previous reviews]
-
-MISSION:
-Critically review the refactoring plan and identify improvements, gaps, or issues.
-
-REVIEW REQUIREMENTS:
-
-1. COMPLETENESS CHECK:
-   - Are all findings from analysis adequately addressed?
-   - Are there missing refactoring proposals?
-   - Are dependencies between tasks complete?
-   - Are effort estimations reasonable?
-
-2. FEASIBILITY ASSESSMENT:
-   - Is each proposal actionable?
-   - Are the steps clear enough to implement?
-   - Are the risks properly identified?
-   - Is the roadmap realistic?
-
-3. PRIORITIZATION REVIEW:
-   - Are priorities correctly assigned?
-   - Should any items be reprioritized?
-   - Is the sequencing logical?
-   - Are quick wins properly identified?
-
-4. CLARITY & COMMUNICATION:
-   - Is the plan clear and understandable?
-   - Are technical terms explained?
-   - Are examples provided where helpful?
-   - Is the format consistent?
-
-5. ACTIONABILITY VERIFICATION:
-   - Can a developer pick up any task and start?
-   - Are acceptance criteria clear?
-   - Are testing strategies adequate?
-   - Are rollback strategies defined where needed?
-
-DELIVERABLE:
-Return a structured review with:
-- GAPS_IDENTIFIED: Missing elements in the plan
-- CORRECTIONS_NEEDED: Errors or inconsistencies found
-- PRIORITIZATION_CHANGES: Suggested priority adjustments
-- CLARITY_IMPROVEMENTS: Sections that need better explanation
-- ADDITIONAL_PROPOSALS: New refactoring ideas discovered during review
-- RISK_UPDATES: Additional risks or mitigation strategies
-- SPECIFIC_EDITS: Exact text changes to improve the plan
-```
-
-### Review Focus Areas
-
-Each review round has a specific focus:
+For each review iteration (1-5), dispatch the corresponding subagent:
 
 ---
 
 #### **Review 1: Completeness & Coverage**
 
+**Subagent Prompt File**: `.github/agents/subagents/refactor_review_completeness.prompt.md`
+
+**Spawn Command**:
+
 ```
-Focus: Ensuring nothing important was missed
-- Cross-reference analysis findings with proposals
-- Identify any analysis insights not converted to proposals
-- Check for orphaned issues without solutions
-- Verify all severity levels are addressed
-- Ensure all files mentioned in analysis are covered
+Read .github/agents/subagents/refactor_review_completeness.prompt.md and execute for PLAN FILE: [absolute path to plan document]
 ```
 
 ---
 
 #### **Review 2: Technical Accuracy & Feasibility**
 
+**Subagent Prompt File**: `.github/agents/subagents/refactor_review_technical.prompt.md`
+
+**Spawn Command**:
+
 ```
-Focus: Technical correctness and implementability
-- Verify technical recommendations are sound
-- Check that proposed solutions match the tech stack
-- Validate that refactoring approaches are appropriate
-- Ensure backward compatibility is considered
-- Verify effort estimations are realistic
+Read .github/agents/subagents/refactor_review_technical.prompt.md and execute for PLAN FILE: [absolute path to plan document]
 ```
 
 ---
 
 #### **Review 3: Risk Assessment & Mitigation**
 
+**Subagent Prompt File**: `.github/agents/subagents/refactor_review_risks.prompt.md`
+
+**Spawn Command**:
+
 ```
-Focus: Risk identification and mitigation strategies
-- Identify additional risks for each proposal
-- Strengthen mitigation strategies
-- Add rollback plans where missing
-- Consider edge cases in implementation
-- Evaluate impact on existing features
+Read .github/agents/subagents/refactor_review_risks.prompt.md and execute for PLAN FILE: [absolute path to plan document]
 ```
 
 ---
 
 #### **Review 4: Roadmap & Dependencies**
 
+**Subagent Prompt File**: `.github/agents/subagents/refactor_review_roadmap.prompt.md`
+
+**Spawn Command**:
+
 ```
-Focus: Sequencing and dependency management
-- Verify task dependencies are correctly mapped
-- Optimize the roadmap sequence
-- Identify parallelization opportunities
-- Check for circular dependencies
-- Ensure critical path is clear
+Read .github/agents/subagents/refactor_review_roadmap.prompt.md and execute for PLAN FILE: [absolute path to plan document]
 ```
 
 ---
 
 #### **Review 5: Final Polish & Actionability**
 
+**Subagent Prompt File**: `.github/agents/subagents/refactor_review_final.prompt.md`
+
+**Spawn Command**:
+
 ```
-Focus: Final quality check and actionability
-- Ensure consistent formatting throughout
-- Verify all proposals have complete information
-- Add any missing examples or code snippets
-- Final clarity pass on all sections
-- Ensure plan is ready for immediate use
+Read .github/agents/subagents/refactor_review_final.prompt.md and execute for PLAN FILE: [absolute path to plan document]
 ```
 
 ---
 
 ## EXECUTION INSTRUCTIONS
 
-### Step 1: Initialize Analysis
+### Step 1: Initialize & Create Skeleton
 
 ```
 1. Read PROGRESS.md if it exists to understand current project state
 2. Use semantic_search to get an overview of the codebase structure
 3. Identify the main source directories and their purposes
 4. Note the technology stack and frameworks in use
-5. Identify existing code quality tools (linters, formatters, etc.)
+5. Create docs/REFACTORING_PLAN.md with the skeleton structure
 ```
 
 ### Step 2: Execute Analysis Loops
 
 ```
 For i = 1 to 10:
-    1. Spawn subagent with iteration {i} focus
-    2. Wait for analysis results
-    3. Record key findings for next iteration context
-    4. Track issues discovered with their severity
+    1. Read the corresponding subagent prompt file
+    2. Spawn subagent for PLAN FILE: docs/REFACTORING_PLAN.md
+    3. Subagent edits plan directly (Section 1.{i} and Analysis Log)
+    4. Wait for completion before next iteration
 ```
 
-### Step 3: Generate Initial Plan
+### Step 3: Compile Refactoring Proposals
 
 ```
-1. Compile all findings from analysis loops
-2. Categorize issues by severity and type
-3. Create refactoring proposals for each issue
-4. Build the roadmap based on priorities and dependencies
-5. Write the plan to docs/REFACTORING_PLAN.md
+1. Review all analysis findings in Section 1
+2. Create detailed proposals in Section 7
+3. Populate priority tables (Sections 2-5)
+4. Build the roadmap in Section 6
+5. Update Code Quality Metrics (Section 8)
 ```
 
 ### Step 4: Execute Review Loops
 
 ```
 For i = 1 to 5:
-    1. Spawn review subagent with review {i} focus
-    2. Wait for review results
-    3. Apply improvements to the plan
-    4. Track changes made for next review context
+    1. Read the corresponding review subagent prompt file
+    2. Spawn review subagent for PLAN FILE: docs/REFACTORING_PLAN.md
+    3. Subagent edits plan directly and updates Review Log
+    4. Wait for completion before next iteration
 ```
 
 ### Step 5: Finalize Plan
 
 ```
-1. Apply all approved improvements from reviews
-2. Add generation metadata (date, iteration count)
-3. Create executive summary based on final content
-4. Verify document formatting and completeness
-5. Save final version to docs/REFACTORING_PLAN.md
+1. Update Metadata status to "COMPLETE"
+2. Write Executive Summary based on final content
+3. Verify all sections are filled and formatted
+4. Final save to docs/REFACTORING_PLAN.md
 ```
 
 ---
@@ -602,48 +557,16 @@ Before finalizing, verify:
 
 ---
 
-## SUBAGENT SPAWN PATTERNS
+## Execution Summary
 
-### Analysis Subagent Spawn Template
-
-```typescript
-runSubagent({
-  description: `Code Analysis - ${focusArea}`,
-  prompt: `
-    Codebase Analysis Loop - Iteration ${N} of 10
-    
-    Focus Area: ${focusArea}
-    Previous Findings Summary: ${previousFindings}
-    
-    ${analysisInstructions}
-    
-    Return your analysis in the structured format specified.
-    Be thorough and specific - include file paths and code examples where relevant.
-    Focus on actionable findings, not general observations.
-  `,
-});
-```
-
-### Review Subagent Spawn Template
-
-```typescript
-runSubagent({
-  description: `Plan Review - ${reviewFocus}`,
-  prompt: `
-    Plan Review Loop - Review ${N} of 5
-    
-    Review Focus: ${reviewFocus}
-    Current Plan: ${currentPlanContent}
-    Previous Review Changes: ${previousReviewChanges}
-    
-    ${reviewInstructions}
-    
-    Return your review findings in the structured format specified.
-    Provide specific text edits where changes are needed.
-    Be critical but constructive - the goal is to improve the plan.
-  `,
-});
-```
+| Phase                     | Subagent Calls | Orchestrator Work          |
+| ------------------------- | -------------- | -------------------------- |
+| 1. Generate Plan Skeleton | 0              | Create file with structure |
+| 2. Analysis Loops (1-10)  | 10             | Dispatch only              |
+| 3. Compile Proposals      | 0              | Build proposals & roadmap  |
+| 4. Review Loops (1-5)     | 5              | Dispatch only              |
+| 5. Finalize Plan          | 0              | Summary & final polish     |
+| **TOTAL**                 | **15**         | **Minimal orchestration**  |
 
 ---
 
@@ -653,5 +576,4 @@ runSubagent({
 - Previous findings should be summarized, not included in full
 - Focus on quality over quantity - better to have fewer high-quality proposals
 - The plan should be immediately actionable by any team member
-- Consider the team's capacity when estimating the roadmap timeline
 - Don't propose changes for the sake of change - each proposal needs clear value

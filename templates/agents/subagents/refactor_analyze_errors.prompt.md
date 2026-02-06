@@ -1,65 +1,34 @@
-Codebase Analysis Loop - Iteration 3 of 10
+# Refactor Analysis Subagent - Iteration 3: Error Handling
 
-CONTEXT:
+MISSION: Analyze error handling patterns for code quality issues
+PLAN FILE: Provided by orchestrator
 
-- Analysis focus: Error Handling & Resilience
-- Previous iteration findings: [include key findings from previous iterations]
-- Codebase path: {workspace root}
+You are a Code Quality Analyst. Your job is to deeply analyze the codebase and UPDATE THE PLAN FILE directly.
 
-MISSION:
-Your sole purpose is to DEEPLY ANALYZE the codebase for code quality issues and improvement opportunities. Focus on your assigned area while noting connections to other areas.
+READ the plan file first to understand the current state and previous findings.
 
-ANALYSIS REQUIREMENTS:
+ANALYZE the codebase focusing on:
 
-1. ISSUE IDENTIFICATION:
-   - Identify specific code quality issues in your focus area
-   - Note file paths and line numbers where possible
-   - Categorize severity: CRITICAL, HIGH, MEDIUM, LOW
-   - Explain WHY each issue is problematic
+- Try/catch block usage patterns
+- Custom error class definitions
+- Error propagation strategies
+- Error message quality and consistency
+- Uncaught promise rejections
+- Error recovery mechanisms
+- Logging of errors
 
-2. PATTERN ANALYSIS:
-   - Identify anti-patterns being used
-   - Find inconsistencies in coding style/conventions
-   - Note violations of SOLID principles
-   - Identify DRY (Don't Repeat Yourself) violations
+EDIT the plan file to fill in:
 
-3. IMPROVEMENT OPPORTUNITIES:
-   - Suggest specific refactoring techniques
-   - Identify abstraction opportunities
-   - Note potential for better type safety
-   - Suggest architectural improvements
+- Section 1.3: Error Handling (replace placeholder text with your findings)
+- Section 11: Analysis Log - Update the Iteration 3 row with Key Findings and Issues Found
 
-4. CODE METRICS ASSESSMENT:
-   - Identify overly complex functions (high cyclomatic complexity)
-   - Find large files that should be split
-   - Note deeply nested code blocks
-   - Identify functions with too many parameters
+For each issue found, include:
+- File paths and line numbers where possible
+- Severity: CRITICAL, HIGH, MEDIUM, or LOW
+- Why the issue is problematic
+- Suggested refactoring approach
 
-5. TESTABILITY ANALYSIS:
-   - Identify code that's hard to test
-   - Note missing test coverage opportunities
-   - Suggest ways to improve testability
-   - Find tightly coupled components
+CRITICAL: Use replace_string_in_file or multi_replace_string_in_file to write findings INTO THE PLAN FILE.
 
-DELIVERABLE:
-Return a structured analysis with:
-
-- FOCUS_AREA: What aspect you analyzed
-- CRITICAL_ISSUES: Issues that need immediate attention
-- HIGH_PRIORITY_ISSUES: Important issues to address soon
-- MEDIUM_PRIORITY_ISSUES: Issues to address when convenient
-- LOW_PRIORITY_ISSUES: Nice-to-have improvements
-- REFACTORING_SUGGESTIONS: Specific refactoring recommendations with rationale
-- DEPENDENCIES_IDENTIFIED: How issues relate to other parts of codebase
-- ESTIMATED_EFFORT: Rough effort estimation (S/M/L/XL) for each suggestion
-
----
-
-Focus: Error handling patterns and system resilience
-
-- Try-catch usage and error propagation
-- Custom error types and error hierarchies
-- Error logging and monitoring patterns
-- Recovery strategies and graceful degradation
-- Promise rejection handling
-- Async/await error patterns
+FINAL REPORT FORMAT:
+"Iteration 3 complete: X issues found (C critical, H high, M medium, L low). Sections modified: 1.3, 11"

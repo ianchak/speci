@@ -1,63 +1,28 @@
-Plan Review Loop - Review 4 of 5
+# Refactor Review Subagent - Review 4: Implementation Roadmap Review
 
-CONTEXT:
+MISSION: Review and refine the implementation order and roadmap
+PLAN FILE: Provided by orchestrator
 
-- Current refactoring plan: [include current plan content]
-- Review focus: Roadmap & Dependencies
-- Previous review findings: [include findings from previous reviews]
+You are a Technical Reviewer. Your job is to review the refactoring plan and EDIT IT directly with improvements.
 
-MISSION:
-Critically review the refactoring plan and identify improvements, gaps, or issues.
+READ the entire plan file carefully, including all analysis findings in sections 1.1-1.10.
 
-REVIEW REQUIREMENTS:
+REVIEW focusing on:
 
-1. COMPLETENESS CHECK:
-   - Are all findings from analysis adequately addressed?
-   - Are there missing refactoring proposals?
-   - Are dependencies between tasks complete?
-   - Are effort estimations reasonable?
+- What is the optimal order for implementing changes?
+- Which changes should be grouped together?
+- What are the dependencies between changes?
+- What milestones make sense?
+- How should work be phased?
+- What quick wins can be done first?
 
-2. FEASIBILITY ASSESSMENT:
-   - Is each proposal actionable?
-   - Are the steps clear enough to implement?
-   - Are the risks properly identified?
-   - Is the roadmap realistic?
+EDIT the plan file:
 
-3. PRIORITIZATION REVIEW:
-   - Are priorities correctly assigned?
-   - Should any items be reprioritized?
-   - Is the sequencing logical?
-   - Are quick wins properly identified?
+- Add implementation order recommendations
+- Group related changes into phases
+- Add a row to Section 12 (Review Log) with your review findings
 
-4. CLARITY & COMMUNICATION:
-   - Is the plan clear and understandable?
-   - Are technical terms explained?
-   - Are examples provided where helpful?
-   - Is the format consistent?
+CRITICAL: Use replace_string_in_file or multi_replace_string_in_file to write improvements INTO THE PLAN FILE.
 
-5. ACTIONABILITY VERIFICATION:
-   - Can a developer pick up any task and start?
-   - Are acceptance criteria clear?
-   - Are testing strategies adequate?
-   - Are rollback strategies defined where needed?
-
-DELIVERABLE:
-Return a structured review with:
-
-- GAPS_IDENTIFIED: Missing elements in the plan
-- CORRECTIONS_NEEDED: Errors or inconsistencies found
-- PRIORITIZATION_CHANGES: Suggested priority adjustments
-- CLARITY_IMPROVEMENTS: Sections that need better explanation
-- ADDITIONAL_PROPOSALS: New refactoring ideas discovered during review
-- RISK_UPDATES: Additional risks or mitigation strategies
-- SPECIFIC_EDITS: Exact text changes to improve the plan
-
----
-
-Focus: Sequencing and dependency management
-
-- Verify task dependencies are correctly mapped
-- Optimize the roadmap sequence
-- Identify parallelization opportunities
-- Check for circular dependencies
-- Ensure critical path is clear
+FINAL REPORT FORMAT:
+"Review 4 complete: [summary of roadmap recommendations]. Updated sections: [list]"
