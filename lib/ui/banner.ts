@@ -13,8 +13,8 @@ import { HEX_COLORS } from './palette.js';
 import { colorize, supportsColor } from './colors.js';
 
 // Use createRequire for reliable JSON imports in ESM (works in both runtime and tests)
-const require = createRequire(import.meta.url);
-const pkg = require('../../package.json') as { version: string };
+const esmRequire = createRequire(import.meta.url);
+const pkg = esmRequire('../../package.json') as { version: string };
 
 /** Package version from package.json */
 export const VERSION = pkg.version;

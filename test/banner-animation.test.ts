@@ -1261,7 +1261,6 @@ describe('renderWaveFrame', () => {
         const state = createMockAnimState();
 
         // Mock Date.now to make animation complete instantly
-        const realDateNow = Date.now;
         let callCount = 0;
         vi.spyOn(Date, 'now').mockImplementation(() => {
           // First call: startTime, subsequent calls: simulate elapsed time past duration
