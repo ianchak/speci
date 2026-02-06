@@ -13,7 +13,7 @@
  */
 
 // These imports will be used in future tasks
-import { BANNER_ART } from './banner.js';
+import { BANNER_ART, VERSION } from './banner.js';
 import { HEX_COLORS } from './palette.js';
 import { terminalState } from './terminal.js';
 import { supportsColor } from './colors.js';
@@ -33,6 +33,16 @@ export const FRAME_INTERVAL = 16;
  * Target frames per second
  */
 export const FPS_TARGET = 60;
+
+/**
+ * Version animation duration in milliseconds
+ */
+export const VERSION_DURATION = 400;
+
+/**
+ * Version animation FPS (lower than banner for simpler effect)
+ */
+export const VERSION_FPS = 30;
 
 /**
  * Minimum terminal height required for banner animation
@@ -750,6 +760,80 @@ export async function runAnimationLoop(
 }
 
 /**
+ * Animate version number with fade-in effect
+ *
+ * Displays the version string with a simple fade-in animation after
+ * the main banner animation completes. Uses a lower FPS (30) for
+ * acceptable performance on a simpler effect.
+ *
+ * Algorithm:
+ * 1. Calculate frame interval from VERSION_FPS (30fps = 33ms)
+ * 2. Loop until progress >= 1.0:
+ *    a. Calculate progress: (now - start) / duration
+ *    b. Interpolate from black to target color based on progress
+ *    c. Write version line with faded color
+ *    d. Move cursor back up one line for next frame
+ *    e. Sleep: frame interval ms
+ * 3. Write final version at full brightness
+ *
+ * @param version - Version string to animate (e.g., "v0.2.0")
+ * @param duration - Animation duration in milliseconds (typically 300-500ms)
+ * @returns Promise that resolves when animation completes
+ *
+ * @example
+ * await animateVersion("v1.0.0", 400);  // 400ms fade-in
+ *
+ * @internal
+ */
+export async function animateVersion(
+  version: string,
+  duration: number
+): Promise<void> {
+  const frameInterval = Math.floor(1000 / VERSION_FPS);
+  const startTime = Date.now();
+
+  // Get banner width for centering
+  const bannerWidth = BANNER_ART[0].length;
+  const versionText = version;
+  const padding = Math.floor((bannerWidth - versionText.length) / 2);
+  const centeredPrefix = ' '.repeat(padding);
+
+  let isFirstFrame = true;
+
+  // eslint-disable-next-line no-constant-condition
+  while (true) {
+    const elapsed = Date.now() - startTime;
+    const progress = Math.min(1.0, elapsed / duration);
+
+    // Fade from black to dim gray (using sky-500 but dimmed)
+    const targetColor = HEX_COLORS.sky500;
+    const fadedColor = lerpColor('#000000', targetColor, progress);
+    const ansiColor = hexToAnsi(fadedColor);
+
+    // Build version line
+    const versionLine = centeredPrefix + ansiColor + versionText + ANSI_RESET;
+
+    if (!isFirstFrame) {
+      // Move cursor up one line to overwrite previous frame
+      process.stdout.write('\x1b[1A');
+    } else {
+      isFirstFrame = false;
+    }
+
+    // Write version line
+    process.stdout.write(versionLine + '\n');
+
+    // Termination condition
+    if (progress >= 1.0) {
+      break;
+    }
+
+    // Frame delay
+    await sleep(frameInterval);
+  }
+}
+
+/**
  * Animate the SPECI banner with random or specified effect
  *
  * Main public API for banner animation. Coordinates animation execution with
@@ -913,6 +997,13 @@ export async function animateBanner(options?: AnimationOptions): Promise<void> {
     // Step 6: Animation Execution (E-6)
     try {
       await runAnimationLoop(selectedEffect, duration, animState);
+
+      // Step 6b: Version Animation (TASK_016)
+      // After main banner animation completes, animate version if requested
+      const showVersion = options?.showVersion ?? true;
+      if (showVersion) {
+        await animateVersion(VERSION, VERSION_DURATION);
+      }
     } catch {
       // E-6: Animation loop exception - fallback to static banner (silent)
       // Step 7: Error Fallback

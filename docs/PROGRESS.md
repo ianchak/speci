@@ -131,8 +131,8 @@ graph TD
 | Task ID  | Title                          | Status      | Review Status | Priority | Complexity | Dependencies                           | Assigned To     | Reviewed By     | Attempts |
 | -------- | ------------------------------ | ----------- | ------------- | -------- | ---------- | -------------------------------------- | --------------- | --------------- | -------- |
 | TASK_014 | Additional Animation Effects   | COMPLETE    | PASSED        | Medium   | M (2-4h)   | TASK_007                               | SA-20260205-019 | RA-20260206-007 | 1        |
-| TASK_015 | Effect Randomization           | IN PROGRESS | FAILED        | Low      | S (≤2h)    | TASK_014                               | SA-20260206-001 | RA-20260206-011 | 2        |
-| TASK_016 | Version Number Animation       | NOT STARTED | -             | Low      | S (≤2h)    | TASK_009                               | -               | -               | 0        |
+| TASK_015 | Effect Randomization           | COMPLETE    | PASSED        | Low      | S (≤2h)    | TASK_014                               | SA-20260206-001 | RA-20260206-012 | 2        |
+| TASK_016 | Version Number Animation       | IN PROGRESS | -             | Low      | S (≤2h)    | TASK_009                               | SA-20260206-002 | -               | 1        |
 | TASK_017 | SPECI_NO_ANIMATION Variable    | COMPLETE    | PASSED        | High     | S (≤2h)    | TASK_005                               | SA-20260205-015 | RA-20260206-003 | 1        |
 | TASK_018 | --no-color Flag Respect        | COMPLETE    | PASSED        | High     | S (≤2h)    | TASK_010                               | SA-20260205-016 | RA-20260206-004 | 1        |
 | TASK_019 | Cleanup Interrupted Animations | COMPLETE    | PASSED        | High     | M (2-4h)   | TASK_009                               | SA-20260205-017 | RA-20260206-005 | 1        |
@@ -205,13 +205,13 @@ TASK_001 → TASK_002 → TASK_007 → TASK_008 → TASK_009 → TASK_010 → TA
 
 ## Subagent Tracking
 
-Last Subagent ID: SA-20260206-001
+Last Subagent ID: SA-20260206-002
 
 ---
 
 ## Review Tracking
 
-Last Review ID: RA-20260206-011
+Last Review ID: RA-20260206-012
 
 ---
 
@@ -232,61 +232,18 @@ Last Review ID: RA-20260206-011
 
 ### For Fix Agent
 
-| Field           | Value                                                                                          |
-| --------------- | ---------------------------------------------------------------------------------------------- |
-| Task            | TASK_015                                                                                       |
-| Task Goal       | Implement random selection of animation effects to provide variety in banner animation        |
-| Review Agent    | RA-20260206-011                                                                                |
-| Failed Gate     | none (test gate has unrelated failure from TASK_021)                                           |
-| Primary Error   | `test/banner-animation.test.ts` - Missing test for AnimationOptions.effect override           |
-| Root Cause Hint | Test coverage gap: Implementation supports effect override but no test verifies this behavior |
-| Do NOT          | Modify implementation (it's correct), refactor passing tests, fix unrelated TASK_021 test     |
+| Field           | Value |
+| --------------- | ----- |
+| Task            | -     |
+| Task Goal       | -     |
+| Review Agent    | -     |
+| Failed Gate     | -     |
+| Primary Error   | -     |
+| Root Cause Hint | -     |
+| Do NOT          | -     |
 
 ---
 
 ## Review Failure Notes
 
-**Task:** TASK_015 - Effect Randomization
-**Task Goal:** Implement random selection of animation effects to provide variety in banner animation
-**Review Agent:** RA-20260206-011
-
----
-
-#### Blocking Issues (must fix to pass)
-
-1. **[AC#4 NOT MET]: Missing test for AnimationOptions.effect override**
-   - Location: `test/banner-animation.test.ts` - no tests for options.effect parameter
-   - Expected: Test verifying `animateBanner({ effect: 'wave' })` overrides random selection per Testing Strategy line 73
-   - Actual: selectRandomEffect() tests exist and pass, but integration test for AnimationOptions.effect override is missing
-   - Fix: Add test cases in animateBanner describe block that verify options.effect='wave'/'fade'/'sweep' correctly override random selection. Mock runAnimationLoop or use a simpler approach that tests the effect selection logic before it's passed to the loop.
-
----
-
-#### Non-Blocking Issues (fix if time permits)
-
-None identified.
-
----
-
-#### What Passed Review
-
-- AC1: Array of available effect functions created (ANIMATION_EFFECTS at lines 266-270) ✓
-- AC2: Math.random() used to select effect (selectRandomEffect() function lines 284-287) ✓
-- AC3: Selected effect passed to animation loop (animateBanner() calls selectRandomEffect() or uses override, line 830) ✓
-- AC4 (partial): Unit tests verify selection logic with mocked Math.random (lines 2658-2694) ✓
-- AC5: All three effects can be selected (tests cover 0.0→wave, 0.4→fade, 0.8→sweep) ✓
-- Implementation: Effect override logic in animateBanner() correctly implemented (lines 812-831) ✓
-- Code quality: No `any`, proper TypeScript types, JSDoc present ✓
-- Gates: lint ✅ (exit 0), typecheck ✅ (exit 0), test ❌ (but TASK_015 tests pass - failure is unrelated TASK_021 memory leak test)
-
----
-
-#### Fix Agent Instructions
-
-1. **Start with:** Add test cases for AnimationOptions.effect override in the animateBanner test suite (test/banner-animation.test.ts around line 2228)
-2. **Then:** Consider testing the effect selection logic more directly - either test the switch statement logic separately, or find a working pattern for mocking runAnimationLoop to capture which effect was selected
-3. **Verify:** Run `npm test -- banner-animation.test.ts` and confirm all tests pass
-4. **Context:** The implementation (lib/ui/banner-animation.ts lines 812-831) already supports the override correctly - this is purely a test coverage gap. The selectRandomEffect() function tests (lines 2652-2745) prove the randomization works. Just need to test the override path.
-5. **Do NOT:** Modify the implementation in banner-animation.ts - it's correct. Do NOT refactor existing passing tests. Focus ONLY on adding the missing AnimationOptions.effect override test.
-
-_(Previous review failure notes have been resolved)_
+_(No active review failures - TASK_015 passed review RA-20260206-012)_
