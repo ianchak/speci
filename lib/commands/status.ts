@@ -2,16 +2,21 @@
  * Status Command Implementation
  *
  * Displays current loop state, task statistics, and execution information.
- * Read-only command for quick project progress snapshots.
+ * Fullscreen live dashboard that refreshes every second until user quits.
  */
 
-import { loadConfig } from '../config.js';
-import { getState, getTaskStats } from '../state.js';
+import { loadConfig, type SpeciConfig } from '../config.js';
+import {
+  getState,
+  getTaskStats,
+  getCurrentTask,
+  type CurrentTask,
+} from '../state.js';
 import { getLockInfo } from '../utils/lock.js';
-import { renderBanner } from '../ui/banner.js';
+import { BANNER_ART, VERSION } from '../ui/banner.js';
 import { colorize } from '../ui/colors.js';
 import { getGlyph } from '../ui/glyphs.js';
-import { drawBox } from '../ui/box.js';
+import { terminalState } from '../ui/terminal.js';
 
 /**
  * Status command options
@@ -19,6 +24,8 @@ import { drawBox } from '../ui/box.js';
 export interface StatusOptions {
   json?: boolean;
   verbose?: boolean;
+  /** Run once and exit (non-interactive mode) */
+  once?: boolean;
 }
 
 /**
@@ -39,29 +46,53 @@ interface StatusData {
     startTime: string | null;
     elapsed: string | null;
   };
+  currentTask: CurrentTask | null;
   lastActivity?: string;
   error?: string;
 }
+
+/** Refresh interval in milliseconds */
+const REFRESH_INTERVAL = 1000;
 
 /**
  * Status command handler
  * @param options - Command options
  */
 export async function status(options: StatusOptions = {}): Promise<void> {
-  const startTime = Date.now();
+  // JSON mode: single output and exit
+  if (options.json) {
+    const config = await loadConfig();
+    const statusData = await gatherStatusData(config);
+    console.log(JSON.stringify(statusData, null, 2));
+    return;
+  }
 
-  // 1. Load configuration
-  const config = await loadConfig();
+  // Once mode or non-TTY: single render and exit
+  if (options.once || !process.stdout.isTTY) {
+    const config = await loadConfig();
+    const statusData = await gatherStatusData(config);
+    renderStaticStatus(statusData, options.verbose);
+    return;
+  }
 
-  // 2. Gather data concurrently
-  const [state, rawStats, lockInfo] = await Promise.all([
+  // Live fullscreen mode
+  await runLiveDashboard(options.verbose);
+}
+
+/**
+ * Gather status data from all sources
+ * @param config - Loaded configuration
+ * @returns Status data object
+ */
+async function gatherStatusData(config: SpeciConfig): Promise<StatusData> {
+  const [state, rawStats, lockInfo, currentTask] = await Promise.all([
     getState(config),
     getTaskStats(config),
     getLockInfo(config),
+    getCurrentTask(config),
   ]);
 
-  // 3. Build status data
-  const statusData: StatusData = {
+  return {
     state: state,
     stats: {
       total: rawStats.total,
@@ -76,54 +107,317 @@ export async function status(options: StatusOptions = {}): Promise<void> {
       startTime: lockInfo.started ? formatTimestamp(lockInfo.started) : null,
       elapsed: lockInfo.elapsed,
     },
+    currentTask,
   };
+}
 
-  // 4. Output based on format
-  if (options.json) {
-    console.log(JSON.stringify(statusData, null, 2));
-  } else {
-    renderBanner({ showVersion: false });
-    renderStatusDisplay(statusData);
+/**
+ * Render static status display (for once mode)
+ * @param data - Status data to display
+ * @param verbose - Show timing info
+ */
+function renderStaticStatus(data: StatusData, verbose?: boolean): void {
+  const startTime = Date.now();
+
+  // Simple banner
+  for (const line of BANNER_ART) {
+    console.log(colorize(line, 'sky400'));
   }
+  console.log(colorize(`  v${VERSION}`, 'dim'));
+  console.log();
 
-  // 5. Performance check
-  const elapsed = Date.now() - startTime;
-  if (options.verbose) {
+  renderStatusContent(data);
+
+  if (verbose) {
+    const elapsed = Date.now() - startTime;
     console.log(colorize(`Status command completed in ${elapsed}ms`, 'dim'));
   }
 }
 
 /**
- * Render styled status display
- * @param data - Status data to display
+ * Run the live fullscreen dashboard
+ * @param verbose - Show timing info in footer
  */
-function renderStatusDisplay(data: StatusData): void {
-  // State header with semantic color
+async function runLiveDashboard(verbose?: boolean): Promise<void> {
+  const config = await loadConfig();
+  let running = true;
+  let refreshCount = 0;
+
+  // Setup terminal for fullscreen
+  terminalState.capture();
+  terminalState.enterAltScreen();
+  terminalState.hideCursor();
+  // Clear screen once at start (subsequent renders will overwrite in place)
+  process.stdout.write('\x1b[2J');
+
+  // Cleanup function
+  const cleanup = () => {
+    running = false;
+    terminalState.showCursor();
+    terminalState.exitAltScreen();
+    terminalState.restore();
+  };
+
+  // Handle exit signals
+  const handleExit = () => {
+    cleanup();
+    process.exit(0);
+  };
+
+  process.on('SIGINT', handleExit);
+  process.on('SIGTERM', handleExit);
+
+  // Handle keypress for 'q' to quit
+  if (process.stdin.isTTY) {
+    process.stdin.setRawMode(true);
+    process.stdin.resume();
+    process.stdin.on('data', (key: Buffer) => {
+      // q, Q, Ctrl+C, or ESC to quit
+      if (
+        key[0] === 0x71 || // q
+        key[0] === 0x51 || // Q
+        key[0] === 0x03 || // Ctrl+C
+        key[0] === 0x1b // ESC
+      ) {
+        handleExit();
+      }
+    });
+  }
+
+  // Initial render
+  try {
+    const statusData = await gatherStatusData(config);
+    renderFullscreen(statusData, refreshCount, verbose);
+  } catch (error) {
+    cleanup();
+    throw error;
+  }
+
+  // Refresh loop
+  const intervalId = setInterval(async () => {
+    if (!running) {
+      clearInterval(intervalId);
+      return;
+    }
+
+    try {
+      refreshCount++;
+      const statusData = await gatherStatusData(config);
+      renderFullscreen(statusData, refreshCount, verbose);
+    } catch {
+      // Silently continue on errors during refresh
+    }
+  }, REFRESH_INTERVAL);
+}
+
+/**
+ * Render fullscreen status display
+ * @param data - Status data
+ * @param refreshCount - Number of refreshes
+ * @param verbose - Show verbose info
+ */
+function renderFullscreen(
+  data: StatusData,
+  refreshCount: number,
+  verbose?: boolean
+): void {
+  const { rows, cols } = getTerminalSize();
+  const lines: string[] = [];
+
+  // Build content lines
+  const contentLines = buildContentLines(data);
+
+  // Calculate vertical centering
+  const contentHeight = contentLines.length;
+  const topPadding = Math.max(0, Math.floor((rows - contentHeight - 2) / 2));
+
+  // Move cursor to top-left (don't clear screen to prevent flicker)
+  process.stdout.write('\x1b[H');
+
+  // Top padding
+  for (let i = 0; i < topPadding; i++) {
+    lines.push('\x1b[2K'); // Clear line and leave it empty
+  }
+
+  // Centered content
+  for (const line of contentLines) {
+    lines.push('\x1b[2K' + centerLine(stripAnsi(line), cols, line));
+  }
+
+  // Footer
+  const footerPadding = Math.max(0, rows - topPadding - contentHeight - 3);
+  for (let i = 0; i < footerPadding; i++) {
+    lines.push('\x1b[2K'); // Clear line
+  }
+
+  // Footer line
+  const timestamp = new Date().toLocaleTimeString();
+  const footerLeft = colorize(` Press 'q' or ESC to quit`, 'dim');
+  const footerRight = colorize(
+    `Refreshed: ${timestamp}${verbose ? ` (#${refreshCount})` : ''} `,
+    'dim'
+  );
+  const footerGap = Math.max(
+    0,
+    cols - stripAnsi(footerLeft).length - stripAnsi(footerRight).length
+  );
+  lines.push('\x1b[2K' + footerLeft + ' '.repeat(footerGap) + footerRight);
+
+  // Output all lines
+  process.stdout.write(lines.join('\n'));
+}
+
+/**
+ * Build content lines for the dashboard
+ * @param data - Status data
+ * @returns Array of content lines
+ */
+function buildContentLines(data: StatusData): string[] {
+  const lines: string[] = [];
+
+  // Banner
+  for (const line of BANNER_ART) {
+    lines.push(colorize(line, 'sky400'));
+  }
+  lines.push(colorize(`  v${VERSION}`, 'dim'));
+  lines.push('');
+
+  // State header
+  const stateColor = getStateColor(data.state);
+  const stateIcon = getStateIcon(data.state);
+  lines.push(colorize(`${stateIcon} Current State: ${data.state}`, stateColor));
+  lines.push('');
+
+  // Stats box with padding
+  const boxTitle = ' Task Progress ';
+  const padding = 2; // Internal horizontal padding
+  const innerWidth = 24; // Content area width
+  const boxWidth = innerWidth + padding * 2 + 2; // +2 for left/right borders
+  const titlePadLeft = Math.floor((boxWidth - 2 - boxTitle.length) / 2);
+  const titlePadRight = boxWidth - 2 - boxTitle.length - titlePadLeft;
+  const topBorder =
+    '┌' + '─'.repeat(titlePadLeft) + boxTitle + '─'.repeat(titlePadRight) + '┐';
+  const bottomBorder = '└' + '─'.repeat(boxWidth - 2) + '┘';
+  const emptyLine = '│' + ' '.repeat(boxWidth - 2) + '│';
+
+  // Format stats with compact alignment
+  const maxValLen = Math.max(
+    `${data.stats.completed}/${data.stats.total}`.length,
+    data.stats.pending.toString().length,
+    data.stats.inReview.toString().length,
+    data.stats.blocked.toString().length
+  );
+  const statsRows = [
+    {
+      icon: getGlyph('success'),
+      label: 'Completed',
+      value: `${data.stats.completed}/${data.stats.total}`,
+    },
+    {
+      icon: getGlyph('arrow'),
+      label: 'Pending',
+      value: data.stats.pending.toString(),
+    },
+    {
+      icon: getGlyph('bullet'),
+      label: 'In Review',
+      value: data.stats.inReview.toString(),
+    },
+    {
+      icon: getGlyph('error'),
+      label: 'Blocked',
+      value: data.stats.blocked.toString(),
+    },
+  ];
+
+  lines.push(colorize(topBorder, 'dim'));
+  lines.push(colorize(emptyLine, 'dim')); // Top padding
+  for (const row of statsRows) {
+    const labelPart = `${row.icon} ${row.label}:`;
+    const valuePart = row.value.padStart(maxValLen);
+    const gap = innerWidth - labelPart.length - valuePart.length;
+    const content =
+      ' '.repeat(padding) +
+      labelPart +
+      ' '.repeat(Math.max(1, gap)) +
+      valuePart +
+      ' '.repeat(padding);
+    lines.push(colorize('│', 'dim') + content + colorize('│', 'dim'));
+  }
+  lines.push(colorize(emptyLine, 'dim')); // Bottom padding
+  lines.push(colorize(bottomBorder, 'dim'));
+  lines.push('');
+
+  // Progress bar
+  const progressBarLines = renderProgressBarLines(
+    data.stats.completed,
+    data.stats.total
+  );
+  lines.push(...progressBarLines);
+  lines.push('');
+
+  // Lock status and current task
+  if (data.lock.isLocked && data.lock.pid && data.lock.startTime) {
+    lines.push(
+      colorize(
+        `${getGlyph('bullet')} Speci run is active (PID: ${data.lock.pid})`,
+        'sky400'
+      )
+    );
+    lines.push(colorize(`  Started: ${data.lock.startTime}`, 'dim'));
+    if (data.lock.elapsed) {
+      lines.push(colorize(`  Elapsed: ${data.lock.elapsed}`, 'dim'));
+    }
+    // Show current task if active run and task in progress/review
+    if (data.currentTask) {
+      lines.push('');
+      lines.push(colorize(`${getGlyph('arrow')} Working on:`, 'sky400'));
+      lines.push(
+        colorize(`  ${data.currentTask.id}: ${data.currentTask.title}`, 'white')
+      );
+      lines.push(colorize(`  Status: ${data.currentTask.status}`, 'dim'));
+    }
+  } else {
+    lines.push(colorize(`${getGlyph('bullet')} No active run`, 'dim'));
+  }
+
+  return lines;
+}
+
+/**
+ * Render status content (shared between static and fullscreen)
+ * @param data - Status data
+ */
+function renderStatusContent(data: StatusData): void {
   const stateColor = getStateColor(data.state);
   const stateIcon = getStateIcon(data.state);
 
-  console.log();
   console.log(
     colorize(`${stateIcon} Current State: ${data.state}`, stateColor)
   );
   console.log();
 
-  // Task statistics box
-  const statsContent = [
-    `${getGlyph('success')} Completed:   ${data.stats.completed}/${data.stats.total}`,
-    `${getGlyph('arrow')} Pending:     ${data.stats.pending}`,
-    `${getGlyph('bullet')} In Review:   ${data.stats.inReview}`,
-    `${getGlyph('error')} Blocked:     ${data.stats.blocked}`,
-  ];
-
-  console.log(drawBox(statsContent, { title: 'Task Progress' }));
+  // Stats
+  console.log(
+    `${getGlyph('success')} Completed:   ${data.stats.completed}/${data.stats.total}`
+  );
+  console.log(`${getGlyph('arrow')} Pending:     ${data.stats.pending}`);
+  console.log(`${getGlyph('bullet')} In Review:   ${data.stats.inReview}`);
+  console.log(`${getGlyph('error')} Blocked:     ${data.stats.blocked}`);
+  console.log();
 
   // Progress bar
-  renderProgressBar(data.stats.completed, data.stats.total);
+  const progressLines = renderProgressBarLines(
+    data.stats.completed,
+    data.stats.total
+  );
+  for (const line of progressLines) {
+    console.log(line);
+  }
+  console.log();
 
-  // Lock status
+  // Lock status and current task
   if (data.lock.isLocked && data.lock.pid && data.lock.startTime) {
-    console.log();
     console.log(
       colorize(
         `${getGlyph('bullet')} Speci run is active (PID: ${data.lock.pid})`,
@@ -134,8 +428,16 @@ function renderStatusDisplay(data: StatusData): void {
     if (data.lock.elapsed) {
       console.log(colorize(`  Elapsed: ${data.lock.elapsed}`, 'dim'));
     }
+    // Show current task if active run and task in progress/review
+    if (data.currentTask) {
+      console.log();
+      console.log(colorize(`${getGlyph('arrow')} Working on:`, 'sky400'));
+      console.log(
+        colorize(`  ${data.currentTask.id}: ${data.currentTask.title}`, 'white')
+      );
+      console.log(colorize(`  Status: ${data.currentTask.status}`, 'dim'));
+    }
   }
-
   console.log();
 }
 
@@ -177,12 +479,13 @@ function getStateIcon(state: string): string {
 }
 
 /**
- * Render progress bar
+ * Render progress bar as array of strings (bar on one line, percentage below)
  * @param completed - Number of completed tasks
  * @param total - Total number of tasks
+ * @returns Array of progress bar lines
  */
-function renderProgressBar(completed: number, total: number): void {
-  const width = 40;
+function renderProgressBarLines(completed: number, total: number): string[] {
+  const width = 30; // Bar width (32 total = [ + 30 + ])
   const percentage = total > 0 ? Math.round((completed / total) * 100) : 0;
   const filled = total > 0 ? Math.round((completed / total) * width) : 0;
   const empty = width - filled;
@@ -191,8 +494,17 @@ function renderProgressBar(completed: number, total: number): void {
     colorize('█'.repeat(filled), 'success') +
     colorize('░'.repeat(empty), 'dim');
 
-  console.log();
-  console.log(`  [${bar}] ${percentage}%`);
+  // Bar line: [ + 30 chars + ] = 32 chars total
+  const barLine = `[${bar}]`;
+  const barWidth = 32; // Plain text width of bar line
+
+  // Center percentage text within same width as bar
+  const percentText = `${percentage}%`;
+  const leftPad = Math.floor((barWidth - percentText.length) / 2);
+  const rightPad = barWidth - percentText.length - leftPad;
+  const percentLine = ' '.repeat(leftPad) + percentText + ' '.repeat(rightPad);
+
+  return [barLine, percentLine];
 }
 
 /**
@@ -206,4 +518,41 @@ function formatTimestamp(date: Date): string {
     `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ` +
     `${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`
   );
+}
+
+/**
+ * Get terminal size
+ * @returns Object with rows and cols
+ */
+function getTerminalSize(): { rows: number; cols: number } {
+  return {
+    rows: process.stdout.rows || 24,
+    cols: process.stdout.columns || 80,
+  };
+}
+
+/**
+ * Strip ANSI escape codes from string
+ * @param str - String with ANSI codes
+ * @returns Plain string
+ */
+function stripAnsi(str: string): string {
+  // eslint-disable-next-line no-control-regex
+  return str.replace(/\x1b\[[0-9;]*m/g, '');
+}
+
+/**
+ * Center a line horizontally
+ * @param plainText - Plain text (no ANSI) for width calculation
+ * @param width - Terminal width
+ * @param coloredText - Colored text to actually output
+ * @returns Centered line
+ */
+function centerLine(
+  plainText: string,
+  width: number,
+  coloredText: string
+): string {
+  const padding = Math.max(0, Math.floor((width - plainText.length) / 2));
+  return ' '.repeat(padding) + coloredText;
 }

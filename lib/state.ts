@@ -31,6 +31,15 @@ export interface TaskStats {
   blocked: number;
 }
 
+/**
+ * Current task information
+ */
+export interface CurrentTask {
+  id: string;
+  title: string;
+  status: string;
+}
+
 // Pre-compile regex patterns at module load for performance
 const PATTERNS = {
   BLOCKED: /TASK_\d+\s*\|.*BLOCKED/i,
@@ -164,4 +173,43 @@ export async function getTaskStats(config: SpeciConfig): Promise<TaskStats> {
   }
 
   return stats;
+}
+
+/**
+ * Get the current active task (IN PROGRESS or IN_REVIEW)
+ *
+ * @param config - Speci configuration
+ * @returns Current task info or null if no active task
+ */
+export async function getCurrentTask(
+  config: SpeciConfig
+): Promise<CurrentTask | null> {
+  const progressPath = config.paths.progress;
+
+  if (!existsSync(progressPath)) {
+    return null;
+  }
+
+  const content = await readFile(progressPath, 'utf8');
+  const lines = content.split('\n');
+
+  // Look for IN PROGRESS first, then IN_REVIEW
+  const ACTIVE_STATUSES = ['IN PROGRESS', 'IN_REVIEW', 'IN REVIEW'];
+
+  for (const line of lines) {
+    if (!PATTERNS.TASK_ROW.test(line)) continue;
+
+    const cols = line.split('|');
+    if (cols.length < 4) continue;
+
+    const taskId = cols[1].trim();
+    const title = cols[2].trim();
+    const status = cols[3].trim().toUpperCase();
+
+    if (ACTIVE_STATUSES.includes(status)) {
+      return { id: taskId, title, status };
+    }
+  }
+
+  return null;
 }

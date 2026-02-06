@@ -65,7 +65,7 @@ program
       debug('Arguments', process.argv);
     }
 
-    // Display banner before any command, except for --help, --version, or --json output
+    // Display banner before any command, except for --help, --version, --json output, or status command
     const args = process.argv;
     const isHelpOrVersion =
       args.includes('--help') ||
@@ -73,7 +73,8 @@ program
       args.includes('--version') ||
       args.includes('-V');
     const isJsonOutput = args.includes('--json');
-    if (!isHelpOrVersion && !isJsonOutput) {
+    const isStatusCommand = args.includes('status') || args.includes('s');
+    if (!isHelpOrVersion && !isJsonOutput && !isStatusCommand) {
       const result = displayBanner({ color: opts.color });
       if (result instanceof Promise) {
         await result;
@@ -189,14 +190,18 @@ Examples:
 program
   .command('status')
   .alias('s')
-  .description('Show current loop state and task statistics')
-  .option('--json', 'Output status as JSON')
+  .description(
+    'Show current loop state and task statistics (live fullscreen dashboard)'
+  )
+  .option('--json', 'Output status as JSON and exit')
+  .option('--once', 'Show status once and exit (non-interactive)')
   .option('-v, --verbose', 'Show detailed status')
   .addHelpText(
     'after',
     `
 Examples:
-  $ speci status                       Show current status
+  $ speci status                       Live fullscreen dashboard (press q to quit)
+  $ speci s --once                     Show status once and exit
   $ speci s --json                     Output as JSON for scripts
   $ speci status --verbose             Detailed status information
 `

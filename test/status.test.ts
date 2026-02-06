@@ -352,7 +352,7 @@ This is some malformed content
       writeFileSync(TEST_PROGRESS, progressContent, 'utf8');
       writeConfig();
 
-      await status();
+      await status({ once: true } as StatusOptions);
 
       // Should have multiple lines of output
       expect(consoleOutput.length).toBeGreaterThan(1);
@@ -369,7 +369,7 @@ This is some malformed content
       writeFileSync(TEST_PROGRESS, progressContent, 'utf8');
       writeConfig();
 
-      await status();
+      await status({ once: true } as StatusOptions);
 
       const output = consoleOutput.join('\n');
       // Progress bar should be present (either filled █ or empty ░)
