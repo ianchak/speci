@@ -20,7 +20,16 @@ import { findSimilarCommands } from '../lib/utils/suggest.js';
 import { setVerbose, debug } from '../lib/utils/logger.js';
 
 /**
- * Display the application banner
+ * Display the static (non-animated) banner
+ *
+ * @param options - Optional configuration for banner display
+ */
+function displayStaticBanner(): void {
+  console.log('\n' + renderBanner({ showVersion: true }) + '\n');
+}
+
+/**
+ * Display the application banner with animation when appropriate
  *
  * Conditionally animates the banner when appropriate conditions are met.
  * Returns a Promise when animation is enabled, or void when displaying static banner.
@@ -32,7 +41,7 @@ function displayBanner(options?: { color?: boolean }): Promise<void> | void {
     console.log();
     return animateBanner().then(() => console.log());
   } else {
-    console.log('\n' + renderBanner({ showVersion: true }) + '\n');
+    displayStaticBanner();
   }
 }
 
@@ -241,8 +250,14 @@ program.on('command:*', (operands) => {
   process.exit(2);
 });
 
-// Show banner and help when no arguments provided
+// Check if help or version is being requested
+const args = process.argv.slice(2);
+const isHelpRequest =
+  args.includes('-h') || args.includes('--help') || args[0] === 'help';
+const isVersionRequest = args.includes('-V') || args.includes('--version');
+
 if (process.argv.length <= 2) {
+  // No arguments: show animated banner + help
   (async () => {
     const result = displayBanner({ color: program.opts().color });
     if (result instanceof Promise) {
@@ -250,7 +265,14 @@ if (process.argv.length <= 2) {
     }
     program.help();
   })();
+} else if (isHelpRequest) {
+  // Help request: show static banner + help
+  displayStaticBanner();
+  program.parse(process.argv);
+} else if (isVersionRequest) {
+  // Version request: just show version (no banner)
+  program.parse(process.argv);
 } else {
-  // Parse command line arguments (only when a command is provided)
+  // Regular command: parse normally (preAction hook handles banner)
   program.parse(process.argv);
 }
