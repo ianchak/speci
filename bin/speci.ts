@@ -65,14 +65,15 @@ program
       debug('Arguments', process.argv);
     }
 
-    // Display banner before any command, except for --help and --version
+    // Display banner before any command, except for --help, --version, or --json output
     const args = process.argv;
     const isHelpOrVersion =
       args.includes('--help') ||
       args.includes('-h') ||
       args.includes('--version') ||
       args.includes('-V');
-    if (!isHelpOrVersion) {
+    const isJsonOutput = args.includes('--json');
+    if (!isHelpOrVersion && !isJsonOutput) {
       const result = displayBanner({ color: opts.color });
       if (result instanceof Promise) {
         await result;
