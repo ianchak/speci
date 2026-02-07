@@ -72,7 +72,7 @@
 | TASK_005 | Dependency Injection Interface | COMPLETE | PASSED        | CRITICAL | M (4-8h)   | None         | SA-20260207-006 | 1        |
 | TASK_006 | DI Proof of Concept            | COMPLETE | PASSED        | CRITICAL | M (4-8h)   | TASK_005     | SA-20260207-007 | 1        |
 | TASK_007 | DI Rollout to Commands         | COMPLETE    | PASSED        | CRITICAL | L (8-16h)  | TASK_006     | SA-20260207-010 | 5        |
-| TASK_008 | Process Globals Abstraction    | IN PROGRESS | —             | HIGH     | M (4-8h)   | TASK_007     | SA-20260207-011 | 1        |
+| TASK_008 | Process Globals Abstraction    | IN REVIEW   | —             | HIGH     | M (4-8h)   | TASK_007     | SA-20260207-011 | 1        |
 | TASK_009 | Process.exit Cleanup Fix       | NOT STARTED | CRITICAL | M (4-8h)   | TASK_008     |
 | MVT_M1   | Foundation Manual Test         | NOT STARTED | —        | 30 min     | TASK_005-009 |
 
@@ -215,16 +215,16 @@ Last Review ID: RA-20260208-009
 
 ### For Reviewer
 
-| Field             | Value |
-| ----------------- | ----- |
-| Task              | -     |
-| Impl Agent        | -     |
-| Files Changed     | -     |
-| Tests Added       | -     |
-| Rework?           | -     |
-| Focus Areas       | -     |
-| Known Limitations | -     |
-| Gate Results      | -     |
+| Field             | Value                                                                                                                                                                                     |
+| ----------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Task              | TASK_008                                                                                                                                                                                  |
+| Impl Agent        | SA-20260207-011                                                                                                                                                                           |
+| Files Changed     | `lib/config.ts`, `lib/utils/logger.ts`, `lib/utils/preflight.ts`, `lib/utils/lock.ts`, `lib/adapters/node-config-loader.ts`, `lib/adapters/node-logger.ts`, `lib/adapters/context-factory.ts`, `lib/commands/run.ts`, `lib/commands/task.ts`, `lib/commands/refactor.ts` |
+| Tests Added       | `test/config-process.test.ts` (4 tests), `test/logger-process.test.ts` (4 tests); `test/run.test.ts` (2 assertions updated)                                                             |
+| Rework?           | No - initial implementation                                                                                                                                                               |
+| Focus Areas       | 1) Config/logger now use IProcess parameter - verify backward compatibility with real process as default. 2) Test mocks properly inject test process instances. 3) UI modules intentionally NOT migrated per task spec |
+| Known Limitations | UI modules (colors, banner, terminal, palette, glyphs) still use direct process access - explicitly out of scope per TASK_008 spec; Signal handling retains direct process access        |
+| Gate Results      | format:✅ lint:✅ typecheck:✅ test:✅ (876/876 passing)                                                                                                                                    |
 
 ### For Fix Agent
 
