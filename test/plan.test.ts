@@ -376,7 +376,9 @@ describe('plan command', () => {
       expect(plan).toBeDefined();
       // Default parameters don't count towards function.length, so we can't test it this way
       // Instead we verify the type signature allows it
-      const _typeTest: (options?: { prompt?: string }) => Promise<{ success: boolean; exitCode: number }> = plan;
+      const _typeTest: (options?: {
+        prompt?: string;
+      }) => Promise<{ success: boolean; exitCode: number }> = plan;
       expect(_typeTest).toBe(plan);
     });
   });

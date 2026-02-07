@@ -90,7 +90,7 @@ export interface IFileSystem {
  * Process global abstraction interface
  *
  * Abstracts Node.js process global to enable testing without process manipulation.
- * Includes environment variables, working directory, exit, streams, and platform info.
+ * Includes environment variables, working directory, exit, streams, platform info, and events.
  */
 export interface IProcess {
   /**
@@ -129,6 +129,13 @@ export interface IProcess {
    * Standard input stream
    */
   stdin: NodeJS.ReadStream;
+
+  /**
+   * Register event listener
+   * @param event - Event name
+   * @param listener - Event handler
+   */
+  on(event: string, listener: (...args: unknown[]) => void): void;
 }
 
 /**

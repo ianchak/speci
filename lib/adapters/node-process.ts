@@ -39,4 +39,8 @@ export class NodeProcess implements IProcess {
   get stdin(): NodeJS.ReadStream {
     return process.stdin;
   }
+
+  on(event: string, listener: (...args: unknown[]) => void): void {
+    process.on(event, listener);
+  }
 }

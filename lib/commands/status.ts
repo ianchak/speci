@@ -5,7 +5,7 @@
  * Fullscreen live dashboard that refreshes every second until user quits.
  */
 
-import { loadConfig, type SpeciConfig } from '@/config.js';
+import type { SpeciConfig } from '@/config.js';
 import {
   getState,
   getTaskStats,
@@ -17,6 +17,8 @@ import { BANNER_ART, VERSION } from '@/ui/banner.js';
 import { colorize } from '@/ui/colors.js';
 import { getGlyph } from '@/ui/glyphs.js';
 import { terminalState } from '@/ui/terminal.js';
+import { createProductionContext } from '@/adapters/context-factory.js';
+import type { CommandContext, CommandResult } from '@/interfaces.js';
 
 /**
  * Status command options
@@ -57,26 +59,51 @@ const REFRESH_INTERVAL = 1000;
 /**
  * Status command handler
  * @param options - Command options
+ * @param context - Dependency injection context (defaults to production)
+ * @returns Promise resolving to command result
  */
-export async function status(options: StatusOptions = {}): Promise<void> {
-  // JSON mode: single output and exit
-  if (options.json) {
-    const config = await loadConfig();
-    const statusData = await gatherStatusData(config);
-    console.log(JSON.stringify(statusData, null, 2));
-    return;
-  }
+export async function status(
+  options: StatusOptions = {},
+  context: CommandContext = createProductionContext()
+): Promise<CommandResult> {
+  try {
+    // JSON mode: single output and exit
+    if (options.json) {
+      const config = await context.configLoader.load();
+      const statusData = await gatherStatusData(config);
+      console.log(JSON.stringify(statusData, null, 2));
+      return { success: true, exitCode: 0 };
+    }
 
-  // Once mode or non-TTY: single render and exit
-  if (options.once || !process.stdout.isTTY) {
-    const config = await loadConfig();
-    const statusData = await gatherStatusData(config);
-    renderStaticStatus(statusData, options.verbose);
-    return;
-  }
+    // Once mode or non-TTY: single render and exit
+    if (options.once || !context.process.stdout.isTTY) {
+      const config = await context.configLoader.load();
+      const statusData = await gatherStatusData(config);
+      renderStaticStatus(statusData, options.verbose);
+      return { success: true, exitCode: 0 };
+    }
 
-  // Live fullscreen mode
-  await runLiveDashboard(options.verbose);
+    // Live fullscreen mode
+    await runLiveDashboard(options.verbose, context);
+    return { success: true, exitCode: 0 };
+  } catch (error) {
+    if (error instanceof Error) {
+      context.logger.error(`Status command failed: ${error.message}`);
+      return {
+        success: false,
+        exitCode: 1,
+        error: error.message,
+      };
+    } else {
+      const errorMsg = String(error);
+      context.logger.error(`Status command failed: ${errorMsg}`);
+      return {
+        success: false,
+        exitCode: 1,
+        error: errorMsg,
+      };
+    }
+  }
 }
 
 /**
@@ -137,9 +164,13 @@ function renderStaticStatus(data: StatusData, verbose?: boolean): void {
 /**
  * Run the live fullscreen dashboard
  * @param verbose - Show timing info in footer
+ * @param context - Dependency injection context
  */
-async function runLiveDashboard(verbose?: boolean): Promise<void> {
-  const config = await loadConfig();
+async function runLiveDashboard(
+  verbose: boolean | undefined,
+  context: CommandContext
+): Promise<void> {
+  const config = await context.configLoader.load();
   let running = true;
   let refreshCount = 0;
 
@@ -148,7 +179,7 @@ async function runLiveDashboard(verbose?: boolean): Promise<void> {
   terminalState.enterAltScreen();
   terminalState.hideCursor();
   // Clear screen once at start (subsequent renders will overwrite in place)
-  process.stdout.write('\x1b[2J');
+  context.process.stdout.write('\x1b[2J');
 
   // Cleanup function
   const cleanup = () => {
@@ -161,17 +192,17 @@ async function runLiveDashboard(verbose?: boolean): Promise<void> {
   // Handle exit signals
   const handleExit = () => {
     cleanup();
-    process.exit(0);
+    context.process.exit(0);
   };
 
-  process.on('SIGINT', handleExit);
-  process.on('SIGTERM', handleExit);
+  context.process.on('SIGINT', handleExit);
+  context.process.on('SIGTERM', handleExit);
 
   // Handle keypress for 'q' to quit
-  if (process.stdin.isTTY) {
-    process.stdin.setRawMode(true);
-    process.stdin.resume();
-    process.stdin.on('data', (key: Buffer) => {
+  if (context.process.stdin.isTTY) {
+    context.process.stdin.setRawMode(true);
+    context.process.stdin.resume();
+    context.process.stdin.on('data', (key: Buffer) => {
       // q, Q, Ctrl+C, or ESC to quit
       if (
         key[0] === 0x71 || // q
@@ -187,7 +218,7 @@ async function runLiveDashboard(verbose?: boolean): Promise<void> {
   // Initial render
   try {
     const statusData = await gatherStatusData(config);
-    renderFullscreen(statusData, refreshCount, verbose);
+    renderFullscreen(statusData, refreshCount, verbose, context);
   } catch (error) {
     cleanup();
     throw error;
@@ -203,7 +234,7 @@ async function runLiveDashboard(verbose?: boolean): Promise<void> {
     try {
       refreshCount++;
       const statusData = await gatherStatusData(config);
-      renderFullscreen(statusData, refreshCount, verbose);
+      renderFullscreen(statusData, refreshCount, verbose, context);
     } catch {
       // Silently continue on errors during refresh
     }
@@ -215,13 +246,15 @@ async function runLiveDashboard(verbose?: boolean): Promise<void> {
  * @param data - Status data
  * @param refreshCount - Number of refreshes
  * @param verbose - Show verbose info
+ * @param context - Dependency injection context
  */
 function renderFullscreen(
   data: StatusData,
   refreshCount: number,
-  verbose?: boolean
+  verbose: boolean | undefined,
+  context: CommandContext
 ): void {
-  const { rows, cols } = getTerminalSize();
+  const { rows, cols } = getTerminalSize(context);
   const lines: string[] = [];
 
   // Build content lines
@@ -232,7 +265,7 @@ function renderFullscreen(
   const topPadding = Math.max(0, Math.floor((rows - contentHeight - 2) / 2));
 
   // Move cursor to top-left (don't clear screen to prevent flicker)
-  process.stdout.write('\x1b[H');
+  context.process.stdout.write('\x1b[H');
 
   // Top padding
   for (let i = 0; i < topPadding; i++) {
@@ -264,7 +297,7 @@ function renderFullscreen(
   lines.push('\x1b[2K' + footerLeft + ' '.repeat(footerGap) + footerRight);
 
   // Output all lines
-  process.stdout.write(lines.join('\n'));
+  context.process.stdout.write(lines.join('\n'));
 }
 
 /**
@@ -522,12 +555,16 @@ function formatTimestamp(date: Date): string {
 
 /**
  * Get terminal size
+ * @param context - Dependency injection context
  * @returns Object with rows and cols
  */
-function getTerminalSize(): { rows: number; cols: number } {
+function getTerminalSize(context: CommandContext): {
+  rows: number;
+  cols: number;
+} {
   return {
-    rows: process.stdout.rows || 24,
-    cols: process.stdout.columns || 80,
+    rows: context.process.stdout.rows || 24,
+    cols: context.process.stdout.columns || 80,
   };
 }
 

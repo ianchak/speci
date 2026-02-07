@@ -57,6 +57,7 @@ export function createMockProcess(): IProcess {
     stdin: {
       isTTY: false,
     } as unknown as NodeJS.ReadStream,
+    on: vi.fn(),
   };
 }
 

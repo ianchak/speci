@@ -210,7 +210,12 @@ Examples:
   $ speci status --verbose             Detailed status information
 `
   )
-  .action(status);
+  .action(async (options) => {
+    const result = await status(options);
+    if (!result.success) {
+      process.exit(result.exitCode);
+    }
+  });
 
 // List of all available commands (for unknown command handling)
 const availableCommands = ['init', 'plan', 'task', 'refactor', 'run', 'status'];

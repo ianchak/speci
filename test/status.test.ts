@@ -2,11 +2,20 @@
  * Integration tests for status command
  */
 
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { status } from '../lib/commands/status.js';
-import { writeFileSync, unlinkSync, existsSync, mkdirSync } from 'node:fs';
+import {
+  writeFileSync,
+  unlinkSync,
+  existsSync,
+  mkdirSync,
+  readFileSync,
+} from 'node:fs';
 import { join } from 'node:path';
 import type { StatusOptions } from '../lib/commands/status.js';
+import { createMockContext } from '../lib/adapters/test-context.js';
+import type { CommandContext } from '../lib/interfaces.js';
+import type { SpeciConfig } from '../lib/config.js';
 
 const TEST_DIR = join(process.cwd(), 'test', 'fixtures', 'status');
 const TEST_PROGRESS = join(TEST_DIR, 'PROGRESS.md');
@@ -17,6 +26,7 @@ const TEST_CONFIG_PATH = join(TEST_DIR, 'speci.config.json');
 let consoleOutput: string[] = [];
 let consoleLogSpy: typeof console.log;
 let consoleErrorSpy: typeof console.error;
+let mockContext: CommandContext;
 
 beforeEach(() => {
   // Create test directory
@@ -35,6 +45,64 @@ beforeEach(() => {
   console.error = (...args: unknown[]) => {
     consoleOutput.push(args.join(' '));
   };
+
+  // Create mock context with real filesystem for integration tests
+  const config: Partial<SpeciConfig> = {
+    version: '1.0.0',
+    paths: {
+      progress: TEST_PROGRESS,
+      tasks: join(TEST_DIR, 'tasks'),
+      logs: join(TEST_DIR, '.speci-logs'),
+      lock: TEST_LOCK,
+    },
+    agents: {
+      plan: null,
+      task: null,
+      refactor: null,
+      impl: null,
+      review: null,
+      fix: null,
+      tidy: null,
+    },
+    copilot: {
+      permissions: 'allow-all' as const,
+      model: null,
+      models: {
+        plan: null,
+        task: null,
+        refactor: null,
+        impl: null,
+        review: null,
+        fix: null,
+        tidy: null,
+      },
+      extraFlags: [],
+    },
+    gate: {
+      commands: [],
+      maxFixAttempts: 3,
+    },
+    loop: {
+      maxIterations: 10,
+    },
+  };
+
+  mockContext = createMockContext({
+    mockConfig: config,
+    cwd: TEST_DIR,
+    fs: {
+      existsSync: (path: string) => existsSync(path),
+      readFileSync: (path: string, encoding?: BufferEncoding) => {
+        return readFileSync(path, encoding || 'utf8');
+      },
+      writeFileSync: vi.fn(),
+      mkdirSync: vi.fn(),
+      unlinkSync: vi.fn(),
+      readdirSync: vi.fn(() => []),
+      readFile: vi.fn(async () => ''),
+      writeFile: vi.fn(async () => {}),
+    },
+  });
 });
 
 afterEach(() => {
@@ -53,6 +121,8 @@ afterEach(() => {
   // Clean up environment
   delete process.env.SPECI_PROGRESS_PATH;
   delete process.env.SPECI_LOCK_PATH;
+
+  vi.restoreAllMocks();
 });
 
 describe('status command', () => {
@@ -68,8 +138,9 @@ describe('status command', () => {
       writeFileSync(TEST_PROGRESS, progressContent, 'utf8');
       writeConfig();
 
-      await status({ json: true } as StatusOptions);
+      const result = await status({ json: true } as StatusOptions, mockContext);
 
+      expect(result.success).toBe(true);
       const jsonOutput = JSON.parse(consoleOutput[0]);
       expect(jsonOutput.state).toBe('WORK_LEFT');
     });
@@ -85,7 +156,7 @@ describe('status command', () => {
       writeFileSync(TEST_PROGRESS, progressContent, 'utf8');
       writeConfig();
 
-      await status({ json: true } as StatusOptions);
+      await status({ json: true } as StatusOptions, mockContext);
 
       const jsonOutput = JSON.parse(consoleOutput[0]);
       expect(jsonOutput.state).toBe('IN_REVIEW');
@@ -102,7 +173,7 @@ describe('status command', () => {
       writeFileSync(TEST_PROGRESS, progressContent, 'utf8');
       writeConfig();
 
-      await status({ json: true } as StatusOptions);
+      await status({ json: true } as StatusOptions, mockContext);
 
       const jsonOutput = JSON.parse(consoleOutput[0]);
       expect(jsonOutput.state).toBe('BLOCKED');
@@ -119,7 +190,7 @@ describe('status command', () => {
       writeFileSync(TEST_PROGRESS, progressContent, 'utf8');
       writeConfig();
 
-      await status({ json: true } as StatusOptions);
+      await status({ json: true } as StatusOptions, mockContext);
 
       const jsonOutput = JSON.parse(consoleOutput[0]);
       expect(jsonOutput.state).toBe('DONE');
@@ -128,7 +199,7 @@ describe('status command', () => {
     it('should handle missing PROGRESS.md (NO_PROGRESS state)', async () => {
       writeConfig();
 
-      await status({ json: true } as StatusOptions);
+      await status({ json: true } as StatusOptions, mockContext);
 
       const jsonOutput = JSON.parse(consoleOutput[0]);
       expect(jsonOutput.state).toBe('NO_PROGRESS');
@@ -142,7 +213,7 @@ This is some malformed content
       writeFileSync(TEST_PROGRESS, progressContent, 'utf8');
       writeConfig();
 
-      await status({ json: true } as StatusOptions);
+      await status({ json: true } as StatusOptions, mockContext);
 
       const jsonOutput = JSON.parse(consoleOutput[0]);
       expect(jsonOutput.state).toBeDefined();
@@ -166,7 +237,7 @@ This is some malformed content
       writeFileSync(TEST_PROGRESS, progressContent, 'utf8');
       writeConfig();
 
-      await status({ json: true } as StatusOptions);
+      await status({ json: true } as StatusOptions, mockContext);
 
       const jsonOutput = JSON.parse(consoleOutput[0]);
       expect(jsonOutput.stats.total).toBe(6);
@@ -180,7 +251,7 @@ This is some malformed content
       writeFileSync(TEST_PROGRESS, '', 'utf8');
       writeConfig();
 
-      await status({ json: true } as StatusOptions);
+      await status({ json: true } as StatusOptions, mockContext);
 
       const jsonOutput = JSON.parse(consoleOutput[0]);
       expect(jsonOutput.stats.total).toBe(0);
@@ -197,7 +268,7 @@ This is some malformed content
       writeFileSync(TEST_PROGRESS, progressContent, 'utf8');
       writeConfig();
 
-      await status({ json: true } as StatusOptions);
+      await status({ json: true } as StatusOptions, mockContext);
 
       const jsonOutput = JSON.parse(consoleOutput[0]);
       expect(jsonOutput.stats.total).toBe(1);
@@ -216,7 +287,7 @@ This is some malformed content
       writeFileSync(TEST_PROGRESS, progressContent, 'utf8');
       writeConfig();
 
-      await status({ json: true } as StatusOptions);
+      await status({ json: true } as StatusOptions, mockContext);
 
       expect(() => JSON.parse(consoleOutput[0])).not.toThrow();
     });
@@ -231,7 +302,7 @@ This is some malformed content
       writeFileSync(TEST_PROGRESS, progressContent, 'utf8');
       writeConfig();
 
-      await status({ json: true } as StatusOptions);
+      await status({ json: true } as StatusOptions, mockContext);
 
       const jsonOutput = JSON.parse(consoleOutput[0]);
       expect(jsonOutput).toHaveProperty('state');
@@ -249,7 +320,7 @@ This is some malformed content
     it('should include error field if state is partial/corrupt', async () => {
       writeConfig();
       // Missing PROGRESS.md should not include error field
-      await status({ json: true } as StatusOptions);
+      await status({ json: true } as StatusOptions, mockContext);
 
       const jsonOutput = JSON.parse(consoleOutput[0]);
       // NO_PROGRESS is not an error, just an expected state
@@ -272,7 +343,7 @@ This is some malformed content
       const lockContent = `Started: 2026-02-04 10:00:00\nPID: 12345`;
       writeFileSync(TEST_LOCK, lockContent, 'utf8');
 
-      await status({ json: true } as StatusOptions);
+      await status({ json: true } as StatusOptions, mockContext);
 
       const jsonOutput = JSON.parse(consoleOutput[0]);
       expect(jsonOutput.lock.isLocked).toBe(true);
@@ -291,7 +362,7 @@ This is some malformed content
       writeFileSync(TEST_PROGRESS, progressContent, 'utf8');
       writeConfig();
 
-      await status({ json: true } as StatusOptions);
+      await status({ json: true } as StatusOptions, mockContext);
 
       const jsonOutput = JSON.parse(consoleOutput[0]);
       expect(jsonOutput.lock.isLocked).toBe(false);
@@ -313,7 +384,7 @@ This is some malformed content
       writeFileSync(TEST_PROGRESS, progressContent, 'utf8');
       writeConfig();
 
-      await status({ json: true } as StatusOptions);
+      await status({ json: true } as StatusOptions, mockContext);
 
       const jsonOutput = JSON.parse(consoleOutput[0]);
       expect(jsonOutput.currentTask).not.toBeNull();
@@ -333,7 +404,7 @@ This is some malformed content
       writeFileSync(TEST_PROGRESS, progressContent, 'utf8');
       writeConfig();
 
-      await status({ json: true } as StatusOptions);
+      await status({ json: true } as StatusOptions, mockContext);
 
       const jsonOutput = JSON.parse(consoleOutput[0]);
       expect(jsonOutput.currentTask).not.toBeNull();
@@ -352,7 +423,7 @@ This is some malformed content
       writeFileSync(TEST_PROGRESS, progressContent, 'utf8');
       writeConfig();
 
-      await status({ json: true } as StatusOptions);
+      await status({ json: true } as StatusOptions, mockContext);
 
       const jsonOutput = JSON.parse(consoleOutput[0]);
       expect(jsonOutput.currentTask).toBeNull();
@@ -369,7 +440,7 @@ This is some malformed content
       writeFileSync(TEST_PROGRESS, progressContent, 'utf8');
       writeConfig();
 
-      await status({ json: true } as StatusOptions);
+      await status({ json: true } as StatusOptions, mockContext);
 
       const jsonOutput = JSON.parse(consoleOutput[0]);
       expect(jsonOutput.currentTask).toBeNull();
@@ -388,7 +459,7 @@ This is some malformed content
       writeConfig();
 
       const startTime = Date.now();
-      await status({ json: true } as StatusOptions);
+      await status({ json: true } as StatusOptions, mockContext);
       const elapsed = Date.now() - startTime;
 
       expect(elapsed).toBeLessThan(100);
@@ -408,7 +479,7 @@ This is some malformed content
       writeFileSync(TEST_LOCK, lockContent, 'utf8');
 
       const startTime = Date.now();
-      await status({ json: true } as StatusOptions);
+      await status({ json: true } as StatusOptions, mockContext);
       const elapsed = Date.now() - startTime;
 
       // Should be faster than sequential reads
@@ -428,7 +499,7 @@ This is some malformed content
       writeFileSync(TEST_PROGRESS, progressContent, 'utf8');
       writeConfig();
 
-      await status({ once: true } as StatusOptions);
+      await status({ once: true } as StatusOptions, mockContext);
 
       // Should have multiple lines of output
       expect(consoleOutput.length).toBeGreaterThan(1);
@@ -445,7 +516,7 @@ This is some malformed content
       writeFileSync(TEST_PROGRESS, progressContent, 'utf8');
       writeConfig();
 
-      await status({ once: true } as StatusOptions);
+      await status({ once: true } as StatusOptions, mockContext);
 
       const output = consoleOutput.join('\n');
       // Progress bar should be present (either filled █ or empty ░)

@@ -28,7 +28,7 @@
 | Milestone | Name              | Tasks   | MVT    | Complete | Total | Status      |
 | --------- | ----------------- | ------- | ------ | -------- | ----- | ----------- |
 | M0        | Quick Wins        | 001-004 | MVT_M0 | 4        | 5     | IN PROGRESS |
-| M1        | Foundation        | 005-009 | MVT_M1 | 1        | 6     | IN PROGRESS |
+| M1        | Foundation        | 005-009 | MVT_M1 | 2        | 6     | IN PROGRESS |
 | M2        | Core Improvements | 010-018 | MVT_M2 | 0        | 10    | NOT STARTED |
 | M3        | Polish            | 019-030 | MVT_M3 | 0        | 13    | NOT STARTED |
 | M4        | Optimization      | 031-038 | MVT_M4 | 0        | 9     | NOT STARTED |
@@ -42,7 +42,7 @@
 | Milestone | Name       | Completed   | Tasks Complete | Notes                                                                                                                                                                                                                                                     |
 | --------- | ---------- | ----------- | -------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | M0        | Quick Wins | In Progress | TASK_001-004   | Coverage tracking infrastructure added with baseline 82.74% lines coverage; All lib/ files now use TypeScript path aliases; Magic strings extracted to lib/constants.ts module with comprehensive test coverage; Boolean properties standardized with semantic prefixes (is*, should*) |
-| M1        | Foundation | In Progress | TASK_005       | Dependency injection interfaces and adapters established; CommandContext pattern enables testable commands; Production context factory and test utilities ready for TASK_006 proof of concept                                                           |
+| M1        | Foundation | In Progress | TASK_005-006   | Dependency injection interfaces and adapters established; CommandContext pattern enables testable commands; Production context factory and test utilities ready; plan command successfully migrated to DI pattern as proof of concept, validating architecture for rollout |
 
 ---
 
@@ -70,8 +70,8 @@
 | Task ID  | Title                          | Status   | Review Status | Priority | Complexity | Dependencies | Assigned To     | Attempts |
 | -------- | ------------------------------ | -------- | ------------- | -------- | ---------- | ------------ | --------------- | -------- |
 | TASK_005 | Dependency Injection Interface | COMPLETE | PASSED        | CRITICAL | M (4-8h)   | None         | SA-20260207-006 | 1        |
-| TASK_006 | DI Proof of Concept            | IN REVIEW   | —             | CRITICAL | M (4-8h)   | TASK_005     | SA-20260207-007 | 1        |
-| TASK_007 | DI Rollout to Commands         | NOT STARTED | CRITICAL | L (8-16h)  | TASK_006     |
+| TASK_006 | DI Proof of Concept            | COMPLETE | PASSED        | CRITICAL | M (4-8h)   | TASK_005     | SA-20260207-007 | 1        |
+| TASK_007 | DI Rollout to Commands         | IN PROGRESS | —        | CRITICAL | L (8-16h)  | TASK_006     | SA-20260207-008 | 1        |
 | TASK_008 | Process Globals Abstraction    | NOT STARTED | HIGH     | M (4-8h)   | TASK_007     |
 | TASK_009 | Process.exit Cleanup Fix       | NOT STARTED | CRITICAL | M (4-8h)   | TASK_008     |
 | MVT_M1   | Foundation Manual Test         | NOT STARTED | —        | 30 min     | TASK_005-009 |
@@ -201,13 +201,13 @@ TASK_031 (Parallelize) → MVT_M4
 
 ## Subagent Tracking
 
-Last Subagent ID: SA-20260207-007
+Last Subagent ID: SA-20260207-008
 
 ---
 
 ## Review Tracking
 
-Last Review ID: RA-20260207-005
+Last Review ID: RA-20260207-006
 
 ---
 
@@ -215,16 +215,16 @@ Last Review ID: RA-20260207-005
 
 ### For Reviewer
 
-| Field             | Value                                                                                                                                                                                                                            |
-| ----------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Task              | TASK_006                                                                                                                                                                                                                         |
-| Impl Agent        | SA-20260207-007                                                                                                                                                                                                                  |
-| Files Changed     | `lib/commands/plan.ts`, `bin/speci.ts`, `lib/interfaces.ts`, `lib/adapters/test-context.ts`                                                                                                                                     |
-| Tests Added       | `test/plan.test.ts` (14 tests migrated to DI pattern, 4 new test cases: missing input, missing file, default context, error result)                                                                                              |
-| Rework?           | No                                                                                                                                                                                                                               |
-| Focus Areas       | 1) Verify CommandResult properly returned instead of process.exit() 2) Check mock context usage in tests is correct 3) Confirm buildArgs passes model flag when configured 4) Validate default parameter creates production context |
-| Known Limitations | preflight() utility not yet migrated to use context (deferred to separate task); Other commands (init, task, refactor, run, status) not yet migrated (covered by TASK_007)                                                        |
-| Gate Results      | format:✅ lint:✅ typecheck:✅ test:✅ (all 868 tests passing)                                                                                                                                                                   |
+| Field             | Value |
+| ----------------- | ----- |
+| Task              | —     |
+| Impl Agent        | —     |
+| Files Changed     | —     |
+| Tests Added       | —     |
+| Rework?           | —     |
+| Focus Areas       | —     |
+| Known Limitations | —     |
+| Gate Results      | —     |
 
 ### For Fix Agent
 
@@ -242,18 +242,18 @@ Last Review ID: RA-20260207-005
 
 ## Summary Statistics
 
-**Overall Progress**: 11.63% Complete (5/43 items)
+**Overall Progress**: 13.95% Complete (6/43 items)
 
 **By Category**:
 
-- Tasks: 5/38 complete
+- Tasks: 6/38 complete
 - MVTs: 0/5 complete
-- Total Items: 5/43 complete
+- Total Items: 6/43 complete
 
 **By Milestone**:
 
 - M0 Quick Wins: 4/5 complete (80%)
-- M1 Foundation: 1/6 complete (17%)
+- M1 Foundation: 2/6 complete (33%)
 - M2 Core Improvements: 0/10 complete (0%)
 - M3 Polish: 0/13 complete (0%)
 - M4 Optimization: 0/9 complete (0%)
