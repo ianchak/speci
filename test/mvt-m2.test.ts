@@ -264,7 +264,7 @@ describe('MVT_M2: Core Libraries Integration', () => {
 
       const lockData = await getLockInfo(config);
 
-      expect(lockData.locked).toBe(true);
+      expect(lockData.isLocked).toBe(true);
       expect(lockData.pid).toBe(process.pid);
       expect(lockData.started).toBeInstanceOf(Date);
 
@@ -307,7 +307,7 @@ describe('MVT_M2: Core Libraries Integration', () => {
 
       const lockData = await getLockInfo(config);
 
-      expect(lockData.locked).toBe(true);
+      expect(lockData.isLocked).toBe(true);
       expect(lockData.pid).toBeTypeOf('number');
       expect(lockData.started).toBeInstanceOf(Date);
 
@@ -338,7 +338,7 @@ describe('MVT_M2: Core Libraries Integration', () => {
 
       const result = await executeGateCommand(command);
 
-      expect(result.success).toBe(true);
+      expect(result.isSuccess).toBe(true);
       expect(result.command).toBe(command);
     });
 
@@ -348,7 +348,7 @@ describe('MVT_M2: Core Libraries Integration', () => {
 
       const result = await executeGateCommand(command);
 
-      expect(result.success).toBe(false);
+      expect(result.isSuccess).toBe(false);
       expect(result.exitCode).toBe(1);
     });
 
@@ -358,7 +358,7 @@ describe('MVT_M2: Core Libraries Integration', () => {
 
       const result = await executeGateCommand(command);
 
-      expect(result.success).toBe(true);
+      expect(result.isSuccess).toBe(true);
       expect(result.output).toContain('hello');
     });
 
@@ -390,7 +390,7 @@ describe('MVT_M2: Core Libraries Integration', () => {
 
       const result = await runGate(config);
 
-      expect(result.success).toBe(true);
+      expect(result.isSuccess).toBe(true);
       expect(result.results.length).toBe(2);
       expect(result.totalDuration).toBeGreaterThanOrEqual(0);
     });

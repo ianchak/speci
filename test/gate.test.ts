@@ -20,7 +20,7 @@ describe('Gate Runner', () => {
     it('should capture stdout correctly', async () => {
       const result = await executeGateCommand('echo hello');
 
-      expect(result.success).toBe(true);
+      expect(result.isSuccess).toBe(true);
       expect(result.exitCode).toBe(0);
       expect(result.output).toContain('hello');
       expect(result.duration).toBeGreaterThan(0);
@@ -32,14 +32,14 @@ describe('Gate Runner', () => {
         'node -e "console.error(\'error message\')"'
       );
 
-      expect(result.success).toBe(true); // exits with 0
+      expect(result.isSuccess).toBe(true); // exits with 0
       expect(result.error).toContain('error message');
     });
 
     it('should return correct exit code for failing command', async () => {
       const result = await executeGateCommand('node -e "process.exit(1)"');
 
-      expect(result.success).toBe(false);
+      expect(result.isSuccess).toBe(false);
       expect(result.exitCode).toBe(1);
     });
 
@@ -60,7 +60,7 @@ describe('Gate Runner', () => {
         { timeout: 100 }
       );
 
-      expect(result.success).toBe(false);
+      expect(result.isSuccess).toBe(false);
       expect(result.exitCode).toBe(124); // Timeout exit code
       expect(result.error).toContain('timed out');
     });
@@ -68,7 +68,7 @@ describe('Gate Runner', () => {
     it('should handle command not found', async () => {
       const result = await executeGateCommand('nonexistent-command-xyz123');
 
-      expect(result.success).toBe(false);
+      expect(result.isSuccess).toBe(false);
       expect(result.exitCode).toBeGreaterThan(0);
     });
   });
@@ -125,8 +125,8 @@ describe('Gate Runner', () => {
     it('should return success when all commands pass', async () => {
       const result = await runGate(mockConfig);
 
-      expect(result.success).toBe(true);
-      expect(result.results.every((r) => r.success)).toBe(true);
+      expect(result.isSuccess).toBe(true);
+      expect(result.results.every((r) => r.isSuccess)).toBe(true);
       expect(result.error).toBeUndefined();
     });
 
@@ -141,10 +141,10 @@ describe('Gate Runner', () => {
 
       const result = await runGate(failConfig);
 
-      expect(result.success).toBe(false);
+      expect(result.isSuccess).toBe(false);
       expect(result.error).toBeDefined();
       expect(result.results).toHaveLength(3);
-      expect(result.results[1].success).toBe(false);
+      expect(result.results[1].isSuccess).toBe(false);
     });
 
     it('should return success for empty commands array', async () => {
@@ -158,7 +158,7 @@ describe('Gate Runner', () => {
 
       const result = await runGate(emptyConfig);
 
-      expect(result.success).toBe(true);
+      expect(result.isSuccess).toBe(true);
       expect(result.results).toHaveLength(0);
       expect(result.totalDuration).toBe(0);
     });

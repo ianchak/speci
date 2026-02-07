@@ -30,7 +30,7 @@ export type CommandName =
 export interface CopilotArgsOptions {
   prompt?: string;
   agent: string;
-  allowAll?: boolean;
+  shouldAllowAll?: boolean;
   command: CommandName;
 }
 
@@ -38,7 +38,7 @@ export interface CopilotArgsOptions {
  * Result of running an agent
  */
 export interface AgentRunResult {
-  success: boolean;
+  isSuccess: boolean;
   exitCode: number;
   error?: string;
 }
@@ -188,7 +188,7 @@ export async function runAgent(
       const exitCode = await spawnCopilot(args);
 
       if (exitCode === 0) {
-        return { success: true, exitCode: 0 };
+        return { isSuccess: true, exitCode: 0 };
       }
 
       lastExitCode = exitCode;
@@ -196,7 +196,7 @@ export async function runAgent(
       // Check if retryable
       if (!policy.retryableExitCodes.includes(exitCode)) {
         return {
-          success: false,
+          isSuccess: false,
           exitCode,
           error: `Agent exited with code ${exitCode}`,
         };
@@ -207,7 +207,7 @@ export async function runAgent(
       // ENOENT is not retryable
       if ((err as NodeJS.ErrnoException).code === 'ENOENT') {
         return {
-          success: false,
+          isSuccess: false,
           exitCode: 127,
           error: 'Copilot CLI not found. Is it installed and in PATH?',
         };
@@ -216,7 +216,7 @@ export async function runAgent(
   }
 
   return {
-    success: false,
+    isSuccess: false,
     exitCode: lastExitCode,
     error: lastError?.message ?? `Failed after ${policy.maxRetries} retries`,
   };

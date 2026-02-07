@@ -22,7 +22,7 @@ import { log } from '@/utils/logger.js';
  * Lock information interface
  */
 export interface LockInfo {
-  locked: boolean;
+  isLocked: boolean;
   started: Date | null;
   pid: number | null;
   elapsed: string | null;
@@ -113,7 +113,7 @@ export async function getLockInfo(config: SpeciConfig): Promise<LockInfo> {
   const lockPath = config.paths.lock;
 
   if (!existsSync(lockPath)) {
-    return { locked: false, started: null, pid: null, elapsed: null };
+    return { isLocked: false, started: null, pid: null, elapsed: null };
   }
 
   try {
@@ -136,10 +136,10 @@ export async function getLockInfo(config: SpeciConfig): Promise<LockInfo> {
 
     const elapsed = started ? formatElapsed(started) : null;
 
-    return { locked: true, started, pid, elapsed };
+    return { isLocked: true, started, pid, elapsed };
   } catch {
     // Lock file exists but can't be read - consider it locked
-    return { locked: true, started: null, pid: null, elapsed: null };
+    return { isLocked: true, started: null, pid: null, elapsed: null };
   }
 }
 

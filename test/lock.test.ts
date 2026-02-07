@@ -199,7 +199,7 @@ describe('Lock File Management', () => {
       const info = await getLockInfo(mockConfig);
 
       expect(info).toEqual({
-        locked: false,
+        isLocked: false,
         started: null,
         pid: null,
         elapsed: null,
@@ -211,7 +211,7 @@ describe('Lock File Management', () => {
 
       const info = await getLockInfo(mockConfig);
 
-      expect(info.locked).toBe(true);
+      expect(info.isLocked).toBe(true);
       expect(info.started).toBeInstanceOf(Date);
       expect(info.started!.getTime()).toBeLessThanOrEqual(Date.now());
     });
@@ -221,7 +221,7 @@ describe('Lock File Management', () => {
 
       const info = await getLockInfo(mockConfig);
 
-      expect(info.locked).toBe(true);
+      expect(info.isLocked).toBe(true);
       expect(info.pid).toBe(process.pid);
     });
 
@@ -233,7 +233,7 @@ describe('Lock File Management', () => {
 
       const info = await getLockInfo(mockConfig);
 
-      expect(info.locked).toBe(true);
+      expect(info.isLocked).toBe(true);
       expect(info.elapsed).toMatch(/^\d{2}:\d{2}:\d{2}$/);
 
       // Should show at least 1 second elapsed
@@ -249,7 +249,7 @@ describe('Lock File Management', () => {
       const info = await getLockInfo(mockConfig);
 
       // Should report as locked but with null fields
-      expect(info.locked).toBe(true);
+      expect(info.isLocked).toBe(true);
       expect(info.started).toBeNull();
       expect(info.pid).toBeNull();
       expect(info.elapsed).toBeNull();
@@ -261,7 +261,7 @@ describe('Lock File Management', () => {
 
       const info = await getLockInfo(mockConfig);
 
-      expect(info.locked).toBe(true);
+      expect(info.isLocked).toBe(true);
       expect(info.started).toBeNull();
       expect(info.pid).toBeNull();
       expect(info.elapsed).toBeNull();
@@ -277,7 +277,7 @@ describe('Lock File Management', () => {
 
       const info = await getLockInfo(mockConfig);
 
-      expect(info.locked).toBe(true);
+      expect(info.isLocked).toBe(true);
       expect(info.pid).toBeNull();
     });
 
@@ -287,7 +287,7 @@ describe('Lock File Management', () => {
 
       const info = await getLockInfo(mockConfig);
 
-      expect(info.locked).toBe(true);
+      expect(info.isLocked).toBe(true);
       expect(info.started).toBeNull();
       expect(info.pid).toBe(12345);
       expect(info.elapsed).toBeNull();

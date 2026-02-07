@@ -164,7 +164,7 @@ export async function plan(options: PlanOptions = {}): Promise<void> {
     const args = buildCopilotArgs(config, {
       prompt: fullPrompt || undefined,
       agent: agentName,
-      allowAll: config.copilot.permissions === 'allow-all',
+      shouldAllowAll: config.copilot.permissions === 'allow-all',
       command: commandName,
     });
 

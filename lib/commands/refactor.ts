@@ -139,7 +139,7 @@ export async function refactor(options: RefactorOptions = {}): Promise<void> {
     const args = buildCopilotArgs(config, {
       prompt,
       agent: agentName,
-      allowAll: true,
+      shouldAllowAll: true,
       command: commandName,
     });
 

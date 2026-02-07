@@ -17,7 +17,7 @@ const DEFAULT_TIMEOUT = 5 * 60 * 1000; // 5 minutes
  */
 export interface GateCommandResult {
   command: string;
-  success: boolean;
+  isSuccess: boolean;
   exitCode: number;
   output: string;
   error: string;
@@ -28,7 +28,7 @@ export interface GateCommandResult {
  * Aggregate result from all gate commands
  */
 export interface GateResult {
-  success: boolean;
+  isSuccess: boolean;
   results: GateCommandResult[];
   error?: string;
   totalDuration: number;
@@ -77,7 +77,7 @@ export async function executeGateCommand(
 
       resolve({
         command,
-        success: code === 0 && !timedOut,
+        isSuccess: code === 0 && !timedOut,
         exitCode: timedOut ? 124 : (code ?? 1),
         output: stdout,
         error: timedOut ? `Command timed out after ${timeout}ms` : stderr,
@@ -91,7 +91,7 @@ export async function executeGateCommand(
 
       resolve({
         command,
-        success: false,
+        isSuccess: false,
         exitCode: 127,
         output: '',
         error: err.message,
@@ -111,7 +111,7 @@ export async function runGate(config: SpeciConfig): Promise<GateResult> {
 
   if (commands.length === 0) {
     log.debug('No gate commands configured, skipping gate');
-    return { success: true, results: [], totalDuration: 0 };
+    return { isSuccess: true, results: [], totalDuration: 0 };
   }
 
   log.info(`Running gate checks (${commands.length} commands)...`);
@@ -123,7 +123,7 @@ export async function runGate(config: SpeciConfig): Promise<GateResult> {
     const result = await executeGateCommand(command);
     results.push(result);
 
-    if (result.success) {
+    if (result.isSuccess) {
       log.success(`    ${getGlyph('success')} Passed (${result.duration}ms)`);
     } else {
       log.error(
@@ -141,10 +141,10 @@ export async function runGate(config: SpeciConfig): Promise<GateResult> {
   }
 
   const totalDuration = Date.now() - startTime;
-  const success = results.every((r) => r.success);
-  const firstError = results.find((r) => !r.success);
+  const isSuccess = results.every((r) => r.isSuccess);
+  const firstError = results.find((r) => !r.isSuccess);
 
-  if (success) {
+  if (isSuccess) {
     log.success(
       `Gate passed! All ${commands.length} checks completed in ${totalDuration}ms`
     );
@@ -153,7 +153,7 @@ export async function runGate(config: SpeciConfig): Promise<GateResult> {
   }
 
   return {
-    success,
+    isSuccess,
     results,
     error: firstError?.error,
     totalDuration,

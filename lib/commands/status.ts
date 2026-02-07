@@ -102,7 +102,7 @@ async function gatherStatusData(config: SpeciConfig): Promise<StatusData> {
       blocked: rawStats.blocked,
     },
     lock: {
-      isLocked: lockInfo.locked,
+      isLocked: lockInfo.isLocked,
       pid: lockInfo.pid,
       startTime: lockInfo.started ? formatTimestamp(lockInfo.started) : null,
       elapsed: lockInfo.elapsed,

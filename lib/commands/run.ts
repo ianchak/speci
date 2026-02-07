@@ -224,9 +224,9 @@ async function handleWorkLeft(
   log.info('Dispatching implementation agent...');
   logAgent(logFile, 'impl', 'START');
   const implResult = await runAgent(config, 'impl', 'Implementation Agent');
-  logAgent(logFile, 'impl', implResult.success ? 'SUCCESS' : 'FAILED');
+  logAgent(logFile, 'impl', implResult.isSuccess ? 'SUCCESS' : 'FAILED');
 
-  if (!implResult.success) {
+  if (!implResult.isSuccess) {
     log.error(
       `Implementation agent failed: ${implResult.error ?? 'Unknown error'}`
     );
@@ -239,14 +239,14 @@ async function handleWorkLeft(
   const gateResult = await runGate(config);
   logGate(logFile, gateResult);
 
-  if (gateResult.success) {
+  if (gateResult.isSuccess) {
     log.success('All gates passed!');
     return;
   }
 
   // 3. Handle gate failure with fix attempts
   let fixAttempt = 0;
-  while (!gateResult.success && fixAttempt < config.gate.maxFixAttempts) {
+  while (!gateResult.isSuccess && fixAttempt < config.gate.maxFixAttempts) {
     fixAttempt++;
     log.warn(
       `Gate failed. Running fix agent (attempt ${fixAttempt}/${config.gate.maxFixAttempts})...`
@@ -257,11 +257,11 @@ async function handleWorkLeft(
     logAgent(
       logFile,
       'fix',
-      fixResult.success ? 'SUCCESS' : 'FAILED',
+      fixResult.isSuccess ? 'SUCCESS' : 'FAILED',
       fixAttempt
     );
 
-    if (!fixResult.success) {
+    if (!fixResult.isSuccess) {
       log.error(`Fix agent failed: ${fixResult.error ?? 'Unknown error'}`);
       break;
     }
@@ -270,13 +270,13 @@ async function handleWorkLeft(
     const retryResult = await runGate(config);
     logGate(logFile, retryResult);
 
-    if (retryResult.success) {
+    if (retryResult.isSuccess) {
       log.success('Gates passed after fix!');
       return;
     }
   }
 
-  if (!gateResult.success) {
+  if (!gateResult.isSuccess) {
     log.error(
       `Gates still failing after ${config.gate.maxFixAttempts} fix attempts.`
     );
@@ -299,9 +299,9 @@ async function handleInReview(
   log.info('Dispatching review agent...');
   logAgent(logFile, 'review', 'START');
   const reviewResult = await runAgent(config, 'review', 'Review Agent');
-  logAgent(logFile, 'review', reviewResult.success ? 'SUCCESS' : 'FAILED');
+  logAgent(logFile, 'review', reviewResult.isSuccess ? 'SUCCESS' : 'FAILED');
 
-  if (!reviewResult.success) {
+  if (!reviewResult.isSuccess) {
     log.error(`Review agent failed: ${reviewResult.error ?? 'Unknown error'}`);
   }
 }
@@ -321,9 +321,9 @@ async function handleBlocked(
   log.info('Dispatching tidy agent to unblock tasks...');
   logAgent(logFile, 'tidy', 'START');
   const tidyResult = await runAgent(config, 'tidy', 'Tidy Agent');
-  logAgent(logFile, 'tidy', tidyResult.success ? 'SUCCESS' : 'FAILED');
+  logAgent(logFile, 'tidy', tidyResult.isSuccess ? 'SUCCESS' : 'FAILED');
 
-  if (!tidyResult.success) {
+  if (!tidyResult.isSuccess) {
     log.error(`Tidy agent failed: ${tidyResult.error ?? 'Unknown error'}`);
   }
 }
@@ -515,17 +515,17 @@ function logAgent(
 function logGate(
   logFile: WriteStream,
   result: {
-    success: boolean;
-    results: Array<{ command: string; success: boolean; exitCode: number }>;
+    isSuccess: boolean;
+    results: Array<{ command: string; isSuccess: boolean; exitCode: number }>;
   }
 ): void {
   const timestamp = new Date().toISOString();
   logFile.write(
-    `[${timestamp}] GATE ${result.success ? 'PASSED' : 'FAILED'}\n`
+    `[${timestamp}] GATE ${result.isSuccess ? 'PASSED' : 'FAILED'}\n`
   );
   for (const r of result.results) {
     logFile.write(
-      `  - ${r.command}: ${r.success ? 'PASS' : `FAIL (exit ${r.exitCode})`}\n`
+      `  - ${r.command}: ${r.isSuccess ? 'PASS' : `FAIL (exit ${r.exitCode})`}\n`
     );
   }
 }

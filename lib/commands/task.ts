@@ -116,7 +116,7 @@ export async function task(options: TaskOptions): Promise<void> {
     const args = buildCopilotArgs(config, {
       prompt: `Read the plan file at ${planPath} and generate implementation tasks.`,
       agent: agentName,
-      allowAll: true,
+      shouldAllowAll: true,
       command: commandName,
     });
 

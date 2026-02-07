@@ -270,7 +270,7 @@ describe('copilot', () => {
 
       const result: AgentRunResult = await promise;
 
-      expect(result.success).toBe(true);
+      expect(result.isSuccess).toBe(true);
       expect(result.exitCode).toBe(0);
       expect(result.error).toBeUndefined();
     });
@@ -286,7 +286,7 @@ describe('copilot', () => {
 
       const result: AgentRunResult = await promise;
 
-      expect(result.success).toBe(false);
+      expect(result.isSuccess).toBe(false);
       expect(result.exitCode).toBe(1);
       expect(result.error).toBeDefined();
     });
@@ -308,7 +308,7 @@ describe('copilot', () => {
       const result = await promise;
 
       expect(spawn).toHaveBeenCalledTimes(2);
-      expect(result.success).toBe(true);
+      expect(result.isSuccess).toBe(true);
       expect(result.exitCode).toBe(0);
     }, 10000);
 
@@ -330,7 +330,7 @@ describe('copilot', () => {
       const result = await promise;
 
       expect(spawn).toHaveBeenCalledTimes(1); // No retries
-      expect(result.success).toBe(false);
+      expect(result.isSuccess).toBe(false);
       expect(result.exitCode).toBe(127);
       expect(result.error).toContain('Copilot CLI not found');
     });
@@ -347,7 +347,7 @@ describe('copilot', () => {
       const result = await promise;
 
       expect(spawn).toHaveBeenCalledTimes(1);
-      expect(result.success).toBe(false);
+      expect(result.isSuccess).toBe(false);
       expect(result.exitCode).toBe(1);
     });
 
@@ -383,7 +383,7 @@ describe('copilot', () => {
       const result = await promise;
 
       expect(spawn).toHaveBeenCalledTimes(4); // Initial + 3 retries
-      expect(result.success).toBe(false);
+      expect(result.isSuccess).toBe(false);
       expect(result.exitCode).toBe(429);
 
       vi.useRealTimers();

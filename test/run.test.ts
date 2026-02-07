@@ -158,11 +158,11 @@ describe('Run Command', () => {
         .mockResolvedValueOnce(STATE.WORK_LEFT)
         .mockResolvedValueOnce(STATE.DONE);
       vi.spyOn(copilot, 'runAgent').mockResolvedValue({
-        success: true,
+        isSuccess: true,
         exitCode: 0,
       });
       vi.spyOn(gate, 'runGate').mockResolvedValue({
-        success: true,
+        isSuccess: true,
         results: [],
         totalDuration: 0,
       });
@@ -181,7 +181,7 @@ describe('Run Command', () => {
         .mockResolvedValueOnce(STATE.IN_REVIEW)
         .mockResolvedValueOnce(STATE.DONE);
       vi.spyOn(copilot, 'runAgent').mockResolvedValue({
-        success: true,
+        isSuccess: true,
         exitCode: 0,
       });
 
@@ -199,7 +199,7 @@ describe('Run Command', () => {
         .mockResolvedValueOnce(STATE.BLOCKED)
         .mockResolvedValueOnce(STATE.DONE);
       vi.spyOn(copilot, 'runAgent').mockResolvedValue({
-        success: true,
+        isSuccess: true,
         exitCode: 0,
       });
 
@@ -229,11 +229,11 @@ describe('Run Command', () => {
         .mockResolvedValueOnce(STATE.WORK_LEFT)
         .mockResolvedValueOnce(STATE.DONE);
       vi.spyOn(copilot, 'runAgent').mockResolvedValue({
-        success: true,
+        isSuccess: true,
         exitCode: 0,
       });
       vi.spyOn(gate, 'runGate').mockResolvedValue({
-        success: true,
+        isSuccess: true,
         results: [],
         totalDuration: 0,
       });
@@ -248,12 +248,12 @@ describe('Run Command', () => {
         .mockResolvedValueOnce(STATE.WORK_LEFT)
         .mockResolvedValueOnce(STATE.DONE);
       vi.spyOn(copilot, 'runAgent').mockResolvedValue({
-        success: false,
+        isSuccess: false,
         exitCode: 1,
         error: 'Agent failed',
       });
       vi.spyOn(gate, 'runGate').mockResolvedValue({
-        success: true,
+        isSuccess: true,
         results: [],
         totalDuration: 0,
       });
@@ -268,15 +268,15 @@ describe('Run Command', () => {
         .mockResolvedValueOnce(STATE.WORK_LEFT)
         .mockResolvedValueOnce(STATE.DONE);
       vi.spyOn(copilot, 'runAgent')
-        .mockResolvedValueOnce({ success: true, exitCode: 0 }) // impl
-        .mockResolvedValueOnce({ success: true, exitCode: 0 }); // fix
+        .mockResolvedValueOnce({ isSuccess: true, exitCode: 0 }) // impl
+        .mockResolvedValueOnce({ isSuccess: true, exitCode: 0 }); // fix
       vi.spyOn(gate, 'runGate')
         .mockResolvedValueOnce({
-          success: false,
+          isSuccess: false,
           results: [
             {
               command: 'npm run lint',
-              success: false,
+              isSuccess: false,
               exitCode: 1,
               output: '',
               error: 'Lint failed',
@@ -286,7 +286,7 @@ describe('Run Command', () => {
           totalDuration: 100,
         })
         .mockResolvedValueOnce({
-          success: true,
+          isSuccess: true,
           results: [],
           totalDuration: 0,
         });
@@ -305,16 +305,16 @@ describe('Run Command', () => {
         .mockResolvedValueOnce(STATE.WORK_LEFT)
         .mockResolvedValueOnce(STATE.DONE);
       vi.spyOn(copilot, 'runAgent')
-        .mockResolvedValueOnce({ success: true, exitCode: 0 }) // impl
-        .mockResolvedValueOnce({ success: true, exitCode: 0 }); // fix
+        .mockResolvedValueOnce({ isSuccess: true, exitCode: 0 }) // impl
+        .mockResolvedValueOnce({ isSuccess: true, exitCode: 0 }); // fix
       vi.spyOn(gate, 'runGate')
         .mockResolvedValueOnce({
-          success: false,
+          isSuccess: false,
           results: [],
           totalDuration: 0,
         })
         .mockResolvedValueOnce({
-          success: true,
+          isSuccess: true,
           results: [],
           totalDuration: 0,
         });
@@ -336,11 +336,11 @@ describe('Run Command', () => {
         .mockResolvedValueOnce(STATE.WORK_LEFT)
         .mockResolvedValueOnce(STATE.DONE);
       vi.spyOn(copilot, 'runAgent').mockResolvedValue({
-        success: true,
+        isSuccess: true,
         exitCode: 0,
       });
       vi.spyOn(gate, 'runGate').mockResolvedValue({
-        success: false,
+        isSuccess: false,
         results: [],
         totalDuration: 0,
       });
@@ -361,11 +361,11 @@ describe('Run Command', () => {
       vi.spyOn(config, 'loadConfig').mockResolvedValue(configWithLowMaxIter);
       vi.spyOn(state, 'getState').mockResolvedValue(STATE.WORK_LEFT);
       vi.spyOn(copilot, 'runAgent').mockResolvedValue({
-        success: true,
+        isSuccess: true,
         exitCode: 0,
       });
       vi.spyOn(gate, 'runGate').mockResolvedValue({
-        success: true,
+        isSuccess: true,
         results: [],
         totalDuration: 0,
       });
@@ -379,11 +379,11 @@ describe('Run Command', () => {
     it('should override max iterations from options', async () => {
       vi.spyOn(state, 'getState').mockResolvedValue(STATE.WORK_LEFT);
       vi.spyOn(copilot, 'runAgent').mockResolvedValue({
-        success: true,
+        isSuccess: true,
         exitCode: 0,
       });
       vi.spyOn(gate, 'runGate').mockResolvedValue({
-        success: true,
+        isSuccess: true,
         results: [],
         totalDuration: 0,
       });
@@ -408,7 +408,7 @@ describe('Run Command', () => {
     it('should skip execution in dry run mode', async () => {
       vi.spyOn(state, 'getState').mockResolvedValue(STATE.WORK_LEFT);
       vi.spyOn(copilot, 'runAgent').mockResolvedValue({
-        success: true,
+        isSuccess: true,
         exitCode: 0,
       });
       const exitSpy = vi.spyOn(process, 'exit').mockImplementation(() => {
@@ -426,7 +426,7 @@ describe('Run Command', () => {
     it('should force override lock when force flag is set', async () => {
       vi.spyOn(lock, 'isLocked').mockResolvedValue(true);
       vi.spyOn(lock, 'getLockInfo').mockResolvedValue({
-        locked: true,
+        isLocked: true,
         started: new Date(),
         pid: 1234,
         elapsed: '5 minutes',
@@ -488,7 +488,7 @@ describe('Run Command', () => {
         .mockResolvedValueOnce(STATE.WORK_LEFT)
         .mockResolvedValueOnce(STATE.DONE);
       vi.spyOn(copilot, 'runAgent').mockResolvedValue({
-        success: false,
+        isSuccess: false,
         exitCode: 1,
         error: 'Agent failed',
       });
@@ -504,7 +504,7 @@ describe('Run Command', () => {
         .mockResolvedValueOnce(STATE.IN_REVIEW)
         .mockResolvedValueOnce(STATE.DONE);
       vi.spyOn(copilot, 'runAgent').mockResolvedValue({
-        success: false,
+        isSuccess: false,
         exitCode: 1,
         error: 'Agent failed',
       });
@@ -520,7 +520,7 @@ describe('Run Command', () => {
         .mockResolvedValueOnce(STATE.BLOCKED)
         .mockResolvedValueOnce(STATE.DONE);
       vi.spyOn(copilot, 'runAgent').mockResolvedValue({
-        success: false,
+        isSuccess: false,
         exitCode: 1,
         error: 'Agent failed',
       });
@@ -536,14 +536,14 @@ describe('Run Command', () => {
         .mockResolvedValueOnce(STATE.WORK_LEFT)
         .mockResolvedValueOnce(STATE.DONE);
       vi.spyOn(copilot, 'runAgent')
-        .mockResolvedValueOnce({ success: true, exitCode: 0 }) // impl
+        .mockResolvedValueOnce({ isSuccess: true, exitCode: 0 }) // impl
         .mockResolvedValueOnce({
-          success: false,
+          isSuccess: false,
           exitCode: 1,
           error: 'Fix failed',
         }); // fix
       vi.spyOn(gate, 'runGate').mockResolvedValue({
-        success: false,
+        isSuccess: false,
         results: [],
         totalDuration: 0,
       });
