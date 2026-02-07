@@ -16,7 +16,6 @@ describe('refactor command', () => {
   let originalCwd: string;
   let originalEnv: NodeJS.ProcessEnv;
   let originalExit: typeof process.exit;
-  let exitCode: number | undefined;
 
   beforeEach(() => {
     // Save original state
@@ -24,10 +23,8 @@ describe('refactor command', () => {
     originalEnv = { ...process.env };
     originalExit = process.exit;
 
-    // Mock process.exit to capture exit code
-    exitCode = undefined;
+    // Mock process.exit to prevent actual exit
     process.exit = vi.fn(((code?: number) => {
-      exitCode = code;
       throw new Error(`Process exit: ${code}`);
     }) as never);
 

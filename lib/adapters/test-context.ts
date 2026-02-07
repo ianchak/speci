@@ -29,6 +29,11 @@ export function createMockFileSystem(): IFileSystem {
     mkdirSync: vi.fn(),
     unlinkSync: vi.fn(),
     readdirSync: vi.fn(() => []),
+    statSync: vi.fn(() => ({
+      isDirectory: () => false,
+      isFile: () => true,
+    })),
+    copyFileSync: vi.fn(),
     readFile: vi.fn(async () => ''),
     writeFile: vi.fn(async () => {}),
   };

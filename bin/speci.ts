@@ -17,6 +17,7 @@ import { run } from '../lib/commands/run.js';
 import { status } from '../lib/commands/status.js';
 import { findSimilarCommands } from '../lib/utils/suggest.js';
 import { setVerbose, debug } from '../lib/utils/logger.js';
+import { createProductionContext } from '../lib/adapters/context-factory.js';
 
 /**
  * Display the static (non-animated) banner
@@ -45,6 +46,9 @@ function displayBanner(options?: { color?: boolean }): Promise<void> | void {
 }
 
 const program = new Command();
+
+// Create production context once for all commands
+const context = createProductionContext();
 
 // Configure program
 program
@@ -100,7 +104,7 @@ Examples:
 `
   )
   .action(async (options) => {
-    const result = await init(options);
+    const result = await init(options, context);
     if (!result.success) {
       process.exit(result.exitCode);
     }
@@ -131,7 +135,7 @@ Examples:
 `
   )
   .action(async (options) => {
-    const result = await plan(options);
+    const result = await plan(options, context);
     if (!result.success) {
       process.exit(result.exitCode);
     }
@@ -154,7 +158,7 @@ Examples:
 `
   )
   .action(async (options) => {
-    const result = await task(options);
+    const result = await task(options, context);
     if (!result.success) {
       process.exit(result.exitCode);
     }
@@ -179,7 +183,7 @@ Examples:
 `
   )
   .action(async (options) => {
-    const result = await refactor(options);
+    const result = await refactor(options, context);
     if (!result.success) {
       process.exit(result.exitCode);
     }
@@ -204,7 +208,7 @@ Examples:
 `
   )
   .action(async (options) => {
-    const result = await run(options);
+    const result = await run(options, context);
     if (!result.success) {
       process.exit(result.exitCode);
     }
@@ -231,7 +235,7 @@ Examples:
 `
   )
   .action(async (options) => {
-    const result = await status(options);
+    const result = await status(options, context);
     if (!result.success) {
       process.exit(result.exitCode);
     }

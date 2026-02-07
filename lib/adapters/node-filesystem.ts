@@ -11,6 +11,8 @@ import {
   mkdirSync,
   unlinkSync,
   readdirSync,
+  statSync,
+  copyFileSync,
   promises as fsPromises,
 } from 'node:fs';
 import type { IFileSystem } from '@/interfaces.js';
@@ -51,6 +53,14 @@ export class NodeFileSystem implements IFileSystem {
 
   readdirSync(path: string): string[] {
     return readdirSync(path);
+  }
+
+  statSync(path: string): { isDirectory(): boolean; isFile(): boolean } {
+    return statSync(path);
+  }
+
+  copyFileSync(src: string, dest: string): void {
+    copyFileSync(src, dest);
   }
 
   async readFile(

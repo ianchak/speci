@@ -106,7 +106,10 @@ export async function run(
 
   if (!options.yes) {
     const initialState = await getState(config);
-    await confirmRun(initialState, config);
+    const shouldProceed = await confirmRun(initialState, config);
+    if (!shouldProceed) {
+      return { success: false, exitCode: 0, error: 'User cancelled' };
+    }
   }
 
   // 6. Acquire lock
@@ -401,7 +404,10 @@ async function promptForce(): Promise<boolean> {
  * @param state - Current state
  * @param config - Speci configuration
  */
-async function confirmRun(state: STATE, _config: SpeciConfig): Promise<void> {
+async function confirmRun(
+  state: STATE,
+  _config: SpeciConfig
+): Promise<boolean> {
   log.info(`Current state: ${state}`);
 
   const action = getActionForState(state);
@@ -417,9 +423,10 @@ async function confirmRun(state: STATE, _config: SpeciConfig): Promise<void> {
       rl.close();
       if (answer.toLowerCase() === 'n' || answer.toLowerCase() === 'no') {
         log.info('Run cancelled.');
-        process.exit(0);
+        resolve(false);
+      } else {
+        resolve(true);
       }
-      resolve();
     });
   });
 }

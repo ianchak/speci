@@ -92,6 +92,11 @@ describe('plan command', () => {
         mkdirSync(_path, options),
       unlinkSync: vi.fn(),
       readdirSync: vi.fn(() => []),
+      statSync: vi.fn(() => ({
+        isDirectory: () => false,
+        isFile: () => true,
+      })),
+      copyFileSync: vi.fn(),
       readFile: vi.fn(async () => ''),
       writeFile: vi.fn(async () => {}),
     };
@@ -255,6 +260,11 @@ describe('plan command', () => {
           mkdirSync(_path, options),
         unlinkSync: vi.fn(),
         readdirSync: vi.fn(() => []),
+        statSync: vi.fn(() => ({
+          isDirectory: () => false,
+          isFile: () => true,
+        })),
+        copyFileSync: vi.fn(),
         readFile: vi.fn(async () => ''),
         writeFile: vi.fn(async () => {}),
       };

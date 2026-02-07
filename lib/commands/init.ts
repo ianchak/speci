@@ -5,7 +5,6 @@
  * Creates speci.config.json, directory structure, and initial files.
  */
 
-import { copyFileSync, readdirSync, statSync } from 'node:fs';
 import { join, relative } from 'node:path';
 import { renderBanner } from '@/ui/banner.js';
 import { colorize } from '@/ui/colors.js';
@@ -190,19 +189,19 @@ function copyDirectoryRecursive(
   context.fs.mkdirSync(dest, { recursive: true });
 
   // Read source directory contents
-  const entries = readdirSync(src);
+  const entries = context.fs.readdirSync(src);
 
   for (const entry of entries) {
     const srcPath = join(src, entry);
     const destPath = join(dest, entry);
-    const stat = statSync(srcPath);
+    const stat = context.fs.statSync(srcPath);
 
     if (stat.isDirectory()) {
       // Recursively copy subdirectories
       fileCount += copyDirectoryRecursive(srcPath, destPath, context);
     } else if (stat.isFile()) {
       // Copy file
-      copyFileSync(srcPath, destPath);
+      context.fs.copyFileSync(srcPath, destPath);
       const relativePath = relative(getAgentsTemplatePath(), srcPath);
       context.logger.debug(`Copied: ${relativePath}`);
       fileCount++;

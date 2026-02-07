@@ -66,6 +66,23 @@ export interface IFileSystem {
   readdirSync(path: string): string[];
 
   /**
+   * Get file or directory statistics (synchronous)
+   * @param path - Path to stat
+   * @returns File stats object
+   */
+  statSync(path: string): {
+    isDirectory(): boolean;
+    isFile(): boolean;
+  };
+
+  /**
+   * Copy file (synchronous)
+   * @param src - Source file path
+   * @param dest - Destination file path
+   */
+  copyFileSync(src: string, dest: string): void;
+
+  /**
    * Read file contents (asynchronous)
    * @param path - File path to read
    * @param encoding - Optional encoding (defaults to utf8)

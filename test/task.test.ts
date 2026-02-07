@@ -16,7 +16,6 @@ describe('task command', () => {
   let originalCwd: string;
   let originalEnv: NodeJS.ProcessEnv;
   let originalExit: typeof process.exit;
-  let exitCode: number | undefined;
 
   beforeEach(() => {
     // Save original state
@@ -24,10 +23,8 @@ describe('task command', () => {
     originalEnv = { ...process.env };
     originalExit = process.exit;
 
-    // Mock process.exit to capture exit code
-    exitCode = undefined;
+    // Mock process.exit to prevent actual exit
     process.exit = vi.fn(((code?: number) => {
-      exitCode = code;
       throw new Error(`Process exit: ${code}`);
     }) as never);
 
@@ -270,7 +267,7 @@ describe('task command', () => {
       vi.spyOn(copilotModule, 'spawnCopilot').mockResolvedValue(0);
 
       const result = await task({ plan: 'plan.md' });
-      
+
       expect(result.success).toBe(true);
       expect(result.exitCode).toBe(0);
     });
@@ -279,7 +276,7 @@ describe('task command', () => {
       vi.spyOn(copilotModule, 'spawnCopilot').mockResolvedValue(42);
 
       const result = await task({ plan: 'plan.md' });
-      
+
       expect(result.success).toBe(false);
       expect(result.exitCode).toBe(42);
     });

@@ -216,7 +216,7 @@ describe('Run Command', () => {
       vi.spyOn(state, 'getState').mockResolvedValue(STATE.NO_PROGRESS);
 
       const result = await run({ yes: true });
-      
+
       expect(result.success).toBe(false);
       expect(result.exitCode).toBe(1);
     });

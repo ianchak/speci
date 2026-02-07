@@ -6,7 +6,6 @@
  * Output streams to terminal in real-time using stdio: 'inherit'.
  */
 
-import { statSync } from 'node:fs';
 import { isAbsolute, resolve } from 'node:path';
 import { resolveAgentPath } from '@/config.js';
 import { preflight } from '@/utils/preflight.js';
@@ -67,7 +66,7 @@ function validateScope(
 
   // Check existence for directories
   if (context.fs.existsSync(resolved)) {
-    const stats = statSync(resolved);
+    const stats = context.fs.statSync(resolved);
     if (!stats.isDirectory() && !stats.isFile()) {
       context.logger.warn(`Scope path is neither file nor directory: ${scope}`);
     }
