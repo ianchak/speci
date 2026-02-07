@@ -28,7 +28,7 @@
 | Milestone | Name              | Tasks   | MVT    | Complete | Total | Status      |
 | --------- | ----------------- | ------- | ------ | -------- | ----- | ----------- |
 | M0        | Quick Wins        | 001-004 | MVT_M0 | 4        | 5     | IN PROGRESS |
-| M1        | Foundation        | 005-009 | MVT_M1 | 0        | 6     | NOT STARTED |
+| M1        | Foundation        | 005-009 | MVT_M1 | 1        | 6     | IN PROGRESS |
 | M2        | Core Improvements | 010-018 | MVT_M2 | 0        | 10    | NOT STARTED |
 | M3        | Polish            | 019-030 | MVT_M3 | 0        | 13    | NOT STARTED |
 | M4        | Optimization      | 031-038 | MVT_M4 | 0        | 9     | NOT STARTED |
@@ -39,9 +39,10 @@
 
 > Summary only. See task files for details.
 
-| Milestone | Name       | Completed   | Tasks Complete | Notes                                                                                                                                                                                                         |
-| --------- | ---------- | ----------- | -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Milestone | Name       | Completed   | Tasks Complete | Notes                                                                                                                                                                                                                                                     |
+| --------- | ---------- | ----------- | -------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | M0        | Quick Wins | In Progress | TASK_001-004   | Coverage tracking infrastructure added with baseline 82.74% lines coverage; All lib/ files now use TypeScript path aliases; Magic strings extracted to lib/constants.ts module with comprehensive test coverage; Boolean properties standardized with semantic prefixes (is*, should*) |
+| M1        | Foundation | In Progress | TASK_005       | Dependency injection interfaces and adapters established; CommandContext pattern enables testable commands; Production context factory and test utilities ready for TASK_006 proof of concept                                                           |
 
 ---
 
@@ -66,10 +67,10 @@
 
 ## Milestone: M1 - Foundation
 
-| Task ID  | Title                          | Status    | Review Status | Priority | Complexity | Dependencies | Assigned To     | Attempts |
-| -------- | ------------------------------ | --------- | ------------- | -------- | ---------- | ------------ | --------------- | -------- |
-| TASK_005 | Dependency Injection Interface | IN REVIEW | —             | CRITICAL | M (4-8h)   | None         | SA-20260207-006 | 1        |
-| TASK_006 | DI Proof of Concept            | NOT STARTED | CRITICAL | M (4-8h)   | TASK_005     |
+| Task ID  | Title                          | Status   | Review Status | Priority | Complexity | Dependencies | Assigned To     | Attempts |
+| -------- | ------------------------------ | -------- | ------------- | -------- | ---------- | ------------ | --------------- | -------- |
+| TASK_005 | Dependency Injection Interface | COMPLETE | PASSED        | CRITICAL | M (4-8h)   | None         | SA-20260207-006 | 1        |
+| TASK_006 | DI Proof of Concept            | IN PROGRESS | —             | CRITICAL | M (4-8h)   | TASK_005     | SA-20260207-007 | 1        |
 | TASK_007 | DI Rollout to Commands         | NOT STARTED | CRITICAL | L (8-16h)  | TASK_006     |
 | TASK_008 | Process Globals Abstraction    | NOT STARTED | HIGH     | M (4-8h)   | TASK_007     |
 | TASK_009 | Process.exit Cleanup Fix       | NOT STARTED | CRITICAL | M (4-8h)   | TASK_008     |
@@ -200,13 +201,13 @@ TASK_031 (Parallelize) → MVT_M4
 
 ## Subagent Tracking
 
-Last Subagent ID: SA-20260207-006
+Last Subagent ID: SA-20260207-007
 
 ---
 
 ## Review Tracking
 
-Last Review ID: RA-20260207-004
+Last Review ID: RA-20260207-005
 
 ---
 
@@ -214,42 +215,45 @@ Last Review ID: RA-20260207-004
 
 ### For Reviewer
 
-| Field             | Value                                                                                                                                                                                                                                                                      |
-| ----------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Task              | TASK_005                                                                                                                                                                                                                                                                   |
-| Impl Agent        | SA-20260207-006                                                                                                                                                                                                                                                            |
-| Files Changed     | `lib/interfaces.ts`, `lib/adapters/context-factory.ts`, `lib/adapters/node-filesystem.ts`, `lib/adapters/node-process.ts`, `lib/adapters/node-logger.ts`, `lib/adapters/node-config-loader.ts`, `lib/adapters/node-copilot-runner.ts`, `lib/adapters/test-context.ts` |
-| Tests Added       | `test/adapters/context-factory.test.ts` (8 new tests)                                                                                                                                                                                                                     |
-| Rework?           | No - initial implementation                                                                                                                                                                                                                                                |
-| Focus Areas       | Verify interface method signatures match actual usage patterns in copilot.ts; Confirm production context factory correctly wires all dependencies; Check test utilities provide sufficient mocking capabilities                                                          |
-| Known Limitations | Commands NOT yet updated to use DI (covered by TASK_006/007); Existing tests NOT migrated (covered by TASK_006/007); Utility functions (preflight, lock, gate) remain unchanged for now                                                                                  |
-| Gate Results      | format:✅ lint:✅ typecheck:✅ test:✅ (865 tests passed)                                                                                                                                                                                                                 |
+| Field             | Value |
+| ----------------- | ----- |
+| Task              | —     |
+| Impl Agent        | —     |
+| Files Changed     | —     |
+| Tests Added       | —     |
+| Rework?           | —     |
+| Focus Areas       | —     |
+| Known Limitations | —     |
+| Gate Results      | —     |
 
 ### For Fix Agent
 
 | Field           | Value |
 | --------------- | ----- |
 | Task            | —     |
+| Task Goal       | —     |
+| Review Agent    | —     |
 | Failed Gate     | —     |
 | Primary Error   | —     |
 | Root Cause Hint | —     |
+| Do NOT          | —     |
 
 ---
 
 ## Summary Statistics
 
-**Overall Progress**: 9.30% Complete (4/43 items)
+**Overall Progress**: 11.63% Complete (5/43 items)
 
 **By Category**:
 
-- Tasks: 4/38 complete
+- Tasks: 5/38 complete
 - MVTs: 0/5 complete
-- Total Items: 4/43 complete
+- Total Items: 5/43 complete
 
 **By Milestone**:
 
 - M0 Quick Wins: 4/5 complete (80%)
-- M1 Foundation: 0/6 complete (0%)
+- M1 Foundation: 1/6 complete (17%)
 - M2 Core Improvements: 0/10 complete (0%)
 - M3 Polish: 0/13 complete (0%)
 - M4 Optimization: 0/9 complete (0%)

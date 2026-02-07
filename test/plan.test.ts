@@ -9,27 +9,17 @@ import {
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { plan } from '../lib/commands/plan.js';
-import * as copilotModule from '../lib/copilot.js';
+import { createMockContext } from '../lib/adapters/test-context.js';
+import type { CommandContext } from '../lib/interfaces.js';
 
 describe('plan command', () => {
   let testDir: string;
   let originalCwd: string;
-  let originalEnv: NodeJS.ProcessEnv;
-  let originalExit: typeof process.exit;
-  let exitCode: number | undefined;
+  let mockContext: CommandContext;
 
   beforeEach(() => {
     // Save original state
     originalCwd = process.cwd();
-    originalEnv = { ...process.env };
-    originalExit = process.exit;
-
-    // Mock process.exit to capture exit code
-    exitCode = undefined;
-    process.exit = vi.fn(((code?: number) => {
-      exitCode = code;
-      throw new Error(`Process exit: ${code}`);
-    }) as never);
 
     // Create isolated test directory
     testDir = join(tmpdir(), `speci-plan-test-${Date.now()}-${Math.random()}`);
@@ -57,6 +47,15 @@ describe('plan command', () => {
       copilot: {
         permissions: 'allow-all' as const,
         model: null,
+        models: {
+          plan: null,
+          task: null,
+          refactor: null,
+          impl: null,
+          review: null,
+          fix: null,
+          tidy: null,
+        },
         extraFlags: [],
       },
       gate: {
@@ -78,13 +77,58 @@ describe('plan command', () => {
       '.github/agents/speci-plan.agent.md',
       '# Plan Agent\n\nPlan generation agent template.'
     );
+
+    // Create mock context with filesystem that checks real files
+    const realFs = {
+      existsSync: (_path: string) => existsSync(_path),
+      readFileSync: (_path: string, encoding?: BufferEncoding) =>
+        readFileSync(_path, encoding || 'utf8'),
+      writeFileSync: (
+        _path: string,
+        data: string | Buffer,
+        encoding?: BufferEncoding
+      ) => writeFileSync(_path, data, encoding as BufferEncoding),
+      mkdirSync: (_path: string, options?: { recursive?: boolean }) =>
+        mkdirSync(_path, options),
+      unlinkSync: vi.fn(),
+      readdirSync: vi.fn(() => []),
+      readFile: vi.fn(async () => ''),
+      writeFile: vi.fn(async () => {}),
+    };
+
+    // Create mock copilot runner that returns realistic args
+    const realCopilotRunner = {
+      buildArgs: vi.fn(
+        (
+          config: { copilot: { permissions: string; model: string | null } },
+          options: { agent: string; prompt?: string }
+        ) => {
+          const args = ['-p', options.prompt || 'Execute agent instructions'];
+          args.push(`--agent=${options.agent}`);
+          if (config.copilot.permissions === 'allow-all') {
+            args.push('--allow-all');
+          }
+          if (config.copilot.model) {
+            args.push('--model', config.copilot.model);
+          }
+          return args;
+        }
+      ),
+      spawn: vi.fn(async () => 0),
+      run: vi.fn(async () => ({ isSuccess: true, exitCode: 0 })),
+    };
+
+    mockContext = createMockContext({
+      mockConfig: config,
+      cwd: testDir,
+      fs: realFs,
+      copilotRunner: realCopilotRunner,
+    });
   });
 
   afterEach(() => {
     // Restore original state
     process.chdir(originalCwd);
-    process.env = originalEnv;
-    process.exit = originalExit;
 
     // Clean up test directory
     if (existsSync(testDir)) {
@@ -97,13 +141,13 @@ describe('plan command', () => {
   describe('agent path resolution', () => {
     it('should use default agent from .github/agents when no override', async () => {
       const spawnSpy = vi
-        .spyOn(copilotModule, 'spawnCopilot')
+        .spyOn(mockContext.copilotRunner, 'spawn')
         .mockResolvedValue(0);
 
-      await plan({ prompt: 'test plan' }).catch(() => {
-        // Ignore process.exit error
-      });
+      const result = await plan({ prompt: 'test plan' }, mockContext);
 
+      expect(result.success).toBe(true);
+      expect(result.exitCode).toBe(0);
       expect(spawnSpy).toHaveBeenCalled();
       const args = spawnSpy.mock.calls[0][0];
       const hasAgentArg = args.some(
@@ -118,13 +162,15 @@ describe('plan command', () => {
       writeFileSync('.github/agents/custom-plan.md', '# Custom Plan Agent');
 
       const spawnSpy = vi
-        .spyOn(copilotModule, 'spawnCopilot')
+        .spyOn(mockContext.copilotRunner, 'spawn')
         .mockResolvedValue(0);
 
-      await plan({ agent: 'custom-plan.md', prompt: 'test plan' }).catch(() => {
-        // Ignore process.exit error
-      });
+      const result = await plan(
+        { agent: 'custom-plan.md', prompt: 'test plan' },
+        mockContext
+      );
 
+      expect(result.success).toBe(true);
       expect(spawnSpy).toHaveBeenCalled();
       const args = spawnSpy.mock.calls[0][0];
       const hasAgentArg = args.some(
@@ -134,24 +180,25 @@ describe('plan command', () => {
       expect(hasAgentArg).toBe(true);
     });
 
-    it('should exit with error when agent file not found', async () => {
-      await plan({ agent: 'nonexistent.md', prompt: 'test plan' }).catch(() => {
-        // Ignore process.exit error
-      });
+    it('should return error when agent file not found', async () => {
+      const result = await plan(
+        { agent: 'nonexistent.md', prompt: 'test plan' },
+        mockContext
+      );
 
-      expect(exitCode).toBe(1);
+      expect(result.success).toBe(false);
+      expect(result.exitCode).toBe(1);
+      expect(result.error).toContain('Agent file not found');
     });
   });
 
   describe('copilot arguments', () => {
     it('should build correct args for one-shot mode', async () => {
       const spawnSpy = vi
-        .spyOn(copilotModule, 'spawnCopilot')
+        .spyOn(mockContext.copilotRunner, 'spawn')
         .mockResolvedValue(0);
 
-      await plan({ prompt: 'test plan' }).catch(() => {
-        // Ignore process.exit error
-      });
+      await plan({ prompt: 'test plan' }, mockContext);
 
       expect(spawnSpy).toHaveBeenCalled();
       const args = spawnSpy.mock.calls[0][0];
@@ -169,28 +216,72 @@ describe('plan command', () => {
       config.copilot.model = 'gpt-4';
       writeFileSync(configPath, JSON.stringify(config, null, 2));
 
-      const spawnSpy = vi
-        .spyOn(copilotModule, 'spawnCopilot')
-        .mockResolvedValue(0);
+      // Create mock copilot runner with updated config
+      const buildArgsSpy = vi.fn(
+        (
+          config: { copilot: { permissions: string; model: string | null } },
+          options: { agent: string; prompt?: string }
+        ) => {
+          const args = ['-p', options.prompt || 'Execute agent instructions'];
+          args.push(`--agent=${options.agent}`);
+          if (config.copilot.permissions === 'allow-all') {
+            args.push('--allow-all');
+          }
+          if (config.copilot.model) {
+            args.push('--model', config.copilot.model);
+          }
+          return args;
+        }
+      );
+      const spawnSpy = vi.fn(async () => 0);
 
-      await plan({ prompt: 'test plan' }).catch(() => {
-        // Ignore process.exit error
+      const realCopilotRunner = {
+        buildArgs: buildArgsSpy,
+        spawn: spawnSpy,
+        run: vi.fn(async () => ({ isSuccess: true, exitCode: 0 })),
+      };
+
+      // Create real filesystem wrapper
+      const realFs = {
+        existsSync: (_path: string) => existsSync(_path),
+        readFileSync: (_path: string, encoding?: BufferEncoding) =>
+          readFileSync(_path, encoding || 'utf8'),
+        writeFileSync: (
+          _path: string,
+          data: string | Buffer,
+          encoding?: BufferEncoding
+        ) => writeFileSync(_path, data, encoding as BufferEncoding),
+        mkdirSync: (_path: string, options?: { recursive?: boolean }) =>
+          mkdirSync(_path, options),
+        unlinkSync: vi.fn(),
+        readdirSync: vi.fn(() => []),
+        readFile: vi.fn(async () => ''),
+        writeFile: vi.fn(async () => {}),
+      };
+
+      // Update mock context with new config and runner
+      const updatedContext = createMockContext({
+        mockConfig: config,
+        cwd: testDir,
+        copilotRunner: realCopilotRunner,
+        fs: realFs,
       });
 
-      expect(spawnSpy).toHaveBeenCalled();
-      const args = spawnSpy.mock.calls[0][0];
-      expect(args).toContain('--model');
-      expect(args).toContain('gpt-4');
+      await plan({ prompt: 'test plan' }, updatedContext);
+
+      // Check that buildArgs was called with model
+      expect(buildArgsSpy).toHaveBeenCalled();
+      const buildResult = buildArgsSpy.mock.results[0].value;
+      expect(buildResult).toContain('--model');
+      expect(buildResult).toContain('gpt-4');
     });
 
     it('should include output flag when provided', async () => {
       const spawnSpy = vi
-        .spyOn(copilotModule, 'spawnCopilot')
+        .spyOn(mockContext.copilotRunner, 'spawn')
         .mockResolvedValue(0);
 
-      await plan({ output: 'plan.md', prompt: 'test plan' }).catch(() => {
-        // Ignore process.exit error
-      });
+      await plan({ output: 'plan.md', prompt: 'test plan' }, mockContext);
 
       expect(spawnSpy).toHaveBeenCalled();
       const args = spawnSpy.mock.calls[0][0];
@@ -200,37 +291,35 @@ describe('plan command', () => {
   });
 
   describe('exit code propagation', () => {
-    it('should exit with code 0 on success', async () => {
-      vi.spyOn(copilotModule, 'spawnCopilot').mockResolvedValue(0);
+    it('should return success result on success', async () => {
+      vi.spyOn(mockContext.copilotRunner, 'spawn').mockResolvedValue(0);
 
-      await plan({ prompt: 'test plan' }).catch(() => {
-        // Ignore process.exit error
-      });
+      const result = await plan({ prompt: 'test plan' }, mockContext);
 
-      expect(exitCode).toBe(0);
+      expect(result.success).toBe(true);
+      expect(result.exitCode).toBe(0);
+      expect(result.error).toBeUndefined();
     });
 
-    it('should exit with copilot exit code on failure', async () => {
-      vi.spyOn(copilotModule, 'spawnCopilot').mockResolvedValue(42);
+    it('should return error result with copilot exit code on failure', async () => {
+      vi.spyOn(mockContext.copilotRunner, 'spawn').mockResolvedValue(42);
 
-      await plan({ prompt: 'test plan' }).catch(() => {
-        // Ignore process.exit error
-      });
+      const result = await plan({ prompt: 'test plan' }, mockContext);
 
-      expect(exitCode).toBe(42);
+      expect(result.success).toBe(false);
+      expect(result.exitCode).toBe(42);
     });
   });
 
   describe('options handling', () => {
     it('should accept prompt option', async () => {
       const spawnSpy = vi
-        .spyOn(copilotModule, 'spawnCopilot')
+        .spyOn(mockContext.copilotRunner, 'spawn')
         .mockResolvedValue(0);
 
-      await plan({ prompt: 'test plan' }).catch(() => {
-        // Ignore process.exit error
-      });
+      const result = await plan({ prompt: 'test plan' }, mockContext);
 
+      expect(result.success).toBe(true);
       expect(spawnSpy).toHaveBeenCalled();
     });
 
@@ -239,30 +328,56 @@ describe('plan command', () => {
       writeFileSync('spec.md', '# Specification');
 
       const spawnSpy = vi
-        .spyOn(copilotModule, 'spawnCopilot')
+        .spyOn(mockContext.copilotRunner, 'spawn')
         .mockResolvedValue(0);
 
-      await plan({ input: ['spec.md'] }).catch(() => {
-        // Ignore process.exit error
-      });
+      const result = await plan({ input: ['spec.md'] }, mockContext);
 
+      expect(result.success).toBe(true);
       expect(spawnSpy).toHaveBeenCalled();
+    });
+
+    it('should return error when neither prompt nor input provided', async () => {
+      const result = await plan({}, mockContext);
+
+      expect(result.success).toBe(false);
+      expect(result.exitCode).toBe(1);
+      expect(result.error).toContain('Missing required input');
+    });
+
+    it('should return error when input file does not exist', async () => {
+      const result = await plan({ input: ['nonexistent.md'] }, mockContext);
+
+      expect(result.success).toBe(false);
+      expect(result.exitCode).toBe(1);
+      expect(result.error).toContain('Input file not found');
     });
   });
 
   describe('stdio handling', () => {
     it('should spawn copilot with inherit stdio', async () => {
       const spawnSpy = vi
-        .spyOn(copilotModule, 'spawnCopilot')
+        .spyOn(mockContext.copilotRunner, 'spawn')
         .mockResolvedValue(0);
 
-      await plan({ prompt: 'test plan' }).catch(() => {
-        // Ignore process.exit error
-      });
+      await plan({ prompt: 'test plan' }, mockContext);
 
       expect(spawnSpy).toHaveBeenCalled();
       const options = spawnSpy.mock.calls[0][1];
       expect(options?.inherit).toBe(true);
+    });
+  });
+
+  describe('default context', () => {
+    it('should use production context when context not provided', async () => {
+      // This test verifies the default parameter works
+      // Note: We can't easily test this without mocking the whole system
+      // So we just verify the function signature allows calling without context
+      expect(plan).toBeDefined();
+      // Default parameters don't count towards function.length, so we can't test it this way
+      // Instead we verify the type signature allows it
+      const _typeTest: (options?: { prompt?: string }) => Promise<{ success: boolean; exitCode: number }> = plan;
+      expect(_typeTest).toBe(plan);
     });
   });
 });

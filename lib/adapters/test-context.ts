@@ -144,20 +144,45 @@ export function createMockCopilotRunner(): ICopilotRunner {
 }
 
 /**
+ * Options for creating a mock context
+ */
+export interface MockContextOptions {
+  /** Mock filesystem to use */
+  fs?: IFileSystem;
+  /** Mock process to use */
+  process?: IProcess;
+  /** Mock logger to use */
+  logger?: ILogger;
+  /** Mock config loader to use */
+  configLoader?: IConfigLoader;
+  /** Mock copilot runner to use */
+  copilotRunner?: ICopilotRunner;
+  /** Config to return from config loader */
+  mockConfig?: Partial<SpeciConfig>;
+  /** Current working directory for mock process */
+  cwd?: string;
+}
+
+/**
  * Create a complete mock context for testing
  *
- * @param overrides - Optional partial context to override defaults
+ * @param options - Optional configuration for mock context
  * @returns Mock CommandContext with all dependencies
  */
 export function createMockContext(
-  overrides?: Partial<CommandContext>
+  options: MockContextOptions = {}
 ): CommandContext {
+  const mockProcess = options.process || createMockProcess();
+  if (options.cwd) {
+    mockProcess.cwd = vi.fn(() => options.cwd!);
+  }
+
   return {
-    fs: createMockFileSystem(),
-    process: createMockProcess(),
-    logger: createMockLogger(),
-    configLoader: createMockConfigLoader(),
-    copilotRunner: createMockCopilotRunner(),
-    ...overrides,
+    fs: options.fs || createMockFileSystem(),
+    process: mockProcess,
+    logger: options.logger || createMockLogger(),
+    configLoader:
+      options.configLoader || createMockConfigLoader(options.mockConfig),
+    copilotRunner: options.copilotRunner || createMockCopilotRunner(),
   };
 }

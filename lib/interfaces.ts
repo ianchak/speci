@@ -229,6 +229,30 @@ export interface ICopilotRunner {
 }
 
 /**
+ * Command result type
+ *
+ * Standard return type for commands after migration to DI pattern.
+ * Commands return results instead of calling process.exit(), enabling
+ * better error handling and testability.
+ */
+export interface CommandResult {
+  /**
+   * Whether command completed successfully
+   */
+  success: boolean;
+
+  /**
+   * Exit code (0 for success, non-zero for failure)
+   */
+  exitCode: number;
+
+  /**
+   * Optional error message (when success is false)
+   */
+  error?: string;
+}
+
+/**
  * Command context container
  *
  * Single parameter to pass to commands, containing all dependencies.

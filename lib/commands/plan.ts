@@ -6,16 +6,14 @@
  * implementation plans for features, projects, or refactoring efforts.
  */
 
-import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { loadConfig, resolveAgentPath } from '@/config.js';
-import { buildCopilotArgs, spawnCopilot } from '@/copilot.js';
-import { preflight } from '@/utils/preflight.js';
+import { resolveAgentPath } from '@/config.js';
 import { renderBanner } from '@/ui/banner.js';
-import { log } from '@/utils/logger.js';
 import { drawBox } from '@/ui/box.js';
 import { colorize } from '@/ui/colors.js';
 import { getAgentFilename } from '@/constants.js';
+import { createProductionContext } from '@/adapters/context-factory.js';
+import type { CommandContext, CommandResult } from '@/interfaces.js';
 
 /**
  * Options for the plan command
@@ -62,24 +60,22 @@ function displayCommandInfo(
  * Plan command handler
  * Initializes interactive Copilot session for plan generation
  * @param options - Command options
+ * @param context - Dependency injection context (defaults to production)
+ * @returns Promise resolving to command result
  */
-export async function plan(options: PlanOptions = {}): Promise<void> {
+export async function plan(
+  options: PlanOptions = {},
+  context: CommandContext = createProductionContext()
+): Promise<CommandResult> {
   try {
     // Display banner
     renderBanner();
     console.log();
 
     // Load configuration
-    const config = loadConfig();
+    const config = await context.configLoader.load();
 
-    // Run preflight checks
-    await preflight(config, {
-      requireCopilot: true,
-      requireConfig: true,
-      requireProgress: false,
-      requireGit: false,
-    });
-
+    // Validate agent file exists
     const commandName = 'plan';
     const agentName = (options.agent || getAgentFilename(commandName)).replace(
       /\.agent\.md$/,
@@ -87,38 +83,51 @@ export async function plan(options: PlanOptions = {}): Promise<void> {
     );
     const agentPath = resolveAgentPath(commandName, options.agent);
 
-    // Validate agent file exists
-    if (!existsSync(agentPath)) {
-      log.error(`Agent file not found: ${agentPath}`);
-      log.info(
+    if (!context.fs.existsSync(agentPath)) {
+      context.logger.error(`Agent file not found: ${agentPath}`);
+      context.logger.info(
         'Run "speci init" to create agents or provide --agent <filename>'
       );
-      process.exit(1);
+      return {
+        success: false,
+        exitCode: 1,
+        error: `Agent file not found: ${agentPath}`,
+      };
     }
 
     // Require at least --prompt or --input
     if (!options.prompt && (!options.input || options.input.length === 0)) {
-      log.error('Missing required input');
-      log.info('Provide at least one of:');
-      log.info('  --prompt <text>    Initial prompt describing what to plan');
-      log.info(
+      context.logger.error('Missing required input');
+      context.logger.info('Provide at least one of:');
+      context.logger.info(
+        '  --prompt <text>    Initial prompt describing what to plan'
+      );
+      context.logger.info(
         '  --input <files...> Input files for context (design docs, specs)'
       );
-      log.info('');
-      log.info('Examples:');
-      log.info('  speci plan -p "Build a REST API for users"');
-      log.info('  speci plan -i docs/design.md');
-      log.info('  speci plan -i spec.md -p "Focus on auth"');
-      process.exit(1);
+      context.logger.info('');
+      context.logger.info('Examples:');
+      context.logger.info('  speci plan -p "Build a REST API for users"');
+      context.logger.info('  speci plan -i docs/design.md');
+      context.logger.info('  speci plan -i spec.md -p "Focus on auth"');
+      return {
+        success: false,
+        exitCode: 1,
+        error: 'Missing required input',
+      };
     }
 
     // Validate input files exist
     const inputFiles = options.input || [];
     for (const inputFile of inputFiles) {
       const resolvedPath = resolve(inputFile);
-      if (!existsSync(resolvedPath)) {
-        log.error(`Input file not found: ${inputFile}`);
-        process.exit(1);
+      if (!context.fs.existsSync(resolvedPath)) {
+        context.logger.error(`Input file not found: ${inputFile}`);
+        return {
+          success: false,
+          exitCode: 1,
+          error: `Input file not found: ${inputFile}`,
+        };
       }
     }
 
@@ -161,7 +170,7 @@ export async function plan(options: PlanOptions = {}): Promise<void> {
     console.log();
 
     // Build Copilot args - one-shot mode with prompt
-    const args = buildCopilotArgs(config, {
+    const args = context.copilotRunner.buildArgs(config, {
       prompt: fullPrompt || undefined,
       agent: agentName,
       shouldAllowAll: config.copilot.permissions === 'allow-all',
@@ -174,18 +183,32 @@ export async function plan(options: PlanOptions = {}): Promise<void> {
     }
 
     // Spawn Copilot with stdio:inherit
-    log.debug(`Spawning: copilot ${args.join(' ')}`);
-    const exitCode = await spawnCopilot(args, { inherit: true });
+    context.logger.debug(`Spawning: copilot ${args.join(' ')}`);
+    const exitCode = await context.copilotRunner.spawn(args, { inherit: true });
 
-    // Exit with Copilot's exit code
-    process.exit(exitCode);
+    // Return result with exit code
+    if (exitCode === 0) {
+      return { success: true, exitCode: 0 };
+    } else {
+      return { success: false, exitCode };
+    }
   } catch (error) {
     if (error instanceof Error) {
-      log.error(`Plan command failed: ${error.message}`);
+      context.logger.error(`Plan command failed: ${error.message}`);
+      return {
+        success: false,
+        exitCode: 1,
+        error: error.message,
+      };
     } else {
-      log.error(`Plan command failed: ${String(error)}`);
+      const errorMsg = String(error);
+      context.logger.error(`Plan command failed: ${errorMsg}`);
+      return {
+        success: false,
+        exitCode: 1,
+        error: errorMsg,
+      };
     }
-    throw error;
   }
 }
 

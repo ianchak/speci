@@ -125,7 +125,12 @@ Examples:
   $ speci p -a custom-agent.md -p "My feature"    Use custom agent
 `
   )
-  .action(plan);
+  .action(async (options) => {
+    const result = await plan(options);
+    if (!result.success) {
+      process.exit(result.exitCode);
+    }
+  });
 
 // Task Command (alias: t)
 program
