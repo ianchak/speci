@@ -23,6 +23,7 @@ EDIT the plan file to fill in:
 - Section 11: Analysis Log - Update the Iteration 6 row with Key Findings and Issues Found
 
 For each issue found, include:
+
 - File paths and line numbers where possible
 - Severity: CRITICAL, HIGH, MEDIUM, or LOW
 - Why the issue is problematic

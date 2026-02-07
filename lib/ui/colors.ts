@@ -11,7 +11,7 @@
  * - High-level colorize() function respecting user preferences
  */
 
-import { ANSI, HEX_COLORS } from './palette.js';
+import { ANSI, HEX_COLORS } from '@/ui/palette.js';
 
 /**
  * Type for valid color names from the palette

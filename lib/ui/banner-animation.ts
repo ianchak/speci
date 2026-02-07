@@ -13,11 +13,11 @@
  */
 
 // These imports will be used in future tasks
-import { BANNER_ART, VERSION } from './banner.js';
-import { HEX_COLORS } from './palette.js';
-import { terminalState } from './terminal.js';
-import { supportsColor } from './colors.js';
-import { registerCleanup, unregisterCleanup } from '../utils/signals.js';
+import { BANNER_ART, VERSION } from '@/ui/banner.js';
+import { HEX_COLORS } from '@/ui/palette.js';
+import { terminalState } from '@/ui/terminal.js';
+import { supportsColor } from '@/ui/colors.js';
+import { registerCleanup, unregisterCleanup } from '@/utils/signals.js';
 
 /**
  * Total animation duration in milliseconds

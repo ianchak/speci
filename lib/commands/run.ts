@@ -11,24 +11,24 @@ import { mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { createInterface } from 'node:readline';
 import { Writable } from 'node:stream';
-import { loadConfig, type SpeciConfig } from '../config.js';
-import { getState, STATE } from '../state.js';
+import { loadConfig, type SpeciConfig } from '@/config.js';
+import { getState, STATE } from '@/state.js';
 import {
   acquireLock,
   releaseLock,
   isLocked,
   getLockInfo,
-} from '../utils/lock.js';
-import { preflight } from '../utils/preflight.js';
-import { runGate, resetGateAttempts } from '../utils/gate.js';
-import { runAgent } from '../copilot.js';
-import { renderBanner } from '../ui/banner.js';
-import { log } from '../utils/logger.js';
+} from '@/utils/lock.js';
+import { preflight } from '@/utils/preflight.js';
+import { runGate, resetGateAttempts } from '@/utils/gate.js';
+import { runAgent } from '@/copilot.js';
+import { renderBanner } from '@/ui/banner.js';
+import { log } from '@/utils/logger.js';
 import {
   installSignalHandlers,
   registerCleanup,
   removeSignalHandlers,
-} from '../utils/signals.js';
+} from '@/utils/signals.js';
 
 /**
  * Options for the run command

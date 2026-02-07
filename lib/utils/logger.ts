@@ -5,9 +5,9 @@
  * Supports verbose mode via the SPECI_DEBUG environment variable or setVerbose() function.
  */
 
-import { colorize } from '../ui/colors.js';
-import { getGlyph } from '../ui/glyphs.js';
-import { drawBox } from '../ui/box.js';
+import { colorize } from '@/ui/colors.js';
+import { getGlyph } from '@/ui/glyphs.js';
+import { drawBox } from '@/ui/box.js';
 
 /**
  * Verbose mode flag (can be set programmatically)

@@ -7,7 +7,7 @@
 
 import { readFile } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
-import type { SpeciConfig } from './config.js';
+import type { SpeciConfig } from '@/config.js';
 
 /**
  * State enum representing the current orchestration state

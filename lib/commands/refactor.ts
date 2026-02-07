@@ -8,12 +8,12 @@
 
 import { existsSync, statSync } from 'node:fs';
 import { isAbsolute, resolve } from 'node:path';
-import { loadConfig, resolveAgentPath } from '../config.js';
-import { buildCopilotArgs, spawnCopilot } from '../copilot.js';
-import { preflight } from '../utils/preflight.js';
-import { renderBanner } from '../ui/banner.js';
-import { log } from '../utils/logger.js';
-import { infoBox } from '../ui/box.js';
+import { loadConfig, resolveAgentPath } from '@/config.js';
+import { buildCopilotArgs, spawnCopilot } from '@/copilot.js';
+import { preflight } from '@/utils/preflight.js';
+import { renderBanner } from '@/ui/banner.js';
+import { log } from '@/utils/logger.js';
+import { infoBox } from '@/ui/box.js';
 
 /**
  * Options for the refactor command

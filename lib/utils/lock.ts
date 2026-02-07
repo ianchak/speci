@@ -15,8 +15,8 @@ import {
   mkdirSync,
 } from 'node:fs';
 import { dirname } from 'node:path';
-import type { SpeciConfig } from '../config.js';
-import { log } from './logger.js';
+import type { SpeciConfig } from '@/config.js';
+import { log } from '@/utils/logger.js';
 
 /**
  * Lock information interface

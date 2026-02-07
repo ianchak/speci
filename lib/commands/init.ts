@@ -14,15 +14,15 @@ import {
   statSync,
 } from 'node:fs';
 import { join, relative } from 'node:path';
-import { log } from '../utils/logger.js';
-import { renderBanner } from '../ui/banner.js';
-import { colorize } from '../ui/colors.js';
+import { log } from '@/utils/logger.js';
+import { renderBanner } from '@/ui/banner.js';
+import { colorize } from '@/ui/colors.js';
 import {
   getDefaults,
   getAgentsTemplatePath,
   GITHUB_AGENTS_DIR,
   type SpeciConfig,
-} from '../config.js';
+} from '@/config.js';
 
 /**
  * Options for the init command

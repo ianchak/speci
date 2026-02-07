@@ -9,8 +9,8 @@
  */
 
 import { createRequire } from 'node:module';
-import { HEX_COLORS } from './palette.js';
-import { colorize, supportsColor } from './colors.js';
+import { HEX_COLORS } from '@/ui/palette.js';
+import { colorize, supportsColor } from '@/ui/colors.js';
 
 // Use createRequire for reliable JSON imports in ESM (works in both runtime and tests)
 const esmRequire = createRequire(import.meta.url);

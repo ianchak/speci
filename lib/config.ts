@@ -9,7 +9,7 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { log } from './utils/logger.js';
+import { log } from '@/utils/logger.js';
 
 // Get the directory of the compiled output
 const __filename = fileURLToPath(import.meta.url);

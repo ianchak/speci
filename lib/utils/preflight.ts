@@ -13,8 +13,8 @@ import { existsSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { execSync } from 'node:child_process';
 import { platform } from 'node:os';
-import { log } from './logger.js';
-import type { SpeciConfig } from '../config.js';
+import { log } from '@/utils/logger.js';
+import type { SpeciConfig } from '@/config.js';
 
 /**
  * Options for customizing which preflight checks to run

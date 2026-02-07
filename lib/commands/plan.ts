@@ -8,13 +8,13 @@
 
 import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { loadConfig, resolveAgentPath } from '../config.js';
-import { buildCopilotArgs, spawnCopilot } from '../copilot.js';
-import { preflight } from '../utils/preflight.js';
-import { renderBanner } from '../ui/banner.js';
-import { log } from '../utils/logger.js';
-import { drawBox } from '../ui/box.js';
-import { colorize } from '../ui/colors.js';
+import { loadConfig, resolveAgentPath } from '@/config.js';
+import { buildCopilotArgs, spawnCopilot } from '@/copilot.js';
+import { preflight } from '@/utils/preflight.js';
+import { renderBanner } from '@/ui/banner.js';
+import { log } from '@/utils/logger.js';
+import { drawBox } from '@/ui/box.js';
+import { colorize } from '@/ui/colors.js';
 
 /**
  * Options for the plan command

@@ -5,18 +5,18 @@
  * Fullscreen live dashboard that refreshes every second until user quits.
  */
 
-import { loadConfig, type SpeciConfig } from '../config.js';
+import { loadConfig, type SpeciConfig } from '@/config.js';
 import {
   getState,
   getTaskStats,
   getCurrentTask,
   type CurrentTask,
-} from '../state.js';
-import { getLockInfo } from '../utils/lock.js';
-import { BANNER_ART, VERSION } from '../ui/banner.js';
-import { colorize } from '../ui/colors.js';
-import { getGlyph } from '../ui/glyphs.js';
-import { terminalState } from '../ui/terminal.js';
+} from '@/state.js';
+import { getLockInfo } from '@/utils/lock.js';
+import { BANNER_ART, VERSION } from '@/ui/banner.js';
+import { colorize } from '@/ui/colors.js';
+import { getGlyph } from '@/ui/glyphs.js';
+import { terminalState } from '@/ui/terminal.js';
 
 /**
  * Status command options

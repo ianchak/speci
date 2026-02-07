@@ -8,8 +8,8 @@
  */
 
 import { spawn } from 'node:child_process';
-import type { SpeciConfig } from './config.js';
-import { log } from './utils/logger.js';
+import type { SpeciConfig } from '@/config.js';
+import { log } from '@/utils/logger.js';
 
 /**
  * Command names that can have per-command model configuration

@@ -5,9 +5,9 @@
  * Supports both Unicode box drawing characters and ASCII fallback.
  */
 
-import { supportsUnicode } from './glyphs.js';
-import { colorize, visibleLength } from './colors.js';
-import type { ColorName } from './colors.js';
+import { supportsUnicode } from '@/ui/glyphs.js';
+import { colorize, visibleLength } from '@/ui/colors.js';
+import type { ColorName } from '@/ui/colors.js';
 
 /**
  * Unicode box drawing characters (double-line style)

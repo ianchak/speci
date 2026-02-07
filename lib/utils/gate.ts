@@ -6,9 +6,9 @@
  */
 
 import { spawn } from 'node:child_process';
-import type { SpeciConfig } from '../config.js';
-import { log } from './logger.js';
-import { getGlyph } from '../ui/glyphs.js';
+import type { SpeciConfig } from '@/config.js';
+import { log } from '@/utils/logger.js';
+import { getGlyph } from '@/ui/glyphs.js';
 
 const DEFAULT_TIMEOUT = 5 * 60 * 1000; // 5 minutes
 
