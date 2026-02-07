@@ -70,7 +70,7 @@
 | Task ID  | Title                          | Status   | Review Status | Priority | Complexity | Dependencies | Assigned To     | Attempts |
 | -------- | ------------------------------ | -------- | ------------- | -------- | ---------- | ------------ | --------------- | -------- |
 | TASK_005 | Dependency Injection Interface | COMPLETE | PASSED        | CRITICAL | M (4-8h)   | None         | SA-20260207-006 | 1        |
-| TASK_006 | DI Proof of Concept            | IN PROGRESS | —             | CRITICAL | M (4-8h)   | TASK_005     | SA-20260207-007 | 1        |
+| TASK_006 | DI Proof of Concept            | IN REVIEW   | —             | CRITICAL | M (4-8h)   | TASK_005     | SA-20260207-007 | 1        |
 | TASK_007 | DI Rollout to Commands         | NOT STARTED | CRITICAL | L (8-16h)  | TASK_006     |
 | TASK_008 | Process Globals Abstraction    | NOT STARTED | HIGH     | M (4-8h)   | TASK_007     |
 | TASK_009 | Process.exit Cleanup Fix       | NOT STARTED | CRITICAL | M (4-8h)   | TASK_008     |
@@ -215,16 +215,16 @@ Last Review ID: RA-20260207-005
 
 ### For Reviewer
 
-| Field             | Value |
-| ----------------- | ----- |
-| Task              | —     |
-| Impl Agent        | —     |
-| Files Changed     | —     |
-| Tests Added       | —     |
-| Rework?           | —     |
-| Focus Areas       | —     |
-| Known Limitations | —     |
-| Gate Results      | —     |
+| Field             | Value                                                                                                                                                                                                                            |
+| ----------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Task              | TASK_006                                                                                                                                                                                                                         |
+| Impl Agent        | SA-20260207-007                                                                                                                                                                                                                  |
+| Files Changed     | `lib/commands/plan.ts`, `bin/speci.ts`, `lib/interfaces.ts`, `lib/adapters/test-context.ts`                                                                                                                                     |
+| Tests Added       | `test/plan.test.ts` (14 tests migrated to DI pattern, 4 new test cases: missing input, missing file, default context, error result)                                                                                              |
+| Rework?           | No                                                                                                                                                                                                                               |
+| Focus Areas       | 1) Verify CommandResult properly returned instead of process.exit() 2) Check mock context usage in tests is correct 3) Confirm buildArgs passes model flag when configured 4) Validate default parameter creates production context |
+| Known Limitations | preflight() utility not yet migrated to use context (deferred to separate task); Other commands (init, task, refactor, run, status) not yet migrated (covered by TASK_007)                                                        |
+| Gate Results      | format:✅ lint:✅ typecheck:✅ test:✅ (all 868 tests passing)                                                                                                                                                                   |
 
 ### For Fix Agent
 
