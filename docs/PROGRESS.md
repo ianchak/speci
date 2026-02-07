@@ -27,7 +27,7 @@
 
 | Milestone | Name              | Tasks   | MVT    | Complete | Total | Status      |
 | --------- | ----------------- | ------- | ------ | -------- | ----- | ----------- |
-| M0        | Quick Wins        | 001-004 | MVT_M0 | 3        | 5     | IN PROGRESS |
+| M0        | Quick Wins        | 001-004 | MVT_M0 | 4        | 5     | IN PROGRESS |
 | M1        | Foundation        | 005-009 | MVT_M1 | 0        | 6     | NOT STARTED |
 | M2        | Core Improvements | 010-018 | MVT_M2 | 0        | 10    | NOT STARTED |
 | M3        | Polish            | 019-030 | MVT_M3 | 0        | 13    | NOT STARTED |
@@ -41,7 +41,7 @@
 
 | Milestone | Name       | Completed   | Tasks Complete | Notes                                                                                                                                                                                                         |
 | --------- | ---------- | ----------- | -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| M0        | Quick Wins | In Progress | TASK_001-003   | Coverage tracking infrastructure added with baseline 82.74% lines coverage; All lib/ files now use TypeScript path aliases; Magic strings extracted to lib/constants.ts module with comprehensive test coverage |
+| M0        | Quick Wins | In Progress | TASK_001-004   | Coverage tracking infrastructure added with baseline 82.74% lines coverage; All lib/ files now use TypeScript path aliases; Magic strings extracted to lib/constants.ts module with comprehensive test coverage; Boolean properties standardized with semantic prefixes (is*, should*) |
 
 ---
 
@@ -52,7 +52,7 @@
 | TASK_001 | Code Coverage Tracking    | COMPLETE    | PASSED        | CRITICAL | S (≤2h)      | None         | SA-20260207-001 | 1        |
 | TASK_002 | Path Aliases              | COMPLETE    | PASSED        | MEDIUM   | S (≤2h)      | None         | SA-20260207-003 | 2        |
 | TASK_003 | Magic Strings Extraction  | COMPLETE    | PASSED        | MEDIUM   | S (≤2h)      | None         | SA-20260207-004 | 1        |
-| TASK_004 | Boolean Semantic Prefixes | IN PROGRESS |               | MEDIUM   | S (≤2h)      | None         | SA-20260207-005 | 1        |
+| TASK_004 | Boolean Semantic Prefixes | COMPLETE    | PASSED        | MEDIUM   | S (≤2h)      | None         | SA-20260207-005 | 1        |
 | MVT_M0   | Quick Wins Manual Test    | NOT STARTED | —             | 20 min   | TASK_001-004 |                 |          |
 
 ### Planned Outcomes
@@ -66,9 +66,9 @@
 
 ## Milestone: M1 - Foundation
 
-| Task ID  | Title                          | Status      | Priority | Complexity | Dependencies |
-| -------- | ------------------------------ | ----------- | -------- | ---------- | ------------ |
-| TASK_005 | Dependency Injection Interface | NOT STARTED | CRITICAL | M (4-8h)   | None         |
+| Task ID  | Title                          | Status      | Review Status | Priority | Complexity | Dependencies | Assigned To     | Attempts |
+| -------- | ------------------------------ | ----------- | ------------- | -------- | ---------- | ------------ | --------------- | -------- |
+| TASK_005 | Dependency Injection Interface | IN PROGRESS | —             | CRITICAL | M (4-8h)   | None         | SA-20260207-006 | 1        |
 | TASK_006 | DI Proof of Concept            | NOT STARTED | CRITICAL | M (4-8h)   | TASK_005     |
 | TASK_007 | DI Rollout to Commands         | NOT STARTED | CRITICAL | L (8-16h)  | TASK_006     |
 | TASK_008 | Process Globals Abstraction    | NOT STARTED | HIGH     | M (4-8h)   | TASK_007     |
@@ -200,13 +200,13 @@ TASK_031 (Parallelize) → MVT_M4
 
 ## Subagent Tracking
 
-Last Subagent ID: SA-20260207-005
+Last Subagent ID: SA-20260207-006
 
 ---
 
 ## Review Tracking
 
-Last Review ID: RA-20260207-003
+Last Review ID: RA-20260207-004
 
 ---
 
@@ -238,17 +238,17 @@ Last Review ID: RA-20260207-003
 
 ## Summary Statistics
 
-**Overall Progress**: 6.98% Complete (3/43 items)
+**Overall Progress**: 9.30% Complete (4/43 items)
 
 **By Category**:
 
-- Tasks: 3/38 complete
+- Tasks: 4/38 complete
 - MVTs: 0/5 complete
-- Total Items: 3/43 complete
+- Total Items: 4/43 complete
 
 **By Milestone**:
 
-- M0 Quick Wins: 3/5 complete (60%)
+- M0 Quick Wins: 4/5 complete (80%)
 - M1 Foundation: 0/6 complete (0%)
 - M2 Core Improvements: 0/10 complete (0%)
 - M3 Polish: 0/13 complete (0%)

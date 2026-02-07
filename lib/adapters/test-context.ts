@@ -1,0 +1,163 @@
+/**
+ * Test Context Utilities
+ *
+ * Helper functions for creating mock contexts in tests. These utilities
+ * make it easy to inject test doubles for all dependencies.
+ */
+
+import { vi } from 'vitest';
+import type {
+  CommandContext,
+  IFileSystem,
+  IProcess,
+  ILogger,
+  IConfigLoader,
+  ICopilotRunner,
+} from '@/interfaces.js';
+import type { SpeciConfig } from '@/config.js';
+
+/**
+ * Create a mock filesystem for testing
+ *
+ * @returns Mock IFileSystem with Vitest spy methods
+ */
+export function createMockFileSystem(): IFileSystem {
+  return {
+    existsSync: vi.fn(() => false),
+    readFileSync: vi.fn(() => ''),
+    writeFileSync: vi.fn(),
+    mkdirSync: vi.fn(),
+    unlinkSync: vi.fn(),
+    readdirSync: vi.fn(() => []),
+    readFile: vi.fn(async () => ''),
+    writeFile: vi.fn(async () => {}),
+  };
+}
+
+/**
+ * Create a mock process for testing
+ *
+ * @returns Mock IProcess with Vitest spy methods
+ */
+export function createMockProcess(): IProcess {
+  return {
+    env: {},
+    cwd: vi.fn(() => '/mock/cwd'),
+    exit: vi.fn((code?: number) => {
+      throw new Error(`process.exit(${code ?? 0})`);
+    }) as never,
+    pid: 12345,
+    platform: 'linux',
+    stdout: {
+      isTTY: false,
+      columns: 80,
+      rows: 24,
+      write: vi.fn(),
+    } as unknown as NodeJS.WriteStream,
+    stdin: {
+      isTTY: false,
+    } as unknown as NodeJS.ReadStream,
+  };
+}
+
+/**
+ * Create a mock logger for testing
+ *
+ * @returns Mock ILogger with Vitest spy methods
+ */
+export function createMockLogger(): ILogger {
+  return {
+    info: vi.fn(),
+    error: vi.fn(),
+    warn: vi.fn(),
+    success: vi.fn(),
+    debug: vi.fn(),
+    muted: vi.fn(),
+  };
+}
+
+/**
+ * Create a mock config loader for testing
+ *
+ * @param config - Optional config to return (defaults to minimal valid config)
+ * @returns Mock IConfigLoader with Vitest spy methods
+ */
+export function createMockConfigLoader(
+  config?: Partial<SpeciConfig>
+): IConfigLoader {
+  const defaultConfig: SpeciConfig = {
+    version: '1.0.0',
+    paths: {
+      progress: 'docs/PROGRESS.md',
+      tasks: 'docs/tasks',
+      logs: '.speci-logs',
+      lock: '.speci-lock',
+    },
+    agents: {
+      plan: null,
+      task: null,
+      refactor: null,
+      impl: null,
+      review: null,
+      fix: null,
+      tidy: null,
+    },
+    copilot: {
+      permissions: 'allow-all',
+      model: null,
+      models: {
+        plan: null,
+        task: null,
+        refactor: null,
+        impl: null,
+        review: null,
+        fix: null,
+        tidy: null,
+      },
+      extraFlags: [],
+    },
+    gate: {
+      commands: ['npm test'],
+      maxFixAttempts: 3,
+    },
+    loop: {
+      maxIterations: 10,
+    },
+  };
+
+  return {
+    load: vi.fn(async () => ({ ...defaultConfig, ...config })),
+  };
+}
+
+/**
+ * Create a mock copilot runner for testing
+ *
+ * @returns Mock ICopilotRunner with Vitest spy methods
+ */
+export function createMockCopilotRunner(): ICopilotRunner {
+  return {
+    buildArgs: vi.fn(() => []),
+    spawn: vi.fn(async () => 0),
+    run: vi.fn(async () => ({ isSuccess: true, exitCode: 0 })),
+  };
+}
+
+/**
+ * Create a complete mock context for testing
+ *
+ * @param overrides - Optional partial context to override defaults
+ * @returns Mock CommandContext with all dependencies
+ */
+export function createMockContext(
+  overrides?: Partial<CommandContext>
+): CommandContext {
+  return {
+    fs: createMockFileSystem(),
+    process: createMockProcess(),
+    logger: createMockLogger(),
+    configLoader: createMockConfigLoader(),
+    copilotRunner: createMockCopilotRunner(),
+    ...overrides,
+  };
+}
