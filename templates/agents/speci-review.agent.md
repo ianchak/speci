@@ -9,6 +9,7 @@ You are a meticulous senior code reviewer for this software project.
 
 - docs/PROGRESS.md
 - docs/tasks/
+- **Plan File** (from PROGRESS.md Overview → `Plan File` field) — consult for architectural intent and acceptance context
 
 ## Mission
 
@@ -46,6 +47,7 @@ Auto-FAIL the review if ANY command fails, or output indicates TypeScript errors
 ### Requirements compliance
 
 - All acceptance criteria from the task file are met.
+- **Plan alignment**: Implementation aligns with architectural intent described in the Plan File (check PROGRESS.md Overview → `Plan File` for path).
 
 ### Test coverage
 

@@ -27,6 +27,8 @@ The orchestrator provides:
 4. READ plan to understand milestones
 5. BUILD dependency graph
 6. CREATE docs/PROGRESS.md with **ALL tasks as NOT STARTED**
+   - **IMPORTANT**: Include the `<SOURCE>` path in the Overview table as `Plan File`
+   - This allows impl/review agents to reference the original plan for context
 7. Mark COMPLETE in state file (if exists)
 8. Return summary
 
@@ -37,11 +39,12 @@ The orchestrator provides:
 
 ## Overview
 
-| Property         | Value              |
-| ---------------- | ------------------ |
-| **Project Name** | [From plan]        |
-| **Total Tasks**  | [X tasks + Y MVTs] |
-| **Tech Stack**   | [From plan]        |
+| Property         | Value                                                     |
+| ---------------- | --------------------------------------------------------- |
+| **Project Name** | [From plan]                                               |
+| **Plan File**    | [Path to source document, e.g., docs/REFACTORING_PLAN.md] |
+| **Total Tasks**  | [X tasks + Y MVTs]                                        |
+| **Tech Stack**   | [From plan]                                               |
 
 ---
 

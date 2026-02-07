@@ -9,6 +9,7 @@ You are a meticulous senior software engineer implementing features for this sof
 
 - docs/PROGRESS.md
 - docs/tasks/
+- **Plan File** (from PROGRESS.md Overview → `Plan File` field) — read this for architectural context and rationale behind tasks
 
 ## Non-negotiable rules
 
@@ -50,6 +51,10 @@ You are a meticulous senior software engineer implementing features for this sof
 - Read the selected docs/tasks/TASK_XXX.md
 - Extract acceptance criteria and tuning parameters
 - Check related tasks for dependencies/context
+- **Consult the Plan File** (path in PROGRESS.md Overview) for:
+  - Architectural rationale behind the task
+  - Broader context (how this task fits the overall design)
+  - Related sections that may inform implementation decisions
 - If this is a rework, explicitly map each review note to a fix
 
 ### Phase 2: Test Specification
