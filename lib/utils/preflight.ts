@@ -15,6 +15,7 @@ import { execSync } from 'node:child_process';
 import { platform } from 'node:os';
 import { log } from '@/utils/logger.js';
 import type { SpeciConfig } from '@/config.js';
+import { CONFIG_FILENAME } from '@/constants.js';
 
 /**
  * Options for customizing which preflight checks to run
@@ -95,7 +96,7 @@ export async function checkConfigExists(): Promise<void> {
   // Walk up directory tree
   // eslint-disable-next-line no-constant-condition
   while (true) {
-    const configPath = join(currentDir, 'speci.config.json');
+    const configPath = join(currentDir, CONFIG_FILENAME);
     if (existsSync(configPath)) {
       return; // Found it
     }
@@ -105,10 +106,10 @@ export async function checkConfigExists(): Promise<void> {
       // Reached root without finding config
       throw new PreflightError(
         'Configuration not found',
-        'No speci.config.json found in current directory or any parent.',
+        `No ${CONFIG_FILENAME} found in current directory or any parent.`,
         [
           'Run `speci init` to create a new configuration',
-          'Or create speci.config.json manually',
+          `Or create ${CONFIG_FILENAME} manually`,
         ]
       );
     }

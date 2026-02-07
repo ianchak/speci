@@ -23,6 +23,7 @@ import {
   GITHUB_AGENTS_DIR,
   type SpeciConfig,
 } from '@/config.js';
+import { CONFIG_FILENAME } from '@/constants.js';
 
 /**
  * Options for the init command
@@ -44,7 +45,7 @@ function checkExistingFiles(config: SpeciConfig): {
   agentsExist: boolean;
 } {
   return {
-    configExists: existsSync('speci.config.json'),
+    configExists: existsSync(CONFIG_FILENAME),
     tasksExists: existsSync(config.paths.tasks),
     logsExists: existsSync(config.paths.logs),
     agentsExist: existsSync(GITHUB_AGENTS_DIR),
@@ -63,9 +64,9 @@ function displayActionSummary(
   updateAgents: boolean = false
 ): void {
   if (existing.configExists) {
-    log.warn('  speci.config.json already exists (will skip)');
+    log.warn(`  ${CONFIG_FILENAME} already exists (will skip)`);
   } else {
-    console.log(colorize('    speci.config.json will be created', 'success'));
+    console.log(colorize(`    ${CONFIG_FILENAME} will be created`, 'success'));
   }
 
   if (existing.tasksExists) {
@@ -155,14 +156,14 @@ async function createFiles(
   if (!existing.configExists) {
     try {
       const configContent = JSON.stringify(config, null, 2) + '\n';
-      writeFileSync('speci.config.json', configContent, {
+      writeFileSync(CONFIG_FILENAME, configContent, {
         mode: 0o644,
         encoding: 'utf8',
       });
-      log.success('Created speci.config.json');
+      log.success(`Created ${CONFIG_FILENAME}`);
     } catch (error) {
       throw new Error(
-        `Failed to write file: speci.config.json. ${error instanceof Error ? error.message : String(error)}`
+        `Failed to write file: ${CONFIG_FILENAME}. ${error instanceof Error ? error.message : String(error)}`
       );
     }
   }

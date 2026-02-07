@@ -7,6 +7,8 @@
  * Respects NO_COLOR and FORCE_COLOR environment variables per terminal standards.
  */
 
+import { ENV } from '@/constants.js';
+
 /**
  * Hex color values for reference and documentation
  */
@@ -104,12 +106,12 @@ export const ANSI: ColorPalette = {
  */
 export function shouldUseColor(): boolean {
   // NO_COLOR takes precedence (standard: https://no-color.org/)
-  if (process.env.NO_COLOR !== undefined) {
+  if (process.env[ENV.NO_COLOR] !== undefined) {
     return false;
   }
 
   // FORCE_COLOR enables colors regardless of TTY
-  if (process.env.FORCE_COLOR !== undefined) {
+  if (process.env[ENV.FORCE_COLOR] !== undefined) {
     return true;
   }
 

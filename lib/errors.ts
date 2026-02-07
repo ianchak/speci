@@ -5,6 +5,8 @@
  * Used for consistent error reporting across the CLI.
  */
 
+import { CONFIG_FILENAME, MESSAGES } from '@/constants.js';
+
 /**
  * Error code definition with diagnostic information
  */
@@ -42,8 +44,8 @@ export const ERROR_CODES: Record<string, ErrorDefinition> = {
   },
   'ERR-PRE-04': {
     message: 'Configuration file not found',
-    cause: 'speci.config.json does not exist in project',
-    solution: 'Run speci init to create configuration',
+    cause: `${CONFIG_FILENAME} does not exist in project`,
+    solution: MESSAGES.RUN_INIT,
   },
   'ERR-PRE-05': {
     message: 'PROGRESS.md file not found',
@@ -64,8 +66,8 @@ export const ERROR_CODES: Record<string, ErrorDefinition> = {
   },
   'ERR-INP-03': {
     message: 'Config file is malformed',
-    cause: 'speci.config.json contains invalid JSON syntax',
-    solution: 'Fix JSON syntax errors in speci.config.json',
+    cause: `${CONFIG_FILENAME} contains invalid JSON syntax`,
+    solution: `Fix JSON syntax errors in ${CONFIG_FILENAME}`,
   },
   'ERR-INP-04': {
     message: 'Config validation failed',

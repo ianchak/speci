@@ -10,6 +10,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { log } from '@/utils/logger.js';
+import { CONFIG_FILENAME, getAgentFilename } from '@/constants.js';
 
 // Get the directory of the compiled output
 const __filename = fileURLToPath(import.meta.url);
@@ -133,7 +134,7 @@ function findConfigFile(startDir: string): string | null {
 
   // eslint-disable-next-line no-constant-condition
   while (true) {
-    const configPath = join(currentDir, 'speci.config.json');
+    const configPath = join(currentDir, CONFIG_FILENAME);
     if (existsSync(configPath)) {
       log.debug(`Found config file at ${configPath}`);
       return configPath;
@@ -586,7 +587,8 @@ export function resolveAgentPath(
   agentName: AgentName,
   overrideFilename?: string
 ): string {
-  const filename = overrideFilename || `speci-${agentName}.agent.md`;
+  const filename =
+    overrideFilename || `${getAgentFilename(agentName)}.agent.md`;
   const agentPath = join(process.cwd(), GITHUB_AGENTS_DIR, filename);
 
   log.debug(`Using agent: ${agentPath}`);
@@ -619,7 +621,7 @@ export function resolveSubagentPath(subagentName: string): string {
  * @returns Absolute path to config template
  */
 export function getConfigTemplatePath(): string {
-  return join(TEMPLATES_DIR, 'speci.config.json');
+  return join(TEMPLATES_DIR, CONFIG_FILENAME);
 }
 
 /**

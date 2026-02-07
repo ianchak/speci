@@ -15,6 +15,7 @@ import { renderBanner } from '@/ui/banner.js';
 import { log } from '@/utils/logger.js';
 import { drawBox } from '@/ui/box.js';
 import { colorize } from '@/ui/colors.js';
+import { getAgentFilename } from '@/constants.js';
 
 /**
  * Options for the plan command
@@ -80,7 +81,7 @@ export async function plan(options: PlanOptions = {}): Promise<void> {
     });
 
     const commandName = 'plan';
-    const agentName = (options.agent || `speci-${commandName}`).replace(
+    const agentName = (options.agent || getAgentFilename(commandName)).replace(
       /\.agent\.md$/,
       ''
     );

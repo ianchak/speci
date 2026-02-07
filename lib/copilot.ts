@@ -10,6 +10,7 @@
 import { spawn } from 'node:child_process';
 import type { SpeciConfig } from '@/config.js';
 import { log } from '@/utils/logger.js';
+import { getAgentFilename } from '@/constants.js';
 
 /**
  * Command names that can have per-command model configuration
@@ -177,7 +178,7 @@ export async function runAgent(
     try {
       // Use the agent name directly (e.g., 'speci-plan')
       // Copilot CLI looks for agents in .github/copilot/agents/
-      const agentFileName = `speci-${agentName}`;
+      const agentFileName = getAgentFilename(agentName);
       const args = buildCopilotArgs(config, {
         agent: agentFileName,
         command: agentName as CommandName,

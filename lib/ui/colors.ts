@@ -12,6 +12,7 @@
  */
 
 import { ANSI, HEX_COLORS } from '@/ui/palette.js';
+import { ENV } from '@/constants.js';
 
 /**
  * Type for valid color names from the palette
@@ -41,12 +42,12 @@ const ANSI_REGEX = /\x1b\[[0-9;]*m/g;
  */
 export function supportsColor(): boolean {
   // NO_COLOR takes absolute precedence (https://no-color.org/)
-  if (process.env.NO_COLOR !== undefined) {
+  if (process.env[ENV.NO_COLOR] !== undefined) {
     return false;
   }
 
   // FORCE_COLOR overrides TTY detection
-  if (process.env.FORCE_COLOR !== undefined) {
+  if (process.env[ENV.FORCE_COLOR] !== undefined) {
     return true;
   }
 

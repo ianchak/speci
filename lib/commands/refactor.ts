@@ -14,6 +14,7 @@ import { preflight } from '@/utils/preflight.js';
 import { renderBanner } from '@/ui/banner.js';
 import { log } from '@/utils/logger.js';
 import { infoBox } from '@/ui/box.js';
+import { getAgentFilename } from '@/constants.js';
 
 /**
  * Options for the refactor command
@@ -101,7 +102,7 @@ export async function refactor(options: RefactorOptions = {}): Promise<void> {
     }
 
     const commandName = 'refactor';
-    const agentName = (options.agent || `speci-${commandName}`).replace(
+    const agentName = (options.agent || getAgentFilename(commandName)).replace(
       /\.agent\.md$/,
       ''
     );

@@ -18,6 +18,7 @@ import { HEX_COLORS } from '@/ui/palette.js';
 import { terminalState } from '@/ui/terminal.js';
 import { supportsColor } from '@/ui/colors.js';
 import { registerCleanup, unregisterCleanup } from '@/utils/signals.js';
+import { ENV } from '@/constants.js';
 
 /**
  * Total animation duration in milliseconds
@@ -346,7 +347,7 @@ export function shouldAnimate(options?: AnimateOptions): boolean {
   }
 
   // E-3: Check NO_COLOR environment variable (universal color disable)
-  if (process.env.NO_COLOR) {
+  if (process.env[ENV.NO_COLOR]) {
     return false;
   }
 

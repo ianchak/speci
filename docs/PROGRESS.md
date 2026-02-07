@@ -27,7 +27,7 @@
 
 | Milestone | Name              | Tasks   | MVT    | Complete | Total | Status      |
 | --------- | ----------------- | ------- | ------ | -------- | ----- | ----------- |
-| M0        | Quick Wins        | 001-004 | MVT_M0 | 1        | 5     | IN PROGRESS |
+| M0        | Quick Wins        | 001-004 | MVT_M0 | 2        | 5     | IN PROGRESS |
 | M1        | Foundation        | 005-009 | MVT_M1 | 0        | 6     | NOT STARTED |
 | M2        | Core Improvements | 010-018 | MVT_M2 | 0        | 10    | NOT STARTED |
 | M3        | Polish            | 019-030 | MVT_M3 | 0        | 13    | NOT STARTED |
@@ -39,9 +39,9 @@
 
 > Summary only. See task files for details.
 
-| Milestone | Name       | Completed   | Tasks Complete | Notes                                                                      |
-| --------- | ---------- | ----------- | -------------- | -------------------------------------------------------------------------- |
-| M0        | Quick Wins | In Progress | TASK_001       | Coverage tracking infrastructure added with baseline 82.74% lines coverage |
+| Milestone | Name       | Completed   | Tasks Complete | Notes                                                                                                                   |
+| --------- | ---------- | ----------- | -------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| M0        | Quick Wins | In Progress | TASK_001-002   | Coverage tracking infrastructure added with baseline 82.74% lines coverage; All lib/ files now use TypeScript path aliases |
 
 ---
 
@@ -50,10 +50,10 @@
 | Task ID  | Title                     | Status      | Review Status | Priority | Complexity   | Dependencies | Assigned To     | Attempts |
 | -------- | ------------------------- | ----------- | ------------- | -------- | ------------ | ------------ | --------------- | -------- |
 | TASK_001 | Code Coverage Tracking    | COMPLETE    | PASSED        | CRITICAL | S (≤2h)      | None         | SA-20260207-001 | 1        |
-| TASK_002 | Path Aliases              | IN PROGRESS |               | MEDIUM   | S (≤2h)      | None         | SA-20260207-003 | 2        |
-| TASK_003 | Magic Strings Extraction  | NOT STARTED | MEDIUM        | S (≤2h)  | None         |
-| TASK_004 | Boolean Semantic Prefixes | NOT STARTED | MEDIUM        | S (≤2h)  | None         |
-| MVT_M0   | Quick Wins Manual Test    | NOT STARTED | —             | 20 min   | TASK_001-004 |
+| TASK_002 | Path Aliases              | COMPLETE    | PASSED        | MEDIUM   | S (≤2h)      | None         | SA-20260207-003 | 2        |
+| TASK_003 | Magic Strings Extraction  | IN PROGRESS |               | MEDIUM   | S (≤2h)      | None         | SA-20260207-004 | 1        |
+| TASK_004 | Boolean Semantic Prefixes | NOT STARTED |               | MEDIUM   | S (≤2h)      | None         |                 |          |
+| MVT_M0   | Quick Wins Manual Test    | NOT STARTED | —             | 20 min   | TASK_001-004 |                 |          |
 
 ### Planned Outcomes
 
@@ -200,13 +200,13 @@ TASK_031 (Parallelize) → MVT_M4
 
 ## Subagent Tracking
 
-Last Subagent ID: SA-20260207-003
+Last Subagent ID: SA-20260207-004
 
 ---
 
 ## Review Tracking
 
-Last Review ID: RA-20260207-001
+Last Review ID: RA-20260207-002
 
 ---
 
@@ -216,14 +216,14 @@ Last Review ID: RA-20260207-001
 
 | Field             | Value |
 | ----------------- | ----- |
-| Task              | —     |
-| Impl Agent        | —     |
-| Files Changed     | —     |
-| Tests Added       | —     |
-| Rework?           | —     |
-| Focus Areas       | —     |
-| Known Limitations | —     |
-| Gate Results      | —     |
+| Task              | -     |
+| Impl Agent        | -     |
+| Files Changed     | -     |
+| Tests Added       | -     |
+| Rework?           | -     |
+| Focus Areas       | -     |
+| Known Limitations | -     |
+| Gate Results      | -     |
 
 ### For Fix Agent
 
@@ -238,17 +238,17 @@ Last Review ID: RA-20260207-001
 
 ## Summary Statistics
 
-**Overall Progress**: 2.33% Complete (1/43 items)
+**Overall Progress**: 4.65% Complete (2/43 items)
 
 **By Category**:
 
-- Tasks: 1/38 complete
+- Tasks: 2/38 complete
 - MVTs: 0/5 complete
-- Total Items: 1/43 complete
+- Total Items: 2/43 complete
 
 **By Milestone**:
 
-- M0 Quick Wins: 1/5 complete (20%)
+- M0 Quick Wins: 2/5 complete (40%)
 - M1 Foundation: 0/6 complete (0%)
 - M2 Core Improvements: 0/10 complete (0%)
 - M3 Polish: 0/13 complete (0%)

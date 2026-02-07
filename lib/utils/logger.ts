@@ -8,6 +8,7 @@
 import { colorize } from '@/ui/colors.js';
 import { getGlyph } from '@/ui/glyphs.js';
 import { drawBox } from '@/ui/box.js';
+import { ENV } from '@/constants.js';
 
 /**
  * Verbose mode flag (can be set programmatically)
@@ -38,7 +39,10 @@ export function isVerbose(): boolean {
  * @returns true if SPECI_DEBUG is set to '1' or 'true'
  */
 function isDebugMode(): boolean {
-  return process.env.SPECI_DEBUG === '1' || process.env.SPECI_DEBUG === 'true';
+  return (
+    process.env[ENV.SPECI_DEBUG] === '1' ||
+    process.env[ENV.SPECI_DEBUG] === 'true'
+  );
 }
 
 /**
