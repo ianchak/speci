@@ -5,16 +5,8 @@
  * Creates speci.config.json, directory structure, and initial files.
  */
 
-import {
-  existsSync,
-  mkdirSync,
-  writeFileSync,
-  copyFileSync,
-  readdirSync,
-  statSync,
-} from 'node:fs';
+import { copyFileSync, readdirSync, statSync } from 'node:fs';
 import { join, relative } from 'node:path';
-import { log } from '@/utils/logger.js';
 import { renderBanner } from '@/ui/banner.js';
 import { colorize } from '@/ui/colors.js';
 import {
@@ -24,6 +16,8 @@ import {
   type SpeciConfig,
 } from '@/config.js';
 import { CONFIG_FILENAME } from '@/constants.js';
+import { createProductionContext } from '@/adapters/context-factory.js';
+import type { CommandContext, CommandResult } from '@/interfaces.js';
 
 /**
  * Options for the init command
@@ -36,19 +30,23 @@ export interface InitOptions {
 /**
  * Check which files already exist
  * @param config - Config to check
+ * @param context - Command context for filesystem operations
  * @returns Object with existence flags
  */
-function checkExistingFiles(config: SpeciConfig): {
+function checkExistingFiles(
+  config: SpeciConfig,
+  context: CommandContext
+): {
   configExists: boolean;
   tasksExists: boolean;
   logsExists: boolean;
   agentsExist: boolean;
 } {
   return {
-    configExists: existsSync(CONFIG_FILENAME),
-    tasksExists: existsSync(config.paths.tasks),
-    logsExists: existsSync(config.paths.logs),
-    agentsExist: existsSync(GITHUB_AGENTS_DIR),
+    configExists: context.fs.existsSync(CONFIG_FILENAME),
+    tasksExists: context.fs.existsSync(config.paths.tasks),
+    logsExists: context.fs.existsSync(config.paths.logs),
+    agentsExist: context.fs.existsSync(GITHUB_AGENTS_DIR),
   };
 }
 
@@ -57,20 +55,22 @@ function checkExistingFiles(config: SpeciConfig): {
  * @param config - Config to display
  * @param existing - Existing files flags
  * @param updateAgents - Whether to force update agent files
+ * @param context - Command context for logging
  */
 function displayActionSummary(
   config: SpeciConfig,
   existing: ReturnType<typeof checkExistingFiles>,
-  updateAgents: boolean = false
+  updateAgents: boolean = false,
+  context: CommandContext
 ): void {
   if (existing.configExists) {
-    log.warn(`  ${CONFIG_FILENAME} already exists (will skip)`);
+    context.logger.warn(`  ${CONFIG_FILENAME} already exists (will skip)`);
   } else {
     console.log(colorize(`    ${CONFIG_FILENAME} will be created`, 'success'));
   }
 
   if (existing.tasksExists) {
-    log.warn(`  ${config.paths.tasks}/ already exists (will skip)`);
+    context.logger.warn(`  ${config.paths.tasks}/ already exists (will skip)`);
   } else {
     console.log(
       colorize(
@@ -81,7 +81,7 @@ function displayActionSummary(
   }
 
   if (existing.logsExists) {
-    log.warn(`  ${config.paths.logs}/ already exists (will skip)`);
+    context.logger.warn(`  ${config.paths.logs}/ already exists (will skip)`);
   } else {
     console.log(
       colorize(`    ${config.paths.logs}/ directory will be created`, 'success')
@@ -97,7 +97,7 @@ function displayActionSummary(
         )
       );
     } else {
-      log.warn(
+      context.logger.warn(
         `  ${GITHUB_AGENTS_DIR}/ already exists (will skip, use --update-agents to overwrite)`
       );
     }
@@ -114,10 +114,12 @@ function displayActionSummary(
  * Create required directories
  * @param config - Config with paths
  * @param existing - Existing files flags
+ * @param context - Command context for filesystem and logging
  */
 async function createDirectories(
   config: SpeciConfig,
-  existing: ReturnType<typeof checkExistingFiles>
+  existing: ReturnType<typeof checkExistingFiles>,
+  context: CommandContext
 ): Promise<void> {
   const dirs: Array<{ path: string; skip: boolean }> = [
     { path: config.paths.tasks, skip: existing.tasksExists },
@@ -127,13 +129,15 @@ async function createDirectories(
   await Promise.all(
     dirs.map(async ({ path, skip }) => {
       if (skip) {
-        log.debug(`Skipping directory creation: ${path} (already exists)`);
+        context.logger.debug(
+          `Skipping directory creation: ${path} (already exists)`
+        );
         return;
       }
 
       try {
-        mkdirSync(path, { recursive: true, mode: 0o755 });
-        log.debug(`Created directory: ${path}`);
+        context.fs.mkdirSync(path, { recursive: true });
+        context.logger.debug(`Created directory: ${path}`);
       } catch (error) {
         throw new Error(
           `Failed to create directory: ${path}. ${error instanceof Error ? error.message : String(error)}`
@@ -147,20 +151,19 @@ async function createDirectories(
  * Create required files
  * @param config - Config to write
  * @param existing - Existing files flags
+ * @param context - Command context for filesystem and logging
  */
 async function createFiles(
   config: SpeciConfig,
-  existing: ReturnType<typeof checkExistingFiles>
+  existing: ReturnType<typeof checkExistingFiles>,
+  context: CommandContext
 ): Promise<void> {
   // Create speci.config.json
   if (!existing.configExists) {
     try {
       const configContent = JSON.stringify(config, null, 2) + '\n';
-      writeFileSync(CONFIG_FILENAME, configContent, {
-        mode: 0o644,
-        encoding: 'utf8',
-      });
-      log.success(`Created ${CONFIG_FILENAME}`);
+      context.fs.writeFileSync(CONFIG_FILENAME, configContent, 'utf8');
+      context.logger.success(`Created ${CONFIG_FILENAME}`);
     } catch (error) {
       throw new Error(
         `Failed to write file: ${CONFIG_FILENAME}. ${error instanceof Error ? error.message : String(error)}`
@@ -173,13 +176,18 @@ async function createFiles(
  * Recursively copy a directory
  * @param src - Source directory path
  * @param dest - Destination directory path
+ * @param context - Command context for filesystem and logging
  * @returns Number of files copied
  */
-function copyDirectoryRecursive(src: string, dest: string): number {
+function copyDirectoryRecursive(
+  src: string,
+  dest: string,
+  context: CommandContext
+): number {
   let fileCount = 0;
 
   // Create destination directory
-  mkdirSync(dest, { recursive: true, mode: 0o755 });
+  context.fs.mkdirSync(dest, { recursive: true });
 
   // Read source directory contents
   const entries = readdirSync(src);
@@ -191,12 +199,12 @@ function copyDirectoryRecursive(src: string, dest: string): number {
 
     if (stat.isDirectory()) {
       // Recursively copy subdirectories
-      fileCount += copyDirectoryRecursive(srcPath, destPath);
+      fileCount += copyDirectoryRecursive(srcPath, destPath, context);
     } else if (stat.isFile()) {
       // Copy file
       copyFileSync(srcPath, destPath);
       const relativePath = relative(getAgentsTemplatePath(), srcPath);
-      log.debug(`Copied: ${relativePath}`);
+      context.logger.debug(`Copied: ${relativePath}`);
       fileCount++;
     }
   }
@@ -210,28 +218,36 @@ function copyDirectoryRecursive(src: string, dest: string): number {
  * Recursively copies entire agents template directory including subagents
  * @param existing - Existing files flags
  * @param forceUpdate - Force update even if agents exist
+ * @param context - Command context for filesystem and logging
  */
 async function copyAgentFiles(
   existing: ReturnType<typeof checkExistingFiles>,
-  forceUpdate: boolean = false
+  forceUpdate: boolean = false,
+  context: CommandContext
 ): Promise<void> {
   if (existing.agentsExist && !forceUpdate) {
-    log.debug(`Skipping agent files copy: ${GITHUB_AGENTS_DIR} already exists`);
+    context.logger.debug(
+      `Skipping agent files copy: ${GITHUB_AGENTS_DIR} already exists`
+    );
     return;
   }
 
   try {
     const templateDir = getAgentsTemplatePath();
 
-    if (!existsSync(templateDir)) {
+    if (!context.fs.existsSync(templateDir)) {
       throw new Error(`Agent templates directory not found: ${templateDir}`);
     }
 
     // Recursively copy entire agents directory
-    const fileCount = copyDirectoryRecursive(templateDir, GITHUB_AGENTS_DIR);
+    const fileCount = copyDirectoryRecursive(
+      templateDir,
+      GITHUB_AGENTS_DIR,
+      context
+    );
 
     const action = existing.agentsExist ? 'Updated' : 'Copied';
-    log.success(
+    context.logger.success(
       `${action} ${fileCount} agent files inside ${GITHUB_AGENTS_DIR}/`
     );
   } catch (error) {
@@ -243,10 +259,11 @@ async function copyAgentFiles(
 
 /**
  * Display success message and next steps
+ * @param context - Command context for logging
  */
-function displaySuccess(): void {
+function displaySuccess(context: CommandContext): void {
   console.log();
-  log.info('Next steps:');
+  context.logger.info('Next steps:');
   console.log(colorize('  1. Generate your plan with: speci plan', 'dim'));
   console.log(
     colorize(
@@ -267,42 +284,59 @@ function displaySuccess(): void {
  * Init command handler
  * Initializes Speci in the current directory
  * @param options - Command options
+ * @param context - Dependency injection context (defaults to production)
+ * @returns Promise resolving to command result
  */
-export async function init(options: InitOptions = {}): Promise<void> {
+export async function init(
+  options: InitOptions = {},
+  context: CommandContext = createProductionContext()
+): Promise<CommandResult> {
   try {
     // Display welcome banner
     renderBanner();
     console.log();
-    log.info('Initializing Speci in current directory...');
+    context.logger.info('Initializing Speci in current directory...');
     console.log();
 
     // Use default configuration
     const config = getDefaults();
 
     // Check existing files
-    const existing = checkExistingFiles(config);
+    const existing = checkExistingFiles(config, context);
 
     // Display action summary
-    displayActionSummary(config, existing, options.updateAgents);
+    displayActionSummary(config, existing, options.updateAgents, context);
 
     // Create directories
-    await createDirectories(config, existing);
+    await createDirectories(config, existing, context);
 
     // Create files
-    await createFiles(config, existing);
+    await createFiles(config, existing, context);
 
     // Copy agent files to .github/copilot/agents/
-    await copyAgentFiles(existing, options.updateAgents);
+    await copyAgentFiles(existing, options.updateAgents, context);
 
     // Display success and next steps
-    displaySuccess();
+    displaySuccess(context);
+
+    return { success: true, exitCode: 0 };
   } catch (error) {
     if (error instanceof Error) {
-      log.error(`Initialization failed: ${error.message}`);
+      context.logger.error(`Initialization failed: ${error.message}`);
+      return {
+        success: false,
+        exitCode: 1,
+        error: error.message,
+      };
     } else {
-      log.error(`Initialization failed: ${String(error)}`);
+      const errorMsg = String(error);
+      context.logger.error(`Initialization failed: ${errorMsg}`);
+      return {
+        success: false,
+        exitCode: 1,
+        error: errorMsg,
+      };
     }
-    throw error;
   }
 }
 

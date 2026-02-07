@@ -178,11 +178,10 @@ describe('refactor command', () => {
         .spyOn(console, 'error')
         .mockImplementation(() => {});
 
-      await refactor({ scope: '../outside' }).catch(() => {
-        // Ignore process.exit error
-      });
+      const result = await refactor({ scope: '../outside' });
 
-      expect(exitCode).toBe(1);
+      expect(result.success).toBe(false);
+      expect(result.exitCode).toBe(1);
       expect(consoleErrorSpy).toHaveBeenCalled();
       const errorCalls = consoleErrorSpy.mock.calls.map((call) =>
         call.join(' ')
@@ -237,11 +236,9 @@ describe('refactor command', () => {
     });
 
     it('should exit with error when agent file not found', async () => {
-      await refactor({ agent: 'nonexistent.md' }).catch(() => {
-        // Ignore process.exit error
-      });
-
-      expect(exitCode).toBe(1);
+      const result = await refactor({ agent: 'nonexistent.md' });
+      expect(result.success).toBe(false);
+      expect(result.exitCode).toBe(1);
     });
   });
 
@@ -307,21 +304,19 @@ describe('refactor command', () => {
     it('should exit with code 0 on success', async () => {
       vi.spyOn(copilotModule, 'spawnCopilot').mockResolvedValue(0);
 
-      await refactor({}).catch(() => {
-        // Ignore process.exit error
-      });
+      const result = await refactor({});
 
-      expect(exitCode).toBe(0);
+      expect(result.success).toBe(true);
+      expect(result.exitCode).toBe(0);
     });
 
     it('should exit with copilot exit code on failure', async () => {
       vi.spyOn(copilotModule, 'spawnCopilot').mockResolvedValue(42);
 
-      await refactor({}).catch(() => {
-        // Ignore process.exit error
-      });
+      const result = await refactor({});
 
-      expect(exitCode).toBe(42);
+      expect(result.success).toBe(false);
+      expect(result.exitCode).toBe(42);
     });
   });
 

@@ -99,13 +99,9 @@ describe('task command', () => {
 
   describe('required options', () => {
     it('should exit with error when --plan flag is missing', async () => {
-      await (task as (options: { plan?: string }) => Promise<void>)({}).catch(
-        () => {
-          // Ignore process.exit error
-        }
-      );
-
-      expect(exitCode).toBe(2);
+      const result = await task({});
+      expect(result.success).toBe(false);
+      expect(result.exitCode).toBe(2);
     });
 
     it('should display usage message when --plan is missing', async () => {
@@ -113,11 +109,7 @@ describe('task command', () => {
         .spyOn(console, 'error')
         .mockImplementation(() => {});
 
-      await (task as (options: { plan?: string }) => Promise<void>)({}).catch(
-        () => {
-          // Ignore process.exit error
-        }
-      );
+      await task({});
 
       expect(logErrorSpy).toHaveBeenCalled();
       const errorCalls = logErrorSpy.mock.calls.map((call) => call.join(' '));
@@ -131,11 +123,9 @@ describe('task command', () => {
 
   describe('plan file validation', () => {
     it('should exit with error when plan file does not exist', async () => {
-      await task({ plan: 'nonexistent.md' }).catch(() => {
-        // Ignore process.exit error
-      });
-
-      expect(exitCode).toBe(1);
+      const result = await task({ plan: 'nonexistent.md' });
+      expect(result.success).toBe(false);
+      expect(result.exitCode).toBe(1);
     });
 
     it('should display error message for nonexistent plan file', async () => {
@@ -143,9 +133,7 @@ describe('task command', () => {
         .spyOn(console, 'error')
         .mockImplementation(() => {});
 
-      await task({ plan: 'nonexistent.md' }).catch(() => {
-        // Ignore process.exit error
-      });
+      await task({ plan: 'nonexistent.md' });
 
       expect(logErrorSpy).toHaveBeenCalled();
       const errorCalls = logErrorSpy.mock.calls.map((call) => call.join(' '));
@@ -213,11 +201,9 @@ describe('task command', () => {
     });
 
     it('should exit with error when agent file not found', async () => {
-      await task({ plan: 'plan.md', agent: 'nonexistent.md' }).catch(() => {
-        // Ignore process.exit error
-      });
-
-      expect(exitCode).toBe(1);
+      const result = await task({ plan: 'plan.md', agent: 'nonexistent.md' });
+      expect(result.success).toBe(false);
+      expect(result.exitCode).toBe(1);
     });
   });
 
@@ -283,21 +269,19 @@ describe('task command', () => {
     it('should exit with code 0 on success', async () => {
       vi.spyOn(copilotModule, 'spawnCopilot').mockResolvedValue(0);
 
-      await task({ plan: 'plan.md' }).catch(() => {
-        // Ignore process.exit error
-      });
-
-      expect(exitCode).toBe(0);
+      const result = await task({ plan: 'plan.md' });
+      
+      expect(result.success).toBe(true);
+      expect(result.exitCode).toBe(0);
     });
 
     it('should exit with copilot exit code on failure', async () => {
       vi.spyOn(copilotModule, 'spawnCopilot').mockResolvedValue(42);
 
-      await task({ plan: 'plan.md' }).catch(() => {
-        // Ignore process.exit error
-      });
-
-      expect(exitCode).toBe(42);
+      const result = await task({ plan: 'plan.md' });
+      
+      expect(result.success).toBe(false);
+      expect(result.exitCode).toBe(42);
     });
   });
 

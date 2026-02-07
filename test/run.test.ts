@@ -214,12 +214,11 @@ describe('Run Command', () => {
 
     it('should exit with error for NO_PROGRESS state', async () => {
       vi.spyOn(state, 'getState').mockResolvedValue(STATE.NO_PROGRESS);
-      const exitSpy = vi.spyOn(process, 'exit').mockImplementation(() => {
-        throw new Error('process.exit called');
-      });
 
-      await expect(run({ yes: true })).rejects.toThrow('process.exit called');
-      expect(exitSpy).toHaveBeenCalledWith(1);
+      const result = await run({ yes: true });
+      
+      expect(result.success).toBe(false);
+      expect(result.exitCode).toBe(1);
     });
   });
 
@@ -411,16 +410,12 @@ describe('Run Command', () => {
         isSuccess: true,
         exitCode: 0,
       });
-      const exitSpy = vi.spyOn(process, 'exit').mockImplementation(() => {
-        throw new Error('process.exit called');
-      });
 
-      await expect(run({ dryRun: true })).rejects.toThrow(
-        'process.exit called'
-      );
+      const result = await run({ dryRun: true });
 
+      expect(result.success).toBe(true);
+      expect(result.exitCode).toBe(0);
       expect(copilot.runAgent).not.toHaveBeenCalled();
-      expect(exitSpy).toHaveBeenCalledWith(0);
     });
 
     it('should force override lock when force flag is set', async () => {
@@ -460,8 +455,9 @@ describe('Run Command', () => {
       vi.spyOn(state, 'getState').mockResolvedValue(STATE.WORK_LEFT);
       vi.spyOn(copilot, 'runAgent').mockRejectedValue(new Error('Test error'));
 
-      await expect(run({ yes: true })).rejects.toThrow('Test error');
+      const result = await run({ yes: true });
 
+      expect(result.success).toBe(false);
       expect(lock.releaseLock).toHaveBeenCalledWith(mockConfig);
     });
   });

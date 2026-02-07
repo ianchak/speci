@@ -6,22 +6,21 @@
  * Output streams to terminal in real-time using stdio: 'inherit'.
  */
 
-import { existsSync, accessSync, constants } from 'node:fs';
 import { relative, resolve } from 'node:path';
-import { loadConfig, resolveAgentPath } from '@/config.js';
-import { buildCopilotArgs, spawnCopilot } from '@/copilot.js';
+import { resolveAgentPath } from '@/config.js';
 import { preflight } from '@/utils/preflight.js';
 import { renderBanner } from '@/ui/banner.js';
-import { log } from '@/utils/logger.js';
 import { infoBox } from '@/ui/box.js';
 import { getAgentFilename } from '@/constants.js';
+import { createProductionContext } from '@/adapters/context-factory.js';
+import type { CommandContext, CommandResult } from '@/interfaces.js';
 
 /**
  * Options for the task command
  */
 export interface TaskOptions {
-  /** Required: path to plan file */
-  plan: string;
+  /** Path to plan file */
+  plan?: string;
   /** Custom agent path override */
   agent?: string;
   /** Show detailed output */
@@ -32,23 +31,37 @@ export interface TaskOptions {
  * Validate that plan file exists and is readable
  *
  * @param planPath - Absolute path to plan file
- * @throws Will exit process with code 1 if validation fails
+ * @param context - Command context for filesystem and logging
+ * @returns CommandResult with error if validation fails, null if successful
  */
-function validatePlanFile(planPath: string): void {
+function validatePlanFile(
+  planPath: string,
+  context: CommandContext
+): CommandResult | null {
   // Check existence
-  if (!existsSync(planPath)) {
-    log.error(`Plan file not found: ${planPath}`);
-    process.exit(1);
+  if (!context.fs.existsSync(planPath)) {
+    context.logger.error(`Plan file not found: ${planPath}`);
+    return {
+      success: false,
+      exitCode: 1,
+      error: `Plan file not found: ${planPath}`,
+    };
   }
 
-  // Check readability
+  // Check readability (in real filesystem, for mock tests this would be simulated)
   try {
-    accessSync(planPath, constants.R_OK);
+    context.fs.readFileSync(planPath);
   } catch {
-    log.error(`Plan file not readable: ${planPath}`);
-    log.info('Check file permissions and try again.');
-    process.exit(1);
+    context.logger.error(`Plan file not readable: ${planPath}`);
+    context.logger.info('Check file permissions and try again.');
+    return {
+      success: false,
+      exitCode: 1,
+      error: `Plan file not readable: ${planPath}`,
+    };
   }
+
+  return null;
 }
 
 /**
@@ -56,8 +69,13 @@ function validatePlanFile(planPath: string): void {
  * Initializes one-shot Copilot session for task generation
  *
  * @param options - Command options
+ * @param context - Dependency injection context (defaults to production)
+ * @returns Promise resolving to command result
  */
-export async function task(options: TaskOptions): Promise<void> {
+export async function task(
+  options: TaskOptions,
+  context: CommandContext = createProductionContext()
+): Promise<CommandResult> {
   try {
     // Display banner
     renderBanner();
@@ -65,17 +83,24 @@ export async function task(options: TaskOptions): Promise<void> {
 
     // Validate required option
     if (!options.plan) {
-      log.error('Missing required option: --plan <path>');
-      log.info('Usage: speci task --plan <path-to-plan.md>');
-      process.exit(2);
+      context.logger.error('Missing required option: --plan <path>');
+      context.logger.info('Usage: speci task --plan <path-to-plan.md>');
+      return {
+        success: false,
+        exitCode: 2,
+        error: 'Missing required option: --plan',
+      };
     }
 
     // Resolve and validate plan file
-    const planPath = resolve(process.cwd(), options.plan);
-    validatePlanFile(planPath);
+    const planPath = resolve(context.process.cwd(), options.plan);
+    const validationError = validatePlanFile(planPath, context);
+    if (validationError) {
+      return validationError;
+    }
 
     // Load configuration
-    const config = loadConfig();
+    const config = await context.configLoader.load();
 
     // Run preflight checks
     await preflight(config, {
@@ -93,16 +118,21 @@ export async function task(options: TaskOptions): Promise<void> {
     const agentPath = resolveAgentPath(commandName, options.agent);
 
     // Validate agent file exists
-    if (!existsSync(agentPath)) {
-      log.error(`Agent file not found: ${agentPath}`);
-      log.info(
+    if (!context.fs.existsSync(agentPath)) {
+      context.logger.error(`Agent file not found: ${agentPath}`);
+      context.logger.info(
         'Run "speci init" to create agents or provide --agent <filename>'
       );
-      process.exit(1);
+      return {
+        success: false,
+        exitCode: 1,
+        error: `Agent file not found: ${agentPath}`,
+      };
     }
 
     // Display command info
-    const displayPlanPath = relative(process.cwd(), planPath) || planPath;
+    const displayPlanPath =
+      relative(context.process.cwd(), planPath) || planPath;
     console.log(
       infoBox('Task Generation', {
         Plan: displayPlanPath,
@@ -113,7 +143,7 @@ export async function task(options: TaskOptions): Promise<void> {
     console.log();
 
     // Build Copilot args for one-shot mode with plan context
-    const args = buildCopilotArgs(config, {
+    const args = context.copilotRunner.buildArgs(config, {
       prompt: `Read the plan file at ${planPath} and generate implementation tasks.`,
       agent: agentName,
       shouldAllowAll: true,
@@ -121,18 +151,32 @@ export async function task(options: TaskOptions): Promise<void> {
     });
 
     // Spawn Copilot with stdio:inherit
-    log.debug(`Spawning: copilot ${args.join(' ')}`);
-    const exitCode = await spawnCopilot(args, { inherit: true });
+    context.logger.debug(`Spawning: copilot ${args.join(' ')}`);
+    const exitCode = await context.copilotRunner.spawn(args, { inherit: true });
 
-    // Exit with Copilot's exit code
-    process.exit(exitCode);
+    // Return result with exit code
+    if (exitCode === 0) {
+      return { success: true, exitCode: 0 };
+    } else {
+      return { success: false, exitCode };
+    }
   } catch (error) {
     if (error instanceof Error) {
-      log.error(`Task command failed: ${error.message}`);
+      context.logger.error(`Task command failed: ${error.message}`);
+      return {
+        success: false,
+        exitCode: 1,
+        error: error.message,
+      };
     } else {
-      log.error(`Task command failed: ${String(error)}`);
+      const errorMsg = String(error);
+      context.logger.error(`Task command failed: ${errorMsg}`);
+      return {
+        success: false,
+        exitCode: 1,
+        error: errorMsg,
+      };
     }
-    throw error;
   }
 }
 

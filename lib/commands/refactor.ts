@@ -6,15 +6,15 @@
  * Output streams to terminal in real-time using stdio: 'inherit'.
  */
 
-import { existsSync, statSync } from 'node:fs';
+import { statSync } from 'node:fs';
 import { isAbsolute, resolve } from 'node:path';
-import { loadConfig, resolveAgentPath } from '@/config.js';
-import { buildCopilotArgs, spawnCopilot } from '@/copilot.js';
+import { resolveAgentPath } from '@/config.js';
 import { preflight } from '@/utils/preflight.js';
 import { renderBanner } from '@/ui/banner.js';
-import { log } from '@/utils/logger.js';
 import { infoBox } from '@/ui/box.js';
 import { getAgentFilename } from '@/constants.js';
+import { createProductionContext } from '@/adapters/context-factory.js';
+import type { CommandContext, CommandResult } from '@/interfaces.js';
 
 /**
  * Options for the refactor command
@@ -34,10 +34,14 @@ export interface RefactorOptions {
  * Validate and resolve scope path or glob pattern
  *
  * @param scope - User-provided scope path or pattern
- * @returns Validated scope string
+ * @param context - Command context for filesystem and logging
+ * @returns Validated scope string or CommandResult if validation fails
  */
-function validateScope(scope: string): string {
-  const cwd = process.cwd();
+function validateScope(
+  scope: string,
+  context: CommandContext
+): string | CommandResult {
+  const cwd = context.process.cwd();
 
   // Check if it's a glob pattern (contains *, ?, [, ])
   const isGlob = /[*?[\]]/.test(scope);
@@ -53,18 +57,22 @@ function validateScope(scope: string): string {
 
   // Security: Ensure scope is within project
   if (!resolved.startsWith(cwd)) {
-    log.error(`Scope path must be within project: ${scope}`);
-    process.exit(1);
+    context.logger.error(`Scope path must be within project: ${scope}`);
+    return {
+      success: false,
+      exitCode: 1,
+      error: `Scope path must be within project: ${scope}`,
+    };
   }
 
   // Check existence for directories
-  if (existsSync(resolved)) {
+  if (context.fs.existsSync(resolved)) {
     const stats = statSync(resolved);
     if (!stats.isDirectory() && !stats.isFile()) {
-      log.warn(`Scope path is neither file nor directory: ${scope}`);
+      context.logger.warn(`Scope path is neither file nor directory: ${scope}`);
     }
   } else {
-    log.warn(
+    context.logger.warn(
       `Scope path does not exist: ${scope}. Agent will handle accordingly.`
     );
   }
@@ -77,15 +85,20 @@ function validateScope(scope: string): string {
  * Initializes one-shot Copilot session for refactoring analysis
  *
  * @param options - Command options
+ * @param context - Dependency injection context (defaults to production)
+ * @returns Promise resolving to command result
  */
-export async function refactor(options: RefactorOptions = {}): Promise<void> {
+export async function refactor(
+  options: RefactorOptions = {},
+  context: CommandContext = createProductionContext()
+): Promise<CommandResult> {
   try {
     // Display banner
     renderBanner();
     console.log();
 
     // Load configuration
-    const config = loadConfig();
+    const config = await context.configLoader.load();
 
     // Run preflight checks
     await preflight(config, {
@@ -98,7 +111,12 @@ export async function refactor(options: RefactorOptions = {}): Promise<void> {
     // Validate and resolve scope if provided
     let scopePath: string | undefined;
     if (options.scope) {
-      scopePath = validateScope(options.scope);
+      const validationResult = validateScope(options.scope, context);
+      if (typeof validationResult === 'object') {
+        // It's a CommandResult error
+        return validationResult;
+      }
+      scopePath = validationResult;
     }
 
     const commandName = 'refactor';
@@ -109,12 +127,16 @@ export async function refactor(options: RefactorOptions = {}): Promise<void> {
     const agentPath = resolveAgentPath(commandName, options.agent);
 
     // Validate agent file exists
-    if (!existsSync(agentPath)) {
-      log.error(`Agent file not found: ${agentPath}`);
-      log.info(
+    if (!context.fs.existsSync(agentPath)) {
+      context.logger.error(`Agent file not found: ${agentPath}`);
+      context.logger.info(
         'Run "speci init" to create agents or provide --agent <filename>'
       );
-      process.exit(1);
+      return {
+        success: false,
+        exitCode: 1,
+        error: `Agent file not found: ${agentPath}`,
+      };
     }
 
     // Display command info
@@ -136,7 +158,7 @@ export async function refactor(options: RefactorOptions = {}): Promise<void> {
     }
 
     // Build Copilot args for one-shot mode
-    const args = buildCopilotArgs(config, {
+    const args = context.copilotRunner.buildArgs(config, {
       prompt,
       agent: agentName,
       shouldAllowAll: true,
@@ -144,18 +166,32 @@ export async function refactor(options: RefactorOptions = {}): Promise<void> {
     });
 
     // Spawn Copilot with stdio:inherit
-    log.debug(`Spawning: copilot ${args.join(' ')}`);
-    const exitCode = await spawnCopilot(args, { inherit: true });
+    context.logger.debug(`Spawning: copilot ${args.join(' ')}`);
+    const exitCode = await context.copilotRunner.spawn(args, { inherit: true });
 
-    // Exit with Copilot's exit code
-    process.exit(exitCode);
+    // Return result with exit code
+    if (exitCode === 0) {
+      return { success: true, exitCode: 0 };
+    } else {
+      return { success: false, exitCode };
+    }
   } catch (error) {
     if (error instanceof Error) {
-      log.error(`Refactor command failed: ${error.message}`);
+      context.logger.error(`Refactor command failed: ${error.message}`);
+      return {
+        success: false,
+        exitCode: 1,
+        error: error.message,
+      };
     } else {
-      log.error(`Refactor command failed: ${String(error)}`);
+      const errorMsg = String(error);
+      context.logger.error(`Refactor command failed: ${errorMsg}`);
+      return {
+        success: false,
+        exitCode: 1,
+        error: errorMsg,
+      };
     }
-    throw error;
   }
 }
 

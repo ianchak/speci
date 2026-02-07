@@ -6,12 +6,11 @@
  * handles failures with fix attempts, and manages the iteration cycle.
  */
 
-import { createWriteStream, type WriteStream, existsSync } from 'node:fs';
-import { mkdirSync } from 'node:fs';
+import { createWriteStream, type WriteStream } from 'node:fs';
 import { join } from 'node:path';
 import { createInterface } from 'node:readline';
 import { Writable } from 'node:stream';
-import { loadConfig, type SpeciConfig } from '@/config.js';
+import type { SpeciConfig } from '@/config.js';
 import { getState, STATE } from '@/state.js';
 import {
   acquireLock,
@@ -29,6 +28,8 @@ import {
   registerCleanup,
   removeSignalHandlers,
 } from '@/utils/signals.js';
+import { createProductionContext } from '@/adapters/context-factory.js';
+import type { CommandContext, CommandResult } from '@/interfaces.js';
 
 /**
  * Options for the run command
@@ -57,8 +58,13 @@ export function resetCleanupFlag(): void {
  * Main run command handler
  *
  * @param options - Command options
+ * @param context - Dependency injection context (defaults to production)
+ * @returns Promise resolving to command result
  */
-export async function run(options: RunOptions = {}): Promise<void> {
+export async function run(
+  options: RunOptions = {},
+  context: CommandContext = createProductionContext()
+): Promise<CommandResult> {
   // Reset cleanup flag at start of each run
   cleanupInProgress = false;
 
@@ -66,7 +72,7 @@ export async function run(options: RunOptions = {}): Promise<void> {
   renderBanner();
 
   // 2. Load configuration
-  const config = await loadConfig();
+  const config = await context.configLoader.load();
   const maxIterations = options.maxIterations ?? config.loop.maxIterations;
 
   // 3. Run preflight checks
@@ -81,10 +87,12 @@ export async function run(options: RunOptions = {}): Promise<void> {
   if (await isLocked(config)) {
     const lockInfo = await getLockInfo(config);
     if (!options.force) {
-      log.warn(`Speci is already running (PID: ${lockInfo?.pid ?? 'unknown'})`);
+      context.logger.warn(
+        `Speci is already running (PID: ${lockInfo?.pid ?? 'unknown'})`
+      );
       const proceed = await promptForce();
       if (!proceed) {
-        process.exit(0);
+        return { success: true, exitCode: 0 };
       }
     }
   }
@@ -93,7 +101,7 @@ export async function run(options: RunOptions = {}): Promise<void> {
   if (options.dryRun) {
     const initialState = await getState(config);
     displayDryRun(initialState, config, maxIterations);
-    process.exit(0);
+    return { success: true, exitCode: 0 };
   }
 
   if (!options.yes) {
@@ -113,7 +121,7 @@ export async function run(options: RunOptions = {}): Promise<void> {
   });
 
   // 8. Initialize logging (after all early exits)
-  const logFile = initializeLogFile(config);
+  const logFile = initializeLogFile(config, context);
 
   // Register log file cleanup
   registerCleanup(async () => {
@@ -131,7 +139,25 @@ export async function run(options: RunOptions = {}): Promise<void> {
 
   try {
     // 9. Run main loop
-    await mainLoop(config, maxIterations, logFile, options);
+    await mainLoop(config, maxIterations, logFile, options, context);
+    return { success: true, exitCode: 0 };
+  } catch (error) {
+    if (error instanceof Error) {
+      context.logger.error(`Run command failed: ${error.message}`);
+      return {
+        success: false,
+        exitCode: 1,
+        error: error.message,
+      };
+    } else {
+      const errorMsg = String(error);
+      context.logger.error(`Run command failed: ${errorMsg}`);
+      return {
+        success: false,
+        exitCode: 1,
+        error: errorMsg,
+      };
+    }
   } finally {
     // 10. Cleanup
     if (!cleanupInProgress) {
@@ -159,19 +185,21 @@ export async function run(options: RunOptions = {}): Promise<void> {
  * @param maxIterations - Maximum iterations to run
  * @param logFile - Log file stream
  * @param options - Command options
+ * @param context - Command context for logging
  */
 async function mainLoop(
   config: SpeciConfig,
   maxIterations: number,
   logFile: WriteStream,
-  options: RunOptions
+  options: RunOptions,
+  context: CommandContext
 ): Promise<void> {
   let iteration = 0;
 
   while (iteration < maxIterations) {
     iteration++;
     logIteration(logFile, iteration, 'START');
-    log.info(`\n--- Iteration ${iteration}/${maxIterations} ---`);
+    context.logger.info(`\n--- Iteration ${iteration}/${maxIterations} ---`);
 
     // 1. Get current state
     const state = await getState(config);
@@ -180,32 +208,33 @@ async function mainLoop(
     // 2. Dispatch based on state
     switch (state) {
       case STATE.DONE:
-        log.success('All tasks complete! Exiting loop.');
+        context.logger.success('All tasks complete! Exiting loop.');
         logIteration(logFile, iteration, 'DONE');
         return;
 
       case STATE.NO_PROGRESS:
-        log.error('No PROGRESS.md found. Run `speci init` to initialize.');
-        process.exit(1);
-        break;
+        context.logger.error(
+          'No PROGRESS.md found. Run `speci init` to initialize.'
+        );
+        throw new Error('No PROGRESS.md found');
 
       case STATE.WORK_LEFT:
-        await handleWorkLeft(config, logFile, options);
+        await handleWorkLeft(config, logFile, options, context);
         break;
 
       case STATE.IN_REVIEW:
-        await handleInReview(config, logFile, options);
+        await handleInReview(config, logFile, options, context);
         break;
 
       case STATE.BLOCKED:
-        await handleBlocked(config, logFile, options);
+        await handleBlocked(config, logFile, options, context);
         break;
     }
 
     logIteration(logFile, iteration, 'END');
   }
 
-  log.warn(`Max iterations (${maxIterations}) reached. Exiting.`);
+  context.logger.warn(`Max iterations (${maxIterations}) reached. Exiting.`);
 }
 
 /**
@@ -215,32 +244,41 @@ async function mainLoop(
  * @param logFile - Log file stream
  * @param options - Command options
  */
+/**
+ * Handle WORK_LEFT state: dispatch impl agent and run gates
+ *
+ * @param config - Speci configuration
+ * @param logFile - Log file stream
+ * @param options - Command options
+ * @param context - Command context for logging
+ */
 async function handleWorkLeft(
   config: SpeciConfig,
   logFile: WriteStream,
-  _options: RunOptions
+  _options: RunOptions,
+  context: CommandContext
 ): Promise<void> {
   // 1. Run impl agent
-  log.info('Dispatching implementation agent...');
+  context.logger.info('Dispatching implementation agent...');
   logAgent(logFile, 'impl', 'START');
   const implResult = await runAgent(config, 'impl', 'Implementation Agent');
   logAgent(logFile, 'impl', implResult.isSuccess ? 'SUCCESS' : 'FAILED');
 
   if (!implResult.isSuccess) {
-    log.error(
+    context.logger.error(
       `Implementation agent failed: ${implResult.error ?? 'Unknown error'}`
     );
     return;
   }
 
   // 2. Run gates
-  log.info('Running gate commands...');
+  context.logger.info('Running gate commands...');
   resetGateAttempts();
   const gateResult = await runGate(config);
   logGate(logFile, gateResult);
 
   if (gateResult.isSuccess) {
-    log.success('All gates passed!');
+    context.logger.success('All gates passed!');
     return;
   }
 
@@ -248,7 +286,7 @@ async function handleWorkLeft(
   let fixAttempt = 0;
   while (!gateResult.isSuccess && fixAttempt < config.gate.maxFixAttempts) {
     fixAttempt++;
-    log.warn(
+    context.logger.warn(
       `Gate failed. Running fix agent (attempt ${fixAttempt}/${config.gate.maxFixAttempts})...`
     );
 
@@ -262,7 +300,9 @@ async function handleWorkLeft(
     );
 
     if (!fixResult.isSuccess) {
-      log.error(`Fix agent failed: ${fixResult.error ?? 'Unknown error'}`);
+      context.logger.error(
+        `Fix agent failed: ${fixResult.error ?? 'Unknown error'}`
+      );
       break;
     }
 
@@ -271,13 +311,13 @@ async function handleWorkLeft(
     logGate(logFile, retryResult);
 
     if (retryResult.isSuccess) {
-      log.success('Gates passed after fix!');
+      context.logger.success('Gates passed after fix!');
       return;
     }
   }
 
   if (!gateResult.isSuccess) {
-    log.error(
+    context.logger.error(
       `Gates still failing after ${config.gate.maxFixAttempts} fix attempts.`
     );
     // Continue to next iteration - state parser will re-evaluate
@@ -290,19 +330,23 @@ async function handleWorkLeft(
  * @param config - Speci configuration
  * @param logFile - Log file stream
  * @param options - Command options
+ * @param context - Command context for logging
  */
 async function handleInReview(
   config: SpeciConfig,
   logFile: WriteStream,
-  _options: RunOptions
+  _options: RunOptions,
+  context: CommandContext
 ): Promise<void> {
-  log.info('Dispatching review agent...');
+  context.logger.info('Dispatching review agent...');
   logAgent(logFile, 'review', 'START');
   const reviewResult = await runAgent(config, 'review', 'Review Agent');
   logAgent(logFile, 'review', reviewResult.isSuccess ? 'SUCCESS' : 'FAILED');
 
   if (!reviewResult.isSuccess) {
-    log.error(`Review agent failed: ${reviewResult.error ?? 'Unknown error'}`);
+    context.logger.error(
+      `Review agent failed: ${reviewResult.error ?? 'Unknown error'}`
+    );
   }
 }
 
@@ -312,19 +356,23 @@ async function handleInReview(
  * @param config - Speci configuration
  * @param logFile - Log file stream
  * @param options - Command options
+ * @param context - Command context for logging
  */
 async function handleBlocked(
   config: SpeciConfig,
   logFile: WriteStream,
-  _options: RunOptions
+  _options: RunOptions,
+  context: CommandContext
 ): Promise<void> {
-  log.info('Dispatching tidy agent to unblock tasks...');
+  context.logger.info('Dispatching tidy agent to unblock tasks...');
   logAgent(logFile, 'tidy', 'START');
   const tidyResult = await runAgent(config, 'tidy', 'Tidy Agent');
   logAgent(logFile, 'tidy', tidyResult.isSuccess ? 'SUCCESS' : 'FAILED');
 
   if (!tidyResult.isSuccess) {
-    log.error(`Tidy agent failed: ${tidyResult.error ?? 'Unknown error'}`);
+    context.logger.error(
+      `Tidy agent failed: ${tidyResult.error ?? 'Unknown error'}`
+    );
   }
 }
 
@@ -422,16 +470,20 @@ function displayDryRun(
  * Initialize log file for run session
  *
  * @param config - Speci configuration
+ * @param context - Command context for filesystem and process
  * @returns WriteStream for log file
  */
-function initializeLogFile(config: SpeciConfig): WriteStream {
+function initializeLogFile(
+  config: SpeciConfig,
+  context: CommandContext
+): WriteStream {
   try {
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
     const logPath = join(config.paths.logs, `speci-run-${timestamp}.log`);
 
     // Ensure log directory exists
-    if (!existsSync(config.paths.logs)) {
-      mkdirSync(config.paths.logs, { recursive: true });
+    if (!context.fs.existsSync(config.paths.logs)) {
+      context.fs.mkdirSync(config.paths.logs, { recursive: true });
     }
 
     const stream = createWriteStream(logPath, { flags: 'a' });
@@ -444,7 +496,7 @@ function initializeLogFile(config: SpeciConfig): WriteStream {
     // Write header
     stream.write(`=== Speci Run Session ===\n`);
     stream.write(`Started: ${new Date().toISOString()}\n`);
-    stream.write(`PID: ${process.pid}\n\n`);
+    stream.write(`PID: ${context.process.pid}\n\n`);
 
     return stream;
   } catch {

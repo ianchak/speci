@@ -99,7 +99,12 @@ Examples:
   $ speci init -u           Update agent files to latest version
 `
   )
-  .action(init);
+  .action(async (options) => {
+    const result = await init(options);
+    if (!result.success) {
+      process.exit(result.exitCode);
+    }
+  });
 
 // Plan Command (alias: p)
 program
@@ -148,7 +153,12 @@ Examples:
   $ speci t -p docs/plan.md            Short alias version
 `
   )
-  .action(task);
+  .action(async (options) => {
+    const result = await task(options);
+    if (!result.success) {
+      process.exit(result.exitCode);
+    }
+  });
 
 // Refactor Command (alias: r)
 program
@@ -168,7 +178,12 @@ Examples:
   $ speci r -s "lib/**/*.ts"           Analyze TypeScript files only
 `
   )
-  .action(refactor);
+  .action(async (options) => {
+    const result = await refactor(options);
+    if (!result.success) {
+      process.exit(result.exitCode);
+    }
+  });
 
 // Run Command (no short alias - intentionally verbose for safety)
 program
@@ -188,7 +203,12 @@ Examples:
   $ speci run --dry-run                Preview actions without executing
 `
   )
-  .action(run);
+  .action(async (options) => {
+    const result = await run(options);
+    if (!result.success) {
+      process.exit(result.exitCode);
+    }
+  });
 
 // Status Command (alias: s)
 program
