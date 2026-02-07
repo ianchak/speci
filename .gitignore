@@ -40,7 +40,7 @@ tmp/
 temp/
 *.tmp
 
-.github
+.github/
 speci.config.json
 .speci-lock
 docs/

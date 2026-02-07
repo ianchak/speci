@@ -17,12 +17,16 @@ The orchestrator provides:
 
 ## Mission
 
+> **CRITICAL**: You are generating a TODO list for FUTURE implementation.
+> All tasks must be marked `NOT STARTED` because no implementation work has been done yet.
+> The task FILES exist, but the task WORK has not been done.
+
 1. Generate Subagent ID: `SA-PROG-<YYYYMMDD>-<seq>`
 2. Mark progress generation IN PROGRESS (if state exists)
 3. SCAN docs/tasks/ for ALL task and MVT files
 4. READ plan to understand milestones
 5. BUILD dependency graph
-6. CREATE docs/PROGRESS.md following format below
+6. CREATE docs/PROGRESS.md with **ALL tasks as NOT STARTED**
 7. Mark COMPLETE in state file (if exists)
 8. Return summary
 
@@ -57,8 +61,8 @@ The orchestrator provides:
 
 | Milestone | Name   | Tasks   | MVT    | Complete | Total | Status      |
 | --------- | ------ | ------- | ------ | -------- | ----- | ----------- |
-| M1        | [Name] | 001-005 | MVT_M1 | 5        | 6     | COMPLETE    |
-| M2        | [Name] | 006-012 | MVT_M2 | 3        | 8     | IN PROGRESS |
+| M1        | [Name] | 001-005 | MVT_M1 | 0        | 6     | NOT STARTED |
+| M2        | [Name] | 006-012 | MVT_M2 | 0        | 8     | NOT STARTED |
 
 ---
 
@@ -66,7 +70,8 @@ The orchestrator provides:
 
 | Task ID  | Title       | Status      | Priority | Complexity | Dependencies |
 | -------- | ----------- | ----------- | -------- | ---------- | ------------ |
-| TASK_XXX | [Feature]   | IN PROGRESS | HIGH     | M          | TASK_YYY     |
+| TASK_XXX | [Feature]   | NOT STARTED | HIGH     | M          | TASK_YYY     |
+| TASK_YYY | [Feature]   | NOT STARTED | MEDIUM   | S          | None         |
 | MVT_MX   | Manual Test | NOT STARTED | —        | 30 min     | TASK_XXX     |
 
 ### Dependencies
@@ -85,10 +90,11 @@ _(Repeat for each milestone)_
 ## Completed Milestones
 
 > Summary only. See task files for details.
+> **On initial generation, this section should be empty or state "None yet".**
 
-| Milestone | Name   | Completed  | Notes    |
-| --------- | ------ | ---------- | -------- |
-| M1        | [Name] | YYYY-MM-DD | MVT pass |
+| Milestone | Name | Completed | Notes |
+| --------- | ---- | --------- | ----- |
+| (none)    | —    | —         | —     |
 
 ---
 
@@ -162,11 +168,21 @@ Last Review ID: RA-YYYYMMDD-XXX
 - Completed task notes
 - Historical attempt counts
 
-### Status Extraction
-- Task has "Status: COMPLETE" → COMPLETE
-- Task has "Status: IN PROGRESS" → IN PROGRESS
-- In GENERATION_STATE.md → Use that status
-- No status → NOT STARTED
+### Status Assignment (CRITICAL)
+
+**For INITIAL generation (no existing PROGRESS.md):**
+- ALL tasks → `NOT STARTED`
+- ALL MVTs → `NOT STARTED`
+- ALL milestones → `NOT STARTED`
+- Complete column → `0` for all milestones
+
+> Task files existing ≠ Task work completed.
+> You are creating a TODO list, not a completion report.
+
+**For UPDATES to existing PROGRESS.md:**
+- Preserve existing status from PROGRESS.md
+- Only the orchestrator/impl agents update status
+- Never auto-mark tasks as COMPLETE
 
 ## Return Summary
 

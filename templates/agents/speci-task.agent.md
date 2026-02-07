@@ -71,7 +71,14 @@ docs/
 
 ## GENERATION_STATE.md Format
 
-The orchestrator and subagents communicate through this file:
+The orchestrator and subagents communicate through this file.
+
+> **CRITICAL DISTINCTION:**
+>
+> - **Gen Status / Review Status** = Whether the task FILE was created and reviewed (tracked here)
+> - **Implementation Status** = Whether the task WORK has been done (tracked in PROGRESS.md)
+>
+> When generation is complete, all tasks should have `Gen Status: COMPLETE` and `Review Status: COMPLETE` in this file, but `Status: NOT STARTED` in PROGRESS.md because no implementation work has been done yet.
 
 ```markdown
 # Task Generation State
@@ -87,12 +94,12 @@ Last Updated: [ISO timestamp]
 
 ## Milestone Overview
 
-| Milestone | Name         | Tasks   | MVT    | Status      |
+| Milestone | Name         | Tasks   | MVT    | Gen Status  |
 | --------- | ------------ | ------- | ------ | ----------- |
 | M1        | Core Systems | 001-005 | MVT_M1 | IN PROGRESS |
 | M2        | Combat       | 006-012 | MVT_M2 | NOT STARTED |
 
-## Generation Status
+## Generation Status (file creation, NOT implementation)
 
 | Task ID  | Milestone | Feature      | Gen Status  | Review Status |
 | -------- | --------- | ------------ | ----------- | ------------- |
@@ -174,13 +181,14 @@ After all features: 5. Spawn subagent: "Read .github/agents/subagents/mvt_genera
 
 **FINALIZATION:**
 
-1. Spawn: "Read .github/agents/subagents/progress_generator.prompt.md and create PROGRESS.md"
-2. Spawn: "Read .github/agents/subagents/final_reviewer.prompt.md and validate alignment"
+1. Spawn: "Read .github/agents/subagents/progress_generator.prompt.md and create PROGRESS.md. CRITICAL: All tasks must have Status: NOT STARTED because no implementation work has been done yet."
+2. Spawn: "Read .github/agents/subagents/final_reviewer.prompt.md and validate alignment. Verify all tasks in PROGRESS.md are marked NOT STARTED."
 
 **COMPLETION:**
 
 1. Delete <STATE>
 2. Report: milestones, tasks, MVTs created
+3. Confirm: "All tasks are marked NOT STARTED, ready for implementation"
 ```
 
 ---
@@ -189,13 +197,13 @@ After all features: 5. Spawn subagent: "Read .github/agents/subagents/mvt_genera
 
 Store each subagent prompt in its own file under `.github/agents/subagents/`. This keeps orchestrator context minimal while giving subagents full instructions.
 
-| File                           | Purpose                     |
-| ------------------------------ | --------------------------- |
-| `task_generator.prompt.md`     | Generates TASK_XXX files    |
-| `task_reviewer.prompt.md`      | Reviews tasks for quality   |
-| `mvt_generator.prompt.md`      | Creates MVT milestone tests |
-| `progress_generator.prompt.md` | Creates PROGRESS.md         |
-| `final_reviewer.prompt.md`     | Final alignment check       |
+| File                           | Purpose                                              |
+| ------------------------------ | ---------------------------------------------------- |
+| `task_generator.prompt.md`     | Generates TASK_XXX files                             |
+| `task_reviewer.prompt.md`      | Reviews tasks for quality                            |
+| `mvt_generator.prompt.md`      | Creates MVT milestone tests                          |
+| `progress_generator.prompt.md` | Creates PROGRESS.md (all tasks start as NOT STARTED) |
+| `final_reviewer.prompt.md`     | Final alignment check                                |
 
 ---
 
@@ -239,7 +247,9 @@ Target: MVT_M1 covering TASK_001-005"
 # Progress Generator
 
 "Read .github/agents/subagents/progress_generator.prompt.md and execute.
-Source: docs/my_spec.md"
+Source: docs/my_spec.md
+CRITICAL: All tasks must have Status: NOT STARTED in PROGRESS.md.
+Generation being complete does NOT mean implementation is complete."
 
 # Final Reviewer
 
@@ -320,6 +330,48 @@ Source: docs/my_spec.md"
 
 ---
 
+## PROGRESS.md Format Reference
+
+> **CRITICAL**: All tasks MUST be marked `NOT STARTED` when PROGRESS.md is generated. This file tracks IMPLEMENTATION status, not generation status.
+
+```markdown
+# Project Name - Implementation Progress
+
+## Status Legend
+
+| Marker      | Meaning                        |
+| ----------- | ------------------------------ |
+| COMPLETE    | Task implemented and verified  |
+| IN PROGRESS | Currently being implemented    |
+| IN REVIEW   | Implementation done, in review |
+| NOT STARTED | Task not yet begun             |
+| BLOCKED     | Waiting on dependency          |
+
+## Progress Summary
+
+| Milestone | Name         | Tasks   | Complete | Total | Status      |
+| --------- | ------------ | ------- | -------- | ----- | ----------- |
+| M1        | Core Systems | 001-005 | 0        | 6     | NOT STARTED |
+
+## Milestone: M1 - Core Systems
+
+| Task ID  | Title        | Status      | Priority | Complexity | Dependencies |
+| -------- | ------------ | ----------- | -------- | ---------- | ------------ |
+| TASK_001 | Spatial Hash | NOT STARTED | HIGH     | M (4-8h)   | None         |
+| TASK_002 | Pathfinding  | NOT STARTED | HIGH     | L (8-16h)  | TASK_001     |
+| MVT_M1   | Manual Test  | NOT STARTED | —        | 30 min     | TASK_001-002 |
+```
+
+**Key Points for Progress Generator:**
+
+- Every task status = `NOT STARTED`
+- Every MVT status = `NOT STARTED`
+- Complete column = `0` for all milestones
+- Milestone Status = `NOT STARTED`
+- This is a TODO list, not a completion report
+
+---
+
 ## Key Rules
 
 ### Orchestrator (Coordinator Only)
@@ -356,9 +408,11 @@ Source: docs/my_spec.md"
 
 ## Completion Criteria
 
-1. All plan features have tasks
-2. All tasks reviewed
+1. All plan features have tasks (task files created)
+2. All tasks reviewed (task content validated)
 3. Every milestone has MVT
-4. PROGRESS.md created
+4. PROGRESS.md created with **ALL tasks marked as NOT STARTED**
 5. Final review ≥8/10
 6. GENERATION_STATE.md deleted
+
+> **IMPORTANT**: "Completion" here means task GENERATION is complete, not task IMPLEMENTATION. The PROGRESS.md file should show all tasks as `NOT STARTED` because the actual implementation work hasn't begun yet. This file tracks what needs to be built, not what has been built.
