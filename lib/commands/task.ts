@@ -103,12 +103,16 @@ export async function task(
     const config = await context.configLoader.load();
 
     // Run preflight checks
-    await preflight(config, {
-      requireCopilot: true,
-      requireConfig: true,
-      requireProgress: false,
-      requireGit: false,
-    });
+    await preflight(
+      config,
+      {
+        requireCopilot: true,
+        requireConfig: true,
+        requireProgress: false,
+        requireGit: false,
+      },
+      context.process
+    );
 
     const commandName = 'task';
     const agentName = (options.agent || getAgentFilename(commandName)).replace(

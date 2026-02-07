@@ -19,11 +19,13 @@ import type { CommandContext } from '@/interfaces.js';
  * @returns CommandContext with production adapters
  */
 export function createProductionContext(): CommandContext {
+  const nodeProcess = new NodeProcess();
+
   return {
     fs: new NodeFileSystem(),
-    process: new NodeProcess(),
-    logger: new NodeLogger(),
-    configLoader: new NodeConfigLoader(),
+    process: nodeProcess,
+    logger: new NodeLogger(nodeProcess),
+    configLoader: new NodeConfigLoader(nodeProcess),
     copilotRunner: new NodeCopilotRunner(),
   };
 }

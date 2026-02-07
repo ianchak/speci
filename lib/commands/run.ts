@@ -76,12 +76,16 @@ export async function run(
   const maxIterations = options.maxIterations ?? config.loop.maxIterations;
 
   // 3. Run preflight checks
-  await preflight(config, {
-    requireCopilot: true,
-    requireConfig: true,
-    requireProgress: true,
-    requireGit: true,
-  });
+  await preflight(
+    config,
+    {
+      requireCopilot: true,
+      requireConfig: true,
+      requireProgress: true,
+      requireGit: true,
+    },
+    context.process
+  );
 
   // 4. Check existing lock
   if (await isLocked(config)) {
@@ -113,7 +117,7 @@ export async function run(
   }
 
   // 6. Acquire lock
-  await acquireLock(config);
+  await acquireLock(config, context.process);
 
   // 7. Setup cleanup handlers (before creating log file)
   installSignalHandlers();

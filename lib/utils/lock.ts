@@ -17,6 +17,7 @@ import {
 import { dirname } from 'node:path';
 import type { SpeciConfig } from '@/config.js';
 import { log } from '@/utils/logger.js';
+import type { IProcess } from '@/interfaces.js';
 
 /**
  * Lock information interface
@@ -32,9 +33,14 @@ export interface LockInfo {
  * Acquire the lock for speci run execution
  *
  * @param config - Speci configuration
+ * @param processParam - IProcess instance (defaults to global process)
  * @throws Error if lock already exists
  */
-export async function acquireLock(config: SpeciConfig): Promise<void> {
+export async function acquireLock(
+  config: SpeciConfig,
+  processParam?: IProcess
+): Promise<void> {
+  const proc = processParam || process;
   const lockPath = config.paths.lock;
   const tempPath = `${lockPath}.tmp`;
 
@@ -56,7 +62,7 @@ export async function acquireLock(config: SpeciConfig): Promise<void> {
   // Format lock content
   const now = new Date();
   const timestamp = formatTimestamp(now);
-  const content = `Started: ${timestamp}\nPID: ${process.pid}`;
+  const content = `Started: ${timestamp}\nPID: ${proc.pid}`;
 
   try {
     // Atomic write: temp file + rename

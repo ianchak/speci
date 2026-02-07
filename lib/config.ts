@@ -11,6 +11,7 @@ import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { log } from '@/utils/logger.js';
 import { CONFIG_FILENAME, getAgentFilename } from '@/constants.js';
+import type { IProcess } from '@/interfaces.js';
 
 // Get the directory of the compiled output
 const __filename = fileURLToPath(import.meta.url);
@@ -382,9 +383,10 @@ function findSimilarEnvVars(input: string, valid: string[]): string[] {
 
 /**
  * Detect potential typos in SPECI_* environment variables
+ * @param proc - Process instance to read environment from
  */
-function detectEnvTypos(): void {
-  const speciEnvVars = Object.keys(process.env).filter((key) =>
+function detectEnvTypos(proc: IProcess): void {
+  const speciEnvVars = Object.keys(proc.env).filter((key) =>
     key.startsWith('SPECI_')
   );
 
@@ -484,13 +486,14 @@ function setNestedValue(
 /**
  * Apply environment variable overrides to config
  * @param config - Config object to modify
+ * @param proc - Process instance to read environment from
  */
-function applyEnvOverrides(config: SpeciConfig): void {
+function applyEnvOverrides(config: SpeciConfig, proc: IProcess): void {
   // Check for potential typos
-  detectEnvTypos();
+  detectEnvTypos(proc);
 
   for (const mapping of ENV_MAPPINGS) {
-    const value = process.env[mapping.envVar];
+    const value = proc.env[mapping.envVar];
 
     if (value === undefined || value === '') {
       continue;
@@ -521,6 +524,7 @@ function applyEnvOverrides(config: SpeciConfig): void {
  * Searches for speci.config.json starting from cwd, walking up parent directories.
  * Applies defaults and environment variable overrides.
  *
+ * @param processParam - Optional IProcess instance for testing (defaults to global process)
  * @returns Validated SpeciConfig object
  * @throws {Error} ERR-INP-03 if config file is malformed JSON
  * @throws {Error} ERR-INP-04 if config fails schema validation
@@ -531,11 +535,12 @@ function applyEnvOverrides(config: SpeciConfig): void {
  * console.log(config.paths.progress); // 'docs/PROGRESS.md'
  * ```
  */
-export function loadConfig(): SpeciConfig {
+export function loadConfig(processParam?: IProcess): SpeciConfig {
   const startTime = performance.now();
+  const proc = processParam || process;
 
   // Find config file
-  const configPath = findConfigFile(process.cwd());
+  const configPath = findConfigFile(proc.cwd());
 
   let rawConfig: Partial<SpeciConfig> = {};
 
@@ -556,7 +561,7 @@ export function loadConfig(): SpeciConfig {
   const config = validateConfig(rawConfig);
 
   // Apply environment variable overrides
-  applyEnvOverrides(config);
+  applyEnvOverrides(config, proc);
 
   const endTime = performance.now();
   log.debug(`Config loaded in ${(endTime - startTime).toFixed(2)}ms`);
@@ -572,6 +577,7 @@ export function loadConfig(): SpeciConfig {
  *
  * @param agentName - Name of agent to resolve (e.g., 'impl', 'review')
  * @param overrideFilename - Optional filename override (e.g., 'my-custom.agent.md')
+ * @param processParam - Optional IProcess instance for testing (defaults to global process)
  * @returns Absolute path to agent file in .github/copilot/agents/
  *
  * @example
@@ -585,11 +591,13 @@ export function loadConfig(): SpeciConfig {
  */
 export function resolveAgentPath(
   agentName: AgentName,
-  overrideFilename?: string
+  overrideFilename?: string,
+  processParam?: IProcess
 ): string {
+  const proc = processParam || process;
   const filename =
     overrideFilename || `${getAgentFilename(agentName)}.agent.md`;
-  const agentPath = join(process.cwd(), GITHUB_AGENTS_DIR, filename);
+  const agentPath = join(proc.cwd(), GITHUB_AGENTS_DIR, filename);
 
   log.debug(`Using agent: ${agentPath}`);
   return agentPath;

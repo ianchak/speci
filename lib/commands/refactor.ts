@@ -100,12 +100,16 @@ export async function refactor(
     const config = await context.configLoader.load();
 
     // Run preflight checks
-    await preflight(config, {
-      requireCopilot: true,
-      requireConfig: true,
-      requireProgress: false,
-      requireGit: false,
-    });
+    await preflight(
+      config,
+      {
+        requireCopilot: true,
+        requireConfig: true,
+        requireProgress: false,
+        requireGit: false,
+      },
+      context.process
+    );
 
     // Validate and resolve scope if provided
     let scopePath: string | undefined;

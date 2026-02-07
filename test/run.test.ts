@@ -102,12 +102,16 @@ describe('Run Command', () => {
 
       await run({ yes: true });
 
-      expect(preflight.preflight).toHaveBeenCalledWith(mockConfig, {
-        requireCopilot: true,
-        requireConfig: true,
-        requireProgress: true,
-        requireGit: true,
-      });
+      expect(preflight.preflight).toHaveBeenCalledWith(
+        mockConfig,
+        {
+          requireCopilot: true,
+          requireConfig: true,
+          requireProgress: true,
+          requireGit: true,
+        },
+        expect.anything() // process parameter
+      );
     });
 
     it('should check for existing lock', async () => {
@@ -123,7 +127,10 @@ describe('Run Command', () => {
 
       await run({ yes: true });
 
-      expect(lock.acquireLock).toHaveBeenCalledWith(mockConfig);
+      expect(lock.acquireLock).toHaveBeenCalledWith(
+        mockConfig,
+        expect.anything() // process parameter
+      );
     });
 
     it('should release lock after completion', async () => {

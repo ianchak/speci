@@ -12,10 +12,10 @@
 import { existsSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { execSync } from 'node:child_process';
-import { platform } from 'node:os';
 import { log } from '@/utils/logger.js';
 import type { SpeciConfig } from '@/config.js';
 import { CONFIG_FILENAME } from '@/constants.js';
+import type { IProcess } from '@/interfaces.js';
 
 /**
  * Options for customizing which preflight checks to run
@@ -62,10 +62,14 @@ export class PreflightError extends Error {
 /**
  * Check if Copilot CLI is installed and available in PATH
  *
+ * @param processParam - IProcess instance (defaults to global process)
  * @throws {PreflightError} If copilot command is not found
  */
-export async function checkCopilotInstalled(): Promise<void> {
-  const isWindows = platform() === 'win32';
+export async function checkCopilotInstalled(
+  processParam?: IProcess
+): Promise<void> {
+  const proc = processParam || process;
+  const isWindows = proc.platform === 'win32';
   const command = isWindows ? 'where copilot' : 'which copilot';
 
   try {
@@ -87,10 +91,14 @@ export async function checkCopilotInstalled(): Promise<void> {
 /**
  * Check if speci.config.json exists in current directory or any parent
  *
+ * @param processParam - IProcess instance (defaults to global process)
  * @throws {PreflightError} If config file is not found
  */
-export async function checkConfigExists(): Promise<void> {
-  let currentDir = process.cwd();
+export async function checkConfigExists(
+  processParam?: IProcess
+): Promise<void> {
+  const proc = processParam || process;
+  let currentDir = proc.cwd();
   let parentDir = '';
 
   // Walk up directory tree
@@ -141,10 +149,14 @@ export async function checkProgressExists(config: SpeciConfig): Promise<void> {
 /**
  * Check if current directory is within a git repository
  *
+ * @param processParam - IProcess instance (defaults to global process)
  * @throws {PreflightError} If not in a git repository
  */
-export async function checkGitRepository(): Promise<void> {
-  let currentDir = process.cwd();
+export async function checkGitRepository(
+  processParam?: IProcess
+): Promise<void> {
+  const proc = processParam || process;
+  let currentDir = proc.cwd();
   let parentDir = '';
 
   // Walk up directory tree
@@ -179,24 +191,27 @@ export async function checkGitRepository(): Promise<void> {
  *
  * @param config - Speci configuration
  * @param options - Options to customize which checks run
+ * @param processParam - IProcess instance (defaults to global process)
  * @throws {PreflightError} If any check fails (after logging and calling process.exit)
  */
 export async function preflight(
   config: SpeciConfig,
-  options: PreflightOptions = {}
+  options: PreflightOptions = {},
+  processParam?: IProcess
 ): Promise<void> {
+  const proc = processParam || process;
   const opts = { ...DEFAULT_OPTIONS, ...options };
   const checks: Promise<void>[] = [];
 
   // Build list of checks to run (independent checks can run in parallel)
   if (opts.requireCopilot) {
-    checks.push(checkCopilotInstalled());
+    checks.push(checkCopilotInstalled(proc));
   }
   if (opts.requireConfig) {
-    checks.push(checkConfigExists());
+    checks.push(checkConfigExists(proc));
   }
   if (opts.requireGit) {
-    checks.push(checkGitRepository());
+    checks.push(checkGitRepository(proc));
   }
 
   // Run independent checks in parallel
@@ -210,7 +225,7 @@ export async function preflight(
       for (const step of err.remediation) {
         log.info(`  • ${step}`);
       }
-      process.exit(err.exitCode);
+      proc.exit(err.exitCode);
     }
     throw err;
   }
@@ -227,7 +242,7 @@ export async function preflight(
         for (const step of err.remediation) {
           log.info(`  • ${step}`);
         }
-        process.exit(err.exitCode);
+        proc.exit(err.exitCode);
       }
       throw err;
     }

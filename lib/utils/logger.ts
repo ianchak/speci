@@ -9,11 +9,26 @@ import { colorize } from '@/ui/colors.js';
 import { getGlyph } from '@/ui/glyphs.js';
 import { drawBox } from '@/ui/box.js';
 import { ENV } from '@/constants.js';
+import type { IProcess } from '@/interfaces.js';
 
 /**
  * Verbose mode flag (can be set programmatically)
  */
 let verboseMode = false;
+
+/**
+ * Process instance for environment access (defaults to global process)
+ */
+let loggerProcess: IProcess = process;
+
+/**
+ * Set the process instance for logger to use
+ *
+ * @param proc - IProcess instance
+ */
+export function setLoggerProcess(proc: IProcess): void {
+  loggerProcess = proc;
+}
 
 /**
  * Enable or disable verbose mode
@@ -40,8 +55,8 @@ export function isVerbose(): boolean {
  */
 function isDebugMode(): boolean {
   return (
-    process.env[ENV.SPECI_DEBUG] === '1' ||
-    process.env[ENV.SPECI_DEBUG] === 'true'
+    loggerProcess.env[ENV.SPECI_DEBUG] === '1' ||
+    loggerProcess.env[ENV.SPECI_DEBUG] === 'true'
   );
 }
 

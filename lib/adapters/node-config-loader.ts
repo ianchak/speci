@@ -6,7 +6,7 @@
 
 import { loadConfig } from '@/config.js';
 import type { SpeciConfig } from '@/config.js';
-import type { IConfigLoader } from '@/interfaces.js';
+import type { IConfigLoader, IProcess } from '@/interfaces.js';
 
 /**
  * Node.js config loader adapter
@@ -14,7 +14,9 @@ import type { IConfigLoader } from '@/interfaces.js';
  * Implements IConfigLoader by delegating to the existing loadConfig function.
  */
 export class NodeConfigLoader implements IConfigLoader {
+  constructor(private readonly process: IProcess) {}
+
   async load(): Promise<SpeciConfig> {
-    return loadConfig();
+    return loadConfig(this.process);
   }
 }

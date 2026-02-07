@@ -4,8 +4,8 @@
  * Production implementation of ILogger that wraps the existing logger utility.
  */
 
-import { log } from '@/utils/logger.js';
-import type { ILogger } from '@/interfaces.js';
+import { log, setLoggerProcess } from '@/utils/logger.js';
+import type { ILogger, IProcess } from '@/interfaces.js';
 
 /**
  * Node.js logger adapter
@@ -13,6 +13,10 @@ import type { ILogger } from '@/interfaces.js';
  * Implements ILogger by delegating to the existing log utility.
  */
 export class NodeLogger implements ILogger {
+  constructor(process: IProcess) {
+    setLoggerProcess(process);
+  }
+
   info(message: string): void {
     log.info(message);
   }
