@@ -66,9 +66,9 @@
 
 ## Milestone: M1 - Foundation
 
-| Task ID  | Title                          | Status      | Review Status | Priority | Complexity | Dependencies | Assigned To     | Attempts |
-| -------- | ------------------------------ | ----------- | ------------- | -------- | ---------- | ------------ | --------------- | -------- |
-| TASK_005 | Dependency Injection Interface | IN PROGRESS | —             | CRITICAL | M (4-8h)   | None         | SA-20260207-006 | 1        |
+| Task ID  | Title                          | Status    | Review Status | Priority | Complexity | Dependencies | Assigned To     | Attempts |
+| -------- | ------------------------------ | --------- | ------------- | -------- | ---------- | ------------ | --------------- | -------- |
+| TASK_005 | Dependency Injection Interface | IN REVIEW | —             | CRITICAL | M (4-8h)   | None         | SA-20260207-006 | 1        |
 | TASK_006 | DI Proof of Concept            | NOT STARTED | CRITICAL | M (4-8h)   | TASK_005     |
 | TASK_007 | DI Rollout to Commands         | NOT STARTED | CRITICAL | L (8-16h)  | TASK_006     |
 | TASK_008 | Process Globals Abstraction    | NOT STARTED | HIGH     | M (4-8h)   | TASK_007     |
@@ -214,16 +214,16 @@ Last Review ID: RA-20260207-004
 
 ### For Reviewer
 
-| Field             | Value |
-| ----------------- | ----- |
-| Task              | —     |
-| Impl Agent        | —     |
-| Files Changed     | —     |
-| Tests Added       | —     |
-| Rework?           | —     |
-| Focus Areas       | —     |
-| Known Limitations | —     |
-| Gate Results      | —     |
+| Field             | Value                                                                                                                                                                                                                                                                      |
+| ----------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Task              | TASK_005                                                                                                                                                                                                                                                                   |
+| Impl Agent        | SA-20260207-006                                                                                                                                                                                                                                                            |
+| Files Changed     | `lib/interfaces.ts`, `lib/adapters/context-factory.ts`, `lib/adapters/node-filesystem.ts`, `lib/adapters/node-process.ts`, `lib/adapters/node-logger.ts`, `lib/adapters/node-config-loader.ts`, `lib/adapters/node-copilot-runner.ts`, `lib/adapters/test-context.ts` |
+| Tests Added       | `test/adapters/context-factory.test.ts` (8 new tests)                                                                                                                                                                                                                     |
+| Rework?           | No - initial implementation                                                                                                                                                                                                                                                |
+| Focus Areas       | Verify interface method signatures match actual usage patterns in copilot.ts; Confirm production context factory correctly wires all dependencies; Check test utilities provide sufficient mocking capabilities                                                          |
+| Known Limitations | Commands NOT yet updated to use DI (covered by TASK_006/007); Existing tests NOT migrated (covered by TASK_006/007); Utility functions (preflight, lock, gate) remain unchanged for now                                                                                  |
+| Gate Results      | format:✅ lint:✅ typecheck:✅ test:✅ (865 tests passed)                                                                                                                                                                                                                 |
 
 ### For Fix Agent
 
