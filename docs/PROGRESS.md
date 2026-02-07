@@ -71,7 +71,7 @@
 | -------- | ------------------------------ | -------- | ------------- | -------- | ---------- | ------------ | --------------- | -------- |
 | TASK_005 | Dependency Injection Interface | COMPLETE | PASSED        | CRITICAL | M (4-8h)   | None         | SA-20260207-006 | 1        |
 | TASK_006 | DI Proof of Concept            | COMPLETE | PASSED        | CRITICAL | M (4-8h)   | TASK_005     | SA-20260207-007 | 1        |
-| TASK_007 | DI Rollout to Commands         | IN REVIEW   | FAILED   | CRITICAL | L (8-16h)  | TASK_006     | SA-20260207-009 | 3        |
+| TASK_007 | DI Rollout to Commands         | IN REVIEW   | FAILED   | CRITICAL | L (8-16h)  | TASK_006     | SA-20260207-010 | 5        |
 | TASK_008 | Process Globals Abstraction    | NOT STARTED | HIGH     | M (4-8h)   | TASK_007     |
 | TASK_009 | Process.exit Cleanup Fix       | NOT STARTED | CRITICAL | M (4-8h)   | TASK_008     |
 | MVT_M1   | Foundation Manual Test         | NOT STARTED | —        | 30 min     | TASK_005-009 |
@@ -87,9 +87,102 @@
 
 **Task:** TASK_007 - DI Rollout to Commands  
 **Task Goal:** Migrate all 5 remaining commands (init, task, refactor, run, status) to use DI pattern with CommandContext  
-**Review Agent:** RA-20260207-007
+**Review Agent:** RA-20260208-008
 
-All blocking issues have been addressed in this rework.
+---
+
+#### Blocking Issues (must fix to pass)
+
+1. **AC2 NOT MET: Direct fs imports in init.ts**
+   - Location: `lib/commands/init.ts:8,193,198,205`
+   - Expected: Use `context.fs.readdirSync()`, `context.fs.statSync()`, `context.fs.copyFileSync()`
+   - Actual: Direct imports and calls to `readdirSync()`, `statSync()`, `copyFileSync()` from node:fs
+   - Fix: Replace direct fs calls in `copyDirectoryRecursive()` helper function:
+     - Line 193: `const entries = context.fs.readdirSync(src);`
+     - Line 198: `const stat = context.fs.statSync(srcPath);`
+     - Line 205: `context.fs.copyFileSync(srcPath, destPath);`
+   - Remove: `copyFileSync, readdirSync, statSync` from line 8 import
+
+2. **AC2 NOT MET: Direct fs import in refactor.ts**
+   - Location: `lib/commands/refactor.ts:9,70`
+   - Expected: Use `context.fs.statSync()`
+   - Actual: Direct import and call to `statSync()` from node:fs
+   - Fix: Replace line 70: `const stats = context.fs.statSync(resolved);`
+   - Remove: `statSync` from line 9 import
+
+3. **AC2 NOT MET: process.exit() in run.ts helper**
+   - Location: `lib/commands/run.ts:420`
+   - Expected: Return CommandResult or throw error to be caught by main function
+   - Actual: `confirmRun()` helper calls `process.exit(0)` directly in readline callback
+   - Fix: Change `confirmRun()` to return boolean (true=proceed, false=cancel), update caller to handle cancellation:
+     ```typescript
+     // Make confirmRun return boolean
+     async function confirmRun(...): Promise<boolean> {
+       return new Promise((resolve) => {
+         rl.question('...', (answer) => {
+           if (answer === 'n') {
+             log.info('Run cancelled.');
+             resolve(false); // return false instead of exit
+           }
+           resolve(true);
+         });
+       });
+     }
+     // In main run() function, check result:
+     const shouldProceed = await confirmRun(state, config);
+     if (!shouldProceed) {
+       return { success: false, exitCode: 0, error: 'User cancelled' };
+     }
+     ```
+
+4. **AC6 NOT MET: bin/speci.ts relies on default parameters**
+   - Location: `bin/speci.ts:103,134,157,182,207,234` (all action handlers)
+   - Expected: "bin/speci.ts creates single production context and passes to all commands"
+   - Actual: Commands called without context argument, relying on default `createProductionContext()` parameter
+   - Fix: Create context once at top of bin/speci.ts and pass explicitly:
+     ```typescript
+     import { createProductionContext } from '../lib/adapters/context-factory.js';
+     const context = createProductionContext();
+     
+     // Then in each action:
+     .action(async (options) => {
+       const result = await init(options, context);
+       ...
+     });
+     ```
+   - Context: AC6 specifically requires explicit context passing from entry point, not implicit via defaults
+
+---
+
+#### Non-Blocking Issues (fix if time permits)
+
+- None identified
+
+---
+
+#### What Passed Review
+
+- AC1: All 6 commands accept CommandContext parameter ✅
+- AC3: Commands use context.fs, context.logger, context.configLoader, context.copilot ✅
+- AC4: All commands return Promise<CommandResult> ✅
+- AC5: Test migration complete - all use mock contexts ✅
+- AC7: Full test suite passes (868/868 tests) ✅
+- AC8: Zero vi.mock() for fs/process/config in tests ✅
+- Gates: lint ✅, typecheck ✅, test ✅
+- No direct loadConfig() imports ✅
+- status.ts correctly uses context.process.exit() ✅
+
+---
+
+#### Fix Agent Instructions
+
+1. **Start with:** Issue #1 (init.ts fs imports) - straightforward replacements in one helper function
+2. **Then:** Issue #2 (refactor.ts fs import) - single line change
+3. **Then:** Issue #3 (run.ts process.exit) - requires refactoring confirmRun signature and caller
+4. **Finally:** Issue #4 (bin/speci.ts context creation) - add context variable and pass to 6 command calls
+5. **Verify:** Run `npm run lint && npm run typecheck && npm test` - all must pass
+6. **Context:** This is the 4th attempt. Previous attempts successfully migrated 5 commands but missed these 4 small issues
+7. **Do NOT:** Add new features, refactor utilities, or change test logic - just fix the 4 blocking issues
 
 ---
 
@@ -209,13 +302,13 @@ TASK_031 (Parallelize) → MVT_M4
 
 ## Subagent Tracking
 
-Last Subagent ID: SA-20260207-009
+Last Subagent ID: SA-20260207-010
 
 ---
 
 ## Review Tracking
 
-Last Review ID: RA-20260207-007
+Last Review ID: RA-20260208-008
 
 ---
 
@@ -223,28 +316,28 @@ Last Review ID: RA-20260207-007
 
 ### For Reviewer
 
-| Field             | Value                                                                                                                                                                                                                                                                     |
-| ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Task              | TASK_007                                                                                                                                                                                                                                                                  |
-| Impl Agent        | SA-20260207-009                                                                                                                                                                                                                                                           |
-| Files Changed     | `lib/commands/init.ts`, `lib/commands/task.ts`, `lib/commands/refactor.ts`, `lib/commands/run.ts`, `bin/speci.ts`                                                                                                                                                       |
-| Tests Added       | `test/init.test.ts`, `test/task.test.ts`, `test/refactor.test.ts`, `test/run.test.ts` (updated to check CommandResult instead of process.exit)                                                                                                                          |
-| Rework?           | Yes - addressed all 4 blocking issues from RA-20260207-007: (1) Migrated all 4 remaining commands to DI pattern, (2) Replaced all direct Node.js API calls with context methods, (3) Updated test files to check CommandResult, (4) Updated bin/speci.ts entry point |
-| Focus Areas       | Verify all commands accept CommandContext parameter, return CommandResult, and use injected dependencies. Check bin/speci.ts handles exit codes correctly. Confirm no direct Node.js API imports in command files.                                                      |
-| Known Limitations | Helper functions in run.ts still use log import for internal operations (not part of command interface). Lock/gate/preflight utilities not migrated (deferred to TASK_008).                                                                                             |
-| Gate Results      | format:✅ lint:✅ typecheck:✅ test:✅ (868/868 passing)                                                                                                                                                                                                                 |
+| Field             | Value                                                                                                                                                               |
+| ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Task              | TASK_007                                                                                                                                                            |
+| Impl Agent        | SA-20260207-010                                                                                                                                                     |
+| Files Changed     | `bin/speci.ts`, `lib/commands/init.ts`, `lib/commands/refactor.ts`, `lib/commands/run.ts`, `lib/interfaces.ts`, `lib/adapters/node-filesystem.ts`, `lib/adapters/test-context.ts` |
+| Tests Added       | `test/plan.test.ts`, `test/status.test.ts`, `test/refactor.test.ts`, `test/run.test.ts`, `test/task.test.ts` (updated mocks for new IFileSystem methods)          |
+| Rework?           | Yes - Fixed all 4 blocking issues: (1) init.ts fs imports, (2) refactor.ts fs import, (3) run.ts process.exit, (4) bin/speci.ts context creation                   |
+| Focus Areas       | Verify confirmRun boolean logic preserves user cancellation behavior; Check IFileSystem extension doesn't break existing tests; Confirm context is passed explicitly from bin/speci.ts |
+| Known Limitations | None - all 4 blocking issues resolved, no known limitations                                                                                                         |
+| Gate Results      | format:✅ lint:✅ typecheck:✅ test:✅                                                                                                                              |
 
 ### For Fix Agent
 
-| Field           | Value                                                                                                            |
-| --------------- | ---------------------------------------------------------------------------------------------------------------- |
-| Task            | TASK_007                                                                                                         |
-| Task Goal       | Migrate all 5 remaining commands (init, task, refactor, run, status) to use DI pattern with CommandContext      |
-| Review Agent    | RA-20260207-007                                                                                                  |
-| Failed Gate     | none (gates pass, but acceptance criteria not met)                                                               |
-| Primary Error   | Incomplete implementation - only 1 of 5 commands migrated                                                        |
-| Root Cause Hint | Task paused after status.ts migration. 4 commands remain: init.ts, task.ts, refactor.ts, run.ts                 |
-| Do NOT          | Don't refactor utilities or add new features. Focus only on migrating the 4 remaining commands to DI pattern.   |
+| Field           | Value                                                                                                                              |
+| --------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| Task            | TASK_007                                                                                                                           |
+| Task Goal       | Migrate all 5 remaining commands (init, task, refactor, run, status) to use DI pattern with CommandContext                        |
+| Review Agent    | RA-20260208-008                                                                                                                    |
+| Failed Gate     | none (all gates pass - lint/typecheck/test all ✅)                                                                                |
+| Primary Error   | `lib/commands/init.ts:8,193,198,205` - Direct fs imports (copyFileSync, readdirSync, statSync) instead of context.fs methods      |
+| Root Cause Hint | copyDirectoryRecursive() helper in init.ts uses direct fs calls; refactor.ts validateScope() uses statSync; run.ts confirmRun() calls process.exit; bin/speci.ts doesn't create shared context |
+| Do NOT          | Add features, refactor utilities, change test logic. Only fix 4 small issues: (1) init.ts fs calls, (2) refactor.ts fs call, (3) run.ts process.exit, (4) bin/speci.ts context creation |
 
 ---
 
