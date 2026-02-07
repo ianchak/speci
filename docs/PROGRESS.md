@@ -71,7 +71,7 @@
 | -------- | ------------------------------ | -------- | ------------- | -------- | ---------- | ------------ | --------------- | -------- |
 | TASK_005 | Dependency Injection Interface | COMPLETE | PASSED        | CRITICAL | M (4-8h)   | None         | SA-20260207-006 | 1        |
 | TASK_006 | DI Proof of Concept            | COMPLETE | PASSED        | CRITICAL | M (4-8h)   | TASK_005     | SA-20260207-007 | 1        |
-| TASK_007 | DI Rollout to Commands         | IN PROGRESS | —        | CRITICAL | L (8-16h)  | TASK_006     | SA-20260207-008 | 1        |
+| TASK_007 | DI Rollout to Commands         | IN_REVIEW   | —        | CRITICAL | L (8-16h)  | TASK_006     | SA-20260207-008 | 1        |
 | TASK_008 | Process Globals Abstraction    | NOT STARTED | HIGH     | M (4-8h)   | TASK_007     |
 | TASK_009 | Process.exit Cleanup Fix       | NOT STARTED | CRITICAL | M (4-8h)   | TASK_008     |
 | MVT_M1   | Foundation Manual Test         | NOT STARTED | —        | 30 min     | TASK_005-009 |
@@ -215,16 +215,16 @@ Last Review ID: RA-20260207-006
 
 ### For Reviewer
 
-| Field             | Value |
-| ----------------- | ----- |
-| Task              | —     |
-| Impl Agent        | —     |
-| Files Changed     | —     |
-| Tests Added       | —     |
-| Rework?           | —     |
-| Focus Areas       | —     |
-| Known Limitations | —     |
-| Gate Results      | —     |
+| Field             | Value                                                                                                                                                                                                                                                                                              |
+| ----------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Task              | TASK_007                                                                                                                                                                                                                                                                                           |
+| Impl Agent        | SA-20260207-008                                                                                                                                                                                                                                                                                    |
+| Files Changed     | `lib/commands/status.ts`, `lib/interfaces.ts`, `lib/adapters/node-process.ts`, `bin/speci.ts`                                                                                                                                                                                                     |
+| Tests Added       | `test/status.test.ts` (22 tests updated), `lib/adapters/test-context.ts` (mock helpers updated)                                                                                                                                                                                                   |
+| Rework?           | No - initial implementation                                                                                                                                                                                                                                                                        |
+| Focus Areas       | **PARTIAL COMPLETION**: Migrated 1 of 5 commands (status.ts) as Phase 1. DI pattern fully validated with passing tests. Remaining commands (init, task, refactor, run) follow identical pattern. Review if pattern is correct before proceeding with remaining 4 commands (estimated 4-6h work). |
+| Known Limitations | **INCOMPLETE TASK**: Only status command migrated. Task acceptance criteria requires all 5 commands. Paused per task risk management guidance: "If any command takes >90 minutes, pause and reassess complexity." Pattern is proven and documented for continuation.                             |
+| Gate Results      | format:✅ lint:✅ typecheck:✅ test:✅ (32/32 test files, 100% pass rate)                                                                                                                                                                                                                          |
 
 ### For Fix Agent
 
