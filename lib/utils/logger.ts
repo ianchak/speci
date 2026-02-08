@@ -5,6 +5,7 @@
  * Supports verbose mode via the SPECI_DEBUG environment variable or setVerbose() function.
  */
 
+import type { WriteStream } from 'node:fs';
 import { colorize } from '@/ui/colors.js';
 import { getGlyph } from '@/ui/glyphs.js';
 import { drawBox } from '@/ui/box.js';
@@ -175,4 +176,18 @@ export function logError(error: Error, context?: string): void {
 export function logSection(title: string, subtitle?: string): void {
   const content = subtitle ? [title, colorize(subtitle, 'dim')] : [title];
   console.log(drawBox(content, { borderColor: 'sky500', padding: 0 }));
+}
+
+/**
+ * Close a log file stream gracefully
+ *
+ * @param logFile - WriteStream to close
+ * @returns Promise that resolves when the log file is closed
+ */
+export async function closeLogFile(logFile: WriteStream): Promise<void> {
+  return new Promise<void>((resolve) => {
+    logFile.end(() => {
+      resolve();
+    });
+  });
 }

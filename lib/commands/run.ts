@@ -23,7 +23,8 @@ import { runGate } from '@/utils/gate.js';
 import { runAgent } from '@/copilot.js';
 import { renderBanner } from '@/ui/banner.js';
 import { createError } from '@/errors.js';
-import { log } from '@/utils/logger.js';
+import { log, closeLogFile } from '@/utils/logger.js';
+import { handleCommandError } from '@/utils/error-handler.js';
 import {
   installSignalHandlers,
   registerCleanup,
@@ -122,12 +123,7 @@ export async function run(
   // Register log file cleanup
   registerCleanup(async () => {
     try {
-      // Wait for log file to finish writing
-      await new Promise<void>((resolve) => {
-        logFile.end(() => {
-          resolve();
-        });
-      });
+      await closeLogFile(logFile);
     } catch {
       // Log file may not be initialized if we exited early
     }
@@ -138,32 +134,12 @@ export async function run(
     await mainLoop(loadedConfig, maxIterations, logFile, options, context);
     return { success: true, exitCode: 0 };
   } catch (error) {
-    if (error instanceof Error) {
-      context.logger.error(`Run command failed: ${error.message}`);
-      return {
-        success: false,
-        exitCode: 1,
-        error: error.message,
-      };
-    } else {
-      const errorMsg = String(error);
-      context.logger.error(`Run command failed: ${errorMsg}`);
-      return {
-        success: false,
-        exitCode: 1,
-        error: errorMsg,
-      };
-    }
+    return handleCommandError(error, 'Run', context.logger);
   } finally {
     // 10. Cleanup
     await releaseLock(loadedConfig);
     try {
-      // Wait for log file to finish writing
-      await new Promise<void>((resolve) => {
-        logFile.end(() => {
-          resolve();
-        });
-      });
+      await closeLogFile(logFile);
     } catch {
       // Log file may not be initialized if we exited early
     }

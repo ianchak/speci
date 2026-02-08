@@ -11,6 +11,7 @@ import { drawBox } from '@/ui/box.js';
 import { colorize } from '@/ui/colors.js';
 import { createProductionContext } from '@/adapters/context-factory.js';
 import { initializeCommand } from '@/utils/command-helpers.js';
+import { handleCommandError } from '@/utils/error-handler.js';
 import type { CommandContext, CommandResult } from '@/interfaces.js';
 import type { SpeciConfig } from '@/config.js';
 
@@ -177,22 +178,7 @@ export async function plan(
       return { success: false, exitCode };
     }
   } catch (error) {
-    if (error instanceof Error) {
-      context.logger.error(`Plan command failed: ${error.message}`);
-      return {
-        success: false,
-        exitCode: 1,
-        error: error.message,
-      };
-    } else {
-      const errorMsg = String(error);
-      context.logger.error(`Plan command failed: ${errorMsg}`);
-      return {
-        success: false,
-        exitCode: 1,
-        error: errorMsg,
-      };
-    }
+    return handleCommandError(error, 'Plan', context.logger);
   }
 }
 

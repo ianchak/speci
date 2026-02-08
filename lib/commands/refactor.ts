@@ -11,6 +11,7 @@ import { renderBanner } from '@/ui/banner.js';
 import { infoBox } from '@/ui/box.js';
 import { createProductionContext } from '@/adapters/context-factory.js';
 import { initializeCommand } from '@/utils/command-helpers.js';
+import { handleCommandError } from '@/utils/error-handler.js';
 import type { CommandContext, CommandResult } from '@/interfaces.js';
 import type { SpeciConfig } from '@/config.js';
 
@@ -155,30 +156,22 @@ export async function refactor(
       return { success: false, exitCode };
     }
   } catch (error) {
-    if (error instanceof Error) {
-      // Special handling for agent file not found
-      if (error.message.includes('Agent file not found')) {
-        context.logger.error(error.message);
-        context.logger.info(
-          'Run "speci init" to create agents or provide --agent <filename>'
-        );
-      } else {
-        context.logger.error(`Refactor command failed: ${error.message}`);
-      }
+    // Special handling for agent file not found
+    if (
+      error instanceof Error &&
+      error.message.includes('Agent file not found')
+    ) {
+      context.logger.error(error.message);
+      context.logger.info(
+        'Run "speci init" to create agents or provide --agent <filename>'
+      );
       return {
         success: false,
         exitCode: 1,
         error: error.message,
       };
-    } else {
-      const errorMsg = String(error);
-      context.logger.error(`Refactor command failed: ${errorMsg}`);
-      return {
-        success: false,
-        exitCode: 1,
-        error: errorMsg,
-      };
     }
+    return handleCommandError(error, 'Refactor', context.logger);
   }
 }
 

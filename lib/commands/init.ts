@@ -16,6 +16,7 @@ import {
 import { CONFIG_FILENAME } from '@/constants.js';
 import { createError } from '@/errors.js';
 import { createProductionContext } from '@/adapters/context-factory.js';
+import { handleCommandError } from '@/utils/error-handler.js';
 import type { CommandContext, CommandResult } from '@/interfaces.js';
 
 /**
@@ -320,22 +321,7 @@ export async function init(
 
     return { success: true, exitCode: 0 };
   } catch (error) {
-    if (error instanceof Error) {
-      context.logger.error(`Initialization failed: ${error.message}`);
-      return {
-        success: false,
-        exitCode: 1,
-        error: error.message,
-      };
-    } else {
-      const errorMsg = String(error);
-      context.logger.error(`Initialization failed: ${errorMsg}`);
-      return {
-        success: false,
-        exitCode: 1,
-        error: errorMsg,
-      };
-    }
+    return handleCommandError(error, 'Initialization', context.logger);
   }
 }
 

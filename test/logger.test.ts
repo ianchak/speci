@@ -2,6 +2,7 @@
  * Tests for Logger Module
  */
 
+import type { WriteStream } from 'node:fs';
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { log, logSection } from '../lib/utils/logger.js';
 
@@ -252,5 +253,51 @@ describe('logSection', () => {
     expect(consoleLogSpy).toHaveBeenCalledOnce();
     const output = consoleLogSpy.mock.calls[0][0];
     expect(output).toContain('B');
+  });
+});
+
+describe('closeLogFile', () => {
+  it('should resolve when log file ends successfully', async () => {
+    const { closeLogFile } = await import('../lib/utils/logger.js');
+    const mockLogFile = {
+      end: vi.fn((callback?: () => void) => {
+        if (callback) callback();
+      }),
+    } as unknown as WriteStream;
+
+    await expect(closeLogFile(mockLogFile)).resolves.toBeUndefined();
+    expect(mockLogFile.end).toHaveBeenCalledOnce();
+  });
+
+  it('should handle log file that takes time to close', async () => {
+    const { closeLogFile } = await import('../lib/utils/logger.js');
+    const mockLogFile = {
+      end: vi.fn((callback?: () => void) => {
+        setTimeout(() => {
+          if (callback) callback();
+        }, 10);
+      }),
+    } as unknown as WriteStream;
+
+    await expect(closeLogFile(mockLogFile)).resolves.toBeUndefined();
+    expect(mockLogFile.end).toHaveBeenCalledOnce();
+  });
+
+  it('should provide callback to end method', async () => {
+    const { closeLogFile } = await import('../lib/utils/logger.js');
+    let endCallback: (() => void) | undefined;
+    const mockLogFile = {
+      end: vi.fn((callback?: () => void) => {
+        endCallback = callback;
+      }),
+    } as unknown as WriteStream;
+
+    const promise = closeLogFile(mockLogFile);
+    expect(mockLogFile.end).toHaveBeenCalledOnce();
+    expect(endCallback).toBeDefined();
+
+    // Manually trigger callback
+    if (endCallback) endCallback();
+    await expect(promise).resolves.toBeUndefined();
   });
 });
