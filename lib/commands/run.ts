@@ -272,9 +272,7 @@ async function handleWorkLeft(
   logAgent(logFile, 'impl', implResult.isSuccess ? 'SUCCESS' : 'FAILED');
 
   if (!implResult.isSuccess) {
-    context.logger.error(
-      `Implementation agent failed: ${implResult.error ?? 'Unknown error'}`
-    );
+    context.logger.error(`Implementation agent failed: ${implResult.error}`);
     return;
   }
 
@@ -307,9 +305,7 @@ async function handleWorkLeft(
     );
 
     if (!fixResult.isSuccess) {
-      context.logger.error(
-        `Fix agent failed: ${fixResult.error ?? 'Unknown error'}`
-      );
+      context.logger.error(`Fix agent failed: ${fixResult.error}`);
       break;
     }
 
@@ -351,9 +347,7 @@ async function handleInReview(
   logAgent(logFile, 'review', reviewResult.isSuccess ? 'SUCCESS' : 'FAILED');
 
   if (!reviewResult.isSuccess) {
-    context.logger.error(
-      `Review agent failed: ${reviewResult.error ?? 'Unknown error'}`
-    );
+    context.logger.error(`Review agent failed: ${reviewResult.error}`);
   }
 }
 
@@ -377,9 +371,7 @@ async function handleBlocked(
   logAgent(logFile, 'tidy', tidyResult.isSuccess ? 'SUCCESS' : 'FAILED');
 
   if (!tidyResult.isSuccess) {
-    context.logger.error(
-      `Tidy agent failed: ${tidyResult.error ?? 'Unknown error'}`
-    );
+    context.logger.error(`Tidy agent failed: ${tidyResult.error}`);
   }
 }
 

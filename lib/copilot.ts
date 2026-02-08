@@ -36,12 +36,26 @@ export interface CopilotArgsOptions {
 
 /**
  * Result of running an agent
+ *
+ * This is a discriminated union type that uses the `isSuccess` property as the discriminator.
+ * When `isSuccess` is `true`, the result is guaranteed to have `exitCode: 0` with no error.
+ * When `isSuccess` is `false`, the result is guaranteed to have a non-zero `exitCode` and an `error` message.
+ *
+ * @example
+ * ```typescript
+ * const result = await runAgent(config, 'impl', 'Implementation');
+ * if (result.isSuccess) {
+ *   // TypeScript knows exitCode is 0, error doesn't exist
+ *   console.log('Success!');
+ * } else {
+ *   // TypeScript knows error exists (no optional chaining needed)
+ *   console.error(result.error);
+ * }
+ * ```
  */
-export interface AgentRunResult {
-  isSuccess: boolean;
-  exitCode: number;
-  error?: string;
-}
+export type AgentRunResult =
+  | { isSuccess: true; exitCode: 0 }
+  | { isSuccess: false; exitCode: number; error: string };
 
 /**
  * Retry policy for transient failures

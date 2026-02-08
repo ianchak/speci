@@ -281,9 +281,7 @@ describe('CLI Entry Point', () => {
 
     it('should provide suggestions for typos using findSimilarCommands', async () => {
       // Import the actual suggest utility
-      const { findSimilarCommands } = await import(
-        '../lib/utils/suggest.js'
-      );
+      const { findSimilarCommands } = await import('../lib/utils/suggest.js');
 
       const availableCommands = [
         'init',

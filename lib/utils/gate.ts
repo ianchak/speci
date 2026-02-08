@@ -14,6 +14,9 @@ const DEFAULT_TIMEOUT = 5 * 60 * 1000; // 5 minutes
 
 /**
  * Result from a single gate command execution
+ *
+ * Note: This interface keeps error as a string field (not optional) because
+ * gate commands always return stderr output. On success, error will be empty string.
  */
 export interface GateCommandResult {
   command: string;
@@ -26,13 +29,31 @@ export interface GateCommandResult {
 
 /**
  * Aggregate result from all gate commands
+ *
+ * This is a discriminated union type that uses the `isSuccess` property as the discriminator.
+ * When `isSuccess` is `true`, all commands passed and there is no error.
+ * When `isSuccess` is `false`, at least one command failed and `error` contains the first failure message.
+ *
+ * @example
+ * ```typescript
+ * const result = await runGate(config);
+ * if (result.isSuccess) {
+ *   // TypeScript knows error doesn't exist
+ *   console.log('All gates passed!');
+ * } else {
+ *   // TypeScript knows error exists (no optional chaining needed)
+ *   console.error(result.error);
+ * }
+ * ```
  */
-export interface GateResult {
-  isSuccess: boolean;
-  results: GateCommandResult[];
-  error?: string;
-  totalDuration: number;
-}
+export type GateResult =
+  | { isSuccess: true; results: GateCommandResult[]; totalDuration: number }
+  | {
+      isSuccess: false;
+      results: GateCommandResult[];
+      error: string;
+      totalDuration: number;
+    };
 
 /**
  * Execute a single gate command
@@ -142,20 +163,26 @@ export async function runGate(config: SpeciConfig): Promise<GateResult> {
 
   const totalDuration = Date.now() - startTime;
   const isSuccess = results.every((r) => r.isSuccess);
-  const firstError = results.find((r) => !r.isSuccess);
 
   if (isSuccess) {
     log.success(
       `Gate passed! All ${commands.length} checks completed in ${totalDuration}ms`
     );
-  } else {
-    log.error(`Gate failed: ${firstError?.command}`);
+    return {
+      isSuccess: true,
+      results,
+      totalDuration,
+    };
   }
 
+  // At least one command failed
+  const firstError = results.find((r) => !r.isSuccess);
+  log.error(`Gate failed: ${firstError?.command}`);
+
   return {
-    isSuccess,
+    isSuccess: false,
     results,
-    error: firstError?.error,
+    error: firstError?.error ?? 'Unknown gate failure',
     totalDuration,
   };
 }

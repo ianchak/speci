@@ -145,7 +145,7 @@ export function createMockCopilotRunner(): ICopilotRunner {
   return {
     buildArgs: vi.fn(() => []),
     spawn: vi.fn(async () => 0),
-    run: vi.fn(async () => ({ isSuccess: true, exitCode: 0 })),
+    run: vi.fn(async () => ({ isSuccess: true, exitCode: 0 }) as const),
   };
 }
 

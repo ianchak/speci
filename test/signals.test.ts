@@ -282,11 +282,7 @@ describe('Signal Handling', () => {
       });
 
       // Test rapid cleanup calls directly (safer than emitting actual signals)
-      const cleanupPromises = [
-        runCleanup(),
-        runCleanup(),
-        runCleanup(),
-      ];
+      const cleanupPromises = [runCleanup(), runCleanup(), runCleanup()];
 
       await Promise.all(cleanupPromises);
 

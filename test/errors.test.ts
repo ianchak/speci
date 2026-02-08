@@ -2,7 +2,7 @@
  * Tests for error catalog module (lib/errors.ts)
  *
  * Verifies error code definitions, formatting, and error creation
- * for all 19 error codes in the catalog.
+ * for all 17 error codes in the catalog.
  */
 
 import { describe, it, expect } from 'vitest';
@@ -128,8 +128,9 @@ describe('Error Catalog', () => {
       expect(def?.message).toBe('Copilot execution failed');
     });
 
-    it('should return definition for all 17 error codes', () => {
+    it('should return definition for each of the 17 error codes', () => {
       const allCodes = Object.keys(ERROR_CODES);
+      expect(allCodes.length).toBe(17);
       for (const code of allCodes) {
         const def = getErrorDefinition(code);
         expect(def, `${code} should have a definition`).toBeDefined();

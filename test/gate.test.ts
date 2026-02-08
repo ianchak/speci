@@ -127,7 +127,10 @@ describe('Gate Runner', () => {
 
       expect(result.isSuccess).toBe(true);
       expect(result.results.every((r) => r.isSuccess)).toBe(true);
-      expect(result.error).toBeUndefined();
+      if (result.isSuccess) {
+        // Success case doesn't have error property
+        expect('error' in result).toBe(false);
+      }
     });
 
     it('should return failure when any command fails', async () => {
@@ -142,7 +145,9 @@ describe('Gate Runner', () => {
       const result = await runGate(failConfig);
 
       expect(result.isSuccess).toBe(false);
-      expect(result.error).toBeDefined();
+      if (!result.isSuccess) {
+        expect(result.error).toBeDefined();
+      }
       expect(result.results).toHaveLength(3);
       expect(result.results[1].isSuccess).toBe(false);
     });
@@ -423,6 +428,107 @@ describe('Gate Runner', () => {
       expect(fastResult.isSuccess).toBe(true);
       expect(slowResult.isSuccess).toBe(true);
       expect(fastResult.totalDuration).toBeLessThan(slowResult.totalDuration);
+    });
+  });
+
+  describe('Discriminated Union Types', () => {
+    describe('GateCommandResult', () => {
+      it('should not have error property on successful command', async () => {
+        const result = await executeGateCommand('echo success');
+
+        if (result.isSuccess) {
+          expect(result.exitCode).toBe(0);
+          // Error field should be empty string on success (not undefined)
+          expect(result.error).toBe('');
+        }
+      });
+
+      it('should always have error message on failed command', async () => {
+        const result = await executeGateCommand('node -e "process.exit(1)"');
+
+        if (!result.isSuccess) {
+          expect(result.error).toBeDefined();
+          expect(result.exitCode).toBeGreaterThan(0);
+        }
+      });
+    });
+
+    describe('GateResult', () => {
+      const successConfig: SpeciConfig = {
+        version: '1.0.0',
+        paths: {
+          progress: 'docs/PROGRESS.md',
+          tasks: 'docs/tasks',
+          logs: 'logs',
+          lock: '.speci.lock',
+        },
+        agents: {
+          plan: null,
+          task: null,
+          refactor: null,
+          impl: null,
+          review: null,
+          fix: null,
+          tidy: null,
+        },
+        copilot: {
+          permissions: 'allow-all',
+          model: null,
+          models: {
+            plan: null,
+            task: null,
+            refactor: null,
+            impl: null,
+            review: null,
+            fix: null,
+            tidy: null,
+          },
+          extraFlags: [],
+        },
+        gate: {
+          commands: ['echo test'],
+          maxFixAttempts: 3,
+        },
+        loop: {
+          maxIterations: 10,
+        },
+      };
+
+      const failConfig: SpeciConfig = {
+        ...successConfig,
+        gate: {
+          ...successConfig.gate,
+          commands: ['node -e "process.exit(1)"'],
+        },
+      };
+
+      it('should not have error property on successful gate', async () => {
+        const result = await runGate(successConfig);
+
+        if (result.isSuccess) {
+          // @ts-expect-error - error should not exist on success result
+          expect(result.error).toBeUndefined();
+        }
+      });
+
+      it('should have error message on failed gate', async () => {
+        const result = await runGate(failConfig);
+
+        if (!result.isSuccess) {
+          expect(result.error).toBeDefined();
+          expect(typeof result.error).toBe('string');
+        }
+      });
+
+      it('should enable type narrowing with isSuccess check', async () => {
+        const result = await runGate(failConfig);
+
+        if (!result.isSuccess) {
+          // TypeScript should know error exists without optional chaining
+          const errorMsg: string = result.error;
+          expect(errorMsg).toBeDefined();
+        }
+      });
     });
   });
 });

@@ -272,7 +272,10 @@ describe('copilot', () => {
 
       expect(result.isSuccess).toBe(true);
       expect(result.exitCode).toBe(0);
-      expect(result.error).toBeUndefined();
+      if (result.isSuccess) {
+        // Success case doesn't have error property
+        expect('error' in result).toBe(false);
+      }
     });
 
     it('should return failure for non-zero exit code', async () => {
@@ -287,8 +290,10 @@ describe('copilot', () => {
       const result: AgentRunResult = await promise;
 
       expect(result.isSuccess).toBe(false);
-      expect(result.exitCode).toBe(1);
-      expect(result.error).toBeDefined();
+      if (!result.isSuccess) {
+        expect(result.exitCode).toBe(1);
+        expect(result.error).toBeDefined();
+      }
     });
 
     it('should retry on retryable exit codes', async () => {
@@ -331,8 +336,10 @@ describe('copilot', () => {
 
       expect(spawn).toHaveBeenCalledTimes(1); // No retries
       expect(result.isSuccess).toBe(false);
-      expect(result.exitCode).toBe(127);
-      expect(result.error).toContain('Copilot CLI not found');
+      if (!result.isSuccess) {
+        expect(result.exitCode).toBe(127);
+        expect(result.error).toContain('Copilot CLI not found');
+      }
     });
 
     it('should not retry on non-retryable exit codes', async () => {
@@ -387,6 +394,61 @@ describe('copilot', () => {
       expect(result.exitCode).toBe(429);
 
       vi.useRealTimers();
+    });
+  });
+
+  describe('Discriminated Union Types', () => {
+    describe('AgentRunResult', () => {
+      it('should have no error property on success', async () => {
+        const mockChild = new EventEmitter();
+        (spawn as ReturnType<typeof vi.fn>).mockReturnValue(mockChild);
+
+        const promise = runAgent(config, 'impl', 'Test Implementation');
+        setTimeout(() => mockChild.emit('close', 0), 10);
+
+        const result = await promise;
+
+        if (result.isSuccess) {
+          // TypeScript should allow accessing exitCode
+          expect(result.exitCode).toBe(0);
+          // @ts-expect-error - error should not exist on success result
+          expect(result.error).toBeUndefined();
+        }
+      });
+
+      it('should always have error property on failure', async () => {
+        const mockChild = new EventEmitter();
+        (spawn as ReturnType<typeof vi.fn>).mockReturnValue(mockChild);
+
+        const promise = runAgent(config, 'impl', 'Test Implementation');
+        setTimeout(() => mockChild.emit('close', 1), 10);
+
+        const result = await promise;
+
+        if (!result.isSuccess) {
+          // TypeScript should require error to be present
+          expect(result.error).toBeDefined();
+          expect(typeof result.error).toBe('string');
+          expect(result.error.length).toBeGreaterThan(0);
+        }
+      });
+
+      it('should enable type narrowing with isSuccess check', async () => {
+        const mockChild = new EventEmitter();
+        (spawn as ReturnType<typeof vi.fn>).mockReturnValue(mockChild);
+
+        const promise = runAgent(config, 'impl', 'Test Implementation');
+        setTimeout(() => mockChild.emit('close', 1), 10);
+
+        const result = await promise;
+
+        // After this check, TypeScript knows result has error property
+        if (!result.isSuccess) {
+          // No optional chaining needed
+          const errorMessage: string = result.error;
+          expect(errorMessage).toBeDefined();
+        }
+      });
     });
   });
 });

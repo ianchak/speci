@@ -289,6 +289,7 @@ describe('Run Command', () => {
               duration: 100,
             },
           ],
+          error: 'Lint failed',
           totalDuration: 100,
         })
         .mockResolvedValueOnce({
@@ -317,6 +318,7 @@ describe('Run Command', () => {
         .mockResolvedValueOnce({
           isSuccess: false,
           results: [],
+          error: 'Gate failed',
           totalDuration: 0,
         })
         .mockResolvedValueOnce({
@@ -348,6 +350,7 @@ describe('Run Command', () => {
       vi.spyOn(gate, 'runGate').mockResolvedValue({
         isSuccess: false,
         results: [],
+        error: 'Gate failed',
         totalDuration: 0,
       });
 
@@ -548,6 +551,7 @@ describe('Run Command', () => {
       vi.spyOn(gate, 'runGate').mockResolvedValue({
         isSuccess: false,
         results: [],
+        error: 'Gate failed',
         totalDuration: 0,
       });
 

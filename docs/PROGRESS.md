@@ -29,7 +29,7 @@
 | --------- | ----------------- | ------- | ------ | -------- | ----- | ----------- |
 | M0        | Quick Wins        | 001-004 | MVT_M0 | 4        | 5     | IN PROGRESS |
 | M1        | Foundation        | 005-009 | MVT_M1 | 5        | 6     | IN PROGRESS |
-| M2        | Core Improvements | 010-018 | MVT_M2 | 3        | 10    | IN PROGRESS |
+| M2        | Core Improvements | 010-018 | MVT_M2 | 4        | 10    | IN PROGRESS |
 | M3        | Polish            | 019-030 | MVT_M3 | 0        | 13    | NOT STARTED |
 | M4        | Optimization      | 031-038 | MVT_M4 | 0        | 9     | NOT STARTED |
 
@@ -43,7 +43,7 @@
 | --------- | ---------- | ----------- | -------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | M0        | Quick Wins | In Progress | TASK_001-004   | Coverage tracking infrastructure added with baseline 82.74% lines coverage; All lib/ files now use TypeScript path aliases; Magic strings extracted to lib/constants.ts module with comprehensive test coverage; Boolean properties standardized with semantic prefixes (is*, should*) |
 | M1        | Foundation | In Progress | TASK_005-009   | Dependency injection interfaces and adapters established; CommandContext pattern enables testable commands; Production context factory and test utilities ready; Plan command successfully migrated to DI pattern as proof of concept, validating architecture for rollout; All 6 commands now migrated to DI pattern with context-based dependencies; Process globals abstracted with IProcess interface enabling full test isolation; All process.exit() calls fixed to ensure cleanup runs before termination, eliminating resource leaks |
-| M2        | Core Improvements | In Progress | TASK_010-012   | Comprehensive integration test suite covering end-to-end workflows with 30 passing tests; Real file I/O with isolated temp directories; Mock Copilot CLI execution; Separate vitest configuration with appropriate timeouts; Error recovery scenarios verified; CLI entry point fully tested with 28 unit tests verifying command registration, aliases, options, unknown command handling, banner display, and help text; All 951 tests passing; Race condition tests added with 50+ tests across lock, gate, signals, and state modules verifying concurrent operations |
+| M2        | Core Improvements | In Progress | TASK_010-013   | Comprehensive integration test suite covering end-to-end workflows with 30 passing tests; Real file I/O with isolated temp directories; Mock Copilot CLI execution; Separate vitest configuration with appropriate timeouts; Error recovery scenarios verified; CLI entry point fully tested with 28 unit tests verifying command registration, aliases, options, unknown command handling, banner display, and help text; All 987 tests passing; Race condition tests added with 50+ tests across lock, gate, signals, and state modules verifying concurrent operations; Error catalog fully tested with 36 tests covering all 17 error codes, formatError(), createError(), naming conventions, and message quality |
 
 ---
 
@@ -93,8 +93,8 @@
 | TASK_010 | Integration Test Suite          | COMPLETE    | PASSED        | CRITICAL | L (8-16h)  | TASK_001, TASK_009 | SA-20260208-003 | 2        |
 | TASK_011 | CLI Entry Point Tests           | COMPLETE    | PASSED        | HIGH     | M (4-8h)   | TASK_010           | SA-20260208-004 | 1        |
 | TASK_012 | Race Condition Tests            | COMPLETE    | PASSED        | HIGH     | M (4-8h)   | TASK_010           | SA-20260208-005 | 1        |
-| TASK_013 | Error Catalog Tests             | IN PROGRESS | —             | HIGH     | S (≤2h)    | TASK_010           | SA-20260208-006 | 1        |
-| TASK_014 | Discriminated Union Error Types | NOT STARTED | HIGH     | L (8-16h)  | TASK_009           |
+| TASK_013 | Error Catalog Tests             | COMPLETE    | PASSED        | HIGH     | S (≤2h)    | TASK_010           | SA-20260208-006 | 1        |
+| TASK_014 | Discriminated Union Error Types | IN PROGRESS | —         | HIGH     | L (8-16h)  | TASK_009           | SA-20260208-007 | 1        |
 | TASK_015 | Standardize Logging             | NOT STARTED | MEDIUM   | M (4-8h)   | TASK_008           |
 | TASK_016 | Extract Command Initialization  | NOT STARTED | HIGH     | M (4-8h)   | TASK_007           |
 | TASK_017 | Encapsulate Module-Level State  | NOT STARTED | HIGH     | M (4-8h)   | TASK_007           |
@@ -202,13 +202,13 @@ TASK_031 (Parallelize) → MVT_M4
 
 ## Subagent Tracking
 
-Last Subagent ID: SA-20260208-006
+Last Subagent ID: SA-20260208-007
 
 ---
 
 ## Review Tracking
 
-Last Review ID: RA-20260208-015
+Last Review ID: RA-20260208-016
 
 ---
 
@@ -243,19 +243,19 @@ Last Review ID: RA-20260208-015
 
 ## Summary Statistics
 
-**Overall Progress**: 27.91% Complete (12/43 items)
+**Overall Progress**: 30.23% Complete (13/43 items)
 
 **By Category**:
 
-- Tasks: 12/38 complete
+- Tasks: 13/38 complete
 - MVTs: 0/5 complete
-- Total Items: 12/43 complete
+- Total Items: 13/43 complete
 
 **By Milestone**:
 
 - M0 Quick Wins: 4/5 complete (80%)
 - M1 Foundation: 5/6 complete (83.3%)
-- M2 Core Improvements: 3/10 complete (30%)
+- M2 Core Improvements: 4/10 complete (40%)
 - M3 Polish: 0/13 complete (0%)
 - M4 Optimization: 0/9 complete (0%)
 
