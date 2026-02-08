@@ -338,4 +338,213 @@ Some random text
       expect(endTime - startTime).toBeLessThan(100); // Should complete in <100ms
     });
   });
+
+  describe('Race Conditions', () => {
+    it('should handle concurrent getState calls', async () => {
+      const content = `# Progress
+| Task ID  | Title | Status      |
+| -------- | ----- | ----------- |
+| TASK_001 | Setup | COMPLETE    |
+| TASK_002 | Parse | NOT STARTED |
+| TASK_003 | Test  | IN_REVIEW   |
+`;
+      writeFileSync(mockConfig.paths.progress, content);
+
+      // Call getState multiple times concurrently
+      const results = await Promise.all([
+        getState(mockConfig),
+        getState(mockConfig),
+        getState(mockConfig),
+        getState(mockConfig),
+      ]);
+
+      // All results should be identical
+      results.forEach((state) => {
+        expect(state).toBe(STATE.IN_REVIEW);
+      });
+    });
+
+    it('should handle concurrent getTaskStats calls', async () => {
+      const content = `# Progress
+| Task ID  | Title    | Status      |
+| -------- | -------- | ----------- |
+| TASK_001 | Setup    | COMPLETE    |
+| TASK_002 | Parse    | IN_REVIEW   |
+| TASK_003 | Test     | NOT STARTED |
+`;
+      writeFileSync(mockConfig.paths.progress, content);
+
+      // Call getTaskStats multiple times concurrently
+      const results = await Promise.all([
+        getTaskStats(mockConfig),
+        getTaskStats(mockConfig),
+        getTaskStats(mockConfig),
+      ]);
+
+      // All results should be identical
+      results.forEach((stats) => {
+        expect(stats.total).toBe(3);
+        expect(stats.completed).toBe(1);
+        expect(stats.remaining).toBe(1);
+        expect(stats.inReview).toBe(1);
+      });
+    });
+
+    it('should handle concurrent reads with different configs', async () => {
+      // Create two different progress files
+      const content1 = `# Progress
+| Task ID  | Title | Status   |
+| -------- | ----- | -------- |
+| TASK_001 | Test1 | COMPLETE |
+`;
+      const content2 = `# Progress
+| Task ID  | Title | Status      |
+| -------- | ----- | ----------- |
+| TASK_001 | Test1 | NOT STARTED |
+`;
+
+      const path1 = join(testDir, 'PROGRESS1.md');
+      const path2 = join(testDir, 'PROGRESS2.md');
+
+      writeFileSync(path1, content1);
+      writeFileSync(path2, content2);
+
+      const config1: SpeciConfig = {
+        ...mockConfig,
+        paths: { ...mockConfig.paths, progress: path1 },
+      };
+      const config2: SpeciConfig = {
+        ...mockConfig,
+        paths: { ...mockConfig.paths, progress: path2 },
+      };
+
+      // Read from both configs concurrently
+      const [state1, state2] = await Promise.all([
+        getState(config1),
+        getState(config2),
+      ]);
+
+      expect(state1).toBe(STATE.DONE);
+      expect(state2).toBe(STATE.WORK_LEFT);
+    });
+
+    it('should handle rapid sequential state reads', async () => {
+      const content = `# Progress
+| Task ID  | Title | Status   |
+| -------- | ----- | -------- |
+| TASK_001 | Test  | BLOCKED  |
+`;
+      writeFileSync(mockConfig.paths.progress, content);
+
+      // Perform many rapid reads
+      const promises = [];
+      for (let i = 0; i < 20; i++) {
+        promises.push(getState(mockConfig));
+      }
+
+      const results = await Promise.all(promises);
+
+      // All should return the same state
+      results.forEach((state) => {
+        expect(state).toBe(STATE.BLOCKED);
+      });
+    });
+
+    it('should handle concurrent mixed state operations', async () => {
+      const content = `# Progress
+
+| Task ID  | Title | Status      |
+| -------- | ----- | ----------- |
+| TASK_001 | Setup | COMPLETE    |
+| TASK_002 | Parse | IN_PROGRESS |
+| TASK_003 | Test  | NOT STARTED |
+`;
+      writeFileSync(mockConfig.paths.progress, content);
+
+      // Mix different operations concurrently
+      const [state1, stats1, state2, stats2] = await Promise.all([
+        getState(mockConfig),
+        getTaskStats(mockConfig),
+        getState(mockConfig),
+        getTaskStats(mockConfig),
+      ]);
+
+      // Verify consistency
+      expect(state1).toBe(STATE.WORK_LEFT);
+      expect(state2).toBe(STATE.WORK_LEFT);
+      expect(stats1.total).toBeGreaterThanOrEqual(2);
+      expect(stats2.total).toBeGreaterThanOrEqual(2);
+      expect(stats1.completed).toBe(1);
+      expect(stats2.completed).toBe(1);
+    });
+
+    it('should handle concurrent hasStatePattern calls', async () => {
+      const content = '| TASK_001 | Test | BLOCKED |';
+      const pattern = /TASK_\d+\s*\|.*BLOCKED/i;
+
+      // Call hasStatePattern concurrently
+      const results = await Promise.all([
+        Promise.resolve(hasStatePattern(content, pattern)),
+        Promise.resolve(hasStatePattern(content, pattern)),
+        Promise.resolve(hasStatePattern(content, pattern)),
+      ]);
+
+      // All should return true
+      results.forEach((result) => {
+        expect(result).toBe(true);
+      });
+    });
+
+    it('should handle state reads from non-existent file concurrently', async () => {
+      // Ensure file doesn't exist
+      if (existsSync(mockConfig.paths.progress)) {
+        rmSync(mockConfig.paths.progress);
+      }
+
+      const results = await Promise.all([
+        getState(mockConfig),
+        getState(mockConfig),
+        getTaskStats(mockConfig),
+        getTaskStats(mockConfig),
+      ]);
+
+      expect(results[0]).toBe(STATE.NO_PROGRESS);
+      expect(results[1]).toBe(STATE.NO_PROGRESS);
+      expect(results[2].total).toBe(0);
+      expect(results[3].total).toBe(0);
+    });
+
+    it('should handle concurrent reads during file write', async () => {
+      // Write initial content
+      const content = `# Progress
+| Task ID  | Title | Status   |
+| -------- | ----- | -------- |
+| TASK_001 | Test  | COMPLETE |
+`;
+      writeFileSync(mockConfig.paths.progress, content);
+
+      // Start multiple reads and a write operation
+      const readPromises = [
+        getState(mockConfig),
+        getState(mockConfig),
+        getState(mockConfig),
+      ];
+
+      // Perform a write during reads
+      const writePromise = Promise.resolve().then(() => {
+        const newContent = `# Progress
+| Task ID  | Title | Status      |
+| -------- | ----- | ----------- |
+| TASK_001 | Test  | NOT STARTED |
+`;
+        writeFileSync(mockConfig.paths.progress, newContent);
+      });
+
+      await Promise.all([...readPromises, writePromise]);
+
+      // Final read should reflect the write
+      const finalState = await getState(mockConfig);
+      expect(finalState).toBe(STATE.WORK_LEFT);
+    });
+  });
 });

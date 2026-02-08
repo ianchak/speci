@@ -326,6 +326,136 @@ describe('Lock File Management', () => {
       }
     });
   });
+
+  describe('Race Conditions', () => {
+    it('allows only one concurrent lock acquisition', async () => {
+      // Trigger three simultaneous lock attempts
+      const results = await Promise.allSettled([
+        acquireLock(mockConfig),
+        acquireLock(mockConfig),
+        acquireLock(mockConfig),
+      ]);
+
+      // Exactly one should succeed, two should fail
+      const successes = results.filter((r) => r.status === 'fulfilled');
+      const failures = results.filter((r) => r.status === 'rejected');
+
+      expect(successes.length).toBe(1);
+      expect(failures.length).toBe(2);
+
+      // Both failures should have proper error messages
+      failures.forEach((failure) => {
+        if (failure.status === 'rejected') {
+          expect(failure.reason.message).toMatch(
+            /Another speci instance is running/
+          );
+        }
+      });
+    });
+
+    it('handles lock release during concurrent acquisition attempts', async () => {
+      // First, acquire the lock
+      await acquireLock(mockConfig);
+
+      // Start multiple acquisition attempts that will fail
+      const acquisitionPromises = [
+        acquireLock(mockConfig).catch((err) => err),
+        acquireLock(mockConfig).catch((err) => err),
+      ];
+
+      // Release the lock while attempts are pending
+      await releaseLock(mockConfig);
+
+      // All attempts should still fail since lock existed when they checked
+      const results = await Promise.all(acquisitionPromises);
+
+      results.forEach((result) => {
+        expect(result).toBeInstanceOf(Error);
+        expect((result as Error).message).toMatch(
+          /Another speci instance is running/
+        );
+      });
+    });
+
+    it('handles concurrent lock and isLocked checks', async () => {
+      // Run lock acquisition and isLocked checks concurrently
+      const [lockResult, ...checkResults] = await Promise.all([
+        acquireLock(mockConfig),
+        isLocked(mockConfig),
+        isLocked(mockConfig),
+        isLocked(mockConfig),
+      ]);
+
+      // Lock should succeed
+      expect(lockResult).toBeUndefined();
+
+      // isLocked checks should either see locked or unlocked state
+      // (timing dependent but all should return boolean)
+      checkResults.forEach((result) => {
+        expect(typeof result).toBe('boolean');
+      });
+
+      // After all operations, lock should definitely be acquired
+      const finalCheck = await isLocked(mockConfig);
+      expect(finalCheck).toBe(true);
+    });
+
+    it('handles concurrent getLockInfo calls', async () => {
+      await acquireLock(mockConfig);
+
+      // Trigger multiple simultaneous getLockInfo calls
+      const results = await Promise.all([
+        getLockInfo(mockConfig),
+        getLockInfo(mockConfig),
+        getLockInfo(mockConfig),
+        getLockInfo(mockConfig),
+      ]);
+
+      // All results should be consistent
+      results.forEach((info) => {
+        expect(info.isLocked).toBe(true);
+        expect(info.pid).toBe(process.pid);
+        expect(info.started).toBeInstanceOf(Date);
+        expect(info.elapsed).toMatch(/^\d{2}:\d{2}:\d{2}$/);
+      });
+
+      // All timestamps should be very close (within 1 second)
+      const timestamps = results.map((r) => r.started?.getTime() ?? 0);
+      const minTime = Math.min(...timestamps);
+      const maxTime = Math.max(...timestamps);
+      expect(maxTime - minTime).toBeLessThan(1000);
+    });
+
+    it('handles rapid lock/release cycles', async () => {
+      // Perform 10 rapid lock/release cycles
+      for (let i = 0; i < 10; i++) {
+        await acquireLock(mockConfig);
+        await releaseLock(mockConfig);
+      }
+
+      // Lock should be released at the end
+      const isLockPresent = await isLocked(mockConfig);
+      expect(isLockPresent).toBe(false);
+    });
+
+    it('prevents race condition in concurrent acquisition with staggered timing', async () => {
+      // Stagger lock attempts slightly to test different timing scenarios
+      const results = await Promise.allSettled([
+        acquireLock(mockConfig),
+        new Promise((resolve) => setTimeout(resolve, 10)).then(() =>
+          acquireLock(mockConfig)
+        ),
+        new Promise((resolve) => setTimeout(resolve, 20)).then(() =>
+          acquireLock(mockConfig)
+        ),
+      ]);
+
+      // First should succeed, others should fail
+      expect(results[0].status).toBe('fulfilled');
+      expect(results[1].status).toBe('rejected');
+      expect(results[2].status).toBe('rejected');
+    });
+  });
 });
 
 // Helper function to parse timestamp (same as in implementation)

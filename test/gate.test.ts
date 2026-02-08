@@ -258,4 +258,171 @@ describe('Gate Runner', () => {
       expect(getGateAttempt()).toBe(0);
     });
   });
+
+  describe('Race Conditions', () => {
+    const mockConfig: SpeciConfig = {
+      version: '1.0.0',
+      paths: {
+        progress: 'docs/PROGRESS.md',
+        tasks: 'docs/tasks',
+        logs: 'logs',
+        lock: '.speci.lock',
+      },
+      agents: {
+        plan: null,
+        task: null,
+        refactor: null,
+        impl: null,
+        review: null,
+        fix: null,
+        tidy: null,
+      },
+      copilot: {
+        permissions: 'allow-all',
+        model: null,
+        models: {
+          plan: null,
+          task: null,
+          refactor: null,
+          impl: null,
+          review: null,
+          fix: null,
+          tidy: null,
+        },
+        extraFlags: [],
+      },
+      gate: {
+        commands: ['echo test1', 'echo test2', 'echo test3'],
+        maxFixAttempts: 3,
+      },
+      loop: {
+        maxIterations: 10,
+      },
+    };
+
+    beforeEach(() => {
+      resetGateAttempts();
+    });
+
+    it('should handle concurrent runGate executions', async () => {
+      // Run multiple gate executions concurrently
+      const results = await Promise.all([
+        runGate(mockConfig),
+        runGate(mockConfig),
+        runGate(mockConfig),
+      ]);
+
+      // All should succeed independently
+      results.forEach((result) => {
+        expect(result.isSuccess).toBe(true);
+        expect(result.results).toHaveLength(3);
+      });
+    });
+
+    it('should handle concurrent executeGateCommand calls', async () => {
+      // Execute multiple commands concurrently
+      const results = await Promise.all([
+        executeGateCommand('echo concurrent1'),
+        executeGateCommand('echo concurrent2'),
+        executeGateCommand('echo concurrent3'),
+        executeGateCommand('echo concurrent4'),
+      ]);
+
+      // All should succeed
+      results.forEach((result, index) => {
+        expect(result.isSuccess).toBe(true);
+        expect(result.exitCode).toBe(0);
+        expect(result.output).toContain(`concurrent${index + 1}`);
+      });
+    });
+
+    it('should maintain independent state for concurrent runGate calls', async () => {
+      const config1: SpeciConfig = {
+        ...mockConfig,
+        gate: { ...mockConfig.gate, commands: ['echo config1'] },
+      };
+      const config2: SpeciConfig = {
+        ...mockConfig,
+        gate: { ...mockConfig.gate, commands: ['echo config2'] },
+      };
+
+      // Run with different configs concurrently
+      const [result1, result2] = await Promise.all([
+        runGate(config1),
+        runGate(config2),
+      ]);
+
+      expect(result1.results[0].output).toContain('config1');
+      expect(result2.results[0].output).toContain('config2');
+    });
+
+    it('should handle rapid sequential gate executions', async () => {
+      // Execute gates in rapid succession
+      const promises = [];
+      for (let i = 0; i < 5; i++) {
+        promises.push(runGate(mockConfig));
+      }
+
+      const results = await Promise.all(promises);
+
+      // All should succeed
+      results.forEach((result) => {
+        expect(result.isSuccess).toBe(true);
+      });
+    });
+
+    it('should handle concurrent attempt counter modifications', async () => {
+      // Concurrently increment attempt counter
+      const increments = Array.from({ length: 10 }, () =>
+        Promise.resolve().then(() => incrementGateAttempt())
+      );
+
+      await Promise.all(increments);
+
+      // Final count may vary due to race conditions in the counter itself
+      // This tests that no errors occur during concurrent access
+      const finalCount = getGateAttempt();
+      expect(finalCount).toBeGreaterThan(0);
+      expect(finalCount).toBeLessThanOrEqual(10);
+    });
+
+    it('should handle concurrent canRetryGate checks', async () => {
+      // Check retry eligibility concurrently
+      const checks = await Promise.all([
+        canRetryGate(mockConfig),
+        canRetryGate(mockConfig),
+        canRetryGate(mockConfig),
+        canRetryGate(mockConfig),
+      ]);
+
+      // All should return the same result
+      const firstResult = checks[0];
+      checks.forEach((result) => {
+        expect(result).toBe(firstResult);
+      });
+    });
+
+    it('should not interfere when running gates with different configs concurrently', async () => {
+      const fastConfig: SpeciConfig = {
+        ...mockConfig,
+        gate: { ...mockConfig.gate, commands: ['echo fast'] },
+      };
+      const slowConfig: SpeciConfig = {
+        ...mockConfig,
+        gate: {
+          ...mockConfig.gate,
+          commands: ['node -e "setTimeout(() => console.log(\'slow\'), 100)"'],
+        },
+      };
+
+      const [fastResult, slowResult] = await Promise.all([
+        runGate(fastConfig),
+        runGate(slowConfig),
+      ]);
+
+      expect(fastResult.isSuccess).toBe(true);
+      expect(slowResult.isSuccess).toBe(true);
+      expect(fastResult.totalDuration).toBeLessThan(slowResult.totalDuration);
+    });
+  });
 });

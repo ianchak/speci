@@ -269,4 +269,173 @@ describe('Signal Handling', () => {
       expect(fn).toHaveBeenCalledTimes(1);
     });
   });
+
+  describe('Race Conditions', () => {
+    beforeEach(() => {
+      removeSignalHandlers();
+    });
+
+    it('should handle rapid signal emissions without installing handlers', async () => {
+      let cleanupCount = 0;
+      registerCleanup(() => {
+        cleanupCount++;
+      });
+
+      // Test rapid cleanup calls directly (safer than emitting actual signals)
+      const cleanupPromises = [
+        runCleanup(),
+        runCleanup(),
+        runCleanup(),
+      ];
+
+      await Promise.all(cleanupPromises);
+
+      // Cleanup should only run once despite multiple calls
+      expect(cleanupCount).toBe(1);
+    });
+
+    it('should handle concurrent runCleanup calls', async () => {
+      let cleanupCount = 0;
+      registerCleanup(() => {
+        cleanupCount++;
+      });
+
+      // Call runCleanup multiple times concurrently
+      await Promise.all([runCleanup(), runCleanup(), runCleanup()]);
+
+      // Cleanup should only run once
+      expect(cleanupCount).toBe(1);
+    });
+
+    it('should handle cleanup registry modifications during runCleanup', async () => {
+      const executionOrder: string[] = [];
+
+      registerCleanup(() => {
+        executionOrder.push('first');
+      });
+
+      registerCleanup(() => {
+        executionOrder.push('second');
+        // Try to register another cleanup during execution
+        registerCleanup(() => {
+          executionOrder.push('late-registration');
+        });
+      });
+
+      registerCleanup(() => {
+        executionOrder.push('third');
+      });
+
+      await runCleanup();
+
+      // Should execute in reverse order: third, second, first
+      // Late registration should not execute
+      expect(executionOrder).toEqual(['third', 'second', 'first']);
+    });
+
+    it('should handle unregister during cleanup execution', async () => {
+      const executionOrder: string[] = [];
+      const laterFn = vi.fn(() => {
+        executionOrder.push('later');
+      });
+
+      registerCleanup(() => {
+        executionOrder.push('first');
+      });
+
+      registerCleanup(() => {
+        executionOrder.push('second');
+        // Try to unregister a function during cleanup
+        unregisterCleanup(laterFn);
+      });
+
+      registerCleanup(laterFn);
+
+      await runCleanup();
+
+      // All registered functions should still execute
+      // Unregister during cleanup doesn't affect current run
+      expect(executionOrder).toContain('later');
+      expect(executionOrder).toContain('second');
+      expect(executionOrder).toContain('first');
+    });
+
+    it('should handle concurrent signal handler installation/removal', () => {
+      // Install and remove handlers rapidly
+      for (let i = 0; i < 10; i++) {
+        installSignalHandlers();
+        removeSignalHandlers();
+      }
+
+      // Should not throw or leave handlers in inconsistent state
+      installSignalHandlers();
+      expect(process.listenerCount('SIGINT')).toBeGreaterThan(0);
+      removeSignalHandlers();
+    });
+
+    it('should handle multiple cleanup functions running concurrently', async () => {
+      const delays = [50, 100, 25, 75];
+      const completed: number[] = [];
+
+      delays.forEach((delay, index) => {
+        registerCleanup(async () => {
+          await new Promise((resolve) => setTimeout(resolve, delay));
+          completed.push(index);
+        });
+      });
+
+      await runCleanup();
+
+      // All cleanups should complete
+      expect(completed).toHaveLength(4);
+      // Should execute in reverse registration order (LIFO)
+      // Index 3, 2, 1, 0 but completion order depends on delays
+      expect(completed).toContain(0);
+      expect(completed).toContain(1);
+      expect(completed).toContain(2);
+      expect(completed).toContain(3);
+    });
+
+    it('should handle rapid register/unregister cycles', () => {
+      const fn1 = vi.fn();
+      const fn2 = vi.fn();
+      const fn3 = vi.fn();
+
+      // Rapidly register and unregister
+      for (let i = 0; i < 20; i++) {
+        registerCleanup(fn1);
+        registerCleanup(fn2);
+        unregisterCleanup(fn1);
+        registerCleanup(fn3);
+        unregisterCleanup(fn2);
+        unregisterCleanup(fn3);
+      }
+
+      // Should not throw
+      expect(() => runCleanup()).not.toThrow();
+    });
+
+    it('should handle concurrent cleanup registrations', () => {
+      const fns = Array.from({ length: 10 }, () => vi.fn());
+
+      // Register all functions "concurrently" (synchronously in rapid succession)
+      fns.forEach((fn) => registerCleanup(fn));
+
+      // All should be registered without errors
+      expect(() => runCleanup()).not.toThrow();
+    });
+
+    it('should handle concurrent cleanup unregistrations', () => {
+      const fns = Array.from({ length: 10 }, () => vi.fn());
+
+      // Register all functions
+      fns.forEach((fn) => registerCleanup(fn));
+
+      // Unregister all concurrently
+      fns.forEach((fn) => unregisterCleanup(fn));
+
+      // Should complete without errors
+      expect(() => runCleanup()).not.toThrow();
+    });
+  });
 });
