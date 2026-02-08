@@ -130,7 +130,7 @@
 | TASK_027 | Standardize Command API        | COMPLETE    | PASSED        | MEDIUM   | M (4-8h)   | TASK_007     | SA-20260208-024 | 1        |
 | TASK_028 | Signal Handler Promise Fix     | COMPLETE    | PASSED        | HIGH     | M (4-8h)   | TASK_009     | SA-20260208-015 | 1        |
 | TASK_029 | Debug Logging                  | NOT STARTED | —             | LOW      | S (≤2h)    | TASK_015     |                 |          |
-| TASK_030 | Standardize Null vs Undefined  | IN PROGRESS | —             | MEDIUM   | M (4-8h)   | None         | SA-20260208-025 | 1        |
+| TASK_030 | Standardize Null vs Undefined  | IN_REVIEW   | —             | MEDIUM   | M (4-8h)   | None         | SA-20260208-025 | 1        |
 | MVT_M3   | Polish Manual Test             | NOT STARTED | —             | —        | 40 min     | TASK_019-030 |                 |          |
 
 ### Planned Outcomes
@@ -217,6 +217,19 @@ Last Review ID: RA-20260208-034
 
 ### For Reviewer
 
+| Field             | Value                                                                                                                                                         |
+| ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Task              | TASK_030                                                                                                                                                      |
+| Impl Agent        | SA-20260208-025                                                                                                                                               |
+| Files Changed     | `lib/state.ts`, `lib/config.ts`, `lib/commands/status.ts`                                                                                                    |
+| Tests Added       | `test/state.test.ts` (2 assertions updated), `test/status.test.ts` (4 assertions updated)                                                                    |
+| Rework?           | No - first implementation                                                                                                                                     |
+| Focus Areas       | Verify undefined semantics for getCurrentTask() and findConfigFile(); Confirm JSON serialization converts undefined to null correctly in status command       |
+| Known Limitations | parseTimestamp() kept as returning `null` (not `undefined`) because it returns optional data in a structure (LockInfo), not a "not found" semantic           |
+| Gate Results      | format:✅ lint:✅ typecheck:✅ test:✅                                                                                                                        |
+
+### For Fix Agent
+
 | Field             | Value                                          |
 | ----------------- | ---------------------------------------------- |
 | Task              | -                                              |
@@ -230,7 +243,7 @@ Last Review ID: RA-20260208-034
 
 ### For Fix Agent
 
-| Field           | Value                                          |
+| Field           | Value |
 | --------------- | ---------------------------------------------- |
 | Task            | -                                       |
 | Task Goal       | -                  |
