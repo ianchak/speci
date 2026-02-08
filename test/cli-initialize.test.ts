@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import * as banner from '../lib/ui/banner.js';
-import * as bannerAnimation from '../lib/ui/banner-animation.js';
+import * as bannerAnimation from '../lib/ui/banner-animation/index.js';
 
 describe('CLI Initialize', () => {
   beforeEach(() => {

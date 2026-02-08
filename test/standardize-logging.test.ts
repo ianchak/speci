@@ -43,7 +43,7 @@ describe('TASK_015: Standardize Logging', () => {
       const libFiles = allLibFiles.filter(
         (f) =>
           f !== 'utils/logger.ts' &&
-          f !== 'ui/banner-animation.ts' &&
+          !f.startsWith('ui/banner-animation') && // All banner animation modules excluded (UI output)
           f !== 'cli/initialize.ts' && // Banner display is formatted UI output
           f !== 'commands/status.ts' && // Pure dashboard display
           f !== 'commands/plan.ts' && // Uses drawBox for formatted output
@@ -80,9 +80,9 @@ describe('TASK_015: Standardize Logging', () => {
     it('should not use console.error in lib/ files (except logger.ts and signals.ts)', () => {
       const libDir = join(process.cwd(), 'lib');
       const allLibFiles = findTsFiles(libDir, libDir);
-      // signals.ts and banner-animation.ts may use console.error for critical scenarios
+      // signals.ts and banner-animation modules may use console.error for critical scenarios
       const libFiles = allLibFiles.filter(
-        (f) => f !== 'utils/logger.ts' && f !== 'ui/banner-animation.ts'
+        (f) => f !== 'utils/logger.ts' && !f.startsWith('ui/banner-animation')
       );
 
       const violations: string[] = [];

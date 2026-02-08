@@ -6,7 +6,7 @@
  */
 
 import { renderBanner } from '../ui/banner.js';
-import { animateBanner, shouldAnimate } from '../ui/banner-animation.js';
+import { animateBanner, shouldAnimate } from '../ui/banner-animation/index.js';
 
 /**
  * Display the static (non-animated) banner

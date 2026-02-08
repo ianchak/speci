@@ -30,7 +30,7 @@
 | M0        | Quick Wins        | 001-004 | MVT_M0 | 4        | 5     | IN PROGRESS |
 | M1        | Foundation        | 005-009 | MVT_M1 | 5        | 6     | IN PROGRESS |
 | M2        | Core Improvements | 010-018 | MVT_M2 | 9        | 10    | IN PROGRESS |
-| M3        | Polish            | 019-030 | MVT_M3 | 2        | 13    | IN PROGRESS |
+| M3        | Polish            | 019-030 | MVT_M3 | 3        | 13    | IN PROGRESS |
 | M4        | Optimization      | 031-038 | MVT_M4 | 0        | 9     | NOT STARTED |
 
 ---
@@ -44,7 +44,7 @@
 | M0        | Quick Wins | In Progress | TASK_001-004   | Coverage tracking infrastructure added with baseline 82.74% lines coverage; All lib/ files now use TypeScript path aliases; Magic strings extracted to lib/constants.ts module with comprehensive test coverage; Boolean properties standardized with semantic prefixes (is*, should*) |
 | M1        | Foundation | In Progress | TASK_005-009   | Dependency injection interfaces and adapters established; CommandContext pattern enables testable commands; Production context factory and test utilities ready; Plan command successfully migrated to DI pattern as proof of concept, validating architecture for rollout; All 6 commands now migrated to DI pattern with context-based dependencies; Process globals abstracted with IProcess interface enabling full test isolation; All process.exit() calls fixed to ensure cleanup runs before termination, eliminating resource leaks |
 | M2        | Core Improvements | In Progress | TASK_010-018   | Comprehensive integration test suite covering end-to-end workflows with 30 passing tests; Real file I/O with isolated temp directories; Mock Copilot CLI execution; Separate vitest configuration with appropriate timeouts; Error recovery scenarios verified; CLI entry point fully tested with 28 unit tests verifying command registration, aliases, options, unknown command handling, banner display, and help text; All 1025 tests passing; Race condition tests added with 50+ tests across lock, gate, signals, and state modules verifying concurrent operations; Error catalog fully tested with 36 tests covering all 17 error codes, formatError(), createError(), naming conventions, and message quality; Error types converted to discriminated unions (AgentRunResult, GateResult) with type-safe error handling eliminating optional chaining at all call sites; Logging standardized: All direct console.log/error/warn calls eliminated from lib/ (except formatted UI output in status/plan/task/refactor); Structured logging added for config resolution, agent selection, and state transitions; ILogger interface extended with raw() and setVerbose() methods; 11 new tests verify logging consistency and verbosity control; Command initialization duplication eliminated with 112+ lines of shared initialization logic extracted to lib/utils/command-helpers.ts module across plan, task, and refactor commands; Module-level mutable state eliminated: gate attempt tracking now parameter-based, signals cleanup self-resetting, logger setVerbose added to ILogger interface; 12 new state encapsulation tests verify parallel test execution without interference; Cross-module coupling reduced: 7 core types extracted to lib/types.ts module (SpeciConfig, STATE, TaskStats, CurrentTask, CommandName, CopilotArgsOptions, AgentRunResult); Zero circular dependencies verified; Module boundaries documented in docs/ARCHITECTURE.md; 14 new tests verify type exports and module isolation |
-| M3        | Polish     | In Progress | TASK_021       | Config as parameter pattern implemented: Entry point loads config once at startup and passes to all 6 commands (init, plan, task, refactor, run, status); Commands accept optional config parameter with default; No loadConfig() calls within command bodies; 6+ redundant config loads eliminated; Performance improved with single config load per CLI invocation |
+| M3        | Polish     | In Progress | TASK_021, TASK_028, TASK_019 | Entry point refactored: 235 lines reduced to 62 lines (<100 target); Banner display logic extracted to lib/cli/initialize.ts; Command registration logic extracted to lib/cli/command-registry.ts; 19 new tests added (6 for initialization, 13 for command registry); All CLI behavior preserved (1081 tests passing); Clean orchestration pattern: parse args → display banner → route to handler |
 
 ---
 
@@ -119,8 +119,8 @@
 
 | Task ID  | Title                          | Status      | Review Status | Priority | Complexity | Dependencies | Assigned To     | Attempts |
 | -------- | ------------------------------ | ----------- | ------------- | -------- | ---------- | ------------ | --------------- | -------- |
-| TASK_019 | Refactor Entry Point           | IN REVIEW   | —             | MEDIUM   | M (4-8h)   | TASK_007     | SA-20260208-016 | 1        |
-| TASK_020 | Split Banner Animation Module  | NOT STARTED | —             | MEDIUM   | S (≤2h)    | None         |                 |          |
+| TASK_019 | Refactor Entry Point           | COMPLETE    | PASSED        | MEDIUM   | M (4-8h)   | TASK_007     | SA-20260208-016 | 1        |
+| TASK_020 | Split Banner Animation Module  | IN PROGRESS | —             | MEDIUM   | S (≤2h)    | None         | SA-20260208-017 | 1        |
 | TASK_021 | Config as Parameter            | COMPLETE    | PASSED        | HIGH     | M (4-8h)   | TASK_007     | SA-20260208-014 | 2        |
 | TASK_022 | Config Memoization             | NOT STARTED | —             | MEDIUM   | S (≤2h)    | TASK_021     |                 |          |
 | TASK_023 | State File Read Caching        | NOT STARTED | —             | MEDIUM   | S (≤2h)    | None         |                 |          |
@@ -203,13 +203,13 @@ TASK_031 (Parallelize) → MVT_M4
 
 ## Subagent Tracking
 
-Last Subagent ID: SA-20260208-016
+Last Subagent ID: SA-20260208-017
 
 ---
 
 ## Review Tracking
 
-Last Review ID: RA-20260208-025
+Last Review ID: RA-20260208-026
 
 ---
 
@@ -217,35 +217,35 @@ Last Review ID: RA-20260208-025
 
 ### For Reviewer
 
-| Field             | Value                                                                                                                                                                                             |
-| ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Task              | TASK_019                                                                                                                                                                                          |
-| Impl Agent        | SA-20260208-016                                                                                                                                                                                   |
-| Files Changed     | `bin/speci.ts`, `lib/cli/initialize.ts`, `lib/cli/command-registry.ts`, `test/preaction-hook.test.ts`, `test/standardize-logging.test.ts`                                                        |
-| Tests Added       | `test/cli-initialize.test.ts` (6 tests), `test/cli-command-registry.test.ts` (13 tests)                                                                                                          |
-| Rework?           | No                                                                                                                                                                                                |
-| Focus Areas       | Verify all CLI commands work identically (init, plan, task, refactor, run, status); Test banner display for no-args, help, version, and regular command invocations; Check error handling paths |
-| Known Limitations | None - all acceptance criteria met                                                                                                                                                                |
-| Gate Results      | format:✅ lint:✅ typecheck:✅ test:✅ (all 1081 tests passing)                                                                                                                                   |
+| Field             | Value |
+| ----------------- | ----- |
+| Task              | -     |
+| Impl Agent        | -     |
+| Files Changed     | -     |
+| Tests Added       | -     |
+| Rework?           | -     |
+| Focus Areas       | -     |
+| Known Limitations | -     |
+| Gate Results      | -     |
 
 ---
 
 ## Summary Statistics
 
-**Overall Progress**: 46.51% Complete (20/43 items)
+**Overall Progress**: 48.84% Complete (21/43 items)
 
 **By Category**:
 
-- Tasks: 20/38 complete
+- Tasks: 21/38 complete
 - MVTs: 0/5 complete
-- Total Items: 20/43 complete
+- Total Items: 21/43 complete
 
 **By Milestone**:
 
 - M0 Quick Wins: 4/5 complete (80%)
 - M1 Foundation: 5/6 complete (83.3%)
 - M2 Core Improvements: 9/10 complete (90%)
-- M3 Polish: 2/13 complete (15.4%)
+- M3 Polish: 3/13 complete (23.1%)
 - M4 Optimization: 0/9 complete (0%)
 
 **Target Quality Metrics**:

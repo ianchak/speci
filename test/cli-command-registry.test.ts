@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { Command } from 'commander';
+import type { EventEmitter } from 'node:events';
 import type { CommandContext } from '../lib/interfaces.js';
 import type { SpeciConfig } from '../lib/types.js';
 
@@ -238,7 +239,10 @@ describe('CommandRegistry', () => {
       const program = registry.getProgram();
 
       // Verify the command:* event handler exists
-      const listeners = program.listeners('command:*');
+      // Commander.js extends EventEmitter but TS types don't include listeners()
+      const listeners = (program as unknown as EventEmitter).listeners(
+        'command:*'
+      );
       expect(listeners.length).toBeGreaterThan(0);
     });
 
