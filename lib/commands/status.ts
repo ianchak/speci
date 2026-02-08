@@ -58,10 +58,11 @@ const REFRESH_INTERVAL = 1000;
 
 /**
  * Status command handler
- * @param options - Command options
+ * @param options - Command options with defaults
  * @param context - Dependency injection context (defaults to production)
  * @param config - Pre-loaded configuration (optional, will load if not provided)
  * @returns Promise resolving to command result
+ * @sideEffects Reads PROGRESS.md, lock file; may enter fullscreen terminal mode; may spawn interactive dashboard
  */
 export async function status(
   options: StatusOptions = {},
@@ -194,7 +195,7 @@ async function runLiveDashboard(
   // Handle exit signals
   const handleExit = () => {
     cleanup();
-    context.process.exit(0);
+    // Return instead of calling process.exit() - let caller handle exit
   };
 
   context.process.on('SIGINT', handleExit);

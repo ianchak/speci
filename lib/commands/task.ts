@@ -69,10 +69,11 @@ function validatePlanFile(
  * Task command handler
  * Initializes one-shot Copilot session for task generation
  *
- * @param options - Command options
+ * @param options - Command options with defaults
  * @param context - Dependency injection context (defaults to production)
  * @param config - Pre-loaded configuration (optional, will load if not provided)
  * @returns Promise resolving to command result
+ * @sideEffects Spawns GitHub Copilot CLI process; reads plan file
  */
 export async function task(
   options: TaskOptions,

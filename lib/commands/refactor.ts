@@ -84,10 +84,11 @@ function validateScope(
  * Refactor command handler
  * Initializes one-shot Copilot session for refactoring analysis
  *
- * @param options - Command options
+ * @param options - Command options with defaults
  * @param context - Dependency injection context (defaults to production)
  * @param config - Pre-loaded configuration (optional, will load if not provided)
  * @returns Promise resolving to command result
+ * @sideEffects Spawns GitHub Copilot CLI process; reads codebase files; may write output file if --output specified
  */
 export async function refactor(
   options: RefactorOptions = {},

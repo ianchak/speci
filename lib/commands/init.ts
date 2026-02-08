@@ -284,7 +284,9 @@ function displaySuccess(context: CommandContext): void {
  * Initializes Speci in the current directory
  * @param options - Command options
  * @param context - Dependency injection context (defaults to production)
+ * @param _config - Optional config override (unused, for API consistency)
  * @returns Promise resolving to command result
+ * @sideEffects Creates speci.config.json, docs/ directory, .speci-logs/ directory, and copies agent files to .github/copilot/agents/
  */
 export async function init(
   options: InitOptions = {},

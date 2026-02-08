@@ -61,10 +61,11 @@ function displayCommandInfo(
 /**
  * Plan command handler
  * Initializes interactive Copilot session for plan generation
- * @param options - Command options
+ * @param options - Command options with defaults
  * @param context - Dependency injection context (defaults to production)
  * @param config - Pre-loaded configuration (optional, will load if not provided)
  * @returns Promise resolving to command result
+ * @sideEffects Spawns GitHub Copilot CLI process; may write output file if --output specified
  */
 export async function plan(
   options: PlanOptions = {},
