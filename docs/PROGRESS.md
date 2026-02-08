@@ -120,7 +120,7 @@
 | -------- | ------------------------------ | ----------- | ------------- | -------- | ---------- | ------------ | --------------- | -------- |
 | TASK_019 | Refactor Entry Point           | NOT STARTED | —             | MEDIUM   | M (4-8h)   | TASK_007     |                 |          |
 | TASK_020 | Split Banner Animation Module  | NOT STARTED | —             | MEDIUM   | S (≤2h)    | None         |                 |          |
-| TASK_021 | Config as Parameter            | IN PROGRESS | FAILED        | HIGH     | M (4-8h)   | TASK_007     | SA-20260208-014 | 2        |
+| TASK_021 | Config as Parameter            | IN REVIEW   | FAILED        | HIGH     | M (4-8h)   | TASK_007     | SA-20260208-014 | 2        |
 | TASK_022 | Config Memoization             | NOT STARTED | —             | MEDIUM   | S (≤2h)    | TASK_021     |                 |          |
 | TASK_023 | State File Read Caching        | NOT STARTED | —             | MEDIUM   | S (≤2h)    | None         |                 |          |
 | TASK_024 | Error Catalog Consistency      | NOT STARTED | —             | MEDIUM   | M (4-8h)   | TASK_014     |                 |          |
@@ -214,87 +214,18 @@ Last Review ID: RA-20260208-023
 
 ## Agent Handoff
 
-### Review Failure Notes
-
-**Task:** TASK_021 - Config as Parameter
-**Task Goal:** Refactor commands to accept configuration as parameter, loaded once in entry point and passed through
-**Review Agent:** RA-20260208-023
-
----
-
-#### Blocking Issues (must fix to pass)
-
-1. **AC2 NOT MET: Entry point loads config once and passes to commands**
-   - Location: `bin/speci.ts:108-244`
-   - Expected: Entry point should call `await context.configLoader.load()` once before command dispatching, then pass the loaded config to each command handler
-   - Actual: Entry point creates production context but never loads config; each command action calls the command function without passing config parameter, relying on the default parameter which loads config internally
-   - Fix: In `bin/speci.ts`, add `const config = await context.configLoader.load();` after creating context, then pass `config` as the third parameter to all command calls: `await init(options, context)` → (init doesn't need config), `await plan(options, context, config)`, `await task(options, context, config)`, `await refactor(options, context, config)`, `await run(options, context, config)`, `await status(options, context, config)`
-
-2. **AC5 NOT MET: Performance improvement measurable (reduce config loads from 6+ to 1)**
-   - Location: All command action handlers in `bin/speci.ts`
-   - Expected: Commands should receive pre-loaded config, eliminating repeated `loadConfig()` calls
-   - Actual: Without entry point loading and passing config, each command still loads config via its default parameter `config ?? (await context.configLoader.load())`
-   - Fix: Once AC2 is fixed by passing config from entry point, the performance improvement will be achieved automatically
-
----
-
-#### Non-Blocking Issues (fix if time permits)
-
-- None identified. The implementation is well-structured and follows the DI pattern correctly.
-
----
-
-#### What Passed Review
-
-- AC1: All 6 command modules accept config as parameter ✅ done
-- AC3: Commands no longer call `loadConfig()` directly ✅ done
-- AC4: Backward compatibility maintained with default parameter ✅ done
-- AC6: Tests inject mock config without filesystem access ✅ done (3 new tests in command-helpers.test.ts)
-- AC7: No behavior changes in command execution ✅ done
-- Gate: lint ✅ passed (exit code 0)
-- Gate: typecheck ✅ passed (exit code 0)
-- Gate: test ✅ 1052/1053 passing (1 flaky performance test unrelated to task)
-- Code quality: Clean implementation with proper JSDoc, no `any`, null-safe operations ✅
-- Tests: 3 comprehensive tests added covering config parameter usage, default loading, and config passing ✅
-
----
-
-#### Fix Agent Instructions
-
-1. **Start with:** Update `bin/speci.ts` to load config once after creating production context (around line 54). Add `const config = await context.configLoader.load();` immediately after `const context = createProductionContext();`
-2. **Then:** Pass `config` as third parameter to plan, task, refactor, run, and status command calls in their respective action handlers (lines ~154, ~190, ~228, ~267, ~306). Pattern: `await commandName(options, context, config)`
-3. **Verify:** Run `npm test -- plan.test.ts task.test.ts refactor.test.ts` first to ensure command tests still pass with config parameter
-4. **Context:** The command functions already accept config as optional third parameter with default loading fallback, so this is just wiring up the entry point. All command signatures follow: `async function cmd(options, context = createProductionContext(), config?: SpeciConfig)`. The fix is surgical - only 6 lines need changes in bin/speci.ts.
-5. **Do NOT:** Change command function signatures, modify test files, refactor config loading logic, or touch lib/config.ts. The command implementation is correct; only the entry point integration is missing.
-
----
-
-## Summary Statistics
-
 ### For Reviewer
 
-| Field             | Value |
-| ----------------- | ----- |
-| Task              | -     |
-| Impl Agent        | -     |
-| Files Changed     | -     |
-| Tests Added       | -     |
-| Rework?           | -     |
-| Focus Areas       | -     |
-| Known Limitations | -     |
-| Gate Results      | -     |
-
-### For Fix Agent
-
-| Field           | Value                                                                                                                                |
-| --------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
-| Task            | TASK_021                                                                                                                             |
-| Task Goal       | Refactor commands to accept configuration as parameter, loaded once in entry point and passed through                                |
-| Review Agent    | RA-20260208-023                                                                                                                      |
-| Failed Gate     | none (AC failure)                                                                                                                    |
-| Primary Error   | `bin/speci.ts` - Entry point not updated to load config once and pass to commands                                                    |
-| Root Cause Hint | Implementation only addressed command functions but did not complete the entry point integration required for performance improvement |
-| Do NOT          | Refactor command signatures further; Change test files; Modify config loading logic in lib/config.ts                                 |
+| Field             | Value                                                                                                                                                                                                                     |
+| ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Task              | TASK_021                                                                                                                                                                                                                  |
+| Impl Agent        | SA-20260208-014                                                                                                                                                                                                           |
+| Files Changed     | `bin/speci.ts`                                                                                                                                                                                                            |
+| Tests Added       | None (no new tests required - existing command tests verify config parameter usage)                                                                                                                                       |
+| Rework?           | Yes - addressed both blocking issues: 1) Entry point now loads config once after creating context; 2) Config passed as third parameter to all 5 commands (plan, task, refactor, run, status)                             |
+| Focus Areas       | AC2 verification: `bin/speci.ts` lines 54-56 load config once; lines 157, 193, 231, 269, 309 pass config to commands. AC5 verification: commands now receive pre-loaded config eliminating 6+ redundant loadConfig calls |
+| Known Limitations | Config is loaded even for --help/--version/init commands (acceptable overhead, config loader handles missing config gracefully with defaults)                                                                             |
+| Gate Results      | format:✅ lint:✅ typecheck:✅ test:✅ (1053/1053 passing)                                                                                                                                                                |
 
 ---
 
