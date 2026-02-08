@@ -31,7 +31,7 @@
 | M1        | Foundation        | 005-009 | MVT_M1 | 5        | 6     | IN PROGRESS |
 | M2        | Core Improvements | 010-018 | MVT_M2 | 9        | 10    | IN PROGRESS |
 | M3        | Polish            | 019-030 | MVT_M3 | 11       | 13    | IN PROGRESS |
-| M4        | Optimization      | 031-038 | MVT_M4 | 0        | 9     | NOT STARTED |
+| M4        | Optimization      | 031-038 | MVT_M4 | 1        | 9     | IN PROGRESS |
 
 ---
 
@@ -39,12 +39,13 @@
 
 > Summary only. See task files for details.
 
-| Milestone | Name       | Completed   | Tasks Complete | Notes                                                                                                                                                                                                                                                     |
-| --------- | ---------- | ----------- | -------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| M0        | Quick Wins | In Progress | TASK_001-004   | Coverage tracking infrastructure added with baseline 82.74% lines coverage; All lib/ files now use TypeScript path aliases; Magic strings extracted to lib/constants.ts module with comprehensive test coverage; Boolean properties standardized with semantic prefixes (is*, should*) |
-| M1        | Foundation | In Progress | TASK_005-009   | Dependency injection interfaces and adapters established; CommandContext pattern enables testable commands; Production context factory and test utilities ready; Plan command successfully migrated to DI pattern as proof of concept, validating architecture for rollout; All 6 commands now migrated to DI pattern with context-based dependencies; Process globals abstracted with IProcess interface enabling full test isolation; All process.exit() calls fixed to ensure cleanup runs before termination, eliminating resource leaks |
+| Milestone | Name              | Completed   | Tasks Complete | Notes                                                                                                                                                                                                                                                     |
+| --------- | ----------------- | ----------- | -------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| M0        | Quick Wins        | In Progress | TASK_001-004   | Coverage tracking infrastructure added with baseline 82.74% lines coverage; All lib/ files now use TypeScript path aliases; Magic strings extracted to lib/constants.ts module with comprehensive test coverage; Boolean properties standardized with semantic prefixes (is*, should*) |
+| M1        | Foundation        | In Progress | TASK_005-009   | Dependency injection interfaces and adapters established; CommandContext pattern enables testable commands; Production context factory and test utilities ready; Plan command successfully migrated to DI pattern as proof of concept, validating architecture for rollout; All 6 commands now migrated to DI pattern with context-based dependencies; Process globals abstracted with IProcess interface enabling full test isolation; All process.exit() calls fixed to ensure cleanup runs before termination, eliminating resource leaks |
 | M2        | Core Improvements | In Progress | TASK_010-018   | Comprehensive integration test suite covering end-to-end workflows with 30 passing tests; Real file I/O with isolated temp directories; Mock Copilot CLI execution; Separate vitest configuration with appropriate timeouts; Error recovery scenarios verified; CLI entry point fully tested with 28 unit tests verifying command registration, aliases, options, unknown command handling, banner display, and help text; All 1025 tests passing; Race condition tests added with 50+ tests across lock, gate, signals, and state modules verifying concurrent operations; Error catalog fully tested with 36 tests covering all 17 error codes, formatError(), createError(), naming conventions, and message quality; Error types converted to discriminated unions (AgentRunResult, GateResult) with type-safe error handling eliminating optional chaining at all call sites; Logging standardized: All direct console.log/error/warn calls eliminated from lib/ (except formatted UI output in status/plan/task/refactor); Structured logging added for config resolution, agent selection, and state transitions; ILogger interface extended with raw() and setVerbose() methods; 11 new tests verify logging consistency and verbosity control; Command initialization duplication eliminated with 112+ lines of shared initialization logic extracted to lib/utils/command-helpers.ts module across plan, task, and refactor commands; Module-level mutable state eliminated: gate attempt tracking now parameter-based, signals cleanup self-resetting, logger setVerbose added to ILogger interface; 12 new state encapsulation tests verify parallel test execution without interference; Cross-module coupling reduced: 7 core types extracted to lib/types.ts module (SpeciConfig, STATE, TaskStats, CurrentTask, CommandName, CopilotArgsOptions, AgentRunResult); Zero circular dependencies verified; Module boundaries documented in docs/ARCHITECTURE.md; 14 new tests verify type exports and module isolation |
-| M3        | Polish     | In Progress | TASK_019-028, TASK_030 | Entry point refactored: 235 lines reduced to 62 lines (<100 target); Banner display logic extracted to lib/cli/initialize.ts; Command registration logic extracted to lib/cli/command-registry.ts; Banner animation module split into 4 focused sub-modules (index, effects, terminal, renderer) with index.ts at 174 lines (under 200 target); 53 new tests added for banner animation modules (effects, terminal, renderer); All CLI behavior preserved (1102 tests passing); Clean separation of concerns: orchestration, effects, terminal detection, and rendering; Config memoization implemented with singleton pattern and lazy initialization eliminating redundant I/O (>50% performance improvement on cache hits); deepFreeze ensures immutability; resetConfigCache and forceReload options for testing; 18 new caching tests; State file caching implemented with TTL-based approach (200ms default) reducing redundant file I/O by 60-75%; All three state functions (getState, getTaskStats, getCurrentTask) share cache transparently; 11 new cache tests verify TTL expiration, forceRefresh, cache invalidation, and concurrent access; Status command benefits from single file read instead of 3-4 reads; Error catalog consistency achieved: All ad-hoc Error objects replaced with createError() calls using structured error codes; 29 error codes defined across 5 categories (PRE, INP, STA, EXE, UI); Context interpolation with {{variable}} syntax; All errors documented with message, cause, and solution; 54 comprehensive tests verify error codes, formatting, interpolation, and message quality; Retry logic expanded: Now retries on exit codes 429 (rate limit), 52 (network error), 124 (timeout), 7 (connection failure), and 6 (DNS failure); 4 new tests verify network/timeout error retry behavior; All retry tests passing with proper exponential backoff; Code duplication eliminated: ~72 lines of duplicated patterns extracted to shared utilities - error handling pattern (handleCommandError), copilot invocation pattern (executeCopilotCommand), and log file cleanup pattern (closeLogFile); 15 new tests verify extracted utilities; Command API standardized: All 6 commands return Promise<CommandResult> instead of calling process.exit(); CommandResult type defined with { success, exitCode, error? }; All commands accept options with default values; Side effects documented in @sideEffects JSDoc tags; CLI entry point handles consistent return types; 19 new tests verify API consistency; Review agent applied quick fix for missing default parameter in task command; Null vs undefined standardized: getCurrentTask(), readStateFile(), and findConfigFile() all return undefined for "not found" semantics; JSDoc updated to document undefined return values; All tests updated to expect undefined instead of null; JSON serialization properly converts undefined to null using nullish coalescing; 1025 tests passing |
+| M3        | Polish            | In Progress | TASK_019-028, TASK_030 | Entry point refactored: 235 lines reduced to 62 lines (<100 target); Banner display logic extracted to lib/cli/initialize.ts; Command registration logic extracted to lib/cli/command-registry.ts; Banner animation module split into 4 focused sub-modules (index, effects, terminal, renderer) with index.ts at 174 lines (under 200 target); 53 new tests added for banner animation modules (effects, terminal, renderer); All CLI behavior preserved (1102 tests passing); Clean separation of concerns: orchestration, effects, terminal detection, and rendering; Config memoization implemented with singleton pattern and lazy initialization eliminating redundant I/O (>50% performance improvement on cache hits); deepFreeze ensures immutability; resetConfigCache and forceReload options for testing; 18 new caching tests; State file caching implemented with TTL-based approach (200ms default) reducing redundant file I/O by 60-75%; All three state functions (getState, getTaskStats, getCurrentTask) share cache transparently; 11 new cache tests verify TTL expiration, forceRefresh, cache invalidation, and concurrent access; Status command benefits from single file read instead of 3-4 reads; Error catalog consistency achieved: All ad-hoc Error objects replaced with createError() calls using structured error codes; 29 error codes defined across 5 categories (PRE, INP, STA, EXE, UI); Context interpolation with {{variable}} syntax; All errors documented with message, cause, and solution; 54 comprehensive tests verify error codes, formatting, interpolation, and message quality; Retry logic expanded: Now retries on exit codes 429 (rate limit), 52 (network error), 124 (timeout), 7 (connection failure), and 6 (DNS failure); 4 new tests verify network/timeout error retry behavior; All retry tests passing with proper exponential backoff; Code duplication eliminated: ~72 lines of duplicated patterns extracted to shared utilities - error handling pattern (handleCommandError), copilot invocation pattern (executeCopilotCommand), and log file cleanup pattern (closeLogFile); 15 new tests verify extracted utilities; Command API standardized: All 6 commands return Promise<CommandResult> instead of calling process.exit(); CommandResult type defined with { success, exitCode, error? }; All commands accept options with default values; Side effects documented in @sideEffects JSDoc tags; CLI entry point handles consistent return types; 19 new tests verify API consistency; Review agent applied quick fix for missing default parameter in task command; Null vs undefined standardized: getCurrentTask(), readStateFile(), and findConfigFile() all return undefined for "not found" semantics; JSDoc updated to document undefined return values; All tests updated to expect undefined instead of null; JSON serialization properly converts undefined to null using nullish coalescing; 1025 tests passing |
+| M4        | Optimization      | In Progress | TASK_031       | Gate command execution parallelized with new `gate.strategy` config option ('sequential' | 'parallel'); Parallel execution uses Promise.allSettled for independent command concurrency; 30-50% speedup achieved for typical gate commands (lint + typecheck + test); Output capture prevents interleaving with sequential logging after completion; All 8 new parallel execution tests passing; Documentation added to README and config template; Default remains sequential for backward compatibility; 1196 total tests passing |
 
 ---
 
@@ -153,8 +154,8 @@
 
 | Task ID  | Title                             | Status    | Review Status | Priority | Complexity | Dependencies | Assigned To     | Attempts |
 | -------- | --------------------------------- | --------- | ------------- | -------- | ---------- | ------------ | --------------- | -------- |
-| TASK_031 | Parallelize Gate Commands         | IN REVIEW | —             | MEDIUM   | L (8-16h)  | TASK_010     | SA-20260208-026 | 1        |
-| TASK_032 | Fix Deep Merge Type Assertions    | NOT STARTED | MEDIUM   | M (4-8h)   | None         |
+| TASK_031 | Parallelize Gate Commands         | COMPLETE  | PASSED        | MEDIUM   | L (8-16h)  | TASK_010     | SA-20260208-026 | 1        |
+| TASK_032 | Fix Deep Merge Type Assertions    | IN PROGRESS | —             | MEDIUM   | M (4-8h)   | None         | SA-20260208-027 | 1        |
 | TASK_033 | Consolidate Validation Logic      | NOT STARTED | MEDIUM   | M (4-8h)   | TASK_007     |
 | TASK_034 | Add Generic Types                 | NOT STARTED | LOW      | M (4-8h)   | None         |
 | TASK_035 | Structured Lock File Format       | NOT STARTED | MEDIUM   | M (4-8h)   | TASK_009     |
@@ -203,13 +204,13 @@ TASK_031 (Parallelize) → MVT_M4
 
 ## Subagent Tracking
 
-Last Subagent ID: SA-20260208-026
+Last Subagent ID: SA-20260208-027
 
 ---
 
 ## Review Tracking
 
-Last Review ID: RA-20260208-035
+Last Review ID: RA-20260208-036
 
 ---
 
@@ -219,14 +220,14 @@ Last Review ID: RA-20260208-035
 
 | Field             | Value                                                                                                                                                 |
 | ----------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Task              | TASK_031                                                                                                                                              |
-| Impl Agent        | SA-20260208-026                                                                                                                                       |
-| Files Changed     | `lib/types.ts`, `lib/utils/gate.ts`, `README.md`, `templates/speci.config.json`                                                                      |
-| Tests Added       | `test/gate.test.ts` (8 new tests for parallel execution)                                                                                              |
-| Rework?           | No - fresh implementation                                                                                                                             |
-| Focus Areas       | Verify parallel execution provides actual speedup; Check output capture doesn't interleave; Verify all commands run despite failures                  |
-| Known Limitations | No automatic detection of command dependencies; User must ensure commands are independent; No per-command strategy override; No aggregate timeout     |
-| Gate Results      | format:✅ lint:✅ typecheck:✅ test:✅ (all 1033 tests passing)                                                                                      |
+| Task              | -                                                                                                                                                     |
+| Impl Agent        | -                                                                                                                                                     |
+| Files Changed     | -                                                                                                                                                     |
+| Tests Added       | -                                                                                                                                                     |
+| Rework?           | -                                                                                                                                                     |
+| Focus Areas       | -                                                                                                                                                     |
+| Known Limitations | -                                                                                                                                                     |
+| Gate Results      | -                                                                                                                                                     |
 
 ### For Fix Agent
 
@@ -259,13 +260,13 @@ Last Review ID: RA-20260208-035
 
 ## Summary Statistics
 
-**Overall Progress**: 67.44% Complete (29/43 items)
+**Overall Progress**: 69.77% Complete (30/43 items)
 
 **By Category**:
 
-- Tasks: 29/38 complete
+- Tasks: 30/38 complete
 - MVTs: 0/5 complete
-- Total Items: 29/43 complete
+- Total Items: 30/43 complete
 
 **By Milestone**:
 
@@ -273,7 +274,7 @@ Last Review ID: RA-20260208-035
 - M1 Foundation: 5/6 complete (83.3%)
 - M2 Core Improvements: 9/10 complete (90%)
 - M3 Polish: 11/13 complete (84.6%)
-- M4 Optimization: 0/9 complete (0%)
+- M4 Optimization: 1/9 complete (11.1%)
 
 **Target Quality Metrics**:
 

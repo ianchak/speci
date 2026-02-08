@@ -141,41 +141,47 @@ function deepFreeze<T>(obj: T): T {
 }
 
 /**
- * Deep merge two objects
- * @param target - Target object
- * @param source - Source object
- * @returns Merged object
+ * Type guard to check if value is a plain object (not array or null)
+ * @param value - Value to check
+ * @returns true if value is a plain object
  */
-function deepMerge(
-  target: SpeciConfig,
-  source: Partial<SpeciConfig>
-): SpeciConfig {
-  const result = { ...target };
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+/**
+ * Deep merge two objects with type safety
+ * Uses generic type parameters to maintain type information
+ * @param target - Target object
+ * @param source - Source object to merge
+ * @returns Merged object with target's type
+ */
+function deepMerge<T extends object>(target: T, source: Partial<T>): T {
+  // Cast to Record for dynamic property access during merge
+  const result = { ...target } as Record<string, unknown>;
 
   for (const key in source) {
     if (!Object.prototype.hasOwnProperty.call(source, key)) continue;
 
-    const sourceValue = source[key as keyof SpeciConfig];
-    const targetValue = result[key as keyof SpeciConfig];
+    const sourceValue = source[key];
+    const targetValue = result[key];
 
-    if (
-      sourceValue !== null &&
-      sourceValue !== undefined &&
-      typeof sourceValue === 'object' &&
-      !Array.isArray(sourceValue) &&
-      typeof targetValue === 'object' &&
-      !Array.isArray(targetValue)
-    ) {
-      (result as Record<string, unknown>)[key] = {
-        ...targetValue,
-        ...sourceValue,
-      };
+    // Use type guard to safely check and narrow types
+    if (isPlainObject(sourceValue) && isPlainObject(targetValue)) {
+      // Both are plain objects - merge recursively with deep merge
+      result[key] = deepMerge(
+        targetValue as Record<string, unknown>,
+        sourceValue as Partial<Record<string, unknown>>
+      );
     } else if (sourceValue !== undefined) {
-      (result as Record<string, unknown>)[key] = sourceValue;
+      // Replace with source value (arrays, primitives, or null)
+      result[key] = sourceValue;
     }
   }
 
-  return result;
+  // Cast back to original type - this is safe because we only merged
+  // properties from Partial<T> into T
+  return result as T;
 }
 
 /**
@@ -453,16 +459,21 @@ function parseEnvValue(
  */
 function setNestedValue(
   obj: Record<string, unknown>,
-  path: string[],
+  path: readonly string[],
   value: unknown
 ): void {
   let current: Record<string, unknown> = obj;
 
   for (let i = 0; i < path.length - 1; i++) {
-    if (!(path[i] in current)) {
-      current[path[i]] = {};
+    const key = path[i];
+
+    // Create intermediate object if missing or not a plain object
+    if (!(key in current) || !isPlainObject(current[key])) {
+      current[key] = {};
     }
-    current = current[path[i]] as Record<string, unknown>;
+
+    // Type guard ensures this is safe - we just verified it's a plain object
+    current = current[key] as Record<string, unknown>;
   }
 
   current[path[path.length - 1]] = value;
@@ -477,6 +488,11 @@ function applyEnvOverrides(config: SpeciConfig, proc: IProcess): void {
   // Check for potential typos
   detectEnvTypos(proc);
 
+  // Cast once at the boundary where we need dynamic property access
+  // This single cast is necessary to allow setNestedValue to work with
+  // the specific SpeciConfig interface using dynamic path-based access
+  const configRecord = config as unknown as Record<string, unknown>;
+
   for (const mapping of ENV_MAPPINGS) {
     const value = proc.env[mapping.envVar];
 
@@ -487,11 +503,7 @@ function applyEnvOverrides(config: SpeciConfig, proc: IProcess): void {
     const parsed = parseEnvValue(value, mapping);
 
     if (parsed.valid) {
-      setNestedValue(
-        config as unknown as Record<string, unknown>,
-        mapping.configPath,
-        parsed.value
-      );
+      setNestedValue(configRecord, mapping.configPath, parsed.value);
 
       log.debug(`Applying env override: ${mapping.envVar}=${parsed.value}`);
     } else {
