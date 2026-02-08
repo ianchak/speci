@@ -179,6 +179,69 @@ describe('Signal Handling', () => {
     });
   });
 
+  describe('Cleanup Timeout', () => {
+    it('should complete cleanup before timeout with fast handlers', async () => {
+      const fn = vi.fn();
+      registerCleanup(async () => {
+        await new Promise((resolve) => setTimeout(resolve, 100));
+        fn();
+      });
+
+      await runCleanup();
+
+      expect(fn).toHaveBeenCalledOnce();
+    });
+
+    it(
+      'should timeout and continue if cleanup takes too long',
+      { timeout: 10000 },
+      async () => {
+        const mockConsoleError = vi
+          .spyOn(console, 'error')
+          .mockImplementation(() => {});
+
+        registerCleanup(async () => {
+          // Intentionally slow cleanup (exceeds CLEANUP_TIMEOUT_MS)
+          await new Promise((resolve) => setTimeout(resolve, 10000));
+        });
+
+        const startTime = Date.now();
+        await runCleanup();
+        const duration = Date.now() - startTime;
+
+        // Should timeout around 5 seconds (5000ms), not wait 10 seconds
+        expect(duration).toBeLessThan(6000);
+        expect(duration).toBeGreaterThan(4900);
+
+        expect(mockConsoleError).toHaveBeenCalledWith(
+          'Cleanup did not complete in time:',
+          expect.any(Error)
+        );
+
+        mockConsoleError.mockRestore();
+      }
+    );
+
+    it(
+      'should continue with exit even if timeout error occurs',
+      { timeout: 10000 },
+      async () => {
+        const mockConsoleError = vi
+          .spyOn(console, 'error')
+          .mockImplementation(() => {});
+
+        registerCleanup(async () => {
+          await new Promise((resolve) => setTimeout(resolve, 10000));
+        });
+
+        // Should not throw despite timeout
+        await expect(runCleanup()).resolves.not.toThrow();
+
+        mockConsoleError.mockRestore();
+      }
+    );
+  });
+
   describe('Edge Cases', () => {
     it('should handle empty cleanup registry', async () => {
       await expect(runCleanup()).resolves.not.toThrow();

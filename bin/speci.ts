@@ -16,8 +16,10 @@ import { refactor } from '../lib/commands/refactor.js';
 import { run } from '../lib/commands/run.js';
 import { status } from '../lib/commands/status.js';
 import { findSimilarCommands } from '../lib/utils/suggest.js';
-import { setVerbose, debug } from '../lib/utils/logger.js';
+import { setVerbose, debug, log } from '../lib/utils/logger.js';
 import { createProductionContext } from '../lib/adapters/context-factory.js';
+import { exitWithCleanup } from '../lib/utils/exit.js';
+import { PreflightError } from '../lib/utils/preflight.js';
 
 /**
  * Display the static (non-animated) banner
@@ -104,9 +106,22 @@ Examples:
 `
   )
   .action(async (options) => {
-    const result = await init(options, context);
-    if (!result.success) {
-      process.exit(result.exitCode);
+    try {
+      const result = await init(options, context);
+      if (!result.success) {
+        await exitWithCleanup(result.exitCode);
+      }
+    } catch (err) {
+      if (err instanceof PreflightError) {
+        log.error(`Preflight check failed: ${err.check}`);
+        log.error(err.message);
+        log.info('To fix this:');
+        for (const step of err.remediation) {
+          log.info(`  • ${step}`);
+        }
+        await exitWithCleanup(err.exitCode);
+      }
+      throw err;
     }
   });
 
@@ -135,9 +150,22 @@ Examples:
 `
   )
   .action(async (options) => {
-    const result = await plan(options, context);
-    if (!result.success) {
-      process.exit(result.exitCode);
+    try {
+      const result = await plan(options, context);
+      if (!result.success) {
+        await exitWithCleanup(result.exitCode);
+      }
+    } catch (err) {
+      if (err instanceof PreflightError) {
+        log.error(`Preflight check failed: ${err.check}`);
+        log.error(err.message);
+        log.info('To fix this:');
+        for (const step of err.remediation) {
+          log.info(`  • ${step}`);
+        }
+        await exitWithCleanup(err.exitCode);
+      }
+      throw err;
     }
   });
 
@@ -158,9 +186,22 @@ Examples:
 `
   )
   .action(async (options) => {
-    const result = await task(options, context);
-    if (!result.success) {
-      process.exit(result.exitCode);
+    try {
+      const result = await task(options, context);
+      if (!result.success) {
+        await exitWithCleanup(result.exitCode);
+      }
+    } catch (err) {
+      if (err instanceof PreflightError) {
+        log.error(`Preflight check failed: ${err.check}`);
+        log.error(err.message);
+        log.info('To fix this:');
+        for (const step of err.remediation) {
+          log.info(`  • ${step}`);
+        }
+        await exitWithCleanup(err.exitCode);
+      }
+      throw err;
     }
   });
 
@@ -183,9 +224,22 @@ Examples:
 `
   )
   .action(async (options) => {
-    const result = await refactor(options, context);
-    if (!result.success) {
-      process.exit(result.exitCode);
+    try {
+      const result = await refactor(options, context);
+      if (!result.success) {
+        await exitWithCleanup(result.exitCode);
+      }
+    } catch (err) {
+      if (err instanceof PreflightError) {
+        log.error(`Preflight check failed: ${err.check}`);
+        log.error(err.message);
+        log.info('To fix this:');
+        for (const step of err.remediation) {
+          log.info(`  • ${step}`);
+        }
+        await exitWithCleanup(err.exitCode);
+      }
+      throw err;
     }
   });
 
@@ -208,9 +262,22 @@ Examples:
 `
   )
   .action(async (options) => {
-    const result = await run(options, context);
-    if (!result.success) {
-      process.exit(result.exitCode);
+    try {
+      const result = await run(options, context);
+      if (!result.success) {
+        await exitWithCleanup(result.exitCode);
+      }
+    } catch (err) {
+      if (err instanceof PreflightError) {
+        log.error(`Preflight check failed: ${err.check}`);
+        log.error(err.message);
+        log.info('To fix this:');
+        for (const step of err.remediation) {
+          log.info(`  • ${step}`);
+        }
+        await exitWithCleanup(err.exitCode);
+      }
+      throw err;
     }
   });
 
@@ -235,9 +302,22 @@ Examples:
 `
   )
   .action(async (options) => {
-    const result = await status(options, context);
-    if (!result.success) {
-      process.exit(result.exitCode);
+    try {
+      const result = await status(options, context);
+      if (!result.success) {
+        await exitWithCleanup(result.exitCode);
+      }
+    } catch (err) {
+      if (err instanceof PreflightError) {
+        log.error(`Preflight check failed: ${err.check}`);
+        log.error(err.message);
+        log.info('To fix this:');
+        for (const step of err.remediation) {
+          log.info(`  • ${step}`);
+        }
+        await exitWithCleanup(err.exitCode);
+      }
+      throw err;
     }
   });
 
@@ -245,7 +325,7 @@ Examples:
 const availableCommands = ['init', 'plan', 'task', 'refactor', 'run', 'status'];
 
 // Unknown command handler
-program.on('command:*', (operands) => {
+program.on('command:*', async (operands) => {
   const unknownCmd = operands[0];
   const suggestions = findSimilarCommands(unknownCmd, availableCommands);
 
@@ -258,7 +338,7 @@ program.on('command:*', (operands) => {
   console.error('\nAvailable commands:');
   availableCommands.forEach((cmd) => console.error(`  ${cmd}`));
 
-  process.exit(2);
+  await exitWithCleanup(2);
 });
 
 // Check if help or version is being requested

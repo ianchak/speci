@@ -44,27 +44,52 @@ export function unregisterCleanup(fn: CleanupFn): void {
 }
 
 /**
+ * Cleanup timeout configuration
+ */
+const CLEANUP_TIMEOUT_MS = 5000;
+
+/**
  * Execute all registered cleanup functions in reverse order
  *
  * Safe to call multiple times - will only execute once.
  * Continues cleanup even if individual functions throw errors.
+ * Includes 5-second timeout to prevent hanging on slow cleanup handlers.
  */
 export async function runCleanup(): Promise<void> {
   if (isCleaningUp) return;
   isCleaningUp = true;
 
-  // Run in reverse order (last registered = first cleaned)
-  for (let i = cleanupRegistry.length - 1; i >= 0; i--) {
-    try {
-      await cleanupRegistry[i]();
-    } catch (err) {
-      // Log but continue cleanup
-      console.error('Cleanup error:', err);
-    }
-  }
+  // Create timeout promise
+  const timeoutPromise = new Promise<void>((_, reject) =>
+    setTimeout(
+      () => reject(new Error('Cleanup timeout after 5s')),
+      CLEANUP_TIMEOUT_MS
+    )
+  );
 
-  // Clear registry after cleanup
-  cleanupRegistry.length = 0;
+  // Create cleanup promise
+  const cleanupPromise = (async () => {
+    // Run in reverse order (last registered = first cleaned)
+    for (let i = cleanupRegistry.length - 1; i >= 0; i--) {
+      try {
+        await cleanupRegistry[i]();
+      } catch (err) {
+        // Log but continue cleanup
+        console.error('Cleanup error:', err);
+      }
+    }
+
+    // Clear registry after cleanup
+    cleanupRegistry.length = 0;
+  })();
+
+  // Race cleanup against timeout
+  try {
+    await Promise.race([cleanupPromise, timeoutPromise]);
+  } catch (error) {
+    console.error('Cleanup did not complete in time:', error);
+    // Continue with exit anyway
+  }
 }
 
 /**

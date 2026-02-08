@@ -186,13 +186,13 @@ export async function checkGitRepository(
 /**
  * Run all configured preflight checks
  *
- * Checks run in parallel where independent. If any check fails, logs the error
- * with remediation steps and exits with code 2.
+ * Checks run in parallel where independent. If any check fails, throws
+ * PreflightError with remediation steps for the caller to handle.
  *
  * @param config - Speci configuration
  * @param options - Options to customize which checks run
  * @param processParam - IProcess instance (defaults to global process)
- * @throws {PreflightError} If any check fails (after logging and calling process.exit)
+ * @throws {PreflightError} If any check fails
  */
 export async function preflight(
   config: SpeciConfig,
@@ -215,37 +215,11 @@ export async function preflight(
   }
 
   // Run independent checks in parallel
-  try {
-    await Promise.all(checks);
-  } catch (err) {
-    if (err instanceof PreflightError) {
-      log.error(`Preflight check failed: ${err.check}`);
-      log.error(err.message);
-      log.info('To fix this:');
-      for (const step of err.remediation) {
-        log.info(`  • ${step}`);
-      }
-      proc.exit(err.exitCode);
-    }
-    throw err;
-  }
+  await Promise.all(checks);
 
   // Progress check depends on config being loaded
   if (opts.requireProgress) {
-    try {
-      await checkProgressExists(config);
-    } catch (err) {
-      if (err instanceof PreflightError) {
-        log.error(`Preflight check failed: ${err.check}`);
-        log.error(err.message);
-        log.info('To fix this:');
-        for (const step of err.remediation) {
-          log.info(`  • ${step}`);
-        }
-        proc.exit(err.exitCode);
-      }
-      throw err;
-    }
+    await checkProgressExists(config);
   }
 
   log.debug('All preflight checks passed');
