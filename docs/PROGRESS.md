@@ -126,7 +126,7 @@
 | TASK_023 | State File Read Caching        | COMPLETE    | PASSED        | MEDIUM   | S (≤2h)    | None         | SA-20260208-019 | 1        |
 | TASK_024 | Error Catalog Consistency      | COMPLETE    | PASSED        | MEDIUM   | M (4-8h)   | TASK_014     | SA-20260208-020 | 1        |
 | TASK_025 | Expand Retry Logic             | COMPLETE    | PASSED        | MEDIUM   | M (4-8h)   | TASK_014     | SA-20260208-021 | 1        |
-| TASK_026 | Extract Remaining Duplications | IN PROGRESS | FAILED        | MEDIUM   | M (4-8h)   | None         | SA-20260208-023 | 2        |
+| TASK_026 | Extract Remaining Duplications | IN REVIEW | —        | MEDIUM   | M (4-8h)   | None         | SA-20260208-023 | 2        |
 | TASK_027 | Standardize Command API        | NOT STARTED | —             | MEDIUM   | M (4-8h)   | TASK_007     |                 |          |
 | TASK_028 | Signal Handler Promise Fix     | COMPLETE    | PASSED        | HIGH     | M (4-8h)   | TASK_009     | SA-20260208-015 | 1        |
 | TASK_029 | Debug Logging                  | NOT STARTED | —             | LOW      | S (≤2h)    | TASK_015     |                 |          |
@@ -219,81 +219,30 @@ Last Review ID: RA-20260208-032
 
 | Field             | Value                                                                                                                                 |
 | ----------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
-| Task              | -                                                                                                              |
-| Impl Agent        | -                                                                                                                       |
-| Files Changed     | - |
-| Tests Added       | -                                                                                                  |
-| Rework?           | -                                                                                                           |
-| Focus Areas       | -                                         |
-| Known Limitations | -                                                                  |
-| Gate Results      | -                                                                        |
+| Task              | TASK_026                                                                                                              |
+| Impl Agent        | SA-20260208-023                                                                                                                       |
+| Files Changed     | `lib/commands/plan.ts`, `lib/commands/task.ts`, `lib/commands/refactor.ts`, `lib/utils/copilot-helper.ts` |
+| Tests Added       | `test/copilot-helper.test.ts` (6 new tests)                                                                                  |
+| Rework?           | Yes - addressed copilot invocation pattern extraction (AC3-AC4)                                                                                                           |
+| Focus Areas       | Verify executeCopilotCommand() preserves exact behavior (debug logging format, exit code handling, stdio:inherit); Confirm plan.ts output flag handling still works correctly                                         |
+| Known Limitations | Error handling and log cleanup patterns were already extracted in previous attempt (AC1-AC2, AC5-AC6 already complete)                                                                  |
+| Gate Results      | format:✅ lint:✅ typecheck:✅ test:✅ (1169 passing, 30 skipped)                                                                        |
 
 ### For Fix Agent
 
 | Field           | Value                                          |
 | --------------- | ---------------------------------------------- |
-| Task            | TASK_026                                       |
-| Task Goal       | Eliminate ~72 lines of code duplication across error handling, copilot invocation, and log file cleanup patterns                  |
-| Review Agent    | RA-20260208-032                                |
-| Failed Gate     | none (AC failure) |
-| Primary Error   | `lib/commands/plan.ts:171-179, task.ts:135-143, refactor.ts:149-157` - Copilot invocation pattern NOT extracted     |
-| Root Cause Hint | Implementation agent incorrectly concluded copilot pattern extraction was not needed; clear duplication exists across 3 command files            |
-| Do NOT          | Refactor error handling or log cleanup (those are correct); change command behavior; touch unrelated code        |
+| Task            | -                                       |
+| Task Goal       | -                  |
+| Review Agent    | -                                |
+| Failed Gate     | - |
+| Primary Error   | -     |
+| Root Cause Hint | -            |
+| Do NOT          | -        |
 
 ### Review Failure Notes
 
-**Task:** TASK_026 - Extract Remaining Duplications
-**Task Goal:** Eliminate ~72 lines of code duplication across three specific patterns: error handling, copilot invocation, and log file cleanup
-**Review Agent:** RA-20260208-032
-
----
-
-#### Blocking Issues (must fix to pass)
-
-1. **AC3 NOT MET: Copilot invocation pattern NOT extracted to wrapper function (per §1.4.5)**
-   - Location: `lib/commands/plan.ts:171-179`, `lib/commands/task.ts:135-143`, `lib/commands/refactor.ts:149-157`
-   - Expected: A reusable `executeCopilotCommand()` wrapper function should handle the common pattern of logging, spawning, and returning result
-   - Actual: The same 8-line pattern is duplicated in all three command files (plan, task, refactor)
-   - Fix: Create `executeCopilotCommand()` function in lib/copilot.ts or new lib/utils/copilot-helper.ts that encapsulates: (1) debug logging with `Spawning: copilot ${args.join(' ')}`, (2) `context.copilotRunner.spawn(args, { inherit: true })`, (3) return structured result `{ success, exitCode }`
-
-2. **AC4 NOT MET: 40+ lines of similar copilot code NOT eliminated**
-   - Location: Same as above - plan.ts, task.ts, refactor.ts
-   - Expected: Duplicated copilot invocation code (~24 lines across 3 files) should be eliminated by using extracted wrapper
-   - Actual: All three files still have identical code for spawning copilot and returning results
-   - Fix: Replace the duplicated blocks in plan.ts, task.ts, and refactor.ts with calls to the new `executeCopilotCommand()` wrapper function
-
----
-
-#### Non-Blocking Issues (fix if time permits)
-
-- None - the error handling and log cleanup portions were implemented correctly
-
----
-
-#### What Passed Review
-
-- AC1: Error handling pattern extracted to `handleCommandError()` ✅
-- AC2: 32 lines of error handling eliminated across 4 command files ✅
-- AC5: Log file cleanup pattern extracted to `closeLogFile()` ✅
-- AC6: Duplicated log file cleanup in run.ts reduced to function calls ✅
-- AC7: All existing tests pass (1163 passing, 30 skipped) ✅
-- AC8: New tests verify utilities (9 error-handler tests, 3 closeLogFile tests) ✅
-- AC9: Error message consistency maintained ✅
-- Gates: lint ✅, typecheck ✅, test ✅
-- Special error handling preserved in task/refactor (agent file not found) ✅
-
----
-
-#### Fix Agent Instructions
-
-1. **Start with:** Read the refactoring plan §1.4.5 (lines 898-908 in docs/REFACTORING_PLAN.md) to understand the copilot invocation pattern that needs extraction
-2. **Then:** Create `executeCopilotCommand()` function that takes (config, context, args) and returns Promise<CommandResult>, encapsulating the debug log + spawn + result pattern
-3. **Then:** Replace the duplicated code in plan.ts (lines 171-179), task.ts (lines 135-143), and refactor.ts (lines 149-157) with calls to the new wrapper
-4. **Verify:** Run `npm test -- plan.test.ts task.test.ts refactor.test.ts` first to ensure command tests still pass
-5. **Context:** The error handling (AC1-AC2) and log cleanup (AC5-AC6) portions are CORRECT - do not touch those. Focus ONLY on the copilot invocation pattern. The wrapper should preserve the current behavior exactly (debug logging format, exit code handling, result structure).
-6. **Do NOT:** Refactor error handling or log cleanup patterns (already done correctly), change command behavior or signatures, add features beyond the scope, touch integration tests or other files unnecessarily
-
----
+(cleared - addressed in SA-20260208-023)
 
 ## Summary Statistics
 
