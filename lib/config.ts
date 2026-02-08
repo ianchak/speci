@@ -93,9 +93,9 @@ export function getDefaults(): SpeciConfig {
 /**
  * Find config file by walking up directory tree
  * @param startDir - Starting directory
- * @returns Path to config file or null if not found
+ * @returns Path to config file or undefined if not found
  */
-function findConfigFile(startDir: string): string | null {
+function findConfigFile(startDir: string): string | undefined {
   let currentDir = startDir;
 
   // eslint-disable-next-line no-constant-condition
@@ -109,7 +109,7 @@ function findConfigFile(startDir: string): string | null {
     const parentDir = dirname(currentDir);
     if (parentDir === currentDir) {
       log.debug('No config file found, using defaults');
-      return null;
+      return undefined;
     }
     currentDir = parentDir;
   }

@@ -76,7 +76,7 @@ function validatePlanFile(
  * @sideEffects Spawns GitHub Copilot CLI process; reads plan file
  */
 export async function task(
-  options: TaskOptions,
+  options: TaskOptions = {} as TaskOptions,
   context: CommandContext = createProductionContext(),
   config?: SpeciConfig
 ): Promise<CommandResult> {

@@ -137,7 +137,7 @@ async function gatherStatusData(config: SpeciConfig): Promise<StatusData> {
       startTime: lockInfo.started ? formatTimestamp(lockInfo.started) : null,
       elapsed: lockInfo.elapsed,
     },
-    currentTask,
+    currentTask: currentTask ?? null,
   };
 }
 

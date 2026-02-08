@@ -724,7 +724,7 @@ Some random text
 
       expect(stats.completed).toBe(1); // Old data
       expect(stats.remaining).toBe(2); // Old data
-      expect(currentTask).not.toBeNull(); // Old data (task still in progress)
+      expect(currentTask).not.toBeUndefined(); // Old data (task still in progress)
     });
 
     it('should not cache when file does not exist', async () => {
@@ -837,7 +837,7 @@ Some random text
       expect(state2).toBe(STATE.WORK_LEFT);
       expect(stats1.remaining).toBe(1);
       expect(stats2.remaining).toBe(1);
-      expect(task1).not.toBeNull();
+      expect(task1).not.toBeUndefined();
     });
   });
 });

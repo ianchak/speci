@@ -399,7 +399,7 @@ This is some malformed content
       await status({ json: true } as StatusOptions, mockContext);
 
       const jsonOutput = JSON.parse(consoleOutput[0]);
-      expect(jsonOutput.currentTask).not.toBeNull();
+      expect(jsonOutput.currentTask).not.toBeUndefined();
       expect(jsonOutput.currentTask.id).toBe('TASK_002');
       expect(jsonOutput.currentTask.title).toBe('Development');
       expect(jsonOutput.currentTask.status).toBe('IN PROGRESS');
@@ -419,12 +419,12 @@ This is some malformed content
       await status({ json: true } as StatusOptions, mockContext);
 
       const jsonOutput = JSON.parse(consoleOutput[0]);
-      expect(jsonOutput.currentTask).not.toBeNull();
+      expect(jsonOutput.currentTask).not.toBeUndefined();
       expect(jsonOutput.currentTask.id).toBe('TASK_002');
       expect(jsonOutput.currentTask.status).toBe('IN_REVIEW');
     });
 
-    it('should return null when no active task', async () => {
+    it('should return null in JSON when no active task', async () => {
       const progressContent = `# Progress
 
 | Task ID  | Title       | Status      |
@@ -441,7 +441,7 @@ This is some malformed content
       expect(jsonOutput.currentTask).toBeNull();
     });
 
-    it('should return null when all tasks complete', async () => {
+    it('should return null in JSON when all tasks complete', async () => {
       const progressContent = `# Progress
 
 | Task ID  | Title       | Status   |

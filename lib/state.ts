@@ -90,15 +90,15 @@ export function resetStateCache(): void {
  *
  * @param progressPath - Path to PROGRESS.md file
  * @param options - Cache options
- * @returns Array of file lines or null if file doesn't exist
+ * @returns Array of file lines or undefined if file doesn't exist
  */
 async function readStateFile(
   progressPath: string,
   options?: StateOptions
-): Promise<string[] | null> {
+): Promise<string[] | undefined> {
   // Check if file exists
   if (!existsSync(progressPath)) {
-    return null;
+    return undefined;
   }
 
   const now = Date.now();
@@ -161,7 +161,7 @@ export async function getState(
   const lines = await readStateFile(progressPath, options);
 
   // File doesn't exist
-  if (lines === null) {
+  if (lines === undefined) {
     return STATE.NO_PROGRESS;
   }
 
@@ -205,7 +205,7 @@ export async function getTaskStats(
   const lines = await readStateFile(progressPath, options);
 
   // File doesn't exist
-  if (lines === null) {
+  if (lines === undefined) {
     return { total: 0, completed: 0, remaining: 0, inReview: 0, blocked: 0 };
   }
 
@@ -281,15 +281,15 @@ export async function getTaskStats(
 export async function getCurrentTask(
   config: SpeciConfig,
   options?: StateOptions
-): Promise<CurrentTask | null> {
+): Promise<CurrentTask | undefined> {
   const progressPath = config.paths.progress;
 
   // Read file (with caching)
   const lines = await readStateFile(progressPath, options);
 
   // File doesn't exist
-  if (lines === null) {
-    return null;
+  if (lines === undefined) {
+    return undefined;
   }
 
   // Look for IN PROGRESS first, then IN_REVIEW
@@ -310,5 +310,5 @@ export async function getCurrentTask(
     }
   }
 
-  return null;
+  return undefined;
 }
