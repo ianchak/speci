@@ -8,54 +8,21 @@
  */
 
 import { spawn } from 'node:child_process';
-import type { SpeciConfig } from '@/config.js';
+import type {
+  SpeciConfig,
+  CommandName,
+  CopilotArgsOptions,
+  AgentRunResult,
+} from '@/types.js';
 import { log } from '@/utils/logger.js';
 import { getAgentFilename } from '@/constants.js';
 
-/**
- * Command names that can have per-command model configuration
- */
-export type CommandName =
-  | 'plan'
-  | 'task'
-  | 'refactor'
-  | 'impl'
-  | 'review'
-  | 'fix'
-  | 'tidy';
-
-/**
- * Options for building copilot CLI arguments
- */
-export interface CopilotArgsOptions {
-  prompt?: string;
-  agent: string;
-  shouldAllowAll?: boolean;
-  command: CommandName;
-}
-
-/**
- * Result of running an agent
- *
- * This is a discriminated union type that uses the `isSuccess` property as the discriminator.
- * When `isSuccess` is `true`, the result is guaranteed to have `exitCode: 0` with no error.
- * When `isSuccess` is `false`, the result is guaranteed to have a non-zero `exitCode` and an `error` message.
- *
- * @example
- * ```typescript
- * const result = await runAgent(config, 'impl', 'Implementation');
- * if (result.isSuccess) {
- *   // TypeScript knows exitCode is 0, error doesn't exist
- *   console.log('Success!');
- * } else {
- *   // TypeScript knows error exists (no optional chaining needed)
- *   console.error(result.error);
- * }
- * ```
- */
-export type AgentRunResult =
-  | { isSuccess: true; exitCode: 0 }
-  | { isSuccess: false; exitCode: number; error: string };
+// Re-export types for backward compatibility
+export type {
+  CommandName,
+  CopilotArgsOptions,
+  AgentRunResult,
+} from '@/types.js';
 
 /**
  * Retry policy for transient failures

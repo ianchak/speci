@@ -12,6 +12,10 @@ import { fileURLToPath } from 'node:url';
 import { log } from '@/utils/logger.js';
 import { CONFIG_FILENAME, getAgentFilename } from '@/constants.js';
 import type { IProcess } from '@/interfaces.js';
+import type { SpeciConfig } from '@/types.js';
+
+// Re-export SpeciConfig for backward compatibility
+export type { SpeciConfig } from '@/types.js';
 
 // Get the directory of the compiled output
 const __filename = fileURLToPath(import.meta.url);
@@ -19,49 +23,6 @@ const __dirname = dirname(__filename);
 
 // Path to bundled templates (relative to compiled lib/ directory)
 const TEMPLATES_DIR = join(__dirname, '..', 'templates');
-
-/**
- * Speci configuration interface
- */
-export interface SpeciConfig {
-  version: string;
-  paths: {
-    progress: string;
-    tasks: string;
-    logs: string;
-    lock: string;
-  };
-  agents: {
-    plan: string | null;
-    task: string | null;
-    refactor: string | null;
-    impl: string | null;
-    review: string | null;
-    fix: string | null;
-    tidy: string | null;
-  };
-  copilot: {
-    permissions: 'allow-all' | 'yolo' | 'strict' | 'none';
-    model: string | null;
-    models: {
-      plan: string | null;
-      task: string | null;
-      refactor: string | null;
-      impl: string | null;
-      review: string | null;
-      fix: string | null;
-      tidy: string | null;
-    };
-    extraFlags: string[];
-  };
-  gate: {
-    commands: string[];
-    maxFixAttempts: number;
-  };
-  loop: {
-    maxIterations: number;
-  };
-}
 
 type AgentName =
   | 'plan'

@@ -8,8 +8,11 @@
  * @see TASK_005_dependency_injection_interfaces.md
  */
 
-import type { SpeciConfig } from '@/config.js';
-import type { CopilotArgsOptions, AgentRunResult } from '@/copilot.js';
+import type {
+  SpeciConfig,
+  CopilotArgsOptions,
+  AgentRunResult,
+} from '@/types.js';
 
 /**
  * Filesystem operations interface

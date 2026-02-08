@@ -7,38 +7,12 @@
 
 import { readFile } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
-import type { SpeciConfig } from '@/config.js';
+import type { SpeciConfig, TaskStats, CurrentTask } from '@/types.js';
+import { STATE } from '@/types.js';
 
-/**
- * State enum representing the current orchestration state
- */
-export enum STATE {
-  WORK_LEFT = 'WORK_LEFT',
-  IN_REVIEW = 'IN_REVIEW',
-  BLOCKED = 'BLOCKED',
-  DONE = 'DONE',
-  NO_PROGRESS = 'NO_PROGRESS',
-}
-
-/**
- * Task statistics interface
- */
-export interface TaskStats {
-  total: number;
-  completed: number;
-  remaining: number;
-  inReview: number;
-  blocked: number;
-}
-
-/**
- * Current task information
- */
-export interface CurrentTask {
-  id: string;
-  title: string;
-  status: string;
-}
+// Re-export types for backward compatibility
+export { STATE } from '@/types.js';
+export type { TaskStats, CurrentTask } from '@/types.js';
 
 // Pre-compile regex patterns at module load for performance
 const PATTERNS = {
