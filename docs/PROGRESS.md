@@ -127,7 +127,7 @@
 | TASK_024 | Error Catalog Consistency      | COMPLETE    | PASSED        | MEDIUM   | M (4-8h)   | TASK_014     | SA-20260208-020 | 1        |
 | TASK_025 | Expand Retry Logic             | COMPLETE    | PASSED        | MEDIUM   | M (4-8h)   | TASK_014     | SA-20260208-021 | 1        |
 | TASK_026 | Extract Remaining Duplications | COMPLETE | PASSED        | MEDIUM   | M (4-8h)   | None         | SA-20260208-023 | 2        |
-| TASK_027 | Standardize Command API        | IN PROGRESS | —             | MEDIUM   | M (4-8h)   | TASK_007     | SA-20260208-024 | 1        |
+| TASK_027 | Standardize Command API        | IN REVIEW   | —             | MEDIUM   | M (4-8h)   | TASK_007     | SA-20260208-024 | 1        |
 | TASK_028 | Signal Handler Promise Fix     | COMPLETE    | PASSED        | HIGH     | M (4-8h)   | TASK_009     | SA-20260208-015 | 1        |
 | TASK_029 | Debug Logging                  | NOT STARTED | —             | LOW      | S (≤2h)    | TASK_015     |                 |          |
 | TASK_030 | Standardize Null vs Undefined  | NOT STARTED | —             | MEDIUM   | M (4-8h)   | None         |                 |          |
@@ -217,16 +217,16 @@ Last Review ID: RA-20260208-033
 
 ### For Reviewer
 
-| Field             | Value                                                                                                                                 |
-| ----------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
-| Task              | -                                                                                                              |
-| Impl Agent        | -                                                                                                                       |
-| Files Changed     | - |
-| Tests Added       | -                                                                                  |
-| Rework?           | -                                                                                                           |
-| Focus Areas       | -                                         |
-| Known Limitations | -                                                                  |
-| Gate Results      | -                                                                        |
+| Field             | Value                                                                                                                                                                                                                                                                                                                                                      |
+| ----------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Task              | TASK_027                                                                                                                                                                                                                                                                                                                                                   |
+| Impl Agent        | SA-20260208-024                                                                                                                                                                                                                                                                                                                                            |
+| Files Changed     | `lib/commands/init.ts`, `lib/commands/plan.ts`, `lib/commands/task.ts`, `lib/commands/refactor.ts`, `lib/commands/run.ts`, `lib/commands/status.ts`                                                                                                                                                                                                      |
+| Tests Added       | `test/command-api-standardization.test.ts` (19 new tests)                                                                                                                                                                                                                                                                                                  |
+| Rework?           | No                                                                                                                                                                                                                                                                                                                                                         |
+| Focus Areas       | Verify @sideEffects JSDoc accurately describes command side effects; Confirm status command signal handler properly returns without process.exit(); Ensure CommandResult consistency is maintained across all 6 commands                                                                                                                                  |
+| Known Limitations | Task primarily documents existing API (commands already returned CommandResult); Only removed 1 process.exit() call from status signal handler; Did not add exit code constants (EXIT_SUCCESS, EXIT_ERROR) as task marked this out of scope; Signal handler in status command now relies on cleanup() setting running=false to exit the interactive loop |
+| Gate Results      | format:✅ lint:✅ typecheck:✅ test:✅ (1188 tests passing)                                                                                                                                                                                                                                                                                                |
 
 ### For Fix Agent
 
