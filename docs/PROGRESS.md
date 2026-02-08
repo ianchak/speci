@@ -96,7 +96,7 @@
 | TASK_013 | Error Catalog Tests             | COMPLETE    | PASSED        | HIGH     | S (≤2h)    | TASK_010           | SA-20260208-006 | 1        |
 | TASK_014 | Discriminated Union Error Types | COMPLETE    | PASSED        | HIGH     | L (8-16h)  | TASK_009           | SA-20260208-007 | 1        |
 | TASK_015 | Standardize Logging             | NOT STARTED | —             | MEDIUM   | M (4-8h)   | TASK_008           |                 |          |
-| TASK_016 | Extract Command Initialization  | IN PROGRESS | FAILED        | HIGH     | M (4-8h)   | TASK_007           | SA-20260208-009 | 2        |
+| TASK_016 | Extract Command Initialization  | IN REVIEW   | —             | HIGH     | M (4-8h)   | TASK_007           | SA-20260208-009 | 2        |
 | TASK_017 | Encapsulate Module-Level State  | NOT STARTED | —             | HIGH     | M (4-8h)   | TASK_007           |                 |          |
 | TASK_018 | Reduce Cross-Module Coupling    | NOT STARTED | —             | HIGH     | L (8-16h)  | TASK_007           |                 |          |
 | MVT_M2   | Core Improvements Manual Test   | NOT STARTED | —             | —        | 45 min     | TASK_010-018       |                 |          |
@@ -202,7 +202,7 @@ TASK_031 (Parallelize) → MVT_M4
 
 ## Subagent Tracking
 
-Last Subagent ID: SA-20260208-008
+Last Subagent ID: SA-20260208-009
 
 ---
 
@@ -216,16 +216,16 @@ Last Review ID: RA-20260208-018
 
 ### For Reviewer
 
-| Field             | Value |
-| ----------------- | ----- |
-| Task              | -     |
-| Impl Agent        | -     |
-| Files Changed     | -     |
-| Tests Added       | -     |
-| Rework?           | -     |
-| Focus Areas       | -     |
-| Known Limitations | -     |
-| Gate Results      | -     |
+| Field             | Value                                                                                                                                                                                      |
+| ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Task              | TASK_016                                                                                                                                                                                   |
+| Impl Agent        | SA-20260208-009                                                                                                                                                                            |
+| Files Changed     | `lib/commands/plan.ts`                                                                                                                                                                     |
+| Tests Added       | None (existing 24 tests in `test/command-helpers.test.ts` cover the shared helper; `test/plan.test.ts` has 39 tests that verify plan command behavior)                                    |
+| Rework?           | Yes - Addressed review failure notes: Refactored plan.ts to use initializeCommand() helper with skipPreflight: true; achieved 90+ line reduction target across all three commands         |
+| Focus Areas       | Verify plan command still validates required --prompt or --input before initialization; confirm skipPreflight: true works correctly; ensure plan-specific behavior preserved               |
+| Known Limitations | None - all requirements met per acceptance criteria                                                                                                                                        |
+| Gate Results      | format:✅ lint:✅ typecheck:✅ test:✅ (exit code 0 for all, 1019 tests passing)                                                                                                          |
 
 ### For Fix Agent
 
@@ -249,17 +249,17 @@ Last Review ID: RA-20260208-018
 
 #### Blocking Issues (must fix to pass)
 
-1. **AC5 NOT MET: lib/commands/plan.ts not refactored to use shared initialization**
-   - Location: `lib/commands/plan.ts:66-96`
-   - Expected: Plan command should use `initializeCommand()` helper like task and refactor commands
-   - Actual: Plan command still has 30+ lines of duplicated initialization code (banner, config load, agent validation)
-   - Fix: Refactor plan.ts to use `initializeCommand({ commandName: 'plan', skipPreflight: true, ... })` since plan doesn't need preflight checks
+~~1. **AC5 NOT MET: lib/commands/plan.ts not refactored to use shared initialization**~~ FIXED
+   - ~~Location: `lib/commands/plan.ts:66-96`~~
+   - ~~Expected: Plan command should use `initializeCommand()` helper like task and refactor commands~~
+   - ~~Actual: Plan command still has 30+ lines of duplicated initialization code (banner, config load, agent validation)~~
+   - ~~Fix: Refactor plan.ts to use `initializeCommand({ commandName: 'plan', skipPreflight: true, ... })` since plan doesn't need preflight checks~~
 
-2. **AC8 NOT MET: Net reduction target not met (only ~60 lines instead of 90+)**
-   - Location: Overall codebase
-   - Expected: Net reduction of 90+ lines of duplicated code across all three commands
-   - Actual: Only ~60 lines reduced because plan.ts was not refactored
-   - Fix: Complete the plan.ts refactoring to achieve the target reduction
+~~2. **AC8 NOT MET: Net reduction target not met (only ~60 lines instead of 90+)**~~ FIXED
+   - ~~Location: Overall codebase~~
+   - ~~Expected: Net reduction of 90+ lines of duplicated code across all three commands~~
+   - ~~Actual: Only ~60 lines reduced because plan.ts was not refactored~~
+   - ~~Fix: Complete the plan.ts refactoring to achieve the target reduction~~
 
 ---
 
