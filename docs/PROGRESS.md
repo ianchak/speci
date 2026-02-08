@@ -96,7 +96,7 @@
 | TASK_013 | Error Catalog Tests             | COMPLETE    | PASSED        | HIGH     | S (≤2h)    | TASK_010           | SA-20260208-006 | 1        |
 | TASK_014 | Discriminated Union Error Types | COMPLETE    | PASSED        | HIGH     | L (8-16h)  | TASK_009           | SA-20260208-007 | 1        |
 | TASK_015 | Standardize Logging             | NOT STARTED | —             | MEDIUM   | M (4-8h)   | TASK_008           |                 |          |
-| TASK_016 | Extract Command Initialization  | IN PROGRESS | —             | HIGH     | M (4-8h)   | TASK_007           | SA-20260208-008 | 1        |
+| TASK_016 | Extract Command Initialization  | IN REVIEW   | —             | HIGH     | M (4-8h)   | TASK_007           | SA-20260208-008 | 1        |
 | TASK_017 | Encapsulate Module-Level State  | NOT STARTED | —             | HIGH     | M (4-8h)   | TASK_007           |                 |          |
 | TASK_018 | Reduce Cross-Module Coupling    | NOT STARTED | —             | HIGH     | L (8-16h)  | TASK_007           |                 |          |
 | MVT_M2   | Core Improvements Manual Test   | NOT STARTED | —             | —        | 45 min     | TASK_010-018       |                 |          |
@@ -216,16 +216,16 @@ Last Review ID: RA-20260208-017
 
 ### For Reviewer
 
-| Field             | Value |
-| ----------------- | ----- |
-| Task              | -     |
-| Impl Agent        | -     |
-| Files Changed     | -     |
-| Tests Added       | -     |
-| Rework?           | -     |
-| Focus Areas       | -     |
-| Known Limitations | -     |
-| Gate Results      | -     |
+| Field             | Value                                                                                                     |
+| ----------------- | --------------------------------------------------------------------------------------------------------- |
+| Task              | TASK_016                                                                                                  |
+| Impl Agent        | SA-20260208-008                                                                                           |
+| Files Changed     | `lib/utils/command-helpers.ts`, `lib/commands/task.ts`, `lib/commands/refactor.ts`                       |
+| Tests Added       | `test/command-helpers.test.ts` (24 new tests)                                                             |
+| Rework?           | No                                                                                                        |
+| Focus Areas       | Verify initializeCommand properly sequences banner, config load, preflight, and agent validation; Check that error handling matches original behavior for agent file not found; Validate that task and refactor commands maintain exact same behavior as before |
+| Known Limitations | Plan command NOT refactored due to test incompatibility issues (plan doesn't run preflight). Only task and refactor commands refactored. Net reduction ~60 lines instead of target 90+ lines. |
+| Gate Results      | format:✅ lint:✅ typecheck:✅ test:✅ (1019 tests passing)                                              |
 
 ### For Fix Agent
 
