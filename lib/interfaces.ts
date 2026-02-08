@@ -202,6 +202,12 @@ export interface ILogger {
   muted(message: string): void;
 
   /**
+   * Log raw message without any formatting or glyphs
+   * @param message - Message to log as-is
+   */
+  raw(message: string): void;
+
+  /**
    * Enable or disable verbose mode
    * @param enabled - Whether to enable verbose mode
    */

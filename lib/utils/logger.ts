@@ -123,6 +123,14 @@ export const log = {
   muted(message: string): void {
     console.log(colorize(message, 'dim'));
   },
+
+  /**
+   * Log raw message without any formatting or glyphs
+   * @param message - Message to log as-is
+   */
+  raw(message: string): void {
+    console.log(message);
+  },
 };
 
 /**

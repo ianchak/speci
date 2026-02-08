@@ -203,10 +203,10 @@ describe('Cleanup Integration', () => {
 
       await runCleanup();
 
-      expect(mockConsoleError).toHaveBeenCalledWith(
-        'Cleanup error:',
-        expect.any(Error)
-      );
+      // log.error adds a glyph, so we just check that error was called
+      expect(mockConsoleError).toHaveBeenCalled();
+      const errorCall = mockConsoleError.mock.calls[0][0];
+      expect(errorCall).toContain('Cleanup error');
       expect(existsSync(tempFile)).toBe(false);
 
       mockConsoleError.mockRestore();
@@ -229,6 +229,8 @@ describe('Cleanup Integration', () => {
 
       await runCleanup();
 
+      // Each error is logged separately via log.error (which adds glyphs)
+      // We should have 3 errors logged
       expect(mockConsoleError).toHaveBeenCalledTimes(3);
 
       mockConsoleError.mockRestore();

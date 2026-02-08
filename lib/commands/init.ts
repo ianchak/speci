@@ -7,7 +7,6 @@
 
 import { join, relative } from 'node:path';
 import { renderBanner } from '@/ui/banner.js';
-import { colorize } from '@/ui/colors.js';
 import {
   getDefaults,
   getAgentsTemplatePath,
@@ -65,35 +64,29 @@ function displayActionSummary(
   if (existing.configExists) {
     context.logger.warn(`  ${CONFIG_FILENAME} already exists (will skip)`);
   } else {
-    console.log(colorize(`    ${CONFIG_FILENAME} will be created`, 'success'));
+    context.logger.success(`    ${CONFIG_FILENAME} will be created`);
   }
 
   if (existing.tasksExists) {
     context.logger.warn(`  ${config.paths.tasks}/ already exists (will skip)`);
   } else {
-    console.log(
-      colorize(
-        `    ${config.paths.tasks}/ directory will be created`,
-        'success'
-      )
+    context.logger.success(
+      `    ${config.paths.tasks}/ directory will be created`
     );
   }
 
   if (existing.logsExists) {
     context.logger.warn(`  ${config.paths.logs}/ already exists (will skip)`);
   } else {
-    console.log(
-      colorize(`    ${config.paths.logs}/ directory will be created`, 'success')
+    context.logger.success(
+      `    ${config.paths.logs}/ directory will be created`
     );
   }
 
   if (existing.agentsExist) {
     if (updateAgents) {
-      console.log(
-        colorize(
-          `    ${GITHUB_AGENTS_DIR}/ directory will be updated`,
-          'success'
-        )
+      context.logger.success(
+        `    ${GITHUB_AGENTS_DIR}/ directory will be updated`
       );
     } else {
       context.logger.warn(
@@ -101,12 +94,12 @@ function displayActionSummary(
       );
     }
   } else {
-    console.log(
-      colorize(`    ${GITHUB_AGENTS_DIR}/ directory will be updated`, 'success')
+    context.logger.success(
+      `    ${GITHUB_AGENTS_DIR}/ directory will be updated`
     );
   }
 
-  console.log();
+  context.logger.info(''); // Blank line for spacing
 }
 
 /**
@@ -261,22 +254,16 @@ async function copyAgentFiles(
  * @param context - Command context for logging
  */
 function displaySuccess(context: CommandContext): void {
-  console.log();
+  context.logger.info('');
   context.logger.info('Next steps:');
-  console.log(colorize('  1. Generate your plan with: speci plan', 'dim'));
-  console.log(
-    colorize(
-      '  2. Generate your tasks and PROGRESS.md with: speci tasks',
-      'dim'
-    )
+  context.logger.muted('  1. Generate your plan with: speci plan');
+  context.logger.muted(
+    '  2. Generate your tasks and PROGRESS.md with: speci tasks'
   );
-  console.log(
-    colorize(
-      '  3. After a manual check start the implementation loop: speci run',
-      'dim'
-    )
+  context.logger.muted(
+    '  3. After a manual check start the implementation loop: speci run'
   );
-  console.log();
+  context.logger.info('');
 }
 
 /**
@@ -293,9 +280,9 @@ export async function init(
   try {
     // Display welcome banner
     renderBanner();
-    console.log();
+    context.logger.info('');
     context.logger.info('Initializing Speci in current directory...');
-    console.log();
+    context.logger.info('');
 
     // Use default configuration
     const config = getDefaults();

@@ -213,10 +213,10 @@ describe('Signal Handling', () => {
         expect(duration).toBeLessThan(6000);
         expect(duration).toBeGreaterThan(4900);
 
-        expect(mockConsoleError).toHaveBeenCalledWith(
-          'Cleanup did not complete in time:',
-          expect.any(Error)
-        );
+        // log.error adds a glyph, so we just check that error was called
+        expect(mockConsoleError).toHaveBeenCalled();
+        const errorCall = mockConsoleError.mock.calls[0][0];
+        expect(errorCall).toContain('Cleanup did not complete in time');
 
         mockConsoleError.mockRestore();
       }

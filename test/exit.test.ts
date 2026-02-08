@@ -65,10 +65,10 @@ describe('Exit Utility', () => {
 
       await expect(exitWithCleanup(1)).rejects.toThrow('process.exit called');
 
-      expect(mockConsoleError).toHaveBeenCalledWith(
-        'Cleanup failed:',
-        cleanupError
-      );
+      // log.error adds a glyph, so we just check that error was called
+      expect(mockConsoleError).toHaveBeenCalled();
+      const errorCall = mockConsoleError.mock.calls[0][0];
+      expect(errorCall).toContain('Cleanup failed');
       expect(mockExit).toHaveBeenCalledWith(1);
     });
 
@@ -92,9 +92,10 @@ describe('Exit Utility', () => {
         // Second cleanup should force exit immediately
         await expect(exitWithCleanup(2)).rejects.toThrow('process.exit called');
 
-        expect(mockConsoleError).toHaveBeenCalledWith(
-          'Cleanup already in progress, forcing exit'
-        );
+        // log.error adds a glyph, so we just check that error was called
+        expect(mockConsoleError).toHaveBeenCalled();
+        const errorCall = mockConsoleError.mock.calls[0][0];
+        expect(errorCall).toContain('Cleanup already in progress');
         expect(mockExit).toHaveBeenCalledWith(2);
         expect(mockRunCleanup).toHaveBeenCalledOnce(); // Only first call
       }

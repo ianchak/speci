@@ -48,10 +48,11 @@ function displayCommandInfo(
   if (inputFiles && inputFiles.length > 0) {
     content.push(colorize('Input:', 'sky400') + ` ${inputFiles.join(', ')}`);
   }
+  // Raw output to preserve box formatting
   console.log(
     drawBox(content, { title: 'Plan Generation', borderColor: 'sky500' })
   );
-  console.log();
+  console.log(); // Empty line for spacing
 }
 
 /**

@@ -41,6 +41,10 @@ export class NodeLogger implements ILogger {
     log.muted(message);
   }
 
+  raw(message: string): void {
+    log.raw(message);
+  }
+
   setVerbose(enabled: boolean): void {
     setVerbose(enabled);
   }

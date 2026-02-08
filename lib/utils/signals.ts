@@ -6,6 +6,8 @@
  * SIGTERM. Includes cleanup registry for proper resource cleanup.
  */
 
+import { log } from '@/utils/logger.js';
+
 /**
  * Cleanup function type - sync or async
  */
@@ -76,7 +78,9 @@ export async function runCleanup(): Promise<void> {
         await cleanupRegistry[i]();
       } catch (err) {
         // Log but continue cleanup
-        console.error('Cleanup error:', err);
+        log.error(
+          `Cleanup error: ${err instanceof Error ? err.message : String(err)}`
+        );
       }
     }
 
@@ -88,7 +92,9 @@ export async function runCleanup(): Promise<void> {
   try {
     await Promise.race([cleanupPromise, timeoutPromise]);
   } catch (error) {
-    console.error('Cleanup did not complete in time:', error);
+    log.error(
+      `Cleanup did not complete in time: ${error instanceof Error ? error.message : String(error)}`
+    );
     // Continue with exit anyway
   } finally {
     // Reset flag to allow future cleanup cycles (important for tests)
@@ -105,12 +111,12 @@ export async function runCleanup(): Promise<void> {
 function handleSigint(): void {
   if (signalReceived) {
     // Second Ctrl+C - force exit
-    console.error('\nForce exiting...');
+    log.error('\nForce exiting...');
     process.exit(130);
   }
 
   signalReceived = true;
-  console.error('\nInterrupted. Cleaning up...');
+  log.info('\nInterrupted. Cleaning up...');
 
   runCleanup()
     .then(() => process.exit(130))
@@ -123,7 +129,7 @@ function handleSigint(): void {
  * Graceful shutdown with same cleanup as SIGINT.
  */
 function handleSigterm(): void {
-  console.error('\nReceived SIGTERM. Shutting down gracefully...');
+  log.info('\nReceived SIGTERM. Shutting down gracefully...');
 
   runCleanup()
     .then(() => process.exit(143))

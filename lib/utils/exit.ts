@@ -7,6 +7,7 @@
  */
 
 import { runCleanup } from './signals.js';
+import { log } from './logger.js';
 
 /**
  * Internal state to track cleanup execution
@@ -25,7 +26,7 @@ let isCleaningUp = false;
  */
 export async function exitWithCleanup(exitCode: number): Promise<never> {
   if (isCleaningUp) {
-    console.error('Cleanup already in progress, forcing exit');
+    log.error('Cleanup already in progress, forcing exit');
     process.exit(exitCode);
   }
 
@@ -33,7 +34,9 @@ export async function exitWithCleanup(exitCode: number): Promise<never> {
   try {
     await runCleanup();
   } catch (error) {
-    console.error('Cleanup failed:', error);
+    log.error(
+      `Cleanup failed: ${error instanceof Error ? error.message : String(error)}`
+    );
   }
   process.exit(exitCode);
 }
