@@ -774,25 +774,21 @@ describe('Gate Runner', () => {
   });
 
   describe('gate timeout advanced edge cases', () => {
-    it(
-      'should forcefully kill process that ignores SIGTERM (AC#31)',
-      async () => {
-        // Process that ignores SIGTERM by trapping the signal
-        // Note: Windows doesn't support SIGTERM signal handlers like Unix
-        // This test verifies the timeout mechanism still works
-        const result = await executeGateCommand(
-          'node -e "process.on(\'SIGTERM\', () => {}); setTimeout(() => {}, 2000);"',
-          { timeout: 200 }
-        );
+    it('should forcefully kill process that ignores SIGTERM (AC#31)', async () => {
+      // Process that ignores SIGTERM by trapping the signal
+      // Note: Windows doesn't support SIGTERM signal handlers like Unix
+      // This test verifies the timeout mechanism still works
+      const result = await executeGateCommand(
+        'node -e "process.on(\'SIGTERM\', () => {}); setTimeout(() => {}, 2000);"',
+        { timeout: 200 }
+      );
 
-        expect(result.isSuccess).toBe(false);
-        expect(result.exitCode).toBe(124);
-        expect(result.error).toContain('timed out');
-        // Duration should be approximately timeout + small grace period
-        expect(result.duration).toBeGreaterThanOrEqual(180);
-      },
-      10000
-    ); // 10s timeout
+      expect(result.isSuccess).toBe(false);
+      expect(result.exitCode).toBe(124);
+      expect(result.error).toContain('timed out');
+      // Duration should be approximately timeout + small grace period
+      expect(result.duration).toBeGreaterThanOrEqual(180);
+    }, 10000); // 10s timeout
 
     it('should allow second command to succeed after first times out (AC#32)', async () => {
       // This test verifies AC#32 (already exists above at line 722)
@@ -813,43 +809,35 @@ describe('Gate Runner', () => {
       expect(result2.output).toContain('cleanup-success');
     });
 
-    it(
-      'should handle timeout during cleanup phase (AC#33)',
-      async () => {
-        // Test scenario where command times out and cleanup itself is slow
-        // The existing implementation doesn't have explicit cleanup phase timeouts
-        // This test verifies the timeout mechanism completes within reasonable bounds
-        const result = await executeGateCommand(
-          'node -e "process.on(\'exit\', () => { const start = Date.now(); while(Date.now() - start < 500); }); setTimeout(() => {}, 2000);"',
-          { timeout: 200 }
-        );
+    it('should handle timeout during cleanup phase (AC#33)', async () => {
+      // Test scenario where command times out and cleanup itself is slow
+      // The existing implementation doesn't have explicit cleanup phase timeouts
+      // This test verifies the timeout mechanism completes within reasonable bounds
+      const result = await executeGateCommand(
+        'node -e "process.on(\'exit\', () => { const start = Date.now(); while(Date.now() - start < 500); }); setTimeout(() => {}, 2000);"',
+        { timeout: 200 }
+      );
 
-        expect(result.isSuccess).toBe(false);
-        expect(result.exitCode).toBe(124);
-        // Should timeout despite cleanup handlers
-        expect(result.error).toContain('timed out');
-      },
-      10000
-    ); // 10s timeout
+      expect(result.isSuccess).toBe(false);
+      expect(result.exitCode).toBe(124);
+      // Should timeout despite cleanup handlers
+      expect(result.error).toContain('timed out');
+    }, 10000); // 10s timeout
 
-    it(
-      'should verify exit code 124 for timeout (AC#34)',
-      async () => {
-        // Explicit verification that timeout exit code is always 124
-        const result = await executeGateCommand(
-          'node -e "setTimeout(() => {}, 2000)"',
-          { timeout: 100 }
-        );
+    it('should verify exit code 124 for timeout (AC#34)', async () => {
+      // Explicit verification that timeout exit code is always 124
+      const result = await executeGateCommand(
+        'node -e "setTimeout(() => {}, 2000)"',
+        { timeout: 100 }
+      );
 
-        // Exit code MUST be exactly 124 for timeouts
-        expect(result.exitCode).toBe(124);
-        expect(result.isSuccess).toBe(false);
-        expect(result.error).toBeDefined();
-        expect(result.error).toContain('timed out');
-        expect(result.error).toMatch(/\d+ms/); // Should include timeout duration
-      },
-      10000
-    ); // 10s timeout
+      // Exit code MUST be exactly 124 for timeouts
+      expect(result.exitCode).toBe(124);
+      expect(result.isSuccess).toBe(false);
+      expect(result.error).toBeDefined();
+      expect(result.error).toContain('timed out');
+      expect(result.error).toMatch(/\d+ms/); // Should include timeout duration
+    }, 10000); // 10s timeout
 
     it('should handle process.exit() during timeout (AC#35)', async () => {
       // Process that exits while timeout cleanup is running
@@ -864,6 +852,94 @@ describe('Gate Runner', () => {
       expect(result.isSuccess).toBe(false);
       // Either the process's exit code or timeout code
       expect([42, 124]).toContain(result.exitCode);
+    });
+  });
+
+  describe('error handling edge cases', () => {
+    it('should handle command not found (ENOENT) error', async () => {
+      // Command that doesn't exist should trigger ENOENT error path
+      const result = await executeGateCommand('nonexistent-command-12345');
+
+      expect(result.isSuccess).toBe(false);
+      // Exit code may vary by platform (127 on Unix, 1 on Windows)
+      expect([1, 127]).toContain(result.exitCode);
+      expect(result.error).toBeDefined();
+    });
+
+    it('should log multi-line error output correctly', async () => {
+      // Create a command with multi-line error output
+      const script = `
+        console.error('Error line 1');
+        console.error('Error line 2');
+        console.error('Error line 3');
+        console.error('Error line 4');
+        console.error('Error line 5');
+        console.error('Error line 6');
+        process.exit(1);
+      `;
+      const result = await executeGateCommand(
+        `node -e "${script.replace(/\n/g, ' ')}"`
+      );
+
+      expect(result.isSuccess).toBe(false);
+      expect(result.exitCode).toBe(1);
+      expect(result.error).toContain('Error line 1');
+      // Should have multiple error lines captured
+      expect(result.error.split('\n').length).toBeGreaterThan(1);
+    });
+
+    it('should handle promise rejection in parallel mode', async () => {
+      const mockConfig: SpeciConfig = {
+        version: '1.0.0',
+        paths: {
+          progress: './PROGRESS.md',
+          tasks: './tasks',
+          logs: './.speci-logs',
+          lock: './.speci-lock',
+        },
+        agents: {
+          plan: null,
+          task: null,
+          refactor: null,
+          impl: null,
+          review: null,
+          fix: null,
+          tidy: null,
+        },
+        copilot: {
+          permissions: 'allow-all',
+          model: null,
+          models: {
+            plan: null,
+            task: null,
+            refactor: null,
+            impl: null,
+            review: null,
+            fix: null,
+            tidy: null,
+          },
+          extraFlags: [],
+        },
+        loop: {
+          maxIterations: 10,
+        },
+        gate: {
+          commands: ['nonexistent-command-xyz'],
+          maxFixAttempts: 3,
+          strategy: 'parallel',
+        },
+      };
+
+      const result = await runGate(mockConfig);
+
+      // Should handle rejection gracefully
+      expect(result.isSuccess).toBe(false);
+      if (!result.isSuccess) {
+        expect(result.error).toBeDefined();
+      }
+      expect(result.results.length).toBeGreaterThan(0);
+      // First result should be a failed command
+      expect(result.results[0].isSuccess).toBe(false);
     });
   });
 });

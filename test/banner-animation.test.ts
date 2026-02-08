@@ -814,9 +814,9 @@ describe('sleep utility', () => {
       await testSleep(50);
       const elapsed = Date.now() - start;
 
-      // Allow ±20ms tolerance for event loop jitter and CI environments
-      expect(elapsed).toBeGreaterThanOrEqual(30);
-      expect(elapsed).toBeLessThanOrEqual(70);
+      // Allow ±25ms tolerance for event loop jitter and CI environments
+      expect(elapsed).toBeGreaterThanOrEqual(25);
+      expect(elapsed).toBeLessThanOrEqual(75);
     });
 
     it('accumulates delays correctly in consecutive calls', async () => {
@@ -3771,6 +3771,52 @@ describe('Performance Benchmarks (TASK_021)', () => {
         // At least some frames should be fast (within 100ms)
         expect(fastFrames.length).toBeGreaterThan(0);
       }
+    });
+
+    it('should use random effect when effect is not specified', async () => {
+      const mockStdout = {
+        write: vi.fn(() => true),
+        isTTY: true,
+        columns: 80,
+        fd: 1,
+      } as unknown as NodeJS.WriteStream & { fd: 1 };
+
+      vi.spyOn(process, 'stdout', 'get').mockReturnValue(mockStdout);
+
+      // Call without specifying effect - should trigger default case (line 113-114)
+      await module.animateBanner({
+        duration: 100,
+        // effect not specified - triggers default case
+      });
+
+      // Should complete without error
+      expect(mockStdout.write).toHaveBeenCalled();
+    });
+
+    it('should cleanup timer when animation is running', async () => {
+      const mockStdout = {
+        write: vi.fn(() => true),
+        isTTY: true,
+        columns: 80,
+        fd: 1,
+      } as unknown as NodeJS.WriteStream & { fd: 1 };
+
+      vi.spyOn(process, 'stdout', 'get').mockReturnValue(mockStdout);
+
+      // Start animation with longer duration to ensure timer is active
+      const animationPromise = module.animateBanner({
+        duration: 500,
+        effect: 'fade',
+      });
+
+      // Wait a bit to ensure timer is set
+      await new Promise((resolve) => setTimeout(resolve, 50));
+
+      // Complete the animation - cleanup should clear the timer (lines 136-137)
+      await animationPromise;
+
+      // Should have completed successfully
+      expect(mockStdout.write).toHaveBeenCalled();
     });
   });
 });

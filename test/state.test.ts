@@ -1005,28 +1005,29 @@ Some random text
     });
 
     it('should handle task tables with less than 4 columns gracefully', async () => {
-      // Test coverage for line 239: if (cols.length < 4) continue;
-      // Need a row that splits to fewer than 4 elements total
+      // Test coverage for lines 239, 302: if (cols.length < 4) continue;
+      // Need a row matching TASK_ROW pattern but with < 4 columns after split
       const content = `
 # Progress
 
 ## Milestone: M0
 
-| A | B |
-|---|---|
-| 1 | 2 |
-
 | Task ID | Title | Status | Priority | Complexity | Dependencies |
 |---------|-------|--------|----------|------------|--------------|
+| TASK_001 |
 | TASK_002 | Valid task | NOT STARTED | HIGH | S | None |
 `;
       writeFileSync(mockConfig.paths.progress, content);
 
       const stats = await getTaskStats(mockConfig);
 
-      // Should only count the valid row with proper task format
+      // Should only count the valid row with 4+ columns
       expect(stats.total).toBe(1);
       expect(stats.remaining).toBe(1);
+
+      // getCurrentTask should also skip malformed rows
+      const current = await getCurrentTask(mockConfig);
+      expect(current).toBeUndefined(); // No IN PROGRESS task
     });
 
     it('should count COMPLETE status correctly', async () => {

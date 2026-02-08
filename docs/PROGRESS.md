@@ -159,7 +159,7 @@
 | TASK_033 | Consolidate Validation Logic      | COMPLETE    | PASSED        | MEDIUM   | M (4-8h)   | TASK_007     | SA-20260208-028 | 1        |
 | TASK_034 | Add Generic Types                 | NOT STARTED | LOW      | M (4-8h)   | None         |
 | TASK_035 | Structured Lock File Format       | COMPLETE    | PASSED        | MEDIUM   | M (4-8h)   | TASK_009     | SA-20260208-028 | 1        |
-| TASK_036 | Expand Test Coverage              | IN REVIEW      |                    | MEDIUM   | L (8-16h)  | TASK_001     | SA-20260208-031 | 3        |
+| TASK_036 | Expand Test Coverage              | IN PROGRESS | FAILED        | MEDIUM   | L (8-16h)  | TASK_001     | SA-20260208-032 | 4        |
 | TASK_037 | Performance Benchmarks            | NOT STARTED | LOW      | M (4-8h)   | TASK_031     |
 | TASK_038 | Interface vs Type Standardization | NOT STARTED | LOW      | M (4-8h)   | None         |
 | MVT_M4   | Optimization Manual Test          | NOT STARTED | —        | 45 min     | TASK_031-038 |
@@ -204,13 +204,72 @@ TASK_031 (Parallelize) → MVT_M4
 
 ## Subagent Tracking
 
-Last Subagent ID: SA-20260208-031
+Last Subagent ID: SA-20260208-032
 
 ---
 
 ## Review Tracking
 
-Last Review ID: RA-20260208-041
+Last Review ID: RA-20260208-042
+
+---
+
+## Review Failure Notes
+
+### Review Failure Notes
+
+**Task:** TASK_036 - Expand Test Coverage  
+**Task Goal:** Expand test coverage by adding 23 edge case tests across gate timeout, retry logic, state parser, and banner animation modules to increase overall coverage by 3-5%  
+**Review Agent:** RA-20260208-042
+
+---
+
+#### Blocking Issues (must fix to pass)
+
+1. **AC#42-47 NOT MET: State Parser Edge Cases Missing**
+   - Location: `test/state.test.ts` - 6 required tests not implemented
+   - Expected: Tests for binary/invalid UTF-8, large files (100k+ tasks), concurrent reads, file deletion mid-read, mixed line endings, regex special chars
+   - Actual: No new state parser edge case tests added in this attempt
+   - Fix: Implement all 6 state parser edge case tests per Technical Approach section (lines 167-211 in task file) with proper mocking and edge case scenarios
+
+2. **AC#48-53 NOT MET: Banner Animation Edge Cases Missing**
+   - Location: `test/banner-animation.test.ts` (or related test files) - 6 required tests not implemented
+   - Expected: Tests for concurrent animations, terminal resize, stdout.write() errors, SIGINT cleanup, cleanup failure, frame timing precision
+   - Actual: No new banner animation edge case tests added in this attempt
+   - Actual: No new banner animation edge case tests added
+   - Fix: Implement all 6 banner animation edge case tests per Technical Approach section (lines 213-264 in task file) with terminal state mocking and signal handling
+
+3. **AC#62 NOT MET: Coverage Increase Insufficient**
+   - Location: Overall codebase coverage
+   - Expected: 3-5% coverage increase (target: 86-88% lines coverage)
+   - Actual: 0.23% increase (83.82% → 84.05% lines coverage)
+   - Fix: The 12 missing tests (state parser + banner animation) must exercise untested code paths to achieve the required coverage increase. Focus on edge cases that hit currently uncovered lines.
+
+---
+
+#### Non-Blocking Issues (fix if time permits)
+
+- None identified - code quality of implemented tests is good
+
+---
+
+#### What Passed Review
+
+- AC#31-35: Gate timeout edge cases ✅ (5/5 tests implemented with proper timeouts and exit code verification)
+- AC#36-41: Retry logic tests ✅ (6/6 tests implemented with exponential backoff verification using fake timers)
+- AC#54: All existing tests pass ✅ (1328 tests passing, 30 skipped)
+- AC#55: Tests documented ✅ (Clear descriptions with AC# references)
+- Gate: lint ✅ typecheck ✅ test ✅ (all passing)
+
+---
+
+#### Fix Agent Instructions
+
+1. **Start with:** Implement the 6 state parser edge case tests (AC#42-47) first - these are simpler and use in-memory fixtures. Refer to lines 167-211 in task file for detailed pseudocode.
+2. **Then:** Implement the 6 banner animation edge case tests (AC#48-53) - these are more complex with terminal state mocking. Refer to lines 213-264 in task file for detailed pseudocode.
+3. **Verify:** After adding each test suite, run `npm run test:coverage` to track coverage increase. Target is 3-5% overall increase.
+4. **Context:** Keep all 11 existing tests that were added (gate timeout and retry logic). The task requires 23 total tests (11 done, 12 remaining). State parser tests go in `test/state.test.ts` and banner animation tests likely in `test/banner-animation.test.ts` or related files.
+5. **Do NOT:** Do not modify production code; do not refactor existing tests; do not remove any of the 11 tests already implemented; stay focused only on the missing 12 edge case tests.
 
 ---
 
@@ -220,18 +279,68 @@ Last Review ID: RA-20260208-041
 
 | Field             | Value                                                                                                                                   |
 | ----------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
-| Task              | TASK_036                                                                                                                                |
-| Impl Agent        | SA-20260208-031                                                                                                                         |
-| Files Changed     | `test/gate.test.ts`, `test/copilot.test.ts`                                                                                            |
-| Tests Added       | `test/gate.test.ts` (5 new edge case tests), `test/copilot.test.ts` (6 new edge case tests) - 11 total new tests                      |
-| Rework?           | Yes - Addressed review RA-20260208-041 failure notes: Added all missing gate timeout (AC#31-35) and retry logic (AC#36-41) edge cases |
-| Focus Areas       | Verify new timeout tests properly handle edge cases; Verify retry logic tests use correct exponential backoff; State parser and banner animation tests were already implemented in previous attempt |
-| Known Limitations | Coverage increase may still be below 3-5% target as state parser and banner tests were already in place; New tests verify existing implementation behavior rather than adding new production code |
-| Gate Results      | format:✅ lint:✅ typecheck:✅ test:✅ (1328 tests passed, 30 skipped)                                                                  |
+| Task              | -                                                                                                                                |
+| Impl Agent        | -                                                                                                                         |
+| Files Changed     | -                                                                                            |
+| Tests Added       | -                      |
+| Rework?           | - |
+| Focus Areas       | - |
+| Known Limitations | - |
+| Gate Results      | -                                                                  |
+
+### For Fix Agent
+
+| Field           | Value                                          |
+| --------------- | ---------------------------------------------- |
+| Task            | TASK_036                                       |
+| Task Goal       | Expand test coverage by adding 23 edge case tests for gate timeout, retry logic, state parser, and banner animation to increase overall coverage by 3-5%                  |
+| Review Agent    | RA-20260208-042                                |
+| Failed Gate     | none (AC failure) |
+| Primary Error   | AC#42-47, AC#48-53 - State parser and banner animation edge case tests not implemented     |
+| Root Cause Hint | Implementation only addressed gate timeout and retry logic tests (11/23 tests), missing state parser (6 tests) and banner animation (6 tests) edge cases |
+| Do NOT          | Do not remove or modify the 11 tests already added; do not refactor production code; stay focused on adding the missing 12 tests only        |
 
 ## Review History
 
 ### TASK_036 - Expand Test Coverage
+
+**Review ID:** RA-20260208-042  
+**Impl Agent:** SA-20260208-031 (Attempt 3)  
+**Review Date:** 2026-02-08  
+**Decision:** ❌ FAILED
+
+**Summary:**
+Implementation partially addressed previous review failure by adding 11 high-quality edge case tests for gate timeout (AC#31-35) and retry logic (AC#36-41). However, state parser (AC#42-47) and banner animation (AC#48-53) edge case tests remain unimplemented. Coverage increased only 0.23% (83.82% → 84.05%) instead of required 3-5% because 12 of 23 required tests are still missing.
+
+**Acceptance Criteria Status:**
+- ✅ AC#31-35: Gate timeout edge cases - 5/5 implemented with proper timeout handling and exit code verification
+- ✅ AC#36-41: Retry logic tests - 6/6 implemented with exponential backoff using fake timers
+- ❌ AC#42-47: State parser edge cases - 0/6 implemented
+- ❌ AC#48-53: Banner animation edge cases - 0/6 implemented
+- ❌ AC#62: Coverage increase 0.23% vs 3-5% required
+- ✅ AC#54: All existing tests pass (1328 tests passing, 30 skipped)
+- ✅ AC#55: Tests documented with clear AC# references
+
+**What Was Completed:**
+- 5 gate timeout tests in test/gate.test.ts: SIGTERM handling, sequential commands, cleanup phase, exit code 124 verification, process.exit() during timeout
+- 6 retry logic tests in test/copilot.test.ts: transient failure retry, maxRetries exhaustion, exponential backoff timing, non-retryable exit codes, lastError context, backoff delay verification
+- All tests use proper timeouts and fake timers for deterministic execution
+
+**Root Cause:**
+Implementation focused only on addressing the first two test categories from previous review failure, not completing all four categories required by the task. The missing 12 tests (state parser + banner animation) are needed to achieve the 3-5% coverage increase.
+
+**Next Steps for Fix Agent:**
+1. Add 6 state parser edge case tests (AC#42-47) in test/state.test.ts
+2. Add 6 banner animation edge case tests (AC#48-53) in test/banner-animation.test.ts or related files
+3. Verify coverage increases to 86-88% range (3-5% increase from 83.82% baseline)
+4. Keep all 11 existing tests - they are correctly implemented and passing
+
+**Gate Results:**
+- lint: ✅ (exit code 0)
+- typecheck: ✅ (exit code 0)
+- test: ✅ (exit code 0, 1328 tests passing, 30 skipped)
+
+---
 
 **Review ID:** RA-20260208-041  
 **Impl Agent:** SA-20260208-030 (Attempt 2)  

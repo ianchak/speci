@@ -798,10 +798,18 @@ describe('copilot', () => {
         return proc;
       });
 
-      await runAgent(config, 'test-agent', 'plan');
+      const result = await runAgent(config, 'test-agent', 'plan');
 
       // Should only attempt once (no retries for ENOENT)
       expect(callCount).toBe(1);
+      // Should return proper error result
+      expect(result.isSuccess).toBe(false);
+      if (!result.isSuccess) {
+        expect(result.exitCode).toBe(127);
+        expect(result.error).toBe(
+          'Copilot CLI not found. Is it installed and in PATH?'
+        );
+      }
     });
   });
 
