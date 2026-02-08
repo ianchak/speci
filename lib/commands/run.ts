@@ -108,7 +108,7 @@ export async function run(
   }
 
   // 6. Acquire lock
-  await acquireLock(loadedConfig, context.process);
+  await acquireLock(loadedConfig, context.process, 'run');
 
   // 7. Setup cleanup handlers (before creating log file)
   installSignalHandlers();

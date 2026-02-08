@@ -478,6 +478,58 @@ speci init --verbose
 
 **Note:** Verbose mode respects `NO_COLOR` environment variable.
 
+## Validation Module
+
+Speci provides a centralized validation module in `lib/validation/` for type-safe input validation:
+
+### PathValidator
+
+Validates file system paths with builder pattern:
+
+```typescript
+import { PathValidator } from '@/validation/path-validator.js';
+
+const result = new PathValidator(filePath)
+  .exists()
+  .isReadable()
+  .isWithinProject(projectRoot)
+  .validate();
+
+if (!result.success) {
+  console.error(result.error.message);
+  result.error.suggestions?.forEach((s) => console.log(s));
+}
+```
+
+### ConfigValidator
+
+Validates configuration objects:
+
+```typescript
+import { ConfigValidator } from '@/validation/config-validator.js';
+
+const result = new ConfigValidator(config)
+  .validateVersion()
+  .validatePaths()
+  .validateCopilot()
+  .validate();
+```
+
+### InputValidator
+
+Validates command input (files, prompts):
+
+```typescript
+import { InputValidator } from '@/validation/input-validator.js';
+
+const result = new InputValidator(fs)
+  .requireInput(files, prompt)
+  .validateFiles(files)
+  .validate();
+```
+
+All validators return `ValidationResult<T>`, a discriminated union with consistent error messages and actionable suggestions.
+
 ## License
 
 MIT

@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { mkdirSync, writeFileSync, rmSync, chmodSync } from 'node:fs';
-import { join, resolve } from 'node:path';
+import { join } from 'node:path';
 import { PathValidator } from '@/validation/path-validator.js';
 
 describe('PathValidator', () => {
@@ -150,7 +150,6 @@ describe('PathValidator', () => {
 
     it('should handle relative paths', () => {
       const relativePath = 'file.txt';
-      const absolutePath = resolve(testDir, relativePath);
 
       const result = new PathValidator(relativePath)
         .isWithinProject(testDir)

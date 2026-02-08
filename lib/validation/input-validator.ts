@@ -55,7 +55,7 @@ export class InputValidator {
   validateFiles(files: string[]): this {
     for (const file of files) {
       const resolvedPath = resolve(file);
-      
+
       // Use fs.existsSync to check file existence
       if (!this.fs.existsSync(resolvedPath)) {
         this.errors.push({

@@ -125,7 +125,8 @@ describe('Run Command', () => {
 
       expect(lock.acquireLock).toHaveBeenCalledWith(
         mockConfig,
-        expect.anything() // process parameter
+        expect.anything(), // process parameter
+        'run'
       );
     });
 

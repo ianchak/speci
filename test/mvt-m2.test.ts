@@ -260,7 +260,7 @@ describe('MVT_M2: Core Libraries Integration', () => {
       const config = getDefaults();
       config.paths.lock = lockPath;
 
-      await acquireLock(config);
+      await acquireLock(config, undefined, 'test');
 
       expect(existsSync(lockPath)).toBe(true);
 
@@ -271,7 +271,7 @@ describe('MVT_M2: Core Libraries Integration', () => {
       const config = getDefaults();
       config.paths.lock = lockPath;
 
-      await acquireLock(config);
+      await acquireLock(config, undefined, 'test');
 
       const lockData = await getLockInfo(config);
 
@@ -286,7 +286,7 @@ describe('MVT_M2: Core Libraries Integration', () => {
       const config = getDefaults();
       config.paths.lock = lockPath;
 
-      await acquireLock(config);
+      await acquireLock(config, undefined, 'test');
       expect(existsSync(lockPath)).toBe(true);
 
       await releaseLock(config);
@@ -300,10 +300,10 @@ describe('MVT_M2: Core Libraries Integration', () => {
       config.paths.lock = lockPath;
 
       // First acquisition succeeds
-      await acquireLock(config);
+      await acquireLock(config, undefined, 'test');
 
       // Second acquisition should fail with error
-      await expect(acquireLock(config)).rejects.toThrow(
+      await expect(acquireLock(config, undefined, 'test')).rejects.toThrow(
         /Another speci instance/i
       );
 
@@ -314,7 +314,7 @@ describe('MVT_M2: Core Libraries Integration', () => {
       const config = getDefaults();
       config.paths.lock = lockPath;
 
-      await acquireLock(config);
+      await acquireLock(config, undefined, 'test');
 
       const lockData = await getLockInfo(config);
 
@@ -333,7 +333,7 @@ describe('MVT_M2: Core Libraries Integration', () => {
       expect(await isLocked(config)).toBe(false);
 
       // Lock acquired
-      await acquireLock(config);
+      await acquireLock(config, undefined, 'test');
       expect(await isLocked(config)).toBe(true);
 
       // Lock released
@@ -433,7 +433,7 @@ describe('MVT_M2: Core Libraries Integration', () => {
       config.paths.lock = lockPath;
 
       const startTime = Date.now();
-      await acquireLock(config);
+      await acquireLock(config, undefined, 'test');
       const acquireTime = Date.now() - startTime;
 
       expect(acquireTime).toBeLessThan(10);

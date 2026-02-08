@@ -88,29 +88,91 @@ describe('Lock File Management', () => {
   });
 
   describe('acquireLock()', () => {
-    it('creates lock file with correct format', async () => {
-      await acquireLock(mockConfig);
+    it('creates lock file with JSON format', async () => {
+      await acquireLock(mockConfig, undefined, 'test-command');
 
       expect(existsSync(testLockPath)).toBe(true);
 
       const content = readFileSync(testLockPath, 'utf8');
-      expect(content).toMatch(
-        /^Started: \d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\nPID: \d+$/
+      const lockData = JSON.parse(content);
+
+      expect(lockData).toHaveProperty('version');
+      expect(lockData).toHaveProperty('pid');
+      expect(lockData).toHaveProperty('started');
+      expect(lockData).toHaveProperty('command');
+      expect(lockData.command).toBe('test-command');
+    });
+
+    it('includes all required fields in JSON schema', async () => {
+      await acquireLock(mockConfig, undefined, 'run');
+
+      const content = readFileSync(testLockPath, 'utf8');
+      const lockData = JSON.parse(content);
+
+      expect(lockData.version).toBe('1.0.0');
+      expect(lockData.pid).toBe(process.pid);
+      expect(lockData.command).toBe('run');
+      expect(lockData.started).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/); // ISO format
+    });
+
+    it('includes optional metadata when provided', async () => {
+      const metadata = {
+        iteration: 5,
+        taskId: 'TASK_001',
+        state: 'IMPL',
+      };
+
+      await acquireLock(mockConfig, undefined, 'run', metadata);
+
+      const content = readFileSync(testLockPath, 'utf8');
+      const lockData = JSON.parse(content);
+
+      expect(lockData.metadata).toEqual(metadata);
+    });
+
+    it('defaults command to "unknown" when not provided', async () => {
+      await acquireLock(mockConfig);
+
+      const content = readFileSync(testLockPath, 'utf8');
+      const lockData = JSON.parse(content);
+
+      expect(lockData.command).toBe('unknown');
+    });
+
+    it('throws error if live lock already exists', async () => {
+      await acquireLock(mockConfig, undefined, 'run');
+
+      await expect(acquireLock(mockConfig, undefined, 'run')).rejects.toThrow(
+        /Another speci instance is running/
       );
     });
 
-    it('throws error if lock already exists', async () => {
-      await acquireLock(mockConfig);
+    it('auto-removes stale lock and acquires new lock', async () => {
+      // Create a lock with a PID that doesn't exist
+      mkdirSync(testDir, { recursive: true });
+      const staleLock = {
+        version: '1.0.0',
+        pid: 999999, // Non-existent PID
+        started: new Date().toISOString(),
+        command: 'run',
+      };
+      writeFileSync(testLockPath, JSON.stringify(staleLock), 'utf8');
 
-      await expect(acquireLock(mockConfig)).rejects.toThrow(
-        /Another speci instance is running/
-      );
+      // Should succeed by removing stale lock
+      await expect(
+        acquireLock(mockConfig, undefined, 'run')
+      ).resolves.toBeUndefined();
+
+      // New lock should have current PID
+      const content = readFileSync(testLockPath, 'utf8');
+      const lockData = JSON.parse(content);
+      expect(lockData.pid).toBe(process.pid);
     });
 
     it('creates parent directories if needed', async () => {
       expect(existsSync(testDir)).toBe(false);
 
-      await acquireLock(mockConfig);
+      await acquireLock(mockConfig, undefined, 'run');
 
       expect(existsSync(testDir)).toBe(true);
       expect(existsSync(testLockPath)).toBe(true);
@@ -119,7 +181,7 @@ describe('Lock File Management', () => {
     it('uses atomic write pattern (temp file + rename)', async () => {
       const tempPath = `${testLockPath}.tmp`;
 
-      await acquireLock(mockConfig);
+      await acquireLock(mockConfig, undefined, 'run');
 
       // Temp file should not exist after successful lock
       expect(existsSync(tempPath)).toBe(false);
@@ -127,35 +189,27 @@ describe('Lock File Management', () => {
     });
 
     it('contains correct PID in lock file', async () => {
-      await acquireLock(mockConfig);
+      await acquireLock(mockConfig, undefined, 'run');
 
       const content = readFileSync(testLockPath, 'utf8');
-      const pidMatch = content.match(/PID: (\d+)/);
-      expect(pidMatch).toBeTruthy();
-
-      const lockPid = parseInt(pidMatch![1], 10);
-      expect(lockPid).toBe(process.pid);
+      const lockData = JSON.parse(content);
+      expect(lockData.pid).toBe(process.pid);
     });
 
-    it('contains valid timestamp in lock file', async () => {
+    it('contains valid ISO timestamp in lock file', async () => {
       const beforeTime = new Date();
-      await acquireLock(mockConfig);
+      await acquireLock(mockConfig, undefined, 'run');
       const afterTime = new Date();
 
       const content = readFileSync(testLockPath, 'utf8');
-      const timestampMatch = content.match(
-        /Started: (\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})/
-      );
-      expect(timestampMatch).toBeTruthy();
+      const lockData = JSON.parse(content);
+      const lockTime = new Date(lockData.started);
 
-      const timestampStr = timestampMatch![1];
-      const lockTime = parseTimestamp(timestampStr);
-
-      expect(lockTime).toBeTruthy();
-      expect(lockTime!.getTime()).toBeGreaterThanOrEqual(
+      expect(lockTime).toBeInstanceOf(Date);
+      expect(lockTime.getTime()).toBeGreaterThanOrEqual(
         beforeTime.getTime() - 1000
       );
-      expect(lockTime!.getTime()).toBeLessThanOrEqual(
+      expect(lockTime.getTime()).toBeLessThanOrEqual(
         afterTime.getTime() + 1000
       );
     });
@@ -203,21 +257,26 @@ describe('Lock File Management', () => {
         started: null,
         pid: null,
         elapsed: null,
+        command: undefined,
+        isStale: undefined,
+        metadata: undefined,
       });
     });
 
-    it('parses timestamp correctly from lock file', async () => {
-      await acquireLock(mockConfig);
+    it('parses JSON lock file correctly', async () => {
+      await acquireLock(mockConfig, undefined, 'run');
 
       const info = await getLockInfo(mockConfig);
 
       expect(info.isLocked).toBe(true);
       expect(info.started).toBeInstanceOf(Date);
       expect(info.started!.getTime()).toBeLessThanOrEqual(Date.now());
+      expect(info.command).toBe('run');
+      expect(info.isStale).toBe(false);
     });
 
-    it('parses PID correctly from lock file', async () => {
-      await acquireLock(mockConfig);
+    it('parses PID correctly from JSON lock file', async () => {
+      await acquireLock(mockConfig, undefined, 'test');
 
       const info = await getLockInfo(mockConfig);
 
@@ -225,8 +284,33 @@ describe('Lock File Management', () => {
       expect(info.pid).toBe(process.pid);
     });
 
+    it('includes metadata from JSON lock file', async () => {
+      const metadata = { iteration: 3, taskId: 'TASK_005', state: 'IMPL' };
+      await acquireLock(mockConfig, undefined, 'run', metadata);
+
+      const info = await getLockInfo(mockConfig);
+
+      expect(info.metadata).toEqual(metadata);
+    });
+
+    it('detects stale lock from dead process', async () => {
+      mkdirSync(testDir, { recursive: true });
+      const staleLock = {
+        version: '1.0.0',
+        pid: 999999, // Non-existent PID
+        started: new Date().toISOString(),
+        command: 'run',
+      };
+      writeFileSync(testLockPath, JSON.stringify(staleLock), 'utf8');
+
+      const info = await getLockInfo(mockConfig);
+
+      expect(info.isLocked).toBe(true);
+      expect(info.isStale).toBe(true);
+    });
+
     it('calculates elapsed time in HH:MM:SS format', async () => {
-      await acquireLock(mockConfig);
+      await acquireLock(mockConfig, undefined, 'run');
 
       // Wait a bit to have some elapsed time
       await new Promise((resolve) => setTimeout(resolve, 1000));
@@ -242,9 +326,26 @@ describe('Lock File Management', () => {
       expect(totalSeconds).toBeGreaterThanOrEqual(1);
     });
 
-    it('handles malformed lock file gracefully', async () => {
+    it('handles old text format lock file gracefully (backward compatibility)', async () => {
       mkdirSync(testDir, { recursive: true });
-      writeFileSync(testLockPath, 'Invalid content\nNo proper format', 'utf8');
+      writeFileSync(
+        testLockPath,
+        'Started: 2026-02-08 10:00:00\nPID: 12345',
+        'utf8'
+      );
+
+      const info = await getLockInfo(mockConfig);
+
+      // Should parse old format
+      expect(info.isLocked).toBe(true);
+      expect(info.started).toBeInstanceOf(Date);
+      expect(info.pid).toBe(12345);
+      expect(info.command).toBe('unknown'); // Old format doesn't have command
+    });
+
+    it('handles malformed JSON lock file gracefully', async () => {
+      mkdirSync(testDir, { recursive: true });
+      writeFileSync(testLockPath, '{invalid json}', 'utf8');
 
       const info = await getLockInfo(mockConfig);
 
@@ -267,13 +368,15 @@ describe('Lock File Management', () => {
       expect(info.elapsed).toBeNull();
     });
 
-    it('handles lock file with invalid PID', async () => {
+    it('handles JSON lock file with invalid PID', async () => {
       mkdirSync(testDir, { recursive: true });
-      writeFileSync(
-        testLockPath,
-        'Started: 2026-02-04 10:00:00\nPID: not-a-number',
-        'utf8'
-      );
+      const invalidLock = {
+        version: '1.0.0',
+        pid: 'not-a-number',
+        started: new Date().toISOString(),
+        command: 'run',
+      };
+      writeFileSync(testLockPath, JSON.stringify(invalidLock), 'utf8');
 
       const info = await getLockInfo(mockConfig);
 
@@ -281,22 +384,74 @@ describe('Lock File Management', () => {
       expect(info.pid).toBeNull();
     });
 
-    it('handles lock file with invalid timestamp', async () => {
+    it('handles JSON lock file with invalid timestamp', async () => {
       mkdirSync(testDir, { recursive: true });
-      writeFileSync(testLockPath, 'Started: invalid-date\nPID: 12345', 'utf8');
+      const invalidLock = {
+        version: '1.0.0',
+        pid: process.pid,
+        started: 'invalid-date',
+        command: 'run',
+      };
+      writeFileSync(testLockPath, JSON.stringify(invalidLock), 'utf8');
 
       const info = await getLockInfo(mockConfig);
 
       expect(info.isLocked).toBe(true);
       expect(info.started).toBeNull();
-      expect(info.pid).toBe(12345);
       expect(info.elapsed).toBeNull();
+    });
+
+    it('handles JSON lock file with missing required fields', async () => {
+      mkdirSync(testDir, { recursive: true });
+      const incompleteLock = {
+        version: '1.0.0',
+        // Missing pid, started, command
+      };
+      writeFileSync(testLockPath, JSON.stringify(incompleteLock), 'utf8');
+
+      const info = await getLockInfo(mockConfig);
+
+      expect(info.isLocked).toBe(true);
+      expect(info.pid).toBeNull();
+      expect(info.started).toBeNull();
+    });
+
+    it('handles JSON lock file with negative PID', async () => {
+      mkdirSync(testDir, { recursive: true });
+      const invalidLock = {
+        version: '1.0.0',
+        pid: -1,
+        started: new Date().toISOString(),
+        command: 'run',
+      };
+      writeFileSync(testLockPath, JSON.stringify(invalidLock), 'utf8');
+
+      const info = await getLockInfo(mockConfig);
+
+      expect(info.isLocked).toBe(true);
+      expect(info.pid).toBeNull(); // Invalid PIDs should be treated as null
+    });
+
+    it('handles JSON lock file with zero PID', async () => {
+      mkdirSync(testDir, { recursive: true });
+      const invalidLock = {
+        version: '1.0.0',
+        pid: 0,
+        started: new Date().toISOString(),
+        command: 'run',
+      };
+      writeFileSync(testLockPath, JSON.stringify(invalidLock), 'utf8');
+
+      const info = await getLockInfo(mockConfig);
+
+      expect(info.isLocked).toBe(true);
+      expect(info.pid).toBeNull(); // Zero PID should be treated as invalid
     });
   });
 
   describe('Edge Cases', () => {
     it('handles zero-second elapsed time', async () => {
-      await acquireLock(mockConfig);
+      await acquireLock(mockConfig, undefined, 'run');
 
       const info = await getLockInfo(mockConfig);
 
@@ -305,7 +460,7 @@ describe('Lock File Management', () => {
 
     it('handles multiple lock/release cycles', async () => {
       for (let i = 0; i < 3; i++) {
-        await acquireLock(mockConfig);
+        await acquireLock(mockConfig, undefined, 'run');
         expect(existsSync(testLockPath)).toBe(true);
 
         await releaseLock(mockConfig);
@@ -314,10 +469,10 @@ describe('Lock File Management', () => {
     });
 
     it('lock error message includes PID and elapsed time', async () => {
-      await acquireLock(mockConfig);
+      await acquireLock(mockConfig, undefined, 'run');
 
       try {
-        await acquireLock(mockConfig);
+        await acquireLock(mockConfig, undefined, 'run');
         expect.fail('Should have thrown an error');
       } catch (err) {
         const message = (err as Error).message;
@@ -331,9 +486,9 @@ describe('Lock File Management', () => {
     it('allows only one concurrent lock acquisition', async () => {
       // Trigger three simultaneous lock attempts
       const results = await Promise.allSettled([
-        acquireLock(mockConfig),
-        acquireLock(mockConfig),
-        acquireLock(mockConfig),
+        acquireLock(mockConfig, undefined, 'run'),
+        acquireLock(mockConfig, undefined, 'run'),
+        acquireLock(mockConfig, undefined, 'run'),
       ]);
 
       // Exactly one should succeed, two should fail
@@ -355,12 +510,12 @@ describe('Lock File Management', () => {
 
     it('handles lock release during concurrent acquisition attempts', async () => {
       // First, acquire the lock
-      await acquireLock(mockConfig);
+      await acquireLock(mockConfig, undefined, 'run');
 
       // Start multiple acquisition attempts that will fail
       const acquisitionPromises = [
-        acquireLock(mockConfig).catch((err) => err),
-        acquireLock(mockConfig).catch((err) => err),
+        acquireLock(mockConfig, undefined, 'run').catch((err) => err),
+        acquireLock(mockConfig, undefined, 'run').catch((err) => err),
       ];
 
       // Release the lock while attempts are pending
@@ -380,7 +535,7 @@ describe('Lock File Management', () => {
     it('handles concurrent lock and isLocked checks', async () => {
       // Run lock acquisition and isLocked checks concurrently
       const [lockResult, ...checkResults] = await Promise.all([
-        acquireLock(mockConfig),
+        acquireLock(mockConfig, undefined, 'run'),
         isLocked(mockConfig),
         isLocked(mockConfig),
         isLocked(mockConfig),
@@ -401,7 +556,7 @@ describe('Lock File Management', () => {
     });
 
     it('handles concurrent getLockInfo calls', async () => {
-      await acquireLock(mockConfig);
+      await acquireLock(mockConfig, undefined, 'run');
 
       // Trigger multiple simultaneous getLockInfo calls
       const results = await Promise.all([
@@ -429,7 +584,7 @@ describe('Lock File Management', () => {
     it('handles rapid lock/release cycles', async () => {
       // Perform 10 rapid lock/release cycles
       for (let i = 0; i < 10; i++) {
-        await acquireLock(mockConfig);
+        await acquireLock(mockConfig, undefined, 'run');
         await releaseLock(mockConfig);
       }
 
@@ -441,12 +596,12 @@ describe('Lock File Management', () => {
     it('prevents race condition in concurrent acquisition with staggered timing', async () => {
       // Stagger lock attempts slightly to test different timing scenarios
       const results = await Promise.allSettled([
-        acquireLock(mockConfig),
+        acquireLock(mockConfig, undefined, 'run'),
         new Promise((resolve) => setTimeout(resolve, 10)).then(() =>
-          acquireLock(mockConfig)
+          acquireLock(mockConfig, undefined, 'run')
         ),
         new Promise((resolve) => setTimeout(resolve, 20)).then(() =>
-          acquireLock(mockConfig)
+          acquireLock(mockConfig, undefined, 'run')
         ),
       ]);
 
@@ -457,12 +612,3 @@ describe('Lock File Management', () => {
     });
   });
 });
-
-// Helper function to parse timestamp (same as in implementation)
-function parseTimestamp(str: string): Date | null {
-  const match = str.match(/(\d{4})-(\d{2})-(\d{2}) (\d{2}):(\d{2}):(\d{2})/);
-  if (!match) return null;
-
-  const [, year, month, day, hour, min, sec] = match.map(Number);
-  return new Date(year, month - 1, day, hour, min, sec);
-}

@@ -3,7 +3,7 @@
  *
  * Provides lock acquisition, release, and status checking for preventing
  * concurrent speci run instances. Uses atomic write pattern for race-free
- * lock acquisition.
+ * lock acquisition with JSON format for structured metadata.
  */
 
 import {
@@ -21,6 +21,21 @@ import { createError } from '@/errors.js';
 import type { IProcess } from '@/interfaces.js';
 
 /**
+ * Lock file data structure (JSON format)
+ */
+export interface LockFileData {
+  version: string;
+  pid: number;
+  started: string; // ISO 8601 timestamp
+  command: string;
+  metadata?: {
+    iteration?: number;
+    taskId?: string;
+    state?: string;
+  };
+}
+
+/**
  * Lock information interface
  */
 export interface LockInfo {
@@ -28,6 +43,39 @@ export interface LockInfo {
   started: Date | null;
   pid: number | null;
   elapsed: string | null;
+  command?: string;
+  isStale?: boolean;
+  metadata?: {
+    iteration?: number;
+    taskId?: string;
+    state?: string;
+  };
+}
+
+/**
+ * Check if a process is running
+ *
+ * @param pid - Process ID to check
+ * @returns true if process is running, false otherwise
+ */
+function isProcessRunning(pid: number): boolean {
+  if (pid <= 0) return false;
+
+  try {
+    // Signal 0 checks if process exists without sending actual signal
+    process.kill(pid, 0);
+    return true;
+  } catch (err: unknown) {
+    const error = err as NodeJS.ErrnoException;
+    if (error.code === 'ESRCH') {
+      return false; // Process not found
+    }
+    if (error.code === 'EPERM') {
+      return true; // Process exists but no permission (Windows)
+    }
+    // Unknown error - assume process is running to be safe
+    return true;
+  }
 }
 
 /**
@@ -35,11 +83,19 @@ export interface LockInfo {
  *
  * @param config - Speci configuration
  * @param processParam - IProcess instance (defaults to global process)
- * @throws Error if lock already exists
+ * @param command - Command name (e.g., "run", "fix")
+ * @param metadata - Optional metadata to include in lock file
+ * @throws Error if lock already exists and is not stale
  */
 export async function acquireLock(
   config: SpeciConfig,
-  processParam?: IProcess
+  processParam?: IProcess,
+  command: string = 'unknown',
+  metadata?: {
+    iteration?: number;
+    taskId?: string;
+    state?: string;
+  }
 ): Promise<void> {
   const proc = processParam || process;
   const lockPath = config.paths.lock;
@@ -48,13 +104,20 @@ export async function acquireLock(
   // Check if already locked
   if (existsSync(lockPath)) {
     const info = await getLockInfo(config);
-    throw createError(
-      'ERR-STA-01',
-      JSON.stringify({
-        pid: info.pid,
-        elapsed: info.elapsed,
-      })
-    );
+
+    // If lock is stale, remove it
+    if (info.isStale) {
+      log.info(`Removed stale lock from PID ${info.pid}`);
+      await releaseLock(config);
+    } else {
+      throw createError(
+        'ERR-STA-01',
+        JSON.stringify({
+          pid: info.pid,
+          elapsed: info.elapsed,
+        })
+      );
+    }
   }
 
   // Ensure directory exists
@@ -63,14 +126,18 @@ export async function acquireLock(
     mkdirSync(lockDir, { recursive: true });
   }
 
-  // Format lock content
-  const now = new Date();
-  const timestamp = formatTimestamp(now);
-  const content = `Started: ${timestamp}\nPID: ${proc.pid}`;
+  // Create lock data in JSON format
+  const lockData: LockFileData = {
+    version: '1.0.0',
+    pid: proc.pid,
+    started: new Date().toISOString(),
+    command,
+    ...(metadata && { metadata }),
+  };
 
   try {
     // Atomic write: temp file + rename
-    writeFileSync(tempPath, content, 'utf8');
+    writeFileSync(tempPath, JSON.stringify(lockData, null, 2), 'utf8');
     renameSync(tempPath, lockPath);
   } catch (err) {
     // Cleanup temp file on failure
@@ -117,19 +184,75 @@ export async function isLocked(config: SpeciConfig): Promise<boolean> {
  * Get lock information
  *
  * @param config - Speci configuration
- * @returns Lock information including PID, start time, and elapsed time
+ * @returns Lock information including PID, start time, elapsed time, command, staleness, and metadata
  */
 export async function getLockInfo(config: SpeciConfig): Promise<LockInfo> {
   const lockPath = config.paths.lock;
 
   if (!existsSync(lockPath)) {
-    return { isLocked: false, started: null, pid: null, elapsed: null };
+    return {
+      isLocked: false,
+      started: null,
+      pid: null,
+      elapsed: null,
+      command: undefined,
+      isStale: undefined,
+      metadata: undefined,
+    };
   }
 
   try {
     const content = readFileSync(lockPath, 'utf8');
-    const lines = content.split('\n');
 
+    // Try to parse as JSON first (new format)
+    if (content.trim().startsWith('{')) {
+      try {
+        const lockData = JSON.parse(content) as Partial<LockFileData>;
+
+        // Validate and extract fields
+        let pid: number | null = null;
+        if (typeof lockData.pid === 'number' && lockData.pid > 0) {
+          pid = lockData.pid;
+        }
+
+        let started: Date | null = null;
+        if (typeof lockData.started === 'string') {
+          const parsedDate = new Date(lockData.started);
+          if (!isNaN(parsedDate.getTime())) {
+            started = parsedDate;
+          }
+        }
+
+        const elapsed = started ? formatElapsed(started) : null;
+        const command =
+          typeof lockData.command === 'string' ? lockData.command : undefined;
+        const isStale = pid !== null ? !isProcessRunning(pid) : undefined;
+
+        return {
+          isLocked: true,
+          started,
+          pid,
+          elapsed,
+          command,
+          isStale,
+          metadata: lockData.metadata,
+        };
+      } catch {
+        // JSON parse failed, treat as locked but invalid
+        return {
+          isLocked: true,
+          started: null,
+          pid: null,
+          elapsed: null,
+          command: undefined,
+          isStale: undefined,
+          metadata: undefined,
+        };
+      }
+    }
+
+    // Fall back to old text format (backward compatibility)
+    const lines = content.split('\n');
     let started: Date | null = null;
     let pid: number | null = null;
 
@@ -139,36 +262,41 @@ export async function getLockInfo(config: SpeciConfig): Promise<LockInfo> {
         started = parseTimestamp(timestampStr);
       } else if (line.startsWith('PID: ')) {
         const pidStr = line.slice('PID: '.length).trim();
-        pid = parseInt(pidStr, 10);
-        if (isNaN(pid)) pid = null;
+        const parsedPid = parseInt(pidStr, 10);
+        if (!isNaN(parsedPid) && parsedPid > 0) {
+          pid = parsedPid;
+        }
       }
     }
 
     const elapsed = started ? formatElapsed(started) : null;
+    const isStale = pid !== null ? !isProcessRunning(pid) : undefined;
 
-    return { isLocked: true, started, pid, elapsed };
+    return {
+      isLocked: true,
+      started,
+      pid,
+      elapsed,
+      command: 'unknown', // Old format doesn't have command
+      isStale,
+      metadata: undefined,
+    };
   } catch {
     // Lock file exists but can't be read - consider it locked
-    return { isLocked: true, started: null, pid: null, elapsed: null };
+    return {
+      isLocked: true,
+      started: null,
+      pid: null,
+      elapsed: null,
+      command: undefined,
+      isStale: undefined,
+      metadata: undefined,
+    };
   }
 }
 
 /**
- * Format a date to "YYYY-MM-DD HH:mm:ss" format
- *
- * @param date - Date to format
- * @returns Formatted timestamp string
- */
-function formatTimestamp(date: Date): string {
-  const pad = (n: number) => n.toString().padStart(2, '0');
-  return (
-    `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ` +
-    `${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`
-  );
-}
-
-/**
- * Parse a timestamp string in "YYYY-MM-DD HH:mm:ss" format
+ * Parse a timestamp string in "YYYY-MM-DD HH:mm:ss" format (for backward compatibility with old format)
  *
  * @param str - Timestamp string to parse
  * @returns Parsed Date object or null if invalid
