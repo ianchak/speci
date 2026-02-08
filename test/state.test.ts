@@ -1003,5 +1003,136 @@ Some random text
         expect(current.title).toBeDefined();
       }
     });
+
+    it('should handle task tables with less than 4 columns gracefully', async () => {
+      // Test coverage for line 239: if (cols.length < 4) continue;
+      // Need a row that splits to fewer than 4 elements total
+      const content = `
+# Progress
+
+## Milestone: M0
+
+| A | B |
+|---|---|
+| 1 | 2 |
+
+| Task ID | Title | Status | Priority | Complexity | Dependencies |
+|---------|-------|--------|----------|------------|--------------|
+| TASK_002 | Valid task | NOT STARTED | HIGH | S | None |
+`;
+      writeFileSync(mockConfig.paths.progress, content);
+
+      const stats = await getTaskStats(mockConfig);
+
+      // Should only count the valid row with proper task format
+      expect(stats.total).toBe(1);
+      expect(stats.remaining).toBe(1);
+    });
+
+    it('should count COMPLETE status correctly', async () => {
+      // Test coverage for line 249-250: COMPLETE status detection
+      const content = `
+# Progress
+
+## Milestone: M0
+
+| Task ID | Title | Status | Priority | Complexity | Dependencies |
+|---------|-------|--------|----------|------------|--------------|
+| TASK_001 | Task one | COMPLETE | HIGH | S | None |
+| TASK_002 | Task two | COMPLETED | HIGH | S | None |
+| TASK_003 | Task three | DONE | HIGH | S | None |
+`;
+      writeFileSync(mockConfig.paths.progress, content);
+
+      const stats = await getTaskStats(mockConfig);
+
+      // All three should be counted as completed
+      expect(stats.completed).toBe(3);
+      expect(stats.total).toBe(3);
+    });
+
+    it('should count IN_REVIEW status correctly', async () => {
+      // Test coverage for line 253-254: IN_REVIEW status detection
+      const content = `
+# Progress
+
+## Milestone: M0
+
+| Task ID | Title | Status | Priority | Complexity | Dependencies |
+|---------|-------|--------|----------|------------|--------------|
+| TASK_001 | Task one | IN_REVIEW | HIGH | S | None |
+| TASK_002 | Task two | IN REVIEW | HIGH | S | None |
+`;
+      writeFileSync(mockConfig.paths.progress, content);
+
+      const stats = await getTaskStats(mockConfig);
+
+      expect(stats.inReview).toBe(2);
+      expect(stats.total).toBe(2);
+    });
+
+    it('should count remaining tasks (NOT STARTED and IN PROGRESS)', async () => {
+      // Test coverage for line 255-256: remaining tasks counting
+      const content = `
+# Progress
+
+## Milestone: M0
+
+| Task ID | Title | Status | Priority | Complexity | Dependencies |
+|---------|-------|--------|----------|------------|--------------|
+| TASK_001 | Task one | NOT STARTED | HIGH | S | None |
+| TASK_002 | Task two | IN PROGRESS | HIGH | S | None |
+`;
+      writeFileSync(mockConfig.paths.progress, content);
+
+      const stats = await getTaskStats(mockConfig);
+
+      expect(stats.remaining).toBe(2);
+      expect(stats.total).toBe(2);
+    });
+
+    it('should return undefined for getCurrentTask with less than 4 columns', async () => {
+      // Test coverage for line 302: if (cols.length < 4) continue;
+      const content = `
+# Progress
+
+## Milestone: M0
+
+| A | B |
+|---|---|
+| 1 | IN PROGRESS |
+`;
+      writeFileSync(mockConfig.paths.progress, content);
+
+      const current = await getCurrentTask(mockConfig);
+
+      // Should return undefined because the row doesn't have proper task format
+      expect(current).toBeUndefined();
+    });
+
+    it('should handle state file with no valid task rows', async () => {
+      const content = `
+# Progress
+
+## Some Section
+
+This is just text with no task table.
+
+| Column A | Column B |
+|----------|----------|
+| Data 1   | Data 2   |
+`;
+      writeFileSync(mockConfig.paths.progress, content);
+
+      const stats = await getTaskStats(mockConfig);
+      const current = await getCurrentTask(mockConfig);
+
+      expect(stats.total).toBe(0);
+      expect(stats.completed).toBe(0);
+      expect(stats.remaining).toBe(0);
+      expect(stats.inReview).toBe(0);
+      expect(stats.blocked).toBe(0);
+      expect(current).toBeUndefined();
+    });
   });
 });

@@ -654,7 +654,10 @@ describe('copilot', () => {
 
         setTimeout(() => {
           if (proc.stderr) {
-            proc.stderr.emit('data', `Connection failed (attempt ${callCount})`);
+            proc.stderr.emit(
+              'data',
+              `Connection failed (attempt ${callCount})`
+            );
           }
           proc.emit('close', 7); // Connection failure (retryable)
         }, 10);
@@ -704,5 +707,101 @@ describe('copilot', () => {
         expect(delay2).toBeGreaterThan(delay1 * 1.5);
       }
     }, 15000); // Increase timeout for retry delays
+  });
+
+  describe('spawnCopilot stdio options', () => {
+    it('should use pipe stdio when inherit is false', async () => {
+      let actualOptions: unknown;
+      vi.mocked(spawn).mockImplementation((_cmd, _args, options) => {
+        actualOptions = options;
+        const proc = new EventEmitter() as ChildProcess;
+        proc.stdout = new EventEmitter() as never;
+        proc.stderr = new EventEmitter() as never;
+
+        setTimeout(() => {
+          proc.emit('close', 0);
+        }, 10);
+
+        return proc;
+      });
+
+      await spawnCopilot(['--help'], { inherit: false });
+
+      expect((actualOptions as { stdio: string }).stdio).toBe('pipe');
+    });
+
+    it('should use inherit stdio by default', async () => {
+      let actualOptions: unknown;
+      vi.mocked(spawn).mockImplementation((_cmd, _args, options) => {
+        actualOptions = options;
+        const proc = new EventEmitter() as ChildProcess;
+        proc.stdout = new EventEmitter() as never;
+        proc.stderr = new EventEmitter() as never;
+
+        setTimeout(() => {
+          proc.emit('close', 0);
+        }, 10);
+
+        return proc;
+      });
+
+      await spawnCopilot(['--help']);
+
+      expect((actualOptions as { stdio: string }).stdio).toBe('inherit');
+    });
+  });
+
+  describe('runAgent ENOENT error handling', () => {
+    it('should handle ENOENT error (copilot not found)', async () => {
+      vi.mocked(spawn).mockImplementation(() => {
+        const proc = new EventEmitter() as ChildProcess;
+        proc.stdout = new EventEmitter() as never;
+        proc.stderr = new EventEmitter() as never;
+
+        setTimeout(() => {
+          const error: NodeJS.ErrnoException = new Error(
+            'spawn copilot ENOENT'
+          );
+          error.code = 'ENOENT';
+          proc.emit('error', error);
+        }, 10);
+
+        return proc;
+      });
+
+      const result = await runAgent(config, 'test-agent', 'plan');
+
+      expect(result.isSuccess).toBe(false);
+      expect(result.exitCode).toBe(127);
+      if (!result.isSuccess) {
+        expect(result.error).toContain('Copilot CLI not found');
+        expect(result.error).toContain('PATH');
+      }
+    });
+
+    it('should not retry on ENOENT error', async () => {
+      let callCount = 0;
+      vi.mocked(spawn).mockImplementation(() => {
+        callCount++;
+        const proc = new EventEmitter() as ChildProcess;
+        proc.stdout = new EventEmitter() as never;
+        proc.stderr = new EventEmitter() as never;
+
+        setTimeout(() => {
+          const error: NodeJS.ErrnoException = new Error(
+            'spawn copilot ENOENT'
+          );
+          error.code = 'ENOENT';
+          proc.emit('error', error);
+        }, 10);
+
+        return proc;
+      });
+
+      await runAgent(config, 'test-agent', 'plan');
+
+      // Should only attempt once (no retries for ENOENT)
+      expect(callCount).toBe(1);
+    });
   });
 });
