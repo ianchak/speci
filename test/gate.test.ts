@@ -384,6 +384,227 @@ describe('Gate Runner', () => {
     });
   });
 
+  describe('Parallel Execution Strategy', () => {
+    const baseConfig: SpeciConfig = {
+      version: '1.0.0',
+      paths: {
+        progress: 'docs/PROGRESS.md',
+        tasks: 'docs/tasks',
+        logs: 'logs',
+        lock: '.speci.lock',
+      },
+      agents: {
+        plan: null,
+        task: null,
+        refactor: null,
+        impl: null,
+        review: null,
+        fix: null,
+        tidy: null,
+      },
+      copilot: {
+        permissions: 'allow-all',
+        model: null,
+        models: {
+          plan: null,
+          task: null,
+          refactor: null,
+          impl: null,
+          review: null,
+          fix: null,
+          tidy: null,
+        },
+        extraFlags: [],
+      },
+      gate: {
+        commands: ['echo test1', 'echo test2', 'echo test3'],
+        maxFixAttempts: 3,
+      },
+      loop: {
+        maxIterations: 10,
+      },
+    };
+
+    it('should execute all commands in parallel mode - all pass', async () => {
+      const parallelConfig: SpeciConfig = {
+        ...baseConfig,
+        gate: {
+          ...baseConfig.gate,
+          commands: [
+            'node -e "setTimeout(() => console.log(\'cmd1\'), 100)"',
+            'node -e "setTimeout(() => console.log(\'cmd2\'), 100)"',
+            'node -e "setTimeout(() => console.log(\'cmd3\'), 100)"',
+          ],
+          strategy: 'parallel',
+        },
+      };
+
+      const startTime = Date.now();
+      const result = await runGate(parallelConfig);
+      const endTime = Date.now();
+
+      expect(result.isSuccess).toBe(true);
+      expect(result.results).toHaveLength(3);
+      expect(result.results.every((r) => r.isSuccess)).toBe(true);
+
+      // Parallel execution should be faster than sequential
+      // Sequential would be ~300ms (3 x 100ms), parallel should be ~100ms
+      expect(endTime - startTime).toBeLessThan(250);
+    });
+
+    it('should execute all commands in parallel mode - one failure', async () => {
+      const parallelConfig: SpeciConfig = {
+        ...baseConfig,
+        gate: {
+          ...baseConfig.gate,
+          commands: ['echo test1', 'node -e "process.exit(1)"', 'echo test3'],
+          strategy: 'parallel',
+        },
+      };
+
+      const result = await runGate(parallelConfig);
+
+      expect(result.isSuccess).toBe(false);
+      expect(result.results).toHaveLength(3);
+      // All commands should have executed despite the failure
+      expect(result.results[0].isSuccess).toBe(true);
+      expect(result.results[1].isSuccess).toBe(false);
+      expect(result.results[2].isSuccess).toBe(true);
+
+      if (!result.isSuccess) {
+        expect(result.error).toBeDefined();
+      }
+    });
+
+    it('should execute all commands in parallel mode - multiple failures', async () => {
+      const parallelConfig: SpeciConfig = {
+        ...baseConfig,
+        gate: {
+          ...baseConfig.gate,
+          commands: [
+            'node -e "process.exit(1)"',
+            'echo test2',
+            'node -e "process.exit(2)"',
+          ],
+          strategy: 'parallel',
+        },
+      };
+
+      const result = await runGate(parallelConfig);
+
+      expect(result.isSuccess).toBe(false);
+      expect(result.results).toHaveLength(3);
+      // Verify which commands failed
+      expect(result.results[0].isSuccess).toBe(false);
+      expect(result.results[1].isSuccess).toBe(true);
+      expect(result.results[2].isSuccess).toBe(false);
+
+      if (!result.isSuccess) {
+        // First failure should be reported
+        expect(result.error).toBeDefined();
+      }
+    });
+
+    it('should default to sequential mode when strategy is undefined', async () => {
+      const sequentialConfig: SpeciConfig = {
+        ...baseConfig,
+        gate: {
+          ...baseConfig.gate,
+          commands: ['echo test1', 'echo test2'],
+          // No strategy specified - should default to sequential
+        },
+      };
+
+      const result = await runGate(sequentialConfig);
+
+      expect(result.isSuccess).toBe(true);
+      expect(result.results).toHaveLength(2);
+    });
+
+    it('should work with explicit sequential strategy', async () => {
+      const sequentialConfig: SpeciConfig = {
+        ...baseConfig,
+        gate: {
+          ...baseConfig.gate,
+          commands: ['echo test1', 'echo test2'],
+          strategy: 'sequential',
+        },
+      };
+
+      const result = await runGate(sequentialConfig);
+
+      expect(result.isSuccess).toBe(true);
+      expect(result.results).toHaveLength(2);
+    });
+
+    it('should handle empty commands array in parallel mode', async () => {
+      const emptyConfig: SpeciConfig = {
+        ...baseConfig,
+        gate: {
+          commands: [],
+          maxFixAttempts: 3,
+          strategy: 'parallel',
+        },
+      };
+
+      const result = await runGate(emptyConfig);
+
+      expect(result.isSuccess).toBe(true);
+      expect(result.results).toHaveLength(0);
+      expect(result.totalDuration).toBe(0);
+    });
+
+    it('should capture output without interleaving in parallel mode', async () => {
+      const parallelConfig: SpeciConfig = {
+        ...baseConfig,
+        gate: {
+          ...baseConfig.gate,
+          commands: ['echo output1', 'echo output2', 'echo output3'],
+          strategy: 'parallel',
+        },
+      };
+
+      const result = await runGate(parallelConfig);
+
+      expect(result.isSuccess).toBe(true);
+      expect(result.results).toHaveLength(3);
+      // Verify each command's output is captured correctly
+      expect(result.results[0].output).toContain('output1');
+      expect(result.results[1].output).toContain('output2');
+      expect(result.results[2].output).toContain('output3');
+      // Verify outputs are not mixed
+      expect(result.results[0].output).not.toContain('output2');
+      expect(result.results[1].output).not.toContain('output3');
+    });
+
+    it('should measure accurate wall-clock time in parallel mode', async () => {
+      const parallelConfig: SpeciConfig = {
+        ...baseConfig,
+        gate: {
+          ...baseConfig.gate,
+          commands: [
+            'node -e "setTimeout(() => {}, 100)"',
+            'node -e "setTimeout(() => {}, 100)"',
+            'node -e "setTimeout(() => {}, 100)"',
+          ],
+          strategy: 'parallel',
+        },
+      };
+
+      const result = await runGate(parallelConfig);
+
+      // Total duration should be ~100ms (parallel), not ~300ms (sequential sum)
+      expect(result.totalDuration).toBeGreaterThanOrEqual(100);
+      expect(result.totalDuration).toBeLessThan(250);
+
+      // Individual durations should each be ~100ms
+      result.results.forEach((r) => {
+        expect(r.duration).toBeGreaterThanOrEqual(100);
+        expect(r.duration).toBeLessThan(200);
+      });
+    });
+  });
+
   describe('Discriminated Union Types', () => {
     describe('GateCommandResult', () => {
       it('should not have error property on successful command', async () => {

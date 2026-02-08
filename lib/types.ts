@@ -78,6 +78,7 @@ export interface SpeciConfig {
   gate: {
     commands: string[];
     maxFixAttempts: number;
+    strategy?: 'sequential' | 'parallel';
   };
   loop: {
     maxIterations: number;

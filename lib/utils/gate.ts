@@ -123,41 +123,77 @@ export async function executeGateCommand(
 }
 
 /**
- * Run all gate commands sequentially
+ * Log the result of a gate command execution
+ * @param result - Command result to log
+ */
+function logCommandResult(result: GateCommandResult): void {
+  if (result.isSuccess) {
+    log.success(`    ${getGlyph('success')} Passed (${result.duration}ms)`);
+  } else {
+    log.error(`    ${getGlyph('error')} Failed (exit code ${result.exitCode})`);
+    if (result.error) {
+      const errorLines = result.error.split('\n').slice(0, 5);
+      for (const line of errorLines) {
+        if (line.trim()) {
+          log.error(`      ${line}`);
+        }
+      }
+    }
+  }
+}
+
+/**
+ * Run all gate commands with strategy-based execution (sequential or parallel)
  * @param config - Speci configuration
  * @returns Aggregate gate result
  */
 export async function runGate(config: SpeciConfig): Promise<GateResult> {
-  const { commands } = config.gate;
+  const { commands, strategy = 'sequential' } = config.gate;
 
   if (commands.length === 0) {
     log.debug('No gate commands configured, skipping gate');
     return { isSuccess: true, results: [], totalDuration: 0 };
   }
 
-  log.info(`Running gate checks (${commands.length} commands)...`);
+  log.info(`Running gate checks (${commands.length} commands, ${strategy})...`);
   const startTime = Date.now();
-  const results: GateCommandResult[] = [];
+  let results: GateCommandResult[];
 
-  for (const command of commands) {
-    log.info(`  ${getGlyph('pointer')} ${command}`);
-    const result = await executeGateCommand(command);
-    results.push(result);
+  if (strategy === 'parallel') {
+    // Execute all commands concurrently using Promise.allSettled
+    const promises = commands.map((command) =>
+      executeGateCommand(command).then((result) => ({ command, result }))
+    );
 
-    if (result.isSuccess) {
-      log.success(`    ${getGlyph('success')} Passed (${result.duration}ms)`);
-    } else {
-      log.error(
-        `    ${getGlyph('error')} Failed (exit code ${result.exitCode})`
-      );
-      if (result.error) {
-        const errorLines = result.error.split('\n').slice(0, 5);
-        for (const line of errorLines) {
-          if (line.trim()) {
-            log.error(`      ${line}`);
-          }
-        }
+    const settled = await Promise.allSettled(promises);
+    results = settled.map((s, index) => {
+      if (s.status === 'fulfilled') {
+        return s.value.result;
       }
+      // Create error result for rejected promises
+      return {
+        command: commands[index],
+        isSuccess: false,
+        exitCode: 127,
+        output: '',
+        error: s.reason instanceof Error ? s.reason.message : String(s.reason),
+        duration: 0,
+      };
+    });
+
+    // Log results after all complete (avoid interleaving)
+    for (let i = 0; i < results.length; i++) {
+      log.info(`  ${getGlyph('pointer')} ${commands[i]}`);
+      logCommandResult(results[i]);
+    }
+  } else {
+    // Sequential execution (existing behavior)
+    results = [];
+    for (const command of commands) {
+      log.info(`  ${getGlyph('pointer')} ${command}`);
+      const result = await executeGateCommand(command);
+      results.push(result);
+      logCommandResult(result);
     }
   }
 

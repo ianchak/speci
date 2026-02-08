@@ -288,13 +288,24 @@ The configuration file is created by `speci init` and can be customized:
   },
   "gate": {
     "commands": ["npm run lint", "npm run typecheck", "npm run test"],
-    "maxFixAttempts": 3
+    "maxFixAttempts": 3,
+    "strategy": "sequential"
   },
   "loop": {
     "maxIterations": 100
   }
 }
 ```
+
+**Gate Configuration:**
+
+- `gate.commands` - Array of shell commands to run as quality gates
+- `gate.maxFixAttempts` - Maximum number of automatic fix attempts after gate failures
+- `gate.strategy` - Execution strategy for gate commands:
+  - `"sequential"` (default) - Run commands one after another
+  - `"parallel"` - Run all commands concurrently (30-50% faster for independent commands)
+
+**Note:** Parallel execution requires commands to be independent (no shared resources like lock files or ports).
 
 ### Environment Variables
 

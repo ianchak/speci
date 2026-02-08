@@ -268,7 +268,7 @@ export async function getTaskStats(
  *
  * @param config - Speci configuration
  * @param options - Cache options
- * @returns Current task info or null if no active task
+ * @returns Current task info or undefined if no active task
  *
  * @example
  * ```typescript

@@ -36,7 +36,9 @@
 
   "gate": {
     "commands": ["npm run lint", "npm run typecheck", "npm test"],
-    "maxFixAttempts": 5
+    "maxFixAttempts": 5,
+    "_comment_strategy": "Optional: 'sequential' (default) or 'parallel'. Parallel can speed up independent commands by 30-50%.",
+    "strategy": "sequential"
   },
 
   "loop": {
