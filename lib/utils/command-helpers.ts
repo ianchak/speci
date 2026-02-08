@@ -33,6 +33,8 @@ export interface InitializeCommandOptions {
   commandName: AgentCommandName;
   /** Custom agent filename override */
   agentOverride?: string;
+  /** Pre-loaded configuration (if not provided, will load from context) */
+  config?: SpeciConfig;
   /** Skip banner rendering (useful for tests) */
   skipBanner?: boolean;
   /** Skip preflight checks (useful for tests) */
@@ -104,7 +106,7 @@ export function validateAgentFile(
  *
  * Orchestrates the full initialization sequence for agent-based commands:
  * 1. Render banner (optional via skipBanner)
- * 2. Load configuration
+ * 2. Load configuration (or use provided config)
  * 3. Run preflight checks (optional via skipPreflight)
  * 4. Normalize agent name
  * 5. Resolve agent path
@@ -127,6 +129,13 @@ export function validateAgentFile(
  *   agentOverride: 'custom-task.agent.md',
  * });
  *
+ * // With pre-loaded config (avoids repeated loading)
+ * const config = await context.configLoader.load();
+ * const result = await initializeCommand({
+ *   commandName: 'plan',
+ *   config, // Pass pre-loaded config
+ * });
+ *
  * // For testing (skip banner and preflight)
  * const result = await initializeCommand({
  *   commandName: 'refactor',
@@ -147,8 +156,8 @@ export async function initializeCommand(
     console.log();
   }
 
-  // Step 2: Load configuration
-  const config = await context.configLoader.load();
+  // Step 2: Load configuration (or use provided config)
+  const config = options.config ?? (await context.configLoader.load());
 
   // Step 3: Run preflight checks (optional)
   if (!options.skipPreflight) {

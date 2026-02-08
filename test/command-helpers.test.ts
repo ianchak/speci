@@ -323,5 +323,54 @@ describe('command-helpers', () => {
       expect(result.agentName).toBe('my-refactor');
       expect(result.agentPath).toContain('my-refactor.agent.md');
     });
+
+    it('should use provided config instead of loading when config parameter is provided', async () => {
+      const providedConfig: SpeciConfig = {
+        ...mockConfig,
+        paths: { ...mockConfig.paths, progress: 'custom/PROGRESS.md' },
+      };
+
+      const result = await initializeCommand({
+        commandName: 'plan',
+        config: providedConfig,
+        context: mockContext,
+      });
+
+      // Should not call configLoader.load() when config is provided
+      expect(loadConfigSpy).not.toHaveBeenCalled();
+      expect(result.config).toBe(providedConfig);
+      expect(result.config.paths.progress).toBe('custom/PROGRESS.md');
+    });
+
+    it('should still load config when no config parameter provided', async () => {
+      const result = await initializeCommand({
+        commandName: 'plan',
+        context: mockContext,
+      });
+
+      // Should call configLoader.load() when no config provided
+      expect(loadConfigSpy).toHaveBeenCalledOnce();
+      expect(result.config).toBe(mockConfig);
+    });
+
+    it('should use provided config with all other options', async () => {
+      const providedConfig: SpeciConfig = {
+        ...mockConfig,
+        gate: { commands: ['npm run lint'], maxFixAttempts: 5 },
+      };
+
+      const result = await initializeCommand({
+        commandName: 'task',
+        config: providedConfig,
+        agentOverride: 'custom.agent.md',
+        skipBanner: true,
+        skipPreflight: true,
+        context: mockContext,
+      });
+
+      expect(loadConfigSpy).not.toHaveBeenCalled();
+      expect(result.config).toBe(providedConfig);
+      expect(result.agentName).toBe('custom');
+    });
   });
 });

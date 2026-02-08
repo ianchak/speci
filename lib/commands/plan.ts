@@ -12,6 +12,7 @@ import { colorize } from '@/ui/colors.js';
 import { createProductionContext } from '@/adapters/context-factory.js';
 import { initializeCommand } from '@/utils/command-helpers.js';
 import type { CommandContext, CommandResult } from '@/interfaces.js';
+import type { SpeciConfig } from '@/config.js';
 
 /**
  * Options for the plan command
@@ -60,11 +61,13 @@ function displayCommandInfo(
  * Initializes interactive Copilot session for plan generation
  * @param options - Command options
  * @param context - Dependency injection context (defaults to production)
+ * @param config - Pre-loaded configuration (optional, will load if not provided)
  * @returns Promise resolving to command result
  */
 export async function plan(
   options: PlanOptions = {},
-  context: CommandContext = createProductionContext()
+  context: CommandContext = createProductionContext(),
+  config?: SpeciConfig
 ): Promise<CommandResult> {
   try {
     // Require at least --prompt or --input (validate before initialization)
@@ -104,9 +107,10 @@ export async function plan(
     }
 
     // Initialize command with shared helper (skip preflight as plan doesn't need it)
-    const { config, agentName } = await initializeCommand({
+    const { config: loadedConfig, agentName } = await initializeCommand({
       commandName: 'plan',
       agentOverride: options.agent,
+      config, // Pass pre-loaded config if provided
       skipPreflight: true,
       context,
     });
@@ -150,10 +154,10 @@ export async function plan(
     console.log();
 
     // Build Copilot args - one-shot mode with prompt
-    const args = context.copilotRunner.buildArgs(config, {
+    const args = context.copilotRunner.buildArgs(loadedConfig, {
       prompt: fullPrompt || undefined,
       agent: agentName,
-      shouldAllowAll: config.copilot.permissions === 'allow-all',
+      shouldAllowAll: loadedConfig.copilot.permissions === 'allow-all',
       command: 'plan',
     });
 

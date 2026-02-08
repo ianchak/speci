@@ -60,25 +60,27 @@ const REFRESH_INTERVAL = 1000;
  * Status command handler
  * @param options - Command options
  * @param context - Dependency injection context (defaults to production)
+ * @param config - Pre-loaded configuration (optional, will load if not provided)
  * @returns Promise resolving to command result
  */
 export async function status(
   options: StatusOptions = {},
-  context: CommandContext = createProductionContext()
+  context: CommandContext = createProductionContext(),
+  config?: SpeciConfig
 ): Promise<CommandResult> {
   try {
     // JSON mode: single output and exit
     if (options.json) {
-      const config = await context.configLoader.load();
-      const statusData = await gatherStatusData(config);
+      const loadedConfig = config ?? (await context.configLoader.load());
+      const statusData = await gatherStatusData(loadedConfig);
       console.log(JSON.stringify(statusData, null, 2));
       return { success: true, exitCode: 0 };
     }
 
     // Once mode or non-TTY: single render and exit
     if (options.once || !context.process.stdout.isTTY) {
-      const config = await context.configLoader.load();
-      const statusData = await gatherStatusData(config);
+      const loadedConfig = config ?? (await context.configLoader.load());
+      const statusData = await gatherStatusData(loadedConfig);
       renderStaticStatus(statusData, options.verbose);
       return { success: true, exitCode: 0 };
     }

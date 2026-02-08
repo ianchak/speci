@@ -47,22 +47,25 @@ export interface RunOptions {
  *
  * @param options - Command options
  * @param context - Dependency injection context (defaults to production)
+ * @param config - Pre-loaded configuration (optional, will load if not provided)
  * @returns Promise resolving to command result
  */
 export async function run(
   options: RunOptions = {},
-  context: CommandContext = createProductionContext()
+  context: CommandContext = createProductionContext(),
+  config?: SpeciConfig
 ): Promise<CommandResult> {
   // 1. Display banner
   renderBanner();
 
-  // 2. Load configuration
-  const config = await context.configLoader.load();
-  const maxIterations = options.maxIterations ?? config.loop.maxIterations;
+  // 2. Load configuration (or use provided config)
+  const loadedConfig = config ?? (await context.configLoader.load());
+  const maxIterations =
+    options.maxIterations ?? loadedConfig.loop.maxIterations;
 
   // 3. Run preflight checks
   await preflight(
-    config,
+    loadedConfig,
     {
       requireCopilot: true,
       requireConfig: true,
@@ -73,8 +76,8 @@ export async function run(
   );
 
   // 4. Check existing lock
-  if (await isLocked(config)) {
-    const lockInfo = await getLockInfo(config);
+  if (await isLocked(loadedConfig)) {
+    const lockInfo = await getLockInfo(loadedConfig);
     if (!options.force) {
       context.logger.warn(
         `Speci is already running (PID: ${lockInfo?.pid ?? 'unknown'})`
@@ -88,32 +91,32 @@ export async function run(
 
   // 5. Dry run check and pre-run confirmation
   if (options.dryRun) {
-    const initialState = await getState(config);
-    displayDryRun(initialState, config, maxIterations);
+    const initialState = await getState(loadedConfig);
+    displayDryRun(initialState, loadedConfig, maxIterations);
     return { success: true, exitCode: 0 };
   }
 
   if (!options.yes) {
-    const initialState = await getState(config);
-    const shouldProceed = await confirmRun(initialState, config);
+    const initialState = await getState(loadedConfig);
+    const shouldProceed = await confirmRun(initialState, loadedConfig);
     if (!shouldProceed) {
       return { success: false, exitCode: 0, error: 'User cancelled' };
     }
   }
 
   // 6. Acquire lock
-  await acquireLock(config, context.process);
+  await acquireLock(loadedConfig, context.process);
 
   // 7. Setup cleanup handlers (before creating log file)
   installSignalHandlers();
 
   // Register cleanup functions
   registerCleanup(async () => {
-    await releaseLock(config);
+    await releaseLock(loadedConfig);
   });
 
   // 8. Initialize logging (after all early exits)
-  const logFile = initializeLogFile(config, context);
+  const logFile = initializeLogFile(loadedConfig, context);
 
   // Register log file cleanup
   registerCleanup(async () => {
@@ -131,7 +134,7 @@ export async function run(
 
   try {
     // 9. Run main loop
-    await mainLoop(config, maxIterations, logFile, options, context);
+    await mainLoop(loadedConfig, maxIterations, logFile, options, context);
     return { success: true, exitCode: 0 };
   } catch (error) {
     if (error instanceof Error) {
@@ -152,7 +155,7 @@ export async function run(
     }
   } finally {
     // 10. Cleanup
-    await releaseLock(config);
+    await releaseLock(loadedConfig);
     try {
       // Wait for log file to finish writing
       await new Promise<void>((resolve) => {
@@ -229,7 +232,7 @@ async function mainLoop(
 /**
  * Handle WORK_LEFT state: dispatch impl agent and run gates
  *
- * @param config - Speci configuration
+ * @param loadedConfig - Speci configuration
  * @param logFile - Log file stream
  * @param options - Command options
  */
@@ -250,7 +253,11 @@ async function handleWorkLeft(
   // 1. Run impl agent
   context.logger.info('Dispatching implementation agent...');
   logAgent(logFile, 'impl', 'START');
-  const implResult = await runAgent(config, 'impl', 'Implementation Agent');
+  const implResult = await runAgent(
+    config,
+    'impl',
+    'Implementation Agent'
+  );
   logAgent(logFile, 'impl', implResult.isSuccess ? 'SUCCESS' : 'FAILED');
 
   if (!implResult.isSuccess) {
@@ -379,7 +386,7 @@ async function promptForce(): Promise<boolean> {
  * Prompt user to confirm run execution
  *
  * @param state - Current state
- * @param config - Speci configuration
+ * @param loadedConfig - Speci configuration
  */
 async function confirmRun(
   state: STATE,
@@ -433,7 +440,7 @@ function getActionForState(state: STATE): string {
  * Display dry run information
  *
  * @param state - Current state
- * @param config - Speci configuration
+ * @param loadedConfig - Speci configuration
  * @param maxIterations - Maximum iterations
  */
 function displayDryRun(
@@ -453,7 +460,7 @@ function displayDryRun(
 /**
  * Initialize log file for run session
  *
- * @param config - Speci configuration
+ * @param loadedConfig - Speci configuration
  * @param context - Command context for filesystem and process
  * @returns WriteStream for log file
  */

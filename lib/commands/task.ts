@@ -12,6 +12,7 @@ import { infoBox } from '@/ui/box.js';
 import { createProductionContext } from '@/adapters/context-factory.js';
 import { initializeCommand } from '@/utils/command-helpers.js';
 import type { CommandContext, CommandResult } from '@/interfaces.js';
+import type { SpeciConfig } from '@/config.js';
 
 /**
  * Options for the task command
@@ -68,11 +69,13 @@ function validatePlanFile(
  *
  * @param options - Command options
  * @param context - Dependency injection context (defaults to production)
+ * @param config - Pre-loaded configuration (optional, will load if not provided)
  * @returns Promise resolving to command result
  */
 export async function task(
   options: TaskOptions,
-  context: CommandContext = createProductionContext()
+  context: CommandContext = createProductionContext(),
+  config?: SpeciConfig
 ): Promise<CommandResult> {
   try {
     // Display banner
@@ -99,9 +102,10 @@ export async function task(
 
     // Initialize command (config + preflight + agent validation)
     // Note: skipBanner=true because we already rendered it above
-    const { config, agentName } = await initializeCommand({
+    const { config: loadedConfig, agentName } = await initializeCommand({
       commandName: 'task',
       agentOverride: options.agent,
+      config, // Pass pre-loaded config if provided
       skipBanner: true,
       context,
     });
@@ -119,7 +123,7 @@ export async function task(
     console.log();
 
     // Build Copilot args for one-shot mode with plan context
-    const args = context.copilotRunner.buildArgs(config, {
+    const args = context.copilotRunner.buildArgs(loadedConfig, {
       prompt: `Read the plan file at ${planPath} and generate implementation tasks.`,
       agent: agentName,
       shouldAllowAll: true,
