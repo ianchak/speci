@@ -22,6 +22,7 @@ import { preflight } from '@/utils/preflight.js';
 import { runGate } from '@/utils/gate.js';
 import { runAgent } from '@/copilot.js';
 import { renderBanner } from '@/ui/banner.js';
+import { createError } from '@/errors.js';
 import { log } from '@/utils/logger.js';
 import {
   installSignalHandlers,
@@ -208,7 +209,7 @@ async function mainLoop(
         context.logger.error(
           'No PROGRESS.md found. Run `speci init` to initialize.'
         );
-        throw new Error('No PROGRESS.md found');
+        throw createError('ERR-PRE-06');
 
       case STATE.WORK_LEFT:
         await handleWorkLeft(config, logFile, options, context);

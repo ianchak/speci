@@ -11,6 +11,7 @@ import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { log } from '@/utils/logger.js';
 import { CONFIG_FILENAME, getAgentFilename } from '@/constants.js';
+import { createError } from '@/errors.js';
 import type { IProcess } from '@/interfaces.js';
 import type { SpeciConfig } from '@/types.js';
 
@@ -213,8 +214,9 @@ export function validateConfig(rawConfig: Partial<SpeciConfig>): SpeciConfig {
 
   // Validate version
   if (config.version && !config.version.startsWith('1.')) {
-    throw new Error(
-      `Config version '${config.version}' is not compatible. Expected: 1.x`
+    throw createError(
+      'ERR-INP-06',
+      JSON.stringify({ version: config.version })
     );
   }
 
@@ -222,7 +224,7 @@ export function validateConfig(rawConfig: Partial<SpeciConfig>): SpeciConfig {
   if (config.paths) {
     for (const value of Object.values(config.paths)) {
       if (value && !isSafePath(value)) {
-        throw new Error(`Path '${value}' attempts to escape project directory`);
+        throw createError('ERR-INP-07', JSON.stringify({ path: value }));
       }
     }
   }
@@ -233,23 +235,17 @@ export function validateConfig(rawConfig: Partial<SpeciConfig>): SpeciConfig {
     config.copilot.permissions &&
     !validPermissions.includes(config.copilot.permissions)
   ) {
-    throw new Error(
-      `Invalid config value for 'copilot.permissions': must be one of ${validPermissions.join(', ')}`
-    );
+    throw createError('ERR-INP-08');
   }
 
   // Validate maxFixAttempts
   if (config.gate.maxFixAttempts < 1) {
-    throw new Error(
-      `Invalid config value for 'gate.maxFixAttempts': must be at least 1`
-    );
+    throw createError('ERR-INP-09');
   }
 
   // Validate maxIterations
   if (config.loop.maxIterations < 1) {
-    throw new Error(
-      `Invalid config value for 'loop.maxIterations': must be at least 1`
-    );
+    throw createError('ERR-INP-10');
   }
 
   return config;
@@ -562,7 +558,7 @@ export function loadConfig(options?: {
       log.debug(`Loaded config from ${configPath}`);
     } catch (error) {
       if (error instanceof SyntaxError) {
-        throw new Error(`Config file has invalid JSON: ${error.message}`);
+        throw createError('ERR-INP-03');
       }
       throw error;
     }
@@ -676,7 +672,10 @@ export function resolveSubagentPath(subagentName: string): string {
   );
 
   if (!existsSync(bundledPath)) {
-    throw new Error(`Subagent prompt not found: ${subagentName}.prompt.md`);
+    throw createError(
+      'ERR-INP-11',
+      JSON.stringify({ subagent: `${subagentName}.prompt.md` })
+    );
   }
 
   return bundledPath;

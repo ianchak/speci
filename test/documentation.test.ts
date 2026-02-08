@@ -274,7 +274,7 @@ describe('Error Code Categories', () => {
 
 describe('Error Messages', () => {
   it('should provide actionable solutions', () => {
-    Object.values(ERROR_CODES).forEach((def) => {
+    Object.entries(ERROR_CODES).forEach(([code, def]) => {
       // Solutions should contain actionable verbs or commands
       const hasAction =
         def.solution.includes('Run') ||
@@ -284,9 +284,13 @@ describe('Error Messages', () => {
         def.solution.includes('Verify') ||
         def.solution.includes('Wait') ||
         def.solution.includes('Review') ||
-        def.solution.includes('Provide');
+        def.solution.includes('Provide') ||
+        def.solution.includes('Use') ||
+        def.solution.includes('Update') ||
+        def.solution.includes('Set') ||
+        def.solution.includes('Reinstall');
 
-      expect(hasAction).toBe(true);
+      expect(hasAction, `${code}: "${def.solution}"`).toBe(true);
     });
   });
 

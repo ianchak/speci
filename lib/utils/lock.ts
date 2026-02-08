@@ -17,6 +17,7 @@ import {
 import { dirname } from 'node:path';
 import type { SpeciConfig } from '@/config.js';
 import { log } from '@/utils/logger.js';
+import { createError } from '@/errors.js';
 import type { IProcess } from '@/interfaces.js';
 
 /**
@@ -47,9 +48,12 @@ export async function acquireLock(
   // Check if already locked
   if (existsSync(lockPath)) {
     const info = await getLockInfo(config);
-    throw new Error(
-      `Another speci instance is running (PID: ${info.pid}, started: ${info.elapsed} ago). ` +
-        `Use --force to override or wait for it to complete.`
+    throw createError(
+      'ERR-STA-01',
+      JSON.stringify({
+        pid: info.pid,
+        elapsed: info.elapsed,
+      })
     );
   }
 

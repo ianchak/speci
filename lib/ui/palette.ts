@@ -8,6 +8,7 @@
  */
 
 import { ENV } from '@/constants.js';
+import { createError } from '@/errors.js';
 
 /**
  * Hex color values for reference and documentation
@@ -51,7 +52,7 @@ export interface ColorPalette {
 function hexToRgb(hex: string): { r: number; g: number; b: number } {
   const result = /^#([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
   if (!result) {
-    throw new Error(`Invalid hex color: ${hex}`);
+    throw createError('ERR-UI-01', JSON.stringify({ hex }));
   }
   return {
     r: parseInt(result[1], 16),

@@ -10,6 +10,7 @@ import { resolveAgentPath } from '@/config.js';
 import { preflight } from '@/utils/preflight.js';
 import { renderBanner } from '@/ui/banner.js';
 import { getAgentFilename } from '@/constants.js';
+import { createError } from '@/errors.js';
 import { createProductionContext } from '@/adapters/context-factory.js';
 import type { CommandContext } from '@/interfaces.js';
 import type { SpeciConfig } from '@/config.js';
@@ -97,7 +98,7 @@ export function validateAgentFile(
   context: CommandContext
 ): void {
   if (!context.fs.existsSync(agentPath)) {
-    throw new Error(`Agent file not found: ${agentPath}`);
+    throw createError('ERR-INP-02', JSON.stringify({ path: agentPath }));
   }
 }
 

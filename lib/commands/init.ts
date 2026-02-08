@@ -14,6 +14,7 @@ import {
   type SpeciConfig,
 } from '@/config.js';
 import { CONFIG_FILENAME } from '@/constants.js';
+import { createError } from '@/errors.js';
 import { createProductionContext } from '@/adapters/context-factory.js';
 import type { CommandContext, CommandResult } from '@/interfaces.js';
 
@@ -131,8 +132,12 @@ async function createDirectories(
         context.fs.mkdirSync(path, { recursive: true });
         context.logger.debug(`Created directory: ${path}`);
       } catch (error) {
-        throw new Error(
-          `Failed to create directory: ${path}. ${error instanceof Error ? error.message : String(error)}`
+        throw createError(
+          'ERR-EXE-05',
+          JSON.stringify({
+            path,
+            reason: error instanceof Error ? error.message : String(error),
+          })
         );
       }
     })
@@ -157,8 +162,12 @@ async function createFiles(
       context.fs.writeFileSync(CONFIG_FILENAME, configContent, 'utf8');
       context.logger.success(`Created ${CONFIG_FILENAME}`);
     } catch (error) {
-      throw new Error(
-        `Failed to write file: ${CONFIG_FILENAME}. ${error instanceof Error ? error.message : String(error)}`
+      throw createError(
+        'ERR-EXE-06',
+        JSON.stringify({
+          path: CONFIG_FILENAME,
+          reason: error instanceof Error ? error.message : String(error),
+        })
       );
     }
   }
@@ -228,7 +237,7 @@ async function copyAgentFiles(
     const templateDir = getAgentsTemplatePath();
 
     if (!context.fs.existsSync(templateDir)) {
-      throw new Error(`Agent templates directory not found: ${templateDir}`);
+      throw createError('ERR-EXE-07', JSON.stringify({ path: templateDir }));
     }
 
     // Recursively copy entire agents directory
@@ -243,8 +252,11 @@ async function copyAgentFiles(
       `${action} ${fileCount} agent files inside ${GITHUB_AGENTS_DIR}/`
     );
   } catch (error) {
-    throw new Error(
-      `Failed to copy agent files: ${error instanceof Error ? error.message : String(error)}`
+    throw createError(
+      'ERR-EXE-08',
+      JSON.stringify({
+        reason: error instanceof Error ? error.message : String(error),
+      })
     );
   }
 }

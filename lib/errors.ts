@@ -17,6 +17,11 @@ export interface ErrorDefinition {
 }
 
 /**
+ * Context object for error interpolation
+ */
+export type ErrorContext = Record<string, string | number | undefined>;
+
+/**
  * All error codes used by speci CLI
  *
  * Error codes are grouped by category:
@@ -24,6 +29,7 @@ export interface ErrorDefinition {
  * - ERR-INP-* : Input errors (invalid arguments, missing files)
  * - ERR-STA-* : State errors (lock conflicts, state parsing)
  * - ERR-EXE-* : Execution errors (command failures, timeouts)
+ * - ERR-UI-*  : UI errors (rendering, color parsing)
  */
 export const ERROR_CODES: Record<string, ErrorDefinition> = {
   // Prerequisite Errors (ERR-PRE-*)
@@ -52,6 +58,11 @@ export const ERROR_CODES: Record<string, ErrorDefinition> = {
     cause: 'Progress tracking file does not exist',
     solution: 'Run speci init or create docs/PROGRESS.md manually',
   },
+  'ERR-PRE-06': {
+    message: 'No PROGRESS.md found in run command',
+    cause: 'Run command requires PROGRESS.md to track implementation state',
+    solution: 'Run speci init to initialize project structure',
+  },
 
   // Input Errors (ERR-INP-*)
   'ERR-INP-01': {
@@ -60,8 +71,8 @@ export const ERROR_CODES: Record<string, ErrorDefinition> = {
     solution: 'Check command usage with --help',
   },
   'ERR-INP-02': {
-    message: 'Agent file not found',
-    cause: 'Specified agent file does not exist',
+    message: 'Agent file not found: {{path}}',
+    cause: 'Specified agent file does not exist at the given path',
     solution: 'Verify agent path or use bundled agents (set to null in config)',
   },
   'ERR-INP-03': {
@@ -79,11 +90,43 @@ export const ERROR_CODES: Record<string, ErrorDefinition> = {
     cause: 'Specified plan file does not exist',
     solution: 'Provide valid path with --plan option',
   },
+  'ERR-INP-06': {
+    message: 'Config version {{version}} is not compatible',
+    cause: 'Configuration file uses an incompatible version format',
+    solution:
+      'Update config to version 1.x or regenerate with speci init',
+  },
+  'ERR-INP-07': {
+    message: 'Path {{path}} attempts to escape project directory',
+    cause: 'Configuration path contains directory traversal (../) sequences',
+    solution: 'Use relative paths within the project directory only',
+  },
+  'ERR-INP-08': {
+    message: 'Invalid copilot.permissions value',
+    cause: 'Permission value must be one of: allow-all, yolo, strict, none',
+    solution: 'Update copilot.permissions in config to a valid value',
+  },
+  'ERR-INP-09': {
+    message: 'Invalid gate.maxFixAttempts value',
+    cause: 'maxFixAttempts must be at least 1',
+    solution: 'Set gate.maxFixAttempts to a positive integer in config',
+  },
+  'ERR-INP-10': {
+    message: 'Invalid loop.maxIterations value',
+    cause: 'maxIterations must be at least 1',
+    solution: 'Set loop.maxIterations to a positive integer in config',
+  },
+  'ERR-INP-11': {
+    message: 'Subagent prompt not found: {{subagent}}',
+    cause: 'Bundled agent template file is missing from installation',
+    solution: 'Reinstall speci package or use custom agent path in config',
+  },
 
   // State Errors (ERR-STA-*)
   'ERR-STA-01': {
-    message: 'Lock file already exists',
-    cause: 'Another speci instance may be running',
+    message:
+      'Another speci instance is running (PID: {{pid}}, started: {{elapsed}} ago)',
+    cause: 'Lock file exists indicating another instance may be running',
     solution: 'Wait for other instance to finish or use --force to override',
   },
   'ERR-STA-02': {
@@ -118,6 +161,33 @@ export const ERROR_CODES: Record<string, ErrorDefinition> = {
     cause: 'Gate validation failed after maximum fix attempts',
     solution: 'Review gate failures and fix issues manually',
   },
+  'ERR-EXE-05': {
+    message: 'Failed to create directory: {{path}}',
+    cause: 'Directory creation failed due to permissions or filesystem error',
+    solution: 'Check directory permissions and available disk space',
+  },
+  'ERR-EXE-06': {
+    message: 'Failed to write file: {{path}}',
+    cause: 'File write operation failed due to permissions or filesystem error',
+    solution: 'Check file permissions and available disk space',
+  },
+  'ERR-EXE-07': {
+    message: 'Agent templates directory not found: {{path}}',
+    cause: 'Bundled agent templates are missing from installation',
+    solution: 'Reinstall speci package to restore bundled agent templates',
+  },
+  'ERR-EXE-08': {
+    message: 'Failed to copy agent files',
+    cause: 'Agent file copy operation failed',
+    solution: 'Check filesystem permissions and available disk space',
+  },
+
+  // UI Errors (ERR-UI-*)
+  'ERR-UI-01': {
+    message: 'Invalid hex color: {{hex}}',
+    cause: 'Color value does not match hex color format (#RRGGBB)',
+    solution: 'Use valid 6-digit hex color code (e.g., #FF5733)',
+  },
 };
 
 /**
@@ -131,37 +201,67 @@ export function getErrorDefinition(code: string): ErrorDefinition | undefined {
 }
 
 /**
+ * Interpolate context variables in a template string
+ *
+ * @param template - Template string with {{variable}} placeholders
+ * @param context - Context object with variable values
+ * @returns Interpolated string
+ */
+function interpolateContext(template: string, context: ErrorContext): string {
+  return template.replace(/\{\{(\w+)\}\}/g, (_, key) => {
+    const value = context[key];
+    return value !== undefined ? String(value) : `{{${key}}}`;
+  });
+}
+
+/**
  * Format error message with code, cause, and solution
  *
  * @param code - Error code
- * @param context - Optional additional context
+ * @param contextJson - Optional JSON string containing context variables for interpolation
  * @returns Formatted error message
  */
-export function formatError(code: string, context?: string): string {
+export function formatError(code: string, contextJson?: string): string {
   const def = getErrorDefinition(code);
   if (!def) {
     return `Unknown error code: ${code}`;
   }
 
-  let message = `[${code}] ${def.message}`;
-  if (context) {
-    message += `\n  Context: ${context}`;
+  // Parse context if provided
+  let context: ErrorContext = {};
+  if (contextJson) {
+    try {
+      context = JSON.parse(contextJson);
+    } catch {
+      // If parsing fails, include the raw context as a string
+      context = { raw: contextJson };
+    }
   }
-  message += `\n  Cause: ${def.cause}`;
-  message += `\n  Solution: ${def.solution}`;
 
-  return message;
+  // Interpolate context variables in message, cause, and solution
+  const message = interpolateContext(def.message, context);
+  const cause = interpolateContext(def.cause, context);
+  const solution = interpolateContext(def.solution, context);
+
+  let formatted = `[${code}] ${message}`;
+  if (contextJson && Object.keys(context).length > 0) {
+    formatted += `\n  Context: ${contextJson}`;
+  }
+  formatted += `\n  Cause: ${cause}`;
+  formatted += `\n  Solution: ${solution}`;
+
+  return formatted;
 }
 
 /**
  * Create error with structured code and message
  *
  * @param code - Error code
- * @param context - Optional additional context
+ * @param contextJson - Optional JSON string containing context variables for interpolation
  * @returns Error object with formatted message
  */
-export function createError(code: string, context?: string): Error {
-  const message = formatError(code, context);
+export function createError(code: string, contextJson?: string): Error {
+  const message = formatError(code, contextJson);
   const error = new Error(message);
   error.name = code;
   return error;
