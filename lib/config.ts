@@ -14,6 +14,7 @@ import { CONFIG_FILENAME, getAgentFilename } from '@/constants.js';
 import { createError } from '@/errors.js';
 import type { IProcess } from '@/interfaces.js';
 import type { SpeciConfig } from '@/types.js';
+import { ConfigValidator } from '@/validation/config-validator.js';
 
 // Re-export SpeciConfig for backward compatibility
 export type { SpeciConfig } from '@/types.js';
@@ -185,21 +186,6 @@ function deepMerge<T extends object>(target: T, source: Partial<T>): T {
 }
 
 /**
- * Check if path contains directory traversal attempts
- * @param path - Path to check
- * @returns true if path is safe
- */
-function isSafePath(path: string): boolean {
-  // Check for explicit .. in path components
-  const parts = path.split(/[/\\]/);
-  if (parts.includes('..')) {
-    return false;
-  }
-
-  return true;
-}
-
-/**
  * Validate config against schema
  *
  * Merges raw config with defaults and validates all required fields
@@ -218,40 +204,38 @@ export function validateConfig(rawConfig: Partial<SpeciConfig>): SpeciConfig {
   const defaults = getDefaults();
   const config = deepMerge(defaults, rawConfig);
 
-  // Validate version
-  if (config.version && !config.version.startsWith('1.')) {
-    throw createError(
-      'ERR-INP-06',
-      JSON.stringify({ version: config.version })
-    );
-  }
+  // Use ConfigValidator for validation
+  const result = new ConfigValidator(config).validate();
 
-  // Validate paths for directory traversal
-  if (config.paths) {
-    for (const value of Object.values(config.paths)) {
-      if (value && !isSafePath(value)) {
-        throw createError('ERR-INP-07', JSON.stringify({ path: value }));
-      }
+  if (!result.success) {
+    // Map validation errors to existing error codes
+    const { error } = result;
+
+    if (error.field === 'version') {
+      throw createError(
+        'ERR-INP-06',
+        JSON.stringify({ version: config.version })
+      );
     }
-  }
 
-  // Validate copilot permissions
-  const validPermissions = ['allow-all', 'yolo', 'strict', 'none'];
-  if (
-    config.copilot.permissions &&
-    !validPermissions.includes(config.copilot.permissions)
-  ) {
-    throw createError('ERR-INP-08');
-  }
+    if (error.field?.startsWith('paths.')) {
+      throw createError('ERR-INP-07', JSON.stringify({ path: error.message }));
+    }
 
-  // Validate maxFixAttempts
-  if (config.gate.maxFixAttempts < 1) {
-    throw createError('ERR-INP-09');
-  }
+    if (error.field === 'copilot.permissions') {
+      throw createError('ERR-INP-08');
+    }
 
-  // Validate maxIterations
-  if (config.loop.maxIterations < 1) {
-    throw createError('ERR-INP-10');
+    if (error.field === 'gate.maxFixAttempts') {
+      throw createError('ERR-INP-09');
+    }
+
+    if (error.field === 'loop.maxIterations') {
+      throw createError('ERR-INP-10');
+    }
+
+    // Fallback for unexpected validation errors
+    throw createError('ERR-INP-04', JSON.stringify(error));
   }
 
   return config;

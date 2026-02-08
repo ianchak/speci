@@ -13,6 +13,7 @@ import { createProductionContext } from '@/adapters/context-factory.js';
 import { initializeCommand } from '@/utils/command-helpers.js';
 import { handleCommandError } from '@/utils/error-handler.js';
 import { executeCopilotCommand } from '@/utils/copilot-helper.js';
+import { InputValidator } from '@/validation/input-validator.js';
 import type { CommandContext, CommandResult } from '@/interfaces.js';
 import type { SpeciConfig } from '@/config.js';
 
@@ -95,18 +96,26 @@ export async function plan(
       };
     }
 
-    // Validate input files exist
+    // Validate input using InputValidator
     const inputFiles = options.input || [];
-    for (const inputFile of inputFiles) {
-      const resolvedPath = resolve(inputFile);
-      if (!context.fs.existsSync(resolvedPath)) {
-        context.logger.error(`Input file not found: ${inputFile}`);
-        return {
-          success: false,
-          exitCode: 1,
-          error: `Input file not found: ${inputFile}`,
-        };
-      }
+    const validationResult = new InputValidator(context.fs)
+      .requireInput(
+        inputFiles.length > 0 ? inputFiles : undefined,
+        options.prompt
+      )
+      .validateFiles(inputFiles)
+      .validate();
+
+    if (!validationResult.success) {
+      context.logger.error(validationResult.error.message);
+      validationResult.error.suggestions?.forEach((s) =>
+        context.logger.info(s)
+      );
+      return {
+        success: false,
+        exitCode: 1,
+        error: validationResult.error.message,
+      };
     }
 
     // Initialize command with shared helper (skip preflight as plan doesn't need it)

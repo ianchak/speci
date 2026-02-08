@@ -13,6 +13,7 @@ import { createProductionContext } from '@/adapters/context-factory.js';
 import { initializeCommand } from '@/utils/command-helpers.js';
 import { handleCommandError } from '@/utils/error-handler.js';
 import { executeCopilotCommand } from '@/utils/copilot-helper.js';
+import { PathValidator } from '@/validation/path-validator.js';
 import type { CommandContext, CommandResult } from '@/interfaces.js';
 import type { SpeciConfig } from '@/config.js';
 
@@ -39,26 +40,15 @@ function validatePlanFile(
   planPath: string,
   context: CommandContext
 ): CommandResult | null {
-  // Check existence
-  if (!context.fs.existsSync(planPath)) {
-    context.logger.error(`Plan file not found: ${planPath}`);
-    return {
-      success: false,
-      exitCode: 1,
-      error: `Plan file not found: ${planPath}`,
-    };
-  }
+  const result = new PathValidator(planPath).exists().isReadable().validate();
 
-  // Check readability (in real filesystem, for mock tests this would be simulated)
-  try {
-    context.fs.readFileSync(planPath);
-  } catch {
-    context.logger.error(`Plan file not readable: ${planPath}`);
-    context.logger.info('Check file permissions and try again.');
+  if (!result.success) {
+    context.logger.error(result.error.message);
+    result.error.suggestions?.forEach((s) => context.logger.info(s));
     return {
       success: false,
       exitCode: 1,
-      error: `Plan file not readable: ${planPath}`,
+      error: result.error.message,
     };
   }
 

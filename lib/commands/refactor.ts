@@ -13,6 +13,7 @@ import { createProductionContext } from '@/adapters/context-factory.js';
 import { initializeCommand } from '@/utils/command-helpers.js';
 import { handleCommandError } from '@/utils/error-handler.js';
 import { executeCopilotCommand } from '@/utils/copilot-helper.js';
+import { PathValidator } from '@/validation/path-validator.js';
 import type { CommandContext, CommandResult } from '@/interfaces.js';
 import type { SpeciConfig } from '@/config.js';
 
@@ -55,17 +56,20 @@ function validateScope(
   // For directory paths, resolve and validate
   const resolved = isAbsolute(scope) ? scope : resolve(cwd, scope);
 
-  // Security: Ensure scope is within project
-  if (!resolved.startsWith(cwd)) {
-    context.logger.error(`Scope path must be within project: ${scope}`);
+  // Use PathValidator for validation
+  const result = new PathValidator(resolved).isWithinProject(cwd).validate();
+
+  if (!result.success) {
+    context.logger.error(result.error.message);
+    result.error.suggestions?.forEach((s) => context.logger.info(s));
     return {
       success: false,
       exitCode: 1,
-      error: `Scope path must be within project: ${scope}`,
+      error: result.error.message,
     };
   }
 
-  // Check existence for directories
+  // Check existence for directories (warn if doesn't exist, but don't fail)
   if (context.fs.existsSync(resolved)) {
     const stats = context.fs.statSync(resolved);
     if (!stats.isDirectory() && !stats.isFile()) {

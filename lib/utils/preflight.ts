@@ -16,6 +16,7 @@ import { log } from '@/utils/logger.js';
 import type { SpeciConfig } from '@/config.js';
 import { CONFIG_FILENAME } from '@/constants.js';
 import type { IProcess } from '@/interfaces.js';
+import { PathValidator } from '@/validation/path-validator.js';
 
 /**
  * Options for customizing which preflight checks to run
@@ -134,7 +135,9 @@ export async function checkConfigExists(
 export async function checkProgressExists(config: SpeciConfig): Promise<void> {
   const progressPath = config.paths.progress;
 
-  if (!existsSync(progressPath)) {
+  const result = new PathValidator(progressPath).exists().validate();
+
+  if (!result.success) {
     throw new PreflightError(
       'Progress file not found',
       `PROGRESS.md not found at: ${progressPath}`,
