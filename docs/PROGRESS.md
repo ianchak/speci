@@ -95,7 +95,7 @@
 | TASK_012 | Race Condition Tests            | COMPLETE    | PASSED        | HIGH     | M (4-8h)   | TASK_010           | SA-20260208-005 | 1        |
 | TASK_013 | Error Catalog Tests             | COMPLETE    | PASSED        | HIGH     | S (≤2h)    | TASK_010           | SA-20260208-006 | 1        |
 | TASK_014 | Discriminated Union Error Types | COMPLETE    | PASSED        | HIGH     | L (8-16h)  | TASK_009           | SA-20260208-007 | 1        |
-| TASK_015 | Standardize Logging             | IN PROGRESS | —             | MEDIUM   | M (4-8h)   | TASK_008           | SA-20260208-012 | 1        |
+| TASK_015 | Standardize Logging             | IN REVIEW   | —             | MEDIUM   | M (4-8h)   | TASK_008           | SA-20260208-012 | 1        |
 | TASK_016 | Extract Command Initialization  | COMPLETE    | PASSED        | HIGH     | M (4-8h)   | TASK_007           | SA-20260208-009 | 2        |
 | TASK_017 | Encapsulate Module-Level State  | COMPLETE    | PASSED        | HIGH     | M (4-8h)   | TASK_007           | SA-20260208-010 | 1        |
 | TASK_018 | Reduce Cross-Module Coupling    | COMPLETE    | PASSED        | HIGH     | L (8-16h)  | TASK_007           | SA-20260208-011 | 1        |
@@ -216,16 +216,16 @@ Last Review ID: RA-20260208-021
 
 ### For Reviewer
 
-| Field             | Value |
-| ----------------- | ----- |
-| Task              | -     |
-| Impl Agent        | -     |
-| Files Changed     | -     |
-| Tests Added       | -     |
-| Rework?           | -     |
-| Focus Areas       | -     |
-| Known Limitations | -     |
-| Gate Results      | -     |
+| Field             | Value                                                                                                                                                                                                                                                                                                                    |
+| ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Task              | TASK_015                                                                                                                                                                                                                                                                                                                 |
+| Impl Agent        | SA-20260208-012                                                                                                                                                                                                                                                                                                          |
+| Files Changed     | `lib/interfaces.ts`, `lib/utils/logger.ts`, `lib/adapters/node-logger.ts`, `lib/utils/signals.ts`, `lib/utils/exit.ts`, `lib/commands/init.ts`, `lib/adapters/test-context.ts`, `lib/commands/plan.ts`                                                                                                               |
+| Tests Added       | `test/standardize-logging.test.ts` (11 new tests); Updated `test/exit.test.ts` (2 tests), `test/signals.test.ts` (1 test), `test/integration/cleanup.test.ts` (2 tests)                                                                                                                                                |
+| Rework?           | No                                                                                                                                                                                                                                                                                                                       |
+| Focus Areas       | Verify that console.error/warn are replaced with log.error/warn in signals.ts and exit.ts; Verify init.ts uses context.logger consistently; Confirm log.raw() method works for unformatted output; Check that status.ts and other display commands can still use console.log for formatted UI output (boxes, dashboards) |
+| Known Limitations | Console.log calls remain in status.ts, plan.ts, task.ts, refactor.ts for formatted UI output (info boxes, dashboards). This is intentional as log.info() adds glyphs that would break formatting. Added log.raw() method for future use cases requiring unformatted output.                                            |
+| Gate Results      | format:✅ lint:✅ typecheck:✅ test:✅ (all 1050 tests passing)                                                                                                                                                                                                                                                          |
 
 ### For Fix Agent
 
