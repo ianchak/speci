@@ -28,7 +28,7 @@
 | Milestone | Name              | Tasks   | MVT    | Complete | Total | Status      |
 | --------- | ----------------- | ------- | ------ | -------- | ----- | ----------- |
 | M0        | Quick Wins        | 001-004 | MVT_M0 | 4        | 5     | IN PROGRESS |
-| M1        | Foundation        | 005-009 | MVT_M1 | 4        | 6     | IN PROGRESS |
+| M1        | Foundation        | 005-009 | MVT_M1 | 5        | 6     | IN PROGRESS |
 | M2        | Core Improvements | 010-018 | MVT_M2 | 0        | 10    | NOT STARTED |
 | M3        | Polish            | 019-030 | MVT_M3 | 0        | 13    | NOT STARTED |
 | M4        | Optimization      | 031-038 | MVT_M4 | 0        | 9     | NOT STARTED |
@@ -42,7 +42,7 @@
 | Milestone | Name       | Completed   | Tasks Complete | Notes                                                                                                                                                                                                                                                     |
 | --------- | ---------- | ----------- | -------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | M0        | Quick Wins | In Progress | TASK_001-004   | Coverage tracking infrastructure added with baseline 82.74% lines coverage; All lib/ files now use TypeScript path aliases; Magic strings extracted to lib/constants.ts module with comprehensive test coverage; Boolean properties standardized with semantic prefixes (is*, should*) |
-| M1        | Foundation | In Progress | TASK_005-008   | Dependency injection interfaces and adapters established; CommandContext pattern enables testable commands; Production context factory and test utilities ready; Plan command successfully migrated to DI pattern as proof of concept, validating architecture for rollout; All 6 commands now migrated to DI pattern with context-based dependencies; Process globals abstracted with IProcess interface enabling full test isolation |
+| M1        | Foundation | In Progress | TASK_005-009   | Dependency injection interfaces and adapters established; CommandContext pattern enables testable commands; Production context factory and test utilities ready; Plan command successfully migrated to DI pattern as proof of concept, validating architecture for rollout; All 6 commands now migrated to DI pattern with context-based dependencies; Process globals abstracted with IProcess interface enabling full test isolation; All process.exit() calls fixed to ensure cleanup runs before termination, eliminating resource leaks |
 
 ---
 
@@ -73,7 +73,7 @@
 | TASK_006 | DI Proof of Concept            | COMPLETE | PASSED        | CRITICAL | M (4-8h)   | TASK_005     | SA-20260207-007 | 1        |
 | TASK_007 | DI Rollout to Commands         | COMPLETE    | PASSED        | CRITICAL | L (8-16h)  | TASK_006     | SA-20260207-010 | 5        |
 | TASK_008 | Process Globals Abstraction    | COMPLETE    | PASSED        | HIGH     | M (4-8h)   | TASK_007     | SA-20260207-011 | 1        |
-| TASK_009 | Process.exit Cleanup Fix       | IN REVIEW   | —        | CRITICAL | M (4-8h)   | TASK_008     | SA-20260208-001 | 1        |
+| TASK_009 | Process.exit Cleanup Fix       | COMPLETE    | PASSED        | CRITICAL | M (4-8h)   | TASK_008     | SA-20260208-001 | 1        |
 | MVT_M1   | Foundation Manual Test         | NOT STARTED | —        | 30 min   | TASK_005-009 |              |          |
 
 ### Planned Outcomes
@@ -89,7 +89,7 @@
 
 | Task ID  | Title                           | Status      | Priority | Complexity | Dependencies       |
 | -------- | ------------------------------- | ----------- | -------- | ---------- | ------------------ |
-| TASK_010 | Integration Test Suite          | NOT STARTED | CRITICAL | L (8-16h)  | TASK_001, TASK_009 |
+| TASK_010 | Integration Test Suite          | IN PROGRESS | —             | CRITICAL | L (8-16h)  | TASK_001, TASK_009 | SA-20260208-002 | 1        |
 | TASK_011 | CLI Entry Point Tests           | NOT STARTED | HIGH     | M (4-8h)   | TASK_010           |
 | TASK_012 | Race Condition Tests            | NOT STARTED | HIGH     | M (4-8h)   | TASK_010           |
 | TASK_013 | Error Catalog Tests             | NOT STARTED | HIGH     | S (≤2h)    | TASK_010           |
@@ -201,13 +201,13 @@ TASK_031 (Parallelize) → MVT_M4
 
 ## Subagent Tracking
 
-Last Subagent ID: SA-20260207-011
+Last Subagent ID: SA-20260208-002
 
 ---
 
 ## Review Tracking
 
-Last Review ID: RA-20260208-010
+Last Review ID: RA-20260208-011
 
 ---
 
@@ -215,16 +215,16 @@ Last Review ID: RA-20260208-010
 
 ### For Reviewer
 
-| Field             | Value                                                                                                                                                                                                                                       |
-| ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Task              | TASK_009                                                                                                                                                                                                                                    |
-| Impl Agent        | SA-20260208-001                                                                                                                                                                                                                             |
-| Files Changed     | `lib/utils/exit.ts` (created), `lib/utils/signals.ts`, `lib/utils/preflight.ts`, `bin/speci.ts`                                                                                                                                            |
-| Tests Added       | `test/exit.test.ts` (7 tests), `test/integration/cleanup.test.ts` (10 tests), `test/signals.test.ts` (3 timeout tests added)                                                                                                              |
-| Rework?           | No - fresh implementation                                                                                                                                                                                                                   |
-| Focus Areas       | 1) Verify exitWithCleanup() always calls runCleanup() before process.exit(), 2) Verify 5-second timeout prevents hanging cleanup, 3) Verify PreflightError handling in bin/speci.ts, 4) Verify double-cleanup protection works correctly |
-| Known Limitations | Signal handlers in signals.ts still call process.exit() directly (expected - they handle their own cleanup). Status command uses context.process.exit(0) after its own cleanup (expected for dashboard exit)                               |
-| Gate Results      | format:✅ lint:✅ typecheck:✅ test:✅ (896/896 tests pass)                                                                                                                                                                                 |
+| Field             | Value |
+| ----------------- | ----- |
+| Task              | -     |
+| Impl Agent        | -     |
+| Files Changed     | -     |
+| Tests Added       | -     |
+| Rework?           | -     |
+| Focus Areas       | -     |
+| Known Limitations | -     |
+| Gate Results      | -     |
 
 ### For Fix Agent
 
@@ -242,18 +242,18 @@ Last Review ID: RA-20260208-010
 
 ## Summary Statistics
 
-**Overall Progress**: 18.60% Complete (8/43 items)
+**Overall Progress**: 20.93% Complete (9/43 items)
 
 **By Category**:
 
-- Tasks: 8/38 complete
+- Tasks: 9/38 complete
 - MVTs: 0/5 complete
-- Total Items: 8/43 complete
+- Total Items: 9/43 complete
 
 **By Milestone**:
 
 - M0 Quick Wins: 4/5 complete (80%)
-- M1 Foundation: 4/6 complete (66.7%)
+- M1 Foundation: 5/6 complete (83.3%)
 - M2 Core Improvements: 0/10 complete (0%)
 - M3 Polish: 0/13 complete (0%)
 - M4 Optimization: 0/9 complete (0%)

@@ -72,29 +72,33 @@ describe('Exit Utility', () => {
       expect(mockExit).toHaveBeenCalledWith(1);
     });
 
-    it('should force exit if cleanup is already in progress', { timeout: 1000 }, async () => {
-      const signalsModule = await import('../lib/utils/signals.js');
-      const mockRunCleanup = vi
-        .spyOn(signalsModule, 'runCleanup')
-        .mockImplementation(() => new Promise(() => {})); // Never resolves
+    it(
+      'should force exit if cleanup is already in progress',
+      { timeout: 1000 },
+      async () => {
+        const signalsModule = await import('../lib/utils/signals.js');
+        const mockRunCleanup = vi
+          .spyOn(signalsModule, 'runCleanup')
+          .mockImplementation(() => new Promise(() => {})); // Never resolves
 
-      const { exitWithCleanup } = await import('../lib/utils/exit.js');
+        const { exitWithCleanup } = await import('../lib/utils/exit.js');
 
-      // Start first cleanup (don't await - let it hang)
-      exitWithCleanup(1).catch(() => {});
+        // Start first cleanup (don't await - let it hang)
+        exitWithCleanup(1).catch(() => {});
 
-      // Give first cleanup time to set isCleaningUp flag
-      await new Promise((resolve) => setTimeout(resolve, 10));
+        // Give first cleanup time to set isCleaningUp flag
+        await new Promise((resolve) => setTimeout(resolve, 10));
 
-      // Second cleanup should force exit immediately
-      await expect(exitWithCleanup(2)).rejects.toThrow('process.exit called');
+        // Second cleanup should force exit immediately
+        await expect(exitWithCleanup(2)).rejects.toThrow('process.exit called');
 
-      expect(mockConsoleError).toHaveBeenCalledWith(
-        'Cleanup already in progress, forcing exit'
-      );
-      expect(mockExit).toHaveBeenCalledWith(2);
-      expect(mockRunCleanup).toHaveBeenCalledOnce(); // Only first call
-    });
+        expect(mockConsoleError).toHaveBeenCalledWith(
+          'Cleanup already in progress, forcing exit'
+        );
+        expect(mockExit).toHaveBeenCalledWith(2);
+        expect(mockRunCleanup).toHaveBeenCalledOnce(); // Only first call
+      }
+    );
   });
 
   describe('exitSync', () => {
@@ -131,9 +135,8 @@ describe('Exit Utility', () => {
         .spyOn(signalsModule, 'runCleanup')
         .mockImplementation(() => new Promise(() => {})); // Never resolves initially
 
-      const { exitWithCleanup, resetExitState } = await import(
-        '../lib/utils/exit.js'
-      );
+      const { exitWithCleanup, resetExitState } =
+        await import('../lib/utils/exit.js');
 
       // Trigger cleanup to set isCleaningUp flag
       exitWithCleanup(1).catch(() => {});

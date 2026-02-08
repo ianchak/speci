@@ -13,29 +13,17 @@ export default defineConfig({
   test: {
     globals: true,
     environment: 'node',
+    include: ['test/integration/**/*.integration.test.ts'],
     exclude: [
       '**/node_modules/**',
       '**/dist/**',
       '**/.{idea,git,cache,output,temp}/**',
-      '**/integration/**/*.integration.test.ts',
     ],
-    coverage: {
-      provider: 'v8',
-      reporter: ['text', 'html', 'lcov', 'json'],
-      reportsDirectory: './coverage',
-      include: ['lib/**/*.ts'],
-      exclude: [
-        '**/*.test.ts',
-        '**/*.spec.ts',
-        '**/types.ts',
-        '**/node_modules/**',
-      ],
-      thresholds: {
-        lines: 80,
-        branches: 70,
-        functions: 70,
-        statements: 80,
-      },
-    },
+    // Integration tests need more time due to real I/O operations
+    testTimeout: 30000,
+    // Limit concurrency to avoid resource contention
+    maxConcurrency: 3,
+    // Use forks pool for better isolation
+    pool: 'forks',
   },
 });
