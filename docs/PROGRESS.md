@@ -151,9 +151,9 @@
 
 ## Milestone: M4 - Optimization
 
-| Task ID  | Title                             | Status      | Review Status | Priority | Complexity | Dependencies | Assigned To     | Attempts |
-| -------- | --------------------------------- | ----------- | ------------- | -------- | ---------- | ------------ | --------------- | -------- |
-| TASK_031 | Parallelize Gate Commands         | IN PROGRESS | —             | MEDIUM   | L (8-16h)  | TASK_010     | SA-20260208-026 | 1        |
+| Task ID  | Title                             | Status    | Review Status | Priority | Complexity | Dependencies | Assigned To     | Attempts |
+| -------- | --------------------------------- | --------- | ------------- | -------- | ---------- | ------------ | --------------- | -------- |
+| TASK_031 | Parallelize Gate Commands         | IN REVIEW | —             | MEDIUM   | L (8-16h)  | TASK_010     | SA-20260208-026 | 1        |
 | TASK_032 | Fix Deep Merge Type Assertions    | NOT STARTED | MEDIUM   | M (4-8h)   | None         |
 | TASK_033 | Consolidate Validation Logic      | NOT STARTED | MEDIUM   | M (4-8h)   | TASK_007     |
 | TASK_034 | Add Generic Types                 | NOT STARTED | LOW      | M (4-8h)   | None         |
@@ -217,16 +217,16 @@ Last Review ID: RA-20260208-035
 
 ### For Reviewer
 
-| Field             | Value                                                                                                                                                         |
-| ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Task              | -                                                                                                                                                             |
-| Impl Agent        | -                                                                                                                                                             |
-| Files Changed     | -                                                                                                                                                             |
-| Tests Added       | -                                                                                                                                                             |
-| Rework?           | -                                                                                                                                                             |
-| Focus Areas       | -                                                                                                                                                             |
-| Known Limitations | -                                                                                                                                                             |
-| Gate Results      | -                                                                                                                                                             |
+| Field             | Value                                                                                                                                                 |
+| ----------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Task              | TASK_031                                                                                                                                              |
+| Impl Agent        | SA-20260208-026                                                                                                                                       |
+| Files Changed     | `lib/types.ts`, `lib/utils/gate.ts`, `README.md`, `templates/speci.config.json`                                                                      |
+| Tests Added       | `test/gate.test.ts` (8 new tests for parallel execution)                                                                                              |
+| Rework?           | No - fresh implementation                                                                                                                             |
+| Focus Areas       | Verify parallel execution provides actual speedup; Check output capture doesn't interleave; Verify all commands run despite failures                  |
+| Known Limitations | No automatic detection of command dependencies; User must ensure commands are independent; No per-command strategy override; No aggregate timeout     |
+| Gate Results      | format:✅ lint:✅ typecheck:✅ test:✅ (all 1033 tests passing)                                                                                      |
 
 ### For Fix Agent
 
