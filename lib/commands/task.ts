@@ -7,12 +7,10 @@
  */
 
 import { relative, resolve } from 'node:path';
-import { resolveAgentPath } from '@/config.js';
-import { preflight } from '@/utils/preflight.js';
 import { renderBanner } from '@/ui/banner.js';
 import { infoBox } from '@/ui/box.js';
-import { getAgentFilename } from '@/constants.js';
 import { createProductionContext } from '@/adapters/context-factory.js';
+import { initializeCommand } from '@/utils/command-helpers.js';
 import type { CommandContext, CommandResult } from '@/interfaces.js';
 
 /**
@@ -81,7 +79,7 @@ export async function task(
     renderBanner();
     console.log();
 
-    // Validate required option
+    // Validate required option (must come before initialization)
     if (!options.plan) {
       context.logger.error('Missing required option: --plan <path>');
       context.logger.info('Usage: speci task --plan <path-to-plan.md>');
@@ -92,47 +90,21 @@ export async function task(
       };
     }
 
-    // Resolve and validate plan file
+    // Resolve and validate plan file (must come before initialization)
     const planPath = resolve(context.process.cwd(), options.plan);
     const validationError = validatePlanFile(planPath, context);
     if (validationError) {
       return validationError;
     }
 
-    // Load configuration
-    const config = await context.configLoader.load();
-
-    // Run preflight checks
-    await preflight(
-      config,
-      {
-        requireCopilot: true,
-        requireConfig: true,
-        requireProgress: false,
-        requireGit: false,
-      },
-      context.process
-    );
-
-    const commandName = 'task';
-    const agentName = (options.agent || getAgentFilename(commandName)).replace(
-      /\.agent\.md$/,
-      ''
-    );
-    const agentPath = resolveAgentPath(commandName, options.agent);
-
-    // Validate agent file exists
-    if (!context.fs.existsSync(agentPath)) {
-      context.logger.error(`Agent file not found: ${agentPath}`);
-      context.logger.info(
-        'Run "speci init" to create agents or provide --agent <filename>'
-      );
-      return {
-        success: false,
-        exitCode: 1,
-        error: `Agent file not found: ${agentPath}`,
-      };
-    }
+    // Initialize command (config + preflight + agent validation)
+    // Note: skipBanner=true because we already rendered it above
+    const { config, agentName } = await initializeCommand({
+      commandName: 'task',
+      agentOverride: options.agent,
+      skipBanner: true,
+      context,
+    });
 
     // Display command info
     const displayPlanPath =
@@ -151,7 +123,7 @@ export async function task(
       prompt: `Read the plan file at ${planPath} and generate implementation tasks.`,
       agent: agentName,
       shouldAllowAll: true,
-      command: commandName,
+      command: 'task',
     });
 
     // Spawn Copilot with stdio:inherit
@@ -166,7 +138,15 @@ export async function task(
     }
   } catch (error) {
     if (error instanceof Error) {
-      context.logger.error(`Task command failed: ${error.message}`);
+      // Special handling for agent file not found
+      if (error.message.includes('Agent file not found')) {
+        context.logger.error(error.message);
+        context.logger.info(
+          'Run "speci init" to create agents or provide --agent <filename>'
+        );
+      } else {
+        context.logger.error(`Task command failed: ${error.message}`);
+      }
       return {
         success: false,
         exitCode: 1,
