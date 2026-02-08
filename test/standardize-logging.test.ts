@@ -44,6 +44,7 @@ describe('TASK_015: Standardize Logging', () => {
         (f) =>
           f !== 'utils/logger.ts' &&
           f !== 'ui/banner-animation.ts' &&
+          f !== 'cli/initialize.ts' && // Banner display is formatted UI output
           f !== 'commands/status.ts' && // Pure dashboard display
           f !== 'commands/plan.ts' && // Uses drawBox for formatted output
           f !== 'commands/task.ts' && // Uses infoBox for formatted output
