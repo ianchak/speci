@@ -73,7 +73,7 @@
 | TASK_006 | DI Proof of Concept            | COMPLETE | PASSED        | CRITICAL | M (4-8h)   | TASK_005     | SA-20260207-007 | 1        |
 | TASK_007 | DI Rollout to Commands         | COMPLETE    | PASSED        | CRITICAL | L (8-16h)  | TASK_006     | SA-20260207-010 | 5        |
 | TASK_008 | Process Globals Abstraction    | COMPLETE    | PASSED        | HIGH     | M (4-8h)   | TASK_007     | SA-20260207-011 | 1        |
-| TASK_009 | Process.exit Cleanup Fix       | IN PROGRESS | —        | CRITICAL | M (4-8h)   | TASK_008     | SA-20260208-001 | 1        |
+| TASK_009 | Process.exit Cleanup Fix       | IN REVIEW   | —        | CRITICAL | M (4-8h)   | TASK_008     | SA-20260208-001 | 1        |
 | MVT_M1   | Foundation Manual Test         | NOT STARTED | —        | 30 min   | TASK_005-009 |              |          |
 
 ### Planned Outcomes
@@ -215,16 +215,16 @@ Last Review ID: RA-20260208-010
 
 ### For Reviewer
 
-| Field             | Value                                                                                                                                                                                     |
-| ----------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Task              | -                                                                                                                                                                                  |
-| Impl Agent        | -                                                                                                                                                                                           |
-| Files Changed     | -|
-| Tests Added       | -                                                            |
-| Rework?           | -                                                                                                                                                                               |
-| Focus Areas       | - |
-| Known Limitations | -        |
-| Gate Results      | -                                                                                                                                    |
+| Field             | Value                                                                                                                                                                                                                                       |
+| ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Task              | TASK_009                                                                                                                                                                                                                                    |
+| Impl Agent        | SA-20260208-001                                                                                                                                                                                                                             |
+| Files Changed     | `lib/utils/exit.ts` (created), `lib/utils/signals.ts`, `lib/utils/preflight.ts`, `bin/speci.ts`                                                                                                                                            |
+| Tests Added       | `test/exit.test.ts` (7 tests), `test/integration/cleanup.test.ts` (10 tests), `test/signals.test.ts` (3 timeout tests added)                                                                                                              |
+| Rework?           | No - fresh implementation                                                                                                                                                                                                                   |
+| Focus Areas       | 1) Verify exitWithCleanup() always calls runCleanup() before process.exit(), 2) Verify 5-second timeout prevents hanging cleanup, 3) Verify PreflightError handling in bin/speci.ts, 4) Verify double-cleanup protection works correctly |
+| Known Limitations | Signal handlers in signals.ts still call process.exit() directly (expected - they handle their own cleanup). Status command uses context.process.exit(0) after its own cleanup (expected for dashboard exit)                               |
+| Gate Results      | format:✅ lint:✅ typecheck:✅ test:✅ (896/896 tests pass)                                                                                                                                                                                 |
 
 ### For Fix Agent
 
