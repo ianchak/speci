@@ -98,7 +98,7 @@
 | TASK_015 | Standardize Logging             | NOT STARTED | —             | MEDIUM   | M (4-8h)   | TASK_008           |                 |          |
 | TASK_016 | Extract Command Initialization  | COMPLETE    | PASSED        | HIGH     | M (4-8h)   | TASK_007           | SA-20260208-009 | 2        |
 | TASK_017 | Encapsulate Module-Level State  | COMPLETE    | PASSED        | HIGH     | M (4-8h)   | TASK_007           | SA-20260208-010 | 1        |
-| TASK_018 | Reduce Cross-Module Coupling    | IN PROGRESS | —             | HIGH     | L (8-16h)  | TASK_007           | SA-20260208-011 | 1        |
+| TASK_018 | Reduce Cross-Module Coupling    | IN REVIEW   | —             | HIGH     | L (8-16h)  | TASK_007           | SA-20260208-011 | 1        |
 | MVT_M2   | Core Improvements Manual Test   | NOT STARTED | —             | —        | 45 min     | TASK_010-018       |                 |          |
 
 ### Planned Outcomes
@@ -216,16 +216,16 @@ Last Review ID: RA-20260208-020
 
 ### For Reviewer
 
-| Field             | Value |
-| ----------------- | ----- |
-| Task              | -     |
-| Impl Agent        | -     |
-| Files Changed     | -     |
-| Tests Added       | -     |
-| Rework?           | -     |
-| Focus Areas       | -     |
-| Known Limitations | -     |
-| Gate Results      | -     |
+| Field             | Value                                                                                                                                                              |
+| ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Task              | TASK_018                                                                                                                                                           |
+| Impl Agent        | SA-20260208-011                                                                                                                                                    |
+| Files Changed     | `lib/types.ts` (new), `lib/config.ts`, `lib/state.ts`, `lib/copilot.ts`, `lib/interfaces.ts`, `docs/ARCHITECTURE.md` (new)                                       |
+| Tests Added       | `test/types.test.ts` (20 new tests covering exports, module boundaries, type safety, and integration)                                                             |
+| Rework?           | No - first implementation                                                                                                                                          |
+| Focus Areas       | Verify types.ts has no runtime dependencies; Check ARCHITECTURE.md completeness; Confirm all modules correctly re-export types for backward compatibility          |
+| Known Limitations | Limited to 7 core types (SpeciConfig, STATE, TaskStats, CurrentTask, CommandName, CopilotArgsOptions, AgentRunResult); Future tasks may extract additional types |
+| Gate Results      | format:✅ lint:✅ typecheck:✅ test:✅ (1039/1039 passing)                                                                                                         |
 
 ### For Fix Agent
 
