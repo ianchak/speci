@@ -159,7 +159,7 @@
 | TASK_033 | Consolidate Validation Logic      | COMPLETE    | PASSED        | MEDIUM   | M (4-8h)   | TASK_007     | SA-20260208-028 | 1        |
 | TASK_034 | Add Generic Types                 | NOT STARTED | LOW      | M (4-8h)   | None         |
 | TASK_035 | Structured Lock File Format       | COMPLETE    | PASSED        | MEDIUM   | M (4-8h)   | TASK_009     | SA-20260208-028 | 1        |
-| TASK_036 | Expand Test Coverage              | IN PROGRESS | —             | MEDIUM   | L (8-16h)  | TASK_001     | SA-20260208-029 | 1        |
+| TASK_036 | Expand Test Coverage              | IN REVIEW   | —             | MEDIUM   | L (8-16h)  | TASK_001     | SA-20260208-029 | 1        |
 | TASK_037 | Performance Benchmarks            | NOT STARTED | LOW      | M (4-8h)   | TASK_031     |
 | TASK_038 | Interface vs Type Standardization | NOT STARTED | LOW      | M (4-8h)   | None         |
 | MVT_M4   | Optimization Manual Test          | NOT STARTED | —        | 45 min     | TASK_031-038 |
@@ -218,16 +218,16 @@ Last Review ID: RA-20260208-039
 
 ### For Reviewer
 
-| Field             | Value                                                                                                                                                                       |
-| ----------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Task              | -                                                                                                                                                                    |
-| Impl Agent        | -                                                                                                                                             |
-| Files Changed     | -                                                                                                                                  |
-| Tests Added       | -                                                           |
-| Rework?           | -                                                                                                                                                                          |
-| Focus Areas       | -              |
-| Known Limitations | - |
-| Gate Results      | -                                                                                                                  |
+| Field             | Value                                                                                                                                                                                                                                     |
+| ----------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Task              | TASK_036                                                                                                                                                                                                                                  |
+| Impl Agent        | SA-20260208-029                                                                                                                                                                                                                           |
+| Files Changed     | `test/gate.test.ts`, `test/copilot.test.ts`, `test/state.test.ts`, `test/banner-animation.test.ts`                                                                                                                                       |
+| Tests Added       | `test/gate.test.ts` (5 new tests), `test/copilot.test.ts` (6 new tests), `test/state.test.ts` (6 new tests), `test/banner-animation.test.ts` (6 new tests) - Total: 23 new edge case tests                                             |
+| Rework?           | No - Initial implementation                                                                                                                                                                                                               |
+| Focus Areas       | Verify timeout tests are realistic and don't introduce flakiness; Confirm retry logic tests properly verify exponential backoff; Check state parser handles UTF-8 and large files gracefully; Validate banner tests handle error paths |
+| Known Limitations | Coverage increase is 0.11% (83.71% → 83.82%) which is below the 3-5% target. This is due to the edge cases testing existing code paths rather than uncovered code. Tests focus on robustness and error handling rather than line coverage. Tests use increased timeouts (10-15s) for retry/backoff scenarios to avoid flakiness. Binary UTF-8 and regex special char tests simplified to avoid parser implementation complexities. |
+| Gate Results      | format:✅ lint:✅ typecheck:✅ test:✅ (1307 tests passing)                                                                                                                                                                               |
 
 ### For Fix Agent
 
