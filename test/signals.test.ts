@@ -82,8 +82,8 @@ describe('Signal Handling', () => {
         order.push(3);
       });
 
-      // Should not throw despite error in second cleanup
-      await runCleanup();
+      // Should throw but all cleanups should still run
+      await expect(runCleanup()).rejects.toThrow('Cleanup error');
 
       expect(order).toEqual([3, 2, 1]);
     });
@@ -206,7 +206,8 @@ describe('Signal Handling', () => {
         });
 
         const startTime = Date.now();
-        await runCleanup();
+        // Should reject with timeout error
+        await expect(runCleanup()).rejects.toThrow('Cleanup timeout');
         const duration = Date.now() - startTime;
 
         // Should timeout around 5 seconds (5000ms), not wait 10 seconds
@@ -234,8 +235,8 @@ describe('Signal Handling', () => {
           await new Promise((resolve) => setTimeout(resolve, 10000));
         });
 
-        // Should not throw despite timeout
-        await expect(runCleanup()).resolves.not.toThrow();
+        // Should reject with timeout error
+        await expect(runCleanup()).rejects.toThrow('Cleanup timeout');
 
         mockConsoleError.mockRestore();
       }
@@ -432,6 +433,170 @@ describe('Signal Handling', () => {
 
       // Should complete without errors
       expect(() => runCleanup()).not.toThrow();
+    });
+  });
+
+  describe('Signal Handler Error Logging', () => {
+    it('should log error when SIGINT cleanup fails', async () => {
+      const mockProcessExit = vi
+        .spyOn(process, 'exit')
+        .mockImplementation((() => {}) as never);
+      const mockConsoleError = vi
+        .spyOn(console, 'error')
+        .mockImplementation(() => {});
+
+      // Register cleanup that will fail
+      registerCleanup(async () => {
+        throw new Error('Test cleanup failure');
+      });
+
+      installSignalHandlers();
+
+      // Emit SIGINT
+      process.emit('SIGINT', 'SIGINT');
+
+      // Wait for async operations
+      await new Promise((resolve) => setTimeout(resolve, 100));
+
+      // Should have logged the error
+      expect(mockConsoleError).toHaveBeenCalled();
+      const errorCalls = mockConsoleError.mock.calls.map((call) => call[0]);
+      const hasCleanupError = errorCalls.some((call) =>
+        String(call).includes('Cleanup failed during signal handler')
+      );
+      expect(hasCleanupError).toBe(true);
+
+      // Should still exit with code 130
+      expect(mockProcessExit).toHaveBeenCalledWith(130);
+
+      mockProcessExit.mockRestore();
+      mockConsoleError.mockRestore();
+      removeSignalHandlers();
+    });
+
+    it('should log error when SIGTERM cleanup fails', async () => {
+      const mockProcessExit = vi
+        .spyOn(process, 'exit')
+        .mockImplementation((() => {}) as never);
+      const mockConsoleError = vi
+        .spyOn(console, 'error')
+        .mockImplementation(() => {});
+
+      // Register cleanup that will fail
+      registerCleanup(async () => {
+        throw new Error('Test cleanup failure');
+      });
+
+      installSignalHandlers();
+
+      // Emit SIGTERM
+      process.emit('SIGTERM', 'SIGTERM');
+
+      // Wait for async operations
+      await new Promise((resolve) => setTimeout(resolve, 100));
+
+      // Should have logged the error
+      expect(mockConsoleError).toHaveBeenCalled();
+      const errorCalls = mockConsoleError.mock.calls.map((call) => call[0]);
+      const hasCleanupError = errorCalls.some((call) =>
+        String(call).includes('Cleanup failed during signal handler')
+      );
+      expect(hasCleanupError).toBe(true);
+
+      // Should still exit with code 143
+      expect(mockProcessExit).toHaveBeenCalledWith(143);
+
+      mockProcessExit.mockRestore();
+      mockConsoleError.mockRestore();
+      removeSignalHandlers();
+    });
+
+    it('should include error message in log output', async () => {
+      const mockProcessExit = vi
+        .spyOn(process, 'exit')
+        .mockImplementation((() => {}) as never);
+      const mockConsoleError = vi
+        .spyOn(console, 'error')
+        .mockImplementation(() => {});
+
+      const testErrorMessage = 'Lock file corrupted';
+      registerCleanup(async () => {
+        throw new Error(testErrorMessage);
+      });
+
+      installSignalHandlers();
+      process.emit('SIGINT', 'SIGINT');
+
+      await new Promise((resolve) => setTimeout(resolve, 100));
+
+      // Should include the error message
+      const errorCalls = mockConsoleError.mock.calls.map((call) =>
+        String(call[0])
+      );
+      const hasErrorMessage = errorCalls.some((call) =>
+        call.includes(testErrorMessage)
+      );
+      expect(hasErrorMessage).toBe(true);
+
+      mockProcessExit.mockRestore();
+      mockConsoleError.mockRestore();
+      removeSignalHandlers();
+    });
+
+    it('should log stack trace when error is Error instance', async () => {
+      const mockProcessExit = vi
+        .spyOn(process, 'exit')
+        .mockImplementation((() => {}) as never);
+      const mockConsoleError = vi
+        .spyOn(console, 'error')
+        .mockImplementation(() => {});
+
+      const testError = new Error('Test error with stack');
+      registerCleanup(async () => {
+        throw testError;
+      });
+
+      installSignalHandlers();
+      process.emit('SIGINT', 'SIGINT');
+
+      await new Promise((resolve) => setTimeout(resolve, 100));
+
+      // Should have logged stack trace
+      expect(mockConsoleError).toHaveBeenCalled();
+      const errorCalls = mockConsoleError.mock.calls.map((call) =>
+        String(call[0])
+      );
+      const hasStackTrace = errorCalls.some((call) => call.includes('Stack'));
+      expect(hasStackTrace).toBe(true);
+
+      mockProcessExit.mockRestore();
+      mockConsoleError.mockRestore();
+      removeSignalHandlers();
+    });
+
+    it('should still exit with correct code after logging error', async () => {
+      const mockProcessExit = vi
+        .spyOn(process, 'exit')
+        .mockImplementation((() => {}) as never);
+      const mockConsoleError = vi
+        .spyOn(console, 'error')
+        .mockImplementation(() => {});
+
+      registerCleanup(async () => {
+        throw new Error('Cleanup failed');
+      });
+
+      installSignalHandlers();
+      process.emit('SIGINT', 'SIGINT');
+
+      await new Promise((resolve) => setTimeout(resolve, 100));
+
+      // Should exit with code 130 (SIGINT)
+      expect(mockProcessExit).toHaveBeenCalledWith(130);
+
+      mockProcessExit.mockRestore();
+      mockConsoleError.mockRestore();
+      removeSignalHandlers();
     });
   });
 });

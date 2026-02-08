@@ -62,7 +62,8 @@ describe('Cleanup Integration', () => {
         }
       });
 
-      await runCleanup();
+      // Should throw but lock should still be released
+      await expect(runCleanup()).rejects.toThrow('Intentional cleanup failure');
 
       // Lock should be released despite other cleanup failing
       expect(existsSync(lockPath)).toBe(false);
@@ -201,7 +202,8 @@ describe('Cleanup Integration', () => {
         if (existsSync(tempFile)) rmSync(tempFile);
       });
 
-      await runCleanup();
+      // Should throw but both cleanups should run
+      await expect(runCleanup()).rejects.toThrow('Intentional error');
 
       // log.error adds a glyph, so we just check that error was called
       expect(mockConsoleError).toHaveBeenCalled();
@@ -227,11 +229,13 @@ describe('Cleanup Integration', () => {
         throw new Error('Error 3');
       });
 
-      await runCleanup();
+      // Should throw the first error (Error 3, since LIFO)
+      await expect(runCleanup()).rejects.toThrow('Error 3');
 
       // Each error is logged separately via log.error (which adds glyphs)
-      // We should have 3 errors logged
-      expect(mockConsoleError).toHaveBeenCalledTimes(3);
+      // Plus one more log from the rethrow in the catch block
+      // We should have at least 3 errors logged for the individual cleanups
+      expect(mockConsoleError).toHaveBeenCalledTimes(4);
 
       mockConsoleError.mockRestore();
     });

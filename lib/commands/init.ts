@@ -275,7 +275,8 @@ function displaySuccess(context: CommandContext): void {
  */
 export async function init(
   options: InitOptions = {},
-  context: CommandContext = createProductionContext()
+  context: CommandContext = createProductionContext(),
+  _config?: SpeciConfig
 ): Promise<CommandResult> {
   try {
     // Display welcome banner

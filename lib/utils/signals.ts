@@ -72,6 +72,9 @@ export async function runCleanup(): Promise<void> {
 
   // Create cleanup promise
   const cleanupPromise = (async () => {
+    let hasError = false;
+    let firstError: unknown = null;
+
     // Run in reverse order (last registered = first cleaned)
     for (let i = cleanupRegistry.length - 1; i >= 0; i--) {
       try {
@@ -81,11 +84,20 @@ export async function runCleanup(): Promise<void> {
         log.error(
           `Cleanup error: ${err instanceof Error ? err.message : String(err)}`
         );
+        if (!hasError) {
+          hasError = true;
+          firstError = err;
+        }
       }
     }
 
     // Clear registry after cleanup
     cleanupRegistry.length = 0;
+
+    // Propagate first error if any occurred
+    if (hasError) {
+      throw firstError;
+    }
   })();
 
   // Race cleanup against timeout
@@ -95,7 +107,8 @@ export async function runCleanup(): Promise<void> {
     log.error(
       `Cleanup did not complete in time: ${error instanceof Error ? error.message : String(error)}`
     );
-    // Continue with exit anyway
+    // Rethrow to signal handler
+    throw error;
   } finally {
     // Reset flag to allow future cleanup cycles (important for tests)
     isCleaningUp = false;
@@ -120,7 +133,14 @@ function handleSigint(): void {
 
   runCleanup()
     .then(() => process.exit(130))
-    .catch(() => process.exit(130));
+    .catch((err) => {
+      const errorMessage = err instanceof Error ? err.message : String(err);
+      log.error(`Cleanup failed during signal handler: ${errorMessage}`);
+      if (err instanceof Error && err.stack) {
+        log.error(`Stack trace: ${err.stack}`);
+      }
+      process.exit(130);
+    });
 }
 
 /**
@@ -133,7 +153,14 @@ function handleSigterm(): void {
 
   runCleanup()
     .then(() => process.exit(143))
-    .catch(() => process.exit(143));
+    .catch((err) => {
+      const errorMessage = err instanceof Error ? err.message : String(err);
+      log.error(`Cleanup failed during signal handler: ${errorMessage}`);
+      if (err instanceof Error && err.stack) {
+        log.error(`Stack trace: ${err.stack}`);
+      }
+      process.exit(143);
+    });
 }
 
 /**

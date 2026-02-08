@@ -110,7 +110,7 @@ Examples:
   )
   .action(async (options) => {
     try {
-      const result = await init(options, context);
+      const result = await init(options, context, config);
       if (!result.success) {
         await exitWithCleanup(result.exitCode);
       }
