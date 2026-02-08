@@ -89,7 +89,7 @@
 
 | Task ID  | Title                           | Status      | Priority | Complexity | Dependencies       |
 | -------- | ------------------------------- | ----------- | -------- | ---------- | ------------------ |
-| TASK_010 | Integration Test Suite          | IN PROGRESS | —             | CRITICAL | L (8-16h)  | TASK_001, TASK_009 | SA-20260208-003 | 2        |
+| TASK_010 | Integration Test Suite          | IN REVIEW   | —             | CRITICAL | L (8-16h)  | TASK_001, TASK_009 | SA-20260208-003 | 2        |
 | TASK_011 | CLI Entry Point Tests           | NOT STARTED | HIGH     | M (4-8h)   | TASK_010           |
 | TASK_012 | Race Condition Tests            | NOT STARTED | HIGH     | M (4-8h)   | TASK_010           |
 | TASK_013 | Error Catalog Tests             | NOT STARTED | HIGH     | S (≤2h)    | TASK_010           |
@@ -215,16 +215,16 @@ Last Review ID: RA-20260208-012
 
 ### For Reviewer
 
-| Field             | Value |
-| ----------------- | ----- |
-| Task              | -     |
-| Impl Agent        | -     |
-| Files Changed     | -     |
-| Tests Added       | -     |
-| Rework?           | -     |
-| Focus Areas       | -     |
-| Known Limitations | -     |
-| Gate Results      | -     |
+| Field             | Value                                                                                                                                                                                                                                           |
+| ----------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Task              | TASK_010                                                                                                                                                                                                                                        |
+| Impl Agent        | SA-20260208-003                                                                                                                                                                                                                                 |
+| Files Changed     | `test/integration/setup.ts`, `test/integration/plan.integration.test.ts`, `test/integration/task.integration.test.ts`, `test/integration/workflows.integration.test.ts`, `test/integration/error-recovery.integration.test.ts`, `test/integration/init.integration.test.ts` |
+| Tests Added       | No new tests (fixed existing 30 integration tests)                                                                                                                                                                                             |
+| Rework?           | Yes - addressed all 4 blocking issues from review RA-20260208-012                                                                                                                                                                              |
+| Focus Areas       | 1) Verify agent files are created correctly in setup; 2) Confirm mocking strategy uses context.copilotRunner.spawn; 3) Check test expectations match actual command behavior                                                                  |
+| Known Limitations | Permission error test skipped on Windows (chmod doesn't work the same way); All tests now use proper mocking of DI context instead of module-level mocks                                                                                       |
+| Gate Results      | format:✅ lint:✅ typecheck:✅ test:✅ (36 unit tests + 30 integration tests, all passing)                                                                                                                                                      |
 
 ### For Fix Agent
 
@@ -237,79 +237,6 @@ Last Review ID: RA-20260208-012
 | Primary Error   | Multiple test files: Agent file checks fail before mocks can intercept - commands validate agent file existence using direct fs checks that run before vi.spyOn mocks are effective                                                           |
 | Root Cause Hint | Commands call resolveAgentPath() which does fs.existsSync() checks synchronously during initialization, before test mocks of runAgent() take effect. Need to either mock fs operations, create actual agent files in setup, or refactor code |
 | Do NOT          | Rewrite test architecture - framework is solid. Don't add real Copilot CLI calls. Don't skip failing tests with test.skip(). Don't change command code unnecessarily - focus on test setup                                                    |
-
----
-
-## Review Failure Notes
-
-### Review Failure Notes
-
-**Task:** TASK_010 - Integration Test Suite
-**Task Goal:** Create comprehensive integration test suite verifying end-to-end workflows without heavy mocking
-**Review Agent:** RA-20260208-012
-
----
-
-#### Blocking Issues (must fix to pass)
-
-1. **AC9 NOT MET: Integration tests do not pass in isolated temp directories**
-   - Location: `test/integration/plan.integration.test.ts`, `test/integration/task.integration.test.ts`, `test/integration/workflows.integration.test.ts`, `test/integration/error-recovery.integration.test.ts`
-   - Expected: All 30 integration tests should pass (per AC9)
-   - Actual: 13 tests fail, 17 pass (exit code 1 from `npm run test:integration`)
-   - Fix: Commands call `resolveAgentPath()` during initialization which performs `fs.existsSync()` checks on agent files. These synchronous file checks happen before `vi.spyOn(copilot, 'runAgent')` mocks take effect. **Solution:** In `test/integration/setup.ts`, add `createMockAgentFiles()` function that creates all 7 agent files (`.github/agents/speci-{plan,task,refactor,impl,review,fix,tidy}.agent.md`) with minimal content. Call this in `createTestProject()` after creating directories.
-
-2. **Test timeout in workflows.integration.test.ts:30**
-   - Location: `test/integration/workflows.integration.test.ts:30`
-   - Expected: Full workflow test completes within 30s timeout
-   - Actual: Test times out waiting for completion
-   - Fix: After creating agent files (fix #1), this should resolve. If not, the test may be stuck waiting for process.chdir or file I/O - add debug logging to identify where it hangs.
-
-3. **Test assertion mismatch in task.integration.test.ts:126**
-   - Location: `test/integration/task.integration.test.ts:126`
-   - Expected: Error should contain 'PROGRESS.md'
-   - Actual: Error is "Agent file not found: ...speci-task.agent.md"
-   - Fix: Same root cause as #1 - agent file check happens before PROGRESS.md validation. Creating agent files will allow code to reach PROGRESS.md validation.
-
-4. **Test logic error in workflows.integration.test.ts:138**
-   - Location: `test/integration/workflows.integration.test.ts:138`
-   - Expected: planResult.success should be false when source file is missing
-   - Actual: planResult.success is true (test expects false)
-   - Fix: Review test logic - if agent files exist and mocks are set up, command may succeed when it shouldn't. Verify the test scenario is correctly setting up failure conditions.
-
----
-
-#### Non-Blocking Issues (fix if time permits)
-
-- `test/integration/error-recovery.integration.test.ts` - Some error recovery tests may be platform-specific (e.g., chmod tests on Windows) - consider adding better platform detection
-- `test/integration/cleanup.test.ts` - This file tests cleanup functionality but isn't matching the integration test naming pattern (`*.integration.test.ts`) - should be renamed to `cleanup.integration.test.ts` for consistency with vitest config
-- Test organization - 30 tests is good coverage, but distribution is uneven (13 in error-recovery, 8 in workflows, vs 4-5 in others) - consider if error-recovery tests should be split
-
----
-
-#### What Passed Review
-
-- AC1: Integration test directory structure created ✅
-- AC2: Shared test helpers implemented in setup.ts ✅
-- AC3: Integration test config file created with 30s timeout, concurrency 3 ✅
-- AC4: At least 3 command integration tests (init, plan, task) ✅
-- AC5: Full workflow integration test exists ✅ (fails execution but structure present)
-- AC6: Error recovery integration test exists ✅
-- AC7: Package.json scripts added (test:integration, test:all) ✅
-- AC8: Unit test config excludes integration tests ✅
-- Gate: lint ✅, typecheck ✅, test (unit) ✅
-- Code quality: No `any` types, proper JSDoc, clean structure ✅
-- DI pattern: Tests use createProductionContext() correctly ✅
-- Test isolation: Each test creates/cleans temp directories ✅
-
----
-
-#### Fix Agent Instructions
-
-1. **Start with:** Fix #1 (create agent files in setup) - this will unblock 11+ of the 13 failing tests. Add `createMockAgentFiles()` to `test/integration/setup.ts` that creates all 7 agent files with minimal valid markdown content (just needs frontmatter and description). Call this function inside `createTestProject()` after directory creation.
-2. **Then:** Re-run `npm run test:integration` and verify failures drop from 13 to <5
-3. **Verify:** Run `npm run test:integration` first (should show most tests passing), then run full gate `npm run test:all`
-4. **Context:** The DI refactoring in M1 means commands now receive dependencies via context, but agent path resolution still happens eagerly during command initialization. The test strategy of mocking `runAgent()` is sound, but mocks only work after the code reaches the point where runAgent is called. File existence checks happen before that.
-5. **Do NOT:** Refactor command code to defer agent path resolution - that's out of scope for this test task. Do NOT skip tests with test.skip() - fix them properly. Do NOT change the overall test architecture - it's solid, just needs agent files in fixtures.
 
 ---
 
