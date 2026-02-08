@@ -253,11 +253,7 @@ async function handleWorkLeft(
   // 1. Run impl agent
   context.logger.info('Dispatching implementation agent...');
   logAgent(logFile, 'impl', 'START');
-  const implResult = await runAgent(
-    config,
-    'impl',
-    'Implementation Agent'
-  );
+  const implResult = await runAgent(config, 'impl', 'Implementation Agent');
   logAgent(logFile, 'impl', implResult.isSuccess ? 'SUCCESS' : 'FAILED');
 
   if (!implResult.isSuccess) {

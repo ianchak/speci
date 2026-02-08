@@ -116,21 +116,21 @@
 
 ## Milestone: M3 - Polish
 
-| Task ID  | Title                          | Status      | Priority | Complexity | Dependencies |
-| -------- | ------------------------------ | ----------- | -------- | ---------- | ------------ |
-| TASK_019 | Refactor Entry Point           | NOT STARTED | MEDIUM   | M (4-8h)   | TASK_007     |
-| TASK_020 | Split Banner Animation Module  | NOT STARTED | MEDIUM   | S (≤2h)    | None         |
-| TASK_021 | Config as Parameter            | IN PROGRESS | —             | HIGH     | M (4-8h)   | TASK_007     | SA-20260208-013 | 1        |
-| TASK_022 | Config Memoization             | NOT STARTED | MEDIUM   | S (≤2h)    | TASK_021     |
-| TASK_023 | State File Read Caching        | NOT STARTED | MEDIUM   | S (≤2h)    | None         |
-| TASK_024 | Error Catalog Consistency      | NOT STARTED | MEDIUM   | M (4-8h)   | TASK_014     |
-| TASK_025 | Expand Retry Logic             | NOT STARTED | MEDIUM   | M (4-8h)   | TASK_014     |
-| TASK_026 | Extract Remaining Duplications | NOT STARTED | MEDIUM   | M (4-8h)   | None         |
-| TASK_027 | Standardize Command API        | NOT STARTED | MEDIUM   | M (4-8h)   | TASK_007     |
-| TASK_028 | Signal Handler Promise Fix     | NOT STARTED | HIGH     | M (4-8h)   | TASK_009     |
-| TASK_029 | Debug Logging                  | NOT STARTED | LOW      | S (≤2h)    | TASK_015     |
-| TASK_030 | Standardize Null vs Undefined  | NOT STARTED | MEDIUM   | M (4-8h)   | None         |
-| MVT_M3   | Polish Manual Test             | NOT STARTED | —        | 40 min     | TASK_019-030 |
+| Task ID  | Title                          | Status      | Review Status | Priority | Complexity | Dependencies | Assigned To     | Attempts |
+| -------- | ------------------------------ | ----------- | ------------- | -------- | ---------- | ------------ | --------------- | -------- |
+| TASK_019 | Refactor Entry Point           | NOT STARTED | —             | MEDIUM   | M (4-8h)   | TASK_007     |                 |          |
+| TASK_020 | Split Banner Animation Module  | NOT STARTED | —             | MEDIUM   | S (≤2h)    | None         |                 |          |
+| TASK_021 | Config as Parameter            | IN PROGRESS | FAILED        | HIGH     | M (4-8h)   | TASK_007     | SA-20260208-014 | 2        |
+| TASK_022 | Config Memoization             | NOT STARTED | —             | MEDIUM   | S (≤2h)    | TASK_021     |                 |          |
+| TASK_023 | State File Read Caching        | NOT STARTED | —             | MEDIUM   | S (≤2h)    | None         |                 |          |
+| TASK_024 | Error Catalog Consistency      | NOT STARTED | —             | MEDIUM   | M (4-8h)   | TASK_014     |                 |          |
+| TASK_025 | Expand Retry Logic             | NOT STARTED | —             | MEDIUM   | M (4-8h)   | TASK_014     |                 |          |
+| TASK_026 | Extract Remaining Duplications | NOT STARTED | —             | MEDIUM   | M (4-8h)   | None         |                 |          |
+| TASK_027 | Standardize Command API        | NOT STARTED | —             | MEDIUM   | M (4-8h)   | TASK_007     |                 |          |
+| TASK_028 | Signal Handler Promise Fix     | NOT STARTED | —             | HIGH     | M (4-8h)   | TASK_009     |                 |          |
+| TASK_029 | Debug Logging                  | NOT STARTED | —             | LOW      | S (≤2h)    | TASK_015     |                 |          |
+| TASK_030 | Standardize Null vs Undefined  | NOT STARTED | —             | MEDIUM   | M (4-8h)   | None         |                 |          |
+| MVT_M3   | Polish Manual Test             | NOT STARTED | —             | —        | 40 min     | TASK_019-030 |                 |          |
 
 ### Planned Outcomes
 
@@ -202,17 +202,74 @@ TASK_031 (Parallelize) → MVT_M4
 
 ## Subagent Tracking
 
-Last Subagent ID: SA-20260208-013
+Last Subagent ID: SA-20260208-014
 
 ---
 
 ## Review Tracking
 
-Last Review ID: RA-20260208-022
+Last Review ID: RA-20260208-023
 
 ---
 
 ## Agent Handoff
+
+### Review Failure Notes
+
+**Task:** TASK_021 - Config as Parameter
+**Task Goal:** Refactor commands to accept configuration as parameter, loaded once in entry point and passed through
+**Review Agent:** RA-20260208-023
+
+---
+
+#### Blocking Issues (must fix to pass)
+
+1. **AC2 NOT MET: Entry point loads config once and passes to commands**
+   - Location: `bin/speci.ts:108-244`
+   - Expected: Entry point should call `await context.configLoader.load()` once before command dispatching, then pass the loaded config to each command handler
+   - Actual: Entry point creates production context but never loads config; each command action calls the command function without passing config parameter, relying on the default parameter which loads config internally
+   - Fix: In `bin/speci.ts`, add `const config = await context.configLoader.load();` after creating context, then pass `config` as the third parameter to all command calls: `await init(options, context)` → (init doesn't need config), `await plan(options, context, config)`, `await task(options, context, config)`, `await refactor(options, context, config)`, `await run(options, context, config)`, `await status(options, context, config)`
+
+2. **AC5 NOT MET: Performance improvement measurable (reduce config loads from 6+ to 1)**
+   - Location: All command action handlers in `bin/speci.ts`
+   - Expected: Commands should receive pre-loaded config, eliminating repeated `loadConfig()` calls
+   - Actual: Without entry point loading and passing config, each command still loads config via its default parameter `config ?? (await context.configLoader.load())`
+   - Fix: Once AC2 is fixed by passing config from entry point, the performance improvement will be achieved automatically
+
+---
+
+#### Non-Blocking Issues (fix if time permits)
+
+- None identified. The implementation is well-structured and follows the DI pattern correctly.
+
+---
+
+#### What Passed Review
+
+- AC1: All 6 command modules accept config as parameter ✅ done
+- AC3: Commands no longer call `loadConfig()` directly ✅ done
+- AC4: Backward compatibility maintained with default parameter ✅ done
+- AC6: Tests inject mock config without filesystem access ✅ done (3 new tests in command-helpers.test.ts)
+- AC7: No behavior changes in command execution ✅ done
+- Gate: lint ✅ passed (exit code 0)
+- Gate: typecheck ✅ passed (exit code 0)
+- Gate: test ✅ 1052/1053 passing (1 flaky performance test unrelated to task)
+- Code quality: Clean implementation with proper JSDoc, no `any`, null-safe operations ✅
+- Tests: 3 comprehensive tests added covering config parameter usage, default loading, and config passing ✅
+
+---
+
+#### Fix Agent Instructions
+
+1. **Start with:** Update `bin/speci.ts` to load config once after creating production context (around line 54). Add `const config = await context.configLoader.load();` immediately after `const context = createProductionContext();`
+2. **Then:** Pass `config` as third parameter to plan, task, refactor, run, and status command calls in their respective action handlers (lines ~154, ~190, ~228, ~267, ~306). Pattern: `await commandName(options, context, config)`
+3. **Verify:** Run `npm test -- plan.test.ts task.test.ts refactor.test.ts` first to ensure command tests still pass with config parameter
+4. **Context:** The command functions already accept config as optional third parameter with default loading fallback, so this is just wiring up the entry point. All command signatures follow: `async function cmd(options, context = createProductionContext(), config?: SpeciConfig)`. The fix is surgical - only 6 lines need changes in bin/speci.ts.
+5. **Do NOT:** Change command function signatures, modify test files, refactor config loading logic, or touch lib/config.ts. The command implementation is correct; only the entry point integration is missing.
+
+---
+
+## Summary Statistics
 
 ### For Reviewer
 
@@ -229,15 +286,15 @@ Last Review ID: RA-20260208-022
 
 ### For Fix Agent
 
-| Field           | Value |
-| --------------- | ----- |
-| Task            | -     |
-| Task Goal       | -     |
-| Review Agent    | -     |
-| Failed Gate     | -     |
-| Primary Error   | -     |
-| Root Cause Hint | -     |
-| Do NOT          | -     |
+| Field           | Value                                                                                                                                |
+| --------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| Task            | TASK_021                                                                                                                             |
+| Task Goal       | Refactor commands to accept configuration as parameter, loaded once in entry point and passed through                                |
+| Review Agent    | RA-20260208-023                                                                                                                      |
+| Failed Gate     | none (AC failure)                                                                                                                    |
+| Primary Error   | `bin/speci.ts` - Entry point not updated to load config once and pass to commands                                                    |
+| Root Cause Hint | Implementation only addressed command functions but did not complete the entry point integration required for performance improvement |
+| Do NOT          | Refactor command signatures further; Change test files; Modify config loading logic in lib/config.ts                                 |
 
 ---
 

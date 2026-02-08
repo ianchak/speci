@@ -52,6 +52,9 @@ const program = new Command();
 // Create production context once for all commands
 const context = createProductionContext();
 
+// Load config once for all commands
+const config = await context.configLoader.load();
+
 // Configure program
 program
   .name('speci')
@@ -151,7 +154,7 @@ Examples:
   )
   .action(async (options) => {
     try {
-      const result = await plan(options, context);
+      const result = await plan(options, context, config);
       if (!result.success) {
         await exitWithCleanup(result.exitCode);
       }
@@ -187,7 +190,7 @@ Examples:
   )
   .action(async (options) => {
     try {
-      const result = await task(options, context);
+      const result = await task(options, context, config);
       if (!result.success) {
         await exitWithCleanup(result.exitCode);
       }
@@ -225,7 +228,7 @@ Examples:
   )
   .action(async (options) => {
     try {
-      const result = await refactor(options, context);
+      const result = await refactor(options, context, config);
       if (!result.success) {
         await exitWithCleanup(result.exitCode);
       }
@@ -263,7 +266,7 @@ Examples:
   )
   .action(async (options) => {
     try {
-      const result = await run(options, context);
+      const result = await run(options, context, config);
       if (!result.success) {
         await exitWithCleanup(result.exitCode);
       }
@@ -303,7 +306,7 @@ Examples:
   )
   .action(async (options) => {
     try {
-      const result = await status(options, context);
+      const result = await status(options, context, config);
       if (!result.success) {
         await exitWithCleanup(result.exitCode);
       }
