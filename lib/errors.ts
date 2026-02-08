@@ -93,8 +93,7 @@ export const ERROR_CODES: Record<string, ErrorDefinition> = {
   'ERR-INP-06': {
     message: 'Config version {{version}} is not compatible',
     cause: 'Configuration file uses an incompatible version format',
-    solution:
-      'Update config to version 1.x or regenerate with speci init',
+    solution: 'Update config to version 1.x or regenerate with speci init',
   },
   'ERR-INP-07': {
     message: 'Path {{path}} attempts to escape project directory',

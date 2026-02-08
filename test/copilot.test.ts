@@ -317,6 +317,90 @@ describe('copilot', () => {
       expect(result.exitCode).toBe(0);
     }, 10000);
 
+    it('should retry on exit code 52 (network error)', async () => {
+      const mockChild1 = new EventEmitter();
+      const mockChild2 = new EventEmitter();
+      (spawn as ReturnType<typeof vi.fn>)
+        .mockReturnValueOnce(mockChild1)
+        .mockReturnValueOnce(mockChild2);
+
+      const promise = runAgent(config, 'impl', 'Test Implementation');
+
+      // First attempt fails with network error (52 -> retryable)
+      setTimeout(() => mockChild1.emit('close', 52), 10);
+      // Second attempt succeeds
+      setTimeout(() => mockChild2.emit('close', 0), 1100);
+
+      const result = await promise;
+
+      expect(spawn).toHaveBeenCalledTimes(2);
+      expect(result.isSuccess).toBe(true);
+      expect(result.exitCode).toBe(0);
+    }, 10000);
+
+    it('should retry on exit code 124 (timeout)', async () => {
+      const mockChild1 = new EventEmitter();
+      const mockChild2 = new EventEmitter();
+      (spawn as ReturnType<typeof vi.fn>)
+        .mockReturnValueOnce(mockChild1)
+        .mockReturnValueOnce(mockChild2);
+
+      const promise = runAgent(config, 'impl', 'Test Implementation');
+
+      // First attempt fails with timeout (124 -> retryable)
+      setTimeout(() => mockChild1.emit('close', 124), 10);
+      // Second attempt succeeds
+      setTimeout(() => mockChild2.emit('close', 0), 1100);
+
+      const result = await promise;
+
+      expect(spawn).toHaveBeenCalledTimes(2);
+      expect(result.isSuccess).toBe(true);
+      expect(result.exitCode).toBe(0);
+    }, 10000);
+
+    it('should retry on exit code 7 (connection failure)', async () => {
+      const mockChild1 = new EventEmitter();
+      const mockChild2 = new EventEmitter();
+      (spawn as ReturnType<typeof vi.fn>)
+        .mockReturnValueOnce(mockChild1)
+        .mockReturnValueOnce(mockChild2);
+
+      const promise = runAgent(config, 'impl', 'Test Implementation');
+
+      // First attempt fails with connection failure (7 -> retryable)
+      setTimeout(() => mockChild1.emit('close', 7), 10);
+      // Second attempt succeeds
+      setTimeout(() => mockChild2.emit('close', 0), 1100);
+
+      const result = await promise;
+
+      expect(spawn).toHaveBeenCalledTimes(2);
+      expect(result.isSuccess).toBe(true);
+      expect(result.exitCode).toBe(0);
+    }, 10000);
+
+    it('should retry on exit code 6 (DNS resolution failure)', async () => {
+      const mockChild1 = new EventEmitter();
+      const mockChild2 = new EventEmitter();
+      (spawn as ReturnType<typeof vi.fn>)
+        .mockReturnValueOnce(mockChild1)
+        .mockReturnValueOnce(mockChild2);
+
+      const promise = runAgent(config, 'impl', 'Test Implementation');
+
+      // First attempt fails with DNS failure (6 -> retryable)
+      setTimeout(() => mockChild1.emit('close', 6), 10);
+      // Second attempt succeeds
+      setTimeout(() => mockChild2.emit('close', 0), 1100);
+
+      const result = await promise;
+
+      expect(spawn).toHaveBeenCalledTimes(2);
+      expect(result.isSuccess).toBe(true);
+      expect(result.exitCode).toBe(0);
+    }, 10000);
+
     it('should not retry on ENOENT error', async () => {
       const mockChild = new EventEmitter();
       (spawn as ReturnType<typeof vi.fn>).mockReturnValue(mockChild);

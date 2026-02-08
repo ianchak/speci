@@ -41,7 +41,13 @@ const DEFAULT_RETRY_POLICY: RetryPolicy = {
   maxRetries: 3,
   baseDelay: 1000,
   maxDelay: 4000,
-  retryableExitCodes: [429], // Rate limit
+  retryableExitCodes: [
+    429, // Rate limit
+    52, // Network error (CURLE_GOT_NOTHING)
+    124, // Timeout
+    7, // Connection failure (CURLE_COULDNT_CONNECT)
+    6, // DNS resolution failure (CURLE_COULDNT_RESOLVE_HOST)
+  ],
 };
 
 /**
