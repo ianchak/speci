@@ -94,7 +94,7 @@
 | TASK_011 | CLI Entry Point Tests           | COMPLETE    | PASSED        | HIGH     | M (4-8h)   | TASK_010           | SA-20260208-004 | 1        |
 | TASK_012 | Race Condition Tests            | COMPLETE    | PASSED        | HIGH     | M (4-8h)   | TASK_010           | SA-20260208-005 | 1        |
 | TASK_013 | Error Catalog Tests             | COMPLETE    | PASSED        | HIGH     | S (≤2h)    | TASK_010           | SA-20260208-006 | 1        |
-| TASK_014 | Discriminated Union Error Types | IN PROGRESS | —         | HIGH     | L (8-16h)  | TASK_009           | SA-20260208-007 | 1        |
+| TASK_014 | Discriminated Union Error Types | IN REVIEW   | —             | HIGH     | L (8-16h)  | TASK_009           | SA-20260208-007 | 1        |
 | TASK_015 | Standardize Logging             | NOT STARTED | MEDIUM   | M (4-8h)   | TASK_008           |
 | TASK_016 | Extract Command Initialization  | NOT STARTED | HIGH     | M (4-8h)   | TASK_007           |
 | TASK_017 | Encapsulate Module-Level State  | NOT STARTED | HIGH     | M (4-8h)   | TASK_007           |
@@ -216,16 +216,16 @@ Last Review ID: RA-20260208-016
 
 ### For Reviewer
 
-| Field             | Value |
-| ----------------- | ----- |
-| Task              | -     |
-| Impl Agent        | -     |
-| Files Changed     | -     |
-| Tests Added       | -     |
-| Rework?           | -     |
-| Focus Areas       | -     |
-| Known Limitations | -     |
-| Gate Results      | -     |
+| Field             | Value                                                                                                                                                                                                                                                       |
+| ----------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Task              | TASK_014                                                                                                                                                                                                                                                    |
+| Impl Agent        | SA-20260208-007                                                                                                                                                                                                                                             |
+| Files Changed     | `lib/copilot.ts`, `lib/utils/gate.ts`, `lib/commands/run.ts`, `lib/adapters/test-context.ts`                                                                                                                                                               |
+| Tests Added       | `test/copilot.test.ts` (3 new tests), `test/gate.test.ts` (3 new tests) - 6 total tests verifying discriminated union type narrowing                                                                                                                      |
+| Rework?           | No - Initial implementation                                                                                                                                                                                                                                 |
+| Focus Areas       | Type definitions in `lib/copilot.ts` (AgentRunResult) and `lib/utils/gate.ts` (GateResult) - verify discriminated unions are correctly structured; Check that all call sites in `lib/commands/run.ts` properly leverage type narrowing (no ?? operators) |
+| Known Limitations | GateCommandResult kept as interface (not discriminated union) because gate commands always return stderr output (error field is empty string on success, not absent). Only AgentRunResult and GateResult converted to discriminated unions per task spec. |
+| Gate Results      | format:✅ lint:✅ typecheck:✅ test:✅ (995/995 tests passing)                                                                                                                                                                                             |
 
 ### For Fix Agent
 
