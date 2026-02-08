@@ -4,13 +4,10 @@
  * Tests for gate command execution and result tracking.
  */
 
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import {
   executeGateCommand,
   runGate,
-  resetGateAttempts,
-  incrementGateAttempt,
-  getGateAttempt,
   canRetryGate,
 } from '../lib/utils/gate.js';
 import type { SpeciConfig } from '../lib/config.js';
@@ -178,7 +175,7 @@ describe('Gate Runner', () => {
     });
   });
 
-  describe('Retry tracking', () => {
+  describe('Retry logic', () => {
     const mockConfig: SpeciConfig = {
       version: '1.0.0',
       paths: {
@@ -219,48 +216,23 @@ describe('Gate Runner', () => {
       },
     };
 
-    beforeEach(() => {
-      resetGateAttempts();
-    });
-
-    it('should start at zero attempts', () => {
-      expect(getGateAttempt()).toBe(0);
-    });
-
-    it('should increment attempts correctly', () => {
-      incrementGateAttempt();
-      expect(getGateAttempt()).toBe(1);
-
-      incrementGateAttempt();
-      expect(getGateAttempt()).toBe(2);
-    });
-
     it('should allow retry when under max attempts', () => {
-      expect(canRetryGate(mockConfig)).toBe(true);
-
-      incrementGateAttempt();
-      expect(canRetryGate(mockConfig)).toBe(true);
-
-      incrementGateAttempt();
-      expect(canRetryGate(mockConfig)).toBe(true);
+      expect(canRetryGate(mockConfig, 0)).toBe(true);
+      expect(canRetryGate(mockConfig, 1)).toBe(true);
+      expect(canRetryGate(mockConfig, 2)).toBe(true);
     });
 
     it('should not allow retry after max attempts', () => {
-      incrementGateAttempt();
-      incrementGateAttempt();
-      incrementGateAttempt();
-
-      expect(getGateAttempt()).toBe(3);
-      expect(canRetryGate(mockConfig)).toBe(false);
+      expect(canRetryGate(mockConfig, 3)).toBe(false);
+      expect(canRetryGate(mockConfig, 4)).toBe(false);
     });
 
-    it('should reset attempts', () => {
-      incrementGateAttempt();
-      incrementGateAttempt();
-      expect(getGateAttempt()).toBe(2);
-
-      resetGateAttempts();
-      expect(getGateAttempt()).toBe(0);
+    it('should handle zero max attempts', () => {
+      const zeroConfig: SpeciConfig = {
+        ...mockConfig,
+        gate: { ...mockConfig.gate, maxFixAttempts: 0 },
+      };
+      expect(canRetryGate(zeroConfig, 0)).toBe(false);
     });
   });
 
@@ -304,10 +276,6 @@ describe('Gate Runner', () => {
         maxIterations: 10,
       },
     };
-
-    beforeEach(() => {
-      resetGateAttempts();
-    });
 
     it('should handle concurrent runGate executions', async () => {
       // Run multiple gate executions concurrently
@@ -376,35 +344,20 @@ describe('Gate Runner', () => {
       });
     });
 
-    it('should handle concurrent attempt counter modifications', async () => {
-      // Concurrently increment attempt counter
-      const increments = Array.from({ length: 10 }, () =>
-        Promise.resolve().then(() => incrementGateAttempt())
-      );
-
-      await Promise.all(increments);
-
-      // Final count may vary due to race conditions in the counter itself
-      // This tests that no errors occur during concurrent access
-      const finalCount = getGateAttempt();
-      expect(finalCount).toBeGreaterThan(0);
-      expect(finalCount).toBeLessThanOrEqual(10);
-    });
-
-    it('should handle concurrent canRetryGate checks', async () => {
-      // Check retry eligibility concurrently
+    it('should handle concurrent canRetryGate checks with different attempt counts', async () => {
+      // Check retry eligibility concurrently with different attempt counts
       const checks = await Promise.all([
-        canRetryGate(mockConfig),
-        canRetryGate(mockConfig),
-        canRetryGate(mockConfig),
-        canRetryGate(mockConfig),
+        canRetryGate(mockConfig, 0),
+        canRetryGate(mockConfig, 1),
+        canRetryGate(mockConfig, 2),
+        canRetryGate(mockConfig, 3),
       ]);
 
-      // All should return the same result
-      const firstResult = checks[0];
-      checks.forEach((result) => {
-        expect(result).toBe(firstResult);
-      });
+      // Should return correct results for each attempt count
+      expect(checks[0]).toBe(true);
+      expect(checks[1]).toBe(true);
+      expect(checks[2]).toBe(true);
+      expect(checks[3]).toBe(false);
     });
 
     it('should not interfere when running gates with different configs concurrently', async () => {

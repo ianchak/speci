@@ -29,7 +29,7 @@
 | --------- | ----------------- | ------- | ------ | -------- | ----- | ----------- |
 | M0        | Quick Wins        | 001-004 | MVT_M0 | 4        | 5     | IN PROGRESS |
 | M1        | Foundation        | 005-009 | MVT_M1 | 5        | 6     | IN PROGRESS |
-| M2        | Core Improvements | 010-018 | MVT_M2 | 5        | 10    | IN PROGRESS |
+| M2        | Core Improvements | 010-018 | MVT_M2 | 6        | 10    | IN PROGRESS |
 | M3        | Polish            | 019-030 | MVT_M3 | 0        | 13    | NOT STARTED |
 | M4        | Optimization      | 031-038 | MVT_M4 | 0        | 9     | NOT STARTED |
 
@@ -43,7 +43,7 @@
 | --------- | ---------- | ----------- | -------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | M0        | Quick Wins | In Progress | TASK_001-004   | Coverage tracking infrastructure added with baseline 82.74% lines coverage; All lib/ files now use TypeScript path aliases; Magic strings extracted to lib/constants.ts module with comprehensive test coverage; Boolean properties standardized with semantic prefixes (is*, should*) |
 | M1        | Foundation | In Progress | TASK_005-009   | Dependency injection interfaces and adapters established; CommandContext pattern enables testable commands; Production context factory and test utilities ready; Plan command successfully migrated to DI pattern as proof of concept, validating architecture for rollout; All 6 commands now migrated to DI pattern with context-based dependencies; Process globals abstracted with IProcess interface enabling full test isolation; All process.exit() calls fixed to ensure cleanup runs before termination, eliminating resource leaks |
-| M2        | Core Improvements | In Progress | TASK_010-014   | Comprehensive integration test suite covering end-to-end workflows with 30 passing tests; Real file I/O with isolated temp directories; Mock Copilot CLI execution; Separate vitest configuration with appropriate timeouts; Error recovery scenarios verified; CLI entry point fully tested with 28 unit tests verifying command registration, aliases, options, unknown command handling, banner display, and help text; All 987 tests passing; Race condition tests added with 50+ tests across lock, gate, signals, and state modules verifying concurrent operations; Error catalog fully tested with 36 tests covering all 17 error codes, formatError(), createError(), naming conventions, and message quality; Error types converted to discriminated unions (AgentRunResult, GateResult) with type-safe error handling eliminating optional chaining at all call sites |
+| M2        | Core Improvements | In Progress | TASK_010-016   | Comprehensive integration test suite covering end-to-end workflows with 30 passing tests; Real file I/O with isolated temp directories; Mock Copilot CLI execution; Separate vitest configuration with appropriate timeouts; Error recovery scenarios verified; CLI entry point fully tested with 28 unit tests verifying command registration, aliases, options, unknown command handling, banner display, and help text; All 1019 tests passing; Race condition tests added with 50+ tests across lock, gate, signals, and state modules verifying concurrent operations; Error catalog fully tested with 36 tests covering all 17 error codes, formatError(), createError(), naming conventions, and message quality; Error types converted to discriminated unions (AgentRunResult, GateResult) with type-safe error handling eliminating optional chaining at all call sites; Command initialization duplication eliminated with 112+ lines of shared initialization logic extracted to lib/utils/command-helpers.ts module across plan, task, and refactor commands |
 
 ---
 
@@ -96,8 +96,8 @@
 | TASK_013 | Error Catalog Tests             | COMPLETE    | PASSED        | HIGH     | S (≤2h)    | TASK_010           | SA-20260208-006 | 1        |
 | TASK_014 | Discriminated Union Error Types | COMPLETE    | PASSED        | HIGH     | L (8-16h)  | TASK_009           | SA-20260208-007 | 1        |
 | TASK_015 | Standardize Logging             | NOT STARTED | —             | MEDIUM   | M (4-8h)   | TASK_008           |                 |          |
-| TASK_016 | Extract Command Initialization  | IN REVIEW   | —             | HIGH     | M (4-8h)   | TASK_007           | SA-20260208-009 | 2        |
-| TASK_017 | Encapsulate Module-Level State  | NOT STARTED | —             | HIGH     | M (4-8h)   | TASK_007           |                 |          |
+| TASK_016 | Extract Command Initialization  | COMPLETE    | PASSED        | HIGH     | M (4-8h)   | TASK_007           | SA-20260208-009 | 2        |
+| TASK_017 | Encapsulate Module-Level State  | IN PROGRESS | —             | HIGH     | M (4-8h)   | TASK_007           | SA-20260208-010 | 1        |
 | TASK_018 | Reduce Cross-Module Coupling    | NOT STARTED | —             | HIGH     | L (8-16h)  | TASK_007           |                 |          |
 | MVT_M2   | Core Improvements Manual Test   | NOT STARTED | —             | —        | 45 min     | TASK_010-018       |                 |          |
 
@@ -202,13 +202,13 @@ TASK_031 (Parallelize) → MVT_M4
 
 ## Subagent Tracking
 
-Last Subagent ID: SA-20260208-009
+Last Subagent ID: SA-20260208-010
 
 ---
 
 ## Review Tracking
 
-Last Review ID: RA-20260208-018
+Last Review ID: RA-20260208-019
 
 ---
 
@@ -216,99 +216,46 @@ Last Review ID: RA-20260208-018
 
 ### For Reviewer
 
-| Field             | Value                                                                                                                                                                                      |
-| ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Task              | TASK_016                                                                                                                                                                                   |
-| Impl Agent        | SA-20260208-009                                                                                                                                                                            |
-| Files Changed     | `lib/commands/plan.ts`                                                                                                                                                                     |
-| Tests Added       | None (existing 24 tests in `test/command-helpers.test.ts` cover the shared helper; `test/plan.test.ts` has 39 tests that verify plan command behavior)                                    |
-| Rework?           | Yes - Addressed review failure notes: Refactored plan.ts to use initializeCommand() helper with skipPreflight: true; achieved 90+ line reduction target across all three commands         |
-| Focus Areas       | Verify plan command still validates required --prompt or --input before initialization; confirm skipPreflight: true works correctly; ensure plan-specific behavior preserved               |
-| Known Limitations | None - all requirements met per acceptance criteria                                                                                                                                        |
-| Gate Results      | format:✅ lint:✅ typecheck:✅ test:✅ (exit code 0 for all, 1019 tests passing)                                                                                                          |
+| Field             | Value |
+| ----------------- | ----- |
+| Task              | -     |
+| Impl Agent        | -     |
+| Files Changed     | -     |
+| Tests Added       | -     |
+| Rework?           | -     |
+| Focus Areas       | -     |
+| Known Limitations | -     |
+| Gate Results      | -     |
 
 ### For Fix Agent
 
-| Field           | Value                                                                                                     |
-| --------------- | --------------------------------------------------------------------------------------------------------- |
-| Task            | TASK_016                                                                                                  |
-| Task Goal       | Extract 90+ lines of duplicated command initialization logic into shared utility module                  |
-| Review Agent    | RA-20260208-018                                                                                           |
-| Failed Gate     | none (all gates pass)                                                                                     |
-| Primary Error   | `lib/commands/plan.ts:66-96` - plan.ts not refactored, still contains duplicated initialization code     |
-| Root Cause Hint | Plan command doesn't call preflight(), so initializeCommand() needs skipPreflight:true for plan          |
-| Do NOT          | Change command behavior or add new features; focus only on extracting duplication per acceptance criteria |
-
-### Review Failure Notes
-
-**Task:** TASK_016 - Extract Command Initialization
-**Task Goal:** Extract 90+ lines of duplicated command initialization logic into a shared utility module
-**Review Agent:** RA-20260208-018
-
----
-
-#### Blocking Issues (must fix to pass)
-
-~~1. **AC5 NOT MET: lib/commands/plan.ts not refactored to use shared initialization**~~ FIXED
-   - ~~Location: `lib/commands/plan.ts:66-96`~~
-   - ~~Expected: Plan command should use `initializeCommand()` helper like task and refactor commands~~
-   - ~~Actual: Plan command still has 30+ lines of duplicated initialization code (banner, config load, agent validation)~~
-   - ~~Fix: Refactor plan.ts to use `initializeCommand({ commandName: 'plan', skipPreflight: true, ... })` since plan doesn't need preflight checks~~
-
-~~2. **AC8 NOT MET: Net reduction target not met (only ~60 lines instead of 90+)**~~ FIXED
-   - ~~Location: Overall codebase~~
-   - ~~Expected: Net reduction of 90+ lines of duplicated code across all three commands~~
-   - ~~Actual: Only ~60 lines reduced because plan.ts was not refactored~~
-   - ~~Fix: Complete the plan.ts refactoring to achieve the target reduction~~
-
----
-
-#### Non-Blocking Issues (fix if time permits)
-
-None - implementation is otherwise excellent.
-
----
-
-#### What Passed Review
-
-- AC1: New file `lib/utils/command-helpers.ts` created ✅
-- AC2: `initializeCommand()` function extracts common pattern ✅
-- AC3: `normalizeAgentName()` function centralizes agent name resolution ✅
-- AC4: `validateAgentFile()` function centralizes validation logic ✅
-- AC6: lib/commands/task.ts refactored properly ✅
-- AC7: lib/commands/refactor.ts refactored properly ✅
-- AC8 partial: All existing tests pass (1019 tests) ✅
-- Tests: 24 comprehensive unit tests for command-helpers.ts ✅
-- Code quality: Excellent JSDoc, type safety, error handling ✅
-- Gates: lint ✅ typecheck ✅ test ✅ (all pass, exit code 0)
-
----
-
-#### Fix Agent Instructions
-
-1. **Start with:** Refactor plan.ts to use `initializeCommand()` with `skipPreflight: true`
-2. **Then:** Verify all tests still pass (especially plan.test.ts)
-3. **Verify:** Run `npm test -- plan.test.ts` first to ensure plan-specific tests pass
-4. **Context:** Plan command has unique requirements - it doesn't call preflight() and requires --prompt or --input validation BEFORE initialization. You'll need to restructure the command to validate required options first, then call initializeCommand() with skipPreflight: true.
-5. **Do NOT:** Change plan command behavior, add features, or modify error messages. Only extract duplication into initializeCommand() helper.
+| Field           | Value |
+| --------------- | ----- |
+| Task            | -     |
+| Task Goal       | -     |
+| Review Agent    | -     |
+| Failed Gate     | -     |
+| Primary Error   | -     |
+| Root Cause Hint | -     |
+| Do NOT          | -     |
 
 ---
 
 ## Summary Statistics
 
-**Overall Progress**: 32.56% Complete (14/43 items)
+**Overall Progress**: 34.88% Complete (15/43 items)
 
 **By Category**:
 
-- Tasks: 14/38 complete
+- Tasks: 15/38 complete
 - MVTs: 0/5 complete
-- Total Items: 14/43 complete
+- Total Items: 15/43 complete
 
 **By Milestone**:
 
 - M0 Quick Wins: 4/5 complete (80%)
 - M1 Foundation: 5/6 complete (83.3%)
-- M2 Core Improvements: 4/10 complete (40%)
+- M2 Core Improvements: 6/10 complete (60%)
 - M3 Polish: 0/13 complete (0%)
 - M4 Optimization: 0/9 complete (0%)
 
@@ -318,7 +265,7 @@ None - implementation is otherwise excellent.
 - Dependency injection pattern implemented
 - All process.exit() cleanup issues resolved
 - Integration test suite established
-- 200+ lines of code duplication eliminated
+- 220+ lines of code duplication eliminated
 - Type safety enhanced with discriminated unions
 - Performance optimizations delivering 30-50% speedup
 

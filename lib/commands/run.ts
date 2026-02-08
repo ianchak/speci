@@ -19,7 +19,7 @@ import {
   getLockInfo,
 } from '@/utils/lock.js';
 import { preflight } from '@/utils/preflight.js';
-import { runGate, resetGateAttempts } from '@/utils/gate.js';
+import { runGate } from '@/utils/gate.js';
 import { runAgent } from '@/copilot.js';
 import { renderBanner } from '@/ui/banner.js';
 import { log } from '@/utils/logger.js';
@@ -43,18 +43,6 @@ export interface RunOptions {
 }
 
 /**
- * Global flag to track if cleanup is in progress
- */
-let cleanupInProgress = false;
-
-/**
- * Reset cleanup flag (for testing)
- */
-export function resetCleanupFlag(): void {
-  cleanupInProgress = false;
-}
-
-/**
  * Main run command handler
  *
  * @param options - Command options
@@ -65,9 +53,6 @@ export async function run(
   options: RunOptions = {},
   context: CommandContext = createProductionContext()
 ): Promise<CommandResult> {
-  // Reset cleanup flag at start of each run
-  cleanupInProgress = false;
-
   // 1. Display banner
   renderBanner();
 
@@ -167,19 +152,16 @@ export async function run(
     }
   } finally {
     // 10. Cleanup
-    if (!cleanupInProgress) {
-      cleanupInProgress = true;
-      await releaseLock(config);
-      try {
-        // Wait for log file to finish writing
-        await new Promise<void>((resolve) => {
-          logFile.end(() => {
-            resolve();
-          });
+    await releaseLock(config);
+    try {
+      // Wait for log file to finish writing
+      await new Promise<void>((resolve) => {
+        logFile.end(() => {
+          resolve();
         });
-      } catch {
-        // Log file may not be initialized if we exited early
-      }
+      });
+    } catch {
+      // Log file may not be initialized if we exited early
     }
     removeSignalHandlers();
   }
@@ -278,7 +260,6 @@ async function handleWorkLeft(
 
   // 2. Run gates
   context.logger.info('Running gate commands...');
-  resetGateAttempts();
   const gateResult = await runGate(config);
   logGate(logFile, gateResult);
 

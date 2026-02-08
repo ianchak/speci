@@ -188,37 +188,14 @@ export async function runGate(config: SpeciConfig): Promise<GateResult> {
 }
 
 /**
- * Track gate retry attempts for the current run
- */
-let currentAttempt = 0;
-
-/**
- * Reset gate attempt counter (call at start of speci run)
- */
-export function resetGateAttempts(): void {
-  currentAttempt = 0;
-}
-
-/**
- * Increment gate attempt counter (call after fix agent runs)
- */
-export function incrementGateAttempt(): void {
-  currentAttempt++;
-}
-
-/**
- * Get current gate attempt number
- * @returns Current attempt count
- */
-export function getGateAttempt(): number {
-  return currentAttempt;
-}
-
-/**
  * Check if gate can be retried
  * @param config - Speci configuration
+ * @param attemptCount - Current number of fix attempts
  * @returns true if under maxFixAttempts limit
  */
-export function canRetryGate(config: SpeciConfig): boolean {
-  return currentAttempt < config.gate.maxFixAttempts;
+export function canRetryGate(
+  config: SpeciConfig,
+  attemptCount: number
+): boolean {
+  return attemptCount < config.gate.maxFixAttempts;
 }

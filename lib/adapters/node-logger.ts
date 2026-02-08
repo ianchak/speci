@@ -4,7 +4,7 @@
  * Production implementation of ILogger that wraps the existing logger utility.
  */
 
-import { log, setLoggerProcess } from '@/utils/logger.js';
+import { log, setLoggerProcess, setVerbose } from '@/utils/logger.js';
 import type { ILogger, IProcess } from '@/interfaces.js';
 
 /**
@@ -39,5 +39,9 @@ export class NodeLogger implements ILogger {
 
   muted(message: string): void {
     log.muted(message);
+  }
+
+  setVerbose(enabled: boolean): void {
+    setVerbose(enabled);
   }
 }

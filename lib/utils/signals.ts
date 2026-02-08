@@ -51,7 +51,8 @@ const CLEANUP_TIMEOUT_MS = 5000;
 /**
  * Execute all registered cleanup functions in reverse order
  *
- * Safe to call multiple times - will only execute once.
+ * Safe to call multiple times - will only execute once per set of registered handlers.
+ * After cleanup completes, the flag is reset to allow new cleanup registrations and execution.
  * Continues cleanup even if individual functions throw errors.
  * Includes 5-second timeout to prevent hanging on slow cleanup handlers.
  */
@@ -89,16 +90,10 @@ export async function runCleanup(): Promise<void> {
   } catch (error) {
     console.error('Cleanup did not complete in time:', error);
     // Continue with exit anyway
+  } finally {
+    // Reset flag to allow future cleanup cycles (important for tests)
+    isCleaningUp = false;
   }
-}
-
-/**
- * Reset cleanup state (for testing)
- */
-export function resetCleanupState(): void {
-  cleanupRegistry.length = 0;
-  isCleaningUp = false;
-  signalReceived = false;
 }
 
 /**
@@ -166,5 +161,4 @@ export function removeSignalHandlers(): void {
     process.off('SIGHUP', handleSigterm);
   }
   signalReceived = false;
-  isCleaningUp = false;
 }

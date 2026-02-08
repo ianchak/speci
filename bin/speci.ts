@@ -16,7 +16,7 @@ import { refactor } from '../lib/commands/refactor.js';
 import { run } from '../lib/commands/run.js';
 import { status } from '../lib/commands/status.js';
 import { findSimilarCommands } from '../lib/utils/suggest.js';
-import { setVerbose, debug, log } from '../lib/utils/logger.js';
+import { debug, log } from '../lib/utils/logger.js';
 import { createProductionContext } from '../lib/adapters/context-factory.js';
 import { exitWithCleanup } from '../lib/utils/exit.js';
 import { PreflightError } from '../lib/utils/preflight.js';
@@ -63,7 +63,7 @@ program
     // Enable verbose mode if --verbose flag is set
     const opts = _thisCommand.opts();
     if (opts.verbose) {
-      setVerbose(true);
+      context.logger.setVerbose(true);
       debug('Verbose mode enabled');
       debug('Node version', process.version);
       debug('Platform', process.platform);

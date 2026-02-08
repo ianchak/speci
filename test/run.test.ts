@@ -7,7 +7,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { mkdirSync, rmSync, existsSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
-import { run, resetCleanupFlag } from '../lib/commands/run.js';
+import { run } from '../lib/commands/run.js';
 import * as config from '../lib/config.js';
 import * as state from '../lib/state.js';
 import * as lock from '../lib/utils/lock.js';
@@ -63,9 +63,6 @@ const mockConfig: SpeciConfig = {
 
 describe('Run Command', () => {
   beforeEach(() => {
-    // Reset cleanup flag
-    resetCleanupFlag();
-
     // Setup test directory
     if (existsSync(TEST_DIR)) {
       rmSync(TEST_DIR, { recursive: true, force: true });
@@ -78,7 +75,6 @@ describe('Run Command', () => {
     vi.spyOn(lock, 'isLocked').mockResolvedValue(false);
     vi.spyOn(lock, 'acquireLock').mockResolvedValue(undefined);
     vi.spyOn(lock, 'releaseLock').mockResolvedValue(undefined);
-    vi.spyOn(gate, 'resetGateAttempts').mockReturnValue(undefined);
   });
 
   afterEach(() => {

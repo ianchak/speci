@@ -8,11 +8,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { mkdirSync, rmSync, existsSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import {
-  registerCleanup,
-  runCleanup,
-  resetCleanupState,
-} from '../../lib/utils/signals.js';
+import { registerCleanup, runCleanup } from '../../lib/utils/signals.js';
 
 describe('Cleanup Integration', () => {
   const testDir = join(process.cwd(), '.test-cleanup-integration');
@@ -22,7 +18,6 @@ describe('Cleanup Integration', () => {
     if (!existsSync(testDir)) {
       mkdirSync(testDir, { recursive: true });
     }
-    resetCleanupState();
   });
 
   afterEach(() => {
@@ -30,7 +25,6 @@ describe('Cleanup Integration', () => {
     if (existsSync(testDir)) {
       rmSync(testDir, { recursive: true, force: true });
     }
-    resetCleanupState();
   });
 
   describe('Lock File Release', () => {
@@ -241,8 +235,8 @@ describe('Cleanup Integration', () => {
     });
   });
 
-  describe('Cleanup State Reset', () => {
-    it('should allow cleanup to run again after state reset', async () => {
+  describe('Cleanup State Management', () => {
+    it('should allow cleanup to run again after completion (self-resetting)', async () => {
       const cleanupLog: string[] = [];
 
       registerCleanup(() => {
@@ -253,9 +247,7 @@ describe('Cleanup Integration', () => {
 
       expect(cleanupLog).toEqual(['first-run']);
 
-      // Reset state
-      resetCleanupState();
-
+      // After cleanup completes, state is automatically reset
       // Register new cleanup and run again
       registerCleanup(() => {
         cleanupLog.push('second-run');

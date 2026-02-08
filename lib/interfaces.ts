@@ -197,6 +197,12 @@ export interface ILogger {
    * @param message - Message to log in muted style
    */
   muted(message: string): void;
+
+  /**
+   * Enable or disable verbose mode
+   * @param enabled - Whether to enable verbose mode
+   */
+  setVerbose(enabled: boolean): void;
 }
 
 /**

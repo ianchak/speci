@@ -79,6 +79,7 @@ export function createMockLogger(): ILogger {
     success: vi.fn(),
     debug: vi.fn(),
     muted: vi.fn(),
+    setVerbose: vi.fn(),
   };
 }
 
