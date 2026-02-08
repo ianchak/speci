@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { spawn } from 'node:child_process';
+import { spawn, type ChildProcess } from 'node:child_process';
 import { EventEmitter } from 'node:events';
 import {
   buildCopilotArgs,
@@ -534,5 +534,175 @@ describe('copilot', () => {
         }
       });
     });
+  });
+
+  describe('runAgent retry logic comprehensive tests', () => {
+    it('should handle retryable error codes (rate limit)', async () => {
+      let callCount = 0;
+      vi.mocked(spawn).mockImplementation(() => {
+        callCount++;
+        const proc = new EventEmitter() as ChildProcess;
+        proc.stdout = new EventEmitter() as never;
+        proc.stderr = new EventEmitter() as never;
+
+        setTimeout(() => {
+          if (callCount === 1) {
+            // First call fails with rate limit (retryable)
+            if (proc.stderr) {
+              proc.stderr.emit('data', 'Rate limit exceeded');
+            }
+            proc.emit('close', 429);
+          } else {
+            // Second call succeeds
+            proc.emit('close', 0);
+          }
+        }, 10);
+
+        return proc;
+      });
+
+      const result = await runAgent(config, 'test-agent', 'plan');
+
+      expect(result.isSuccess).toBe(true);
+      expect(callCount).toBeGreaterThan(1); // Should have retried
+    });
+
+    it('should skip retry for non-retryable exit codes', async () => {
+      let callCount = 0;
+      vi.mocked(spawn).mockImplementation(() => {
+        callCount++;
+        const proc = new EventEmitter() as ChildProcess;
+        proc.stdout = new EventEmitter() as never;
+        proc.stderr = new EventEmitter() as never;
+
+        setTimeout(() => {
+          if (proc.stderr) {
+            proc.stderr.emit('data', 'User error');
+          }
+          proc.emit('close', 1); // Exit code 1 (non-retryable)
+        }, 10);
+
+        return proc;
+      });
+
+      const result = await runAgent(config, 'test-agent', 'plan');
+
+      expect(result.isSuccess).toBe(false);
+      expect(callCount).toBe(1); // No retries for exit code 1
+      if (!result.isSuccess) {
+        // Error message format may vary, just check it exists
+        expect(result.error).toBeDefined();
+        expect(result.exitCode).toBe(1);
+      }
+    });
+
+    it('should handle network errors (exit code 52)', async () => {
+      let callCount = 0;
+      vi.mocked(spawn).mockImplementation(() => {
+        callCount++;
+        const proc = new EventEmitter() as ChildProcess;
+        proc.stdout = new EventEmitter() as never;
+        proc.stderr = new EventEmitter() as never;
+
+        setTimeout(() => {
+          if (proc.stderr) {
+            proc.stderr.emit('data', 'Network connection failed');
+          }
+          proc.emit('close', 52); // Network error (retryable)
+        }, 10);
+
+        return proc;
+      });
+
+      await runAgent(config, 'test-agent', 'plan');
+
+      // Should retry but eventually fail if all retries exhausted
+      expect(callCount).toBeGreaterThan(1);
+    }, 15000); // Increase timeout for retry delays
+
+    it('should handle timeout errors (exit code 124)', async () => {
+      let callCount = 0;
+      vi.mocked(spawn).mockImplementation(() => {
+        callCount++;
+        const proc = new EventEmitter() as ChildProcess;
+        proc.stdout = new EventEmitter() as never;
+        proc.stderr = new EventEmitter() as never;
+
+        setTimeout(() => {
+          if (proc.stderr) {
+            proc.stderr.emit('data', 'Command timed out');
+          }
+          proc.emit('close', 124); // Timeout (retryable)
+        }, 10);
+
+        return proc;
+      });
+
+      await runAgent(config, 'test-agent', 'plan');
+
+      // Should retry for timeout
+      expect(callCount).toBeGreaterThan(1);
+    }, 15000); // Increase timeout for retry delays
+
+    it('should return error with context when all retries exhausted', async () => {
+      let callCount = 0;
+      vi.mocked(spawn).mockImplementation(() => {
+        callCount++;
+        const proc = new EventEmitter() as ChildProcess;
+        proc.stdout = new EventEmitter() as never;
+        proc.stderr = new EventEmitter() as never;
+
+        setTimeout(() => {
+          if (proc.stderr) {
+            proc.stderr.emit('data', `Connection failed (attempt ${callCount})`);
+          }
+          proc.emit('close', 7); // Connection failure (retryable)
+        }, 10);
+
+        return proc;
+      });
+
+      const result = await runAgent(config, 'test-agent', 'plan');
+
+      expect(result.isSuccess).toBe(false);
+      expect(callCount).toBeGreaterThan(1); // Should have retried
+      if (!result.isSuccess) {
+        expect(result.error).toBeDefined();
+        expect(result.exitCode).toBe(7);
+      }
+    }, 15000); // Increase timeout for retry delays
+
+    it('should use exponential backoff for retries', async () => {
+      const timestamps: number[] = [];
+      let callCount = 0;
+
+      vi.mocked(spawn).mockImplementation(() => {
+        timestamps.push(Date.now());
+        callCount++;
+        const proc = new EventEmitter() as ChildProcess;
+        proc.stdout = new EventEmitter() as never;
+        proc.stderr = new EventEmitter() as never;
+
+        setTimeout(() => {
+          proc.emit('close', 429); // Rate limit (retryable)
+        }, 10);
+
+        return proc;
+      });
+
+      await runAgent(config, 'test-agent', 'plan');
+
+      // Should have made initial attempt + retries
+      expect(callCount).toBeGreaterThan(1);
+      expect(timestamps.length).toBeGreaterThan(1);
+
+      // Verify delays increase (exponential backoff)
+      if (timestamps.length >= 3) {
+        const delay1 = timestamps[1] - timestamps[0];
+        const delay2 = timestamps[2] - timestamps[1];
+        // Second delay should be longer than first (exponential growth)
+        expect(delay2).toBeGreaterThan(delay1 * 1.5);
+      }
+    }, 15000); // Increase timeout for retry delays
   });
 });

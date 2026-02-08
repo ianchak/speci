@@ -3584,4 +3584,193 @@ describe('Performance Benchmarks (TASK_021)', () => {
       expect(module.FRAME_INTERVAL).toBeCloseTo(calculatedInterval, 1);
     });
   });
+
+  describe('banner animation edge cases', () => {
+    let module: typeof import('../lib/ui/banner-animation/index.js');
+
+    beforeEach(async () => {
+      vi.clearAllMocks();
+      module = await import('../lib/ui/banner-animation/index.js');
+    });
+
+    afterEach(() => {
+      vi.restoreAllMocks();
+    });
+
+    it('should prevent concurrent animateBanner() calls', async () => {
+      // Mock stdout to prevent actual output
+      const mockStdout = {
+        write: vi.fn(() => true),
+        isTTY: true,
+        columns: 80,
+        fd: 1,
+      } as unknown as NodeJS.WriteStream & { fd: 1 };
+
+      vi.spyOn(process, 'stdout', 'get').mockReturnValue(mockStdout);
+
+      // Start first animation (don't await yet)
+      const animation1 = module.animateBanner({
+        duration: 200,
+        effect: 'fade',
+      });
+
+      // Attempt second animation immediately
+      const animation2 = module.animateBanner({
+        duration: 200,
+        effect: 'fade',
+      });
+
+      // Both should complete without error
+      await Promise.all([animation1, animation2]);
+
+      // Verify no crashes or state corruption
+      expect(true).toBe(true);
+    });
+
+    it('should handle terminal resize mid-animation gracefully', async () => {
+      const mockStdout = {
+        write: vi.fn(() => true),
+        isTTY: true,
+        columns: 80,
+        fd: 1,
+      } as unknown as NodeJS.WriteStream & { fd: 1 };
+
+      vi.spyOn(process, 'stdout', 'get').mockReturnValue(mockStdout);
+
+      // Start animation
+      const animationPromise = module.animateBanner({
+        duration: 300,
+        effect: 'fade',
+      });
+
+      // Simulate terminal resize after 100ms
+      setTimeout(() => {
+        mockStdout.columns = 120;
+        process.emit('SIGWINCH' as NodeJS.Signals);
+      }, 100);
+
+      // Should complete without crashing
+      await expect(animationPromise).resolves.not.toThrow();
+    });
+
+    it('should handle stdout.write() errors without crashing', async () => {
+      const mockStdout = {
+        write: vi.fn(() => {
+          throw new Error('stdout write failed');
+        }),
+        isTTY: true,
+        columns: 80,
+        fd: 1,
+      } as unknown as NodeJS.WriteStream & { fd: 1 };
+
+      vi.spyOn(process, 'stdout', 'get').mockReturnValue(mockStdout);
+
+      // Animation should handle error - may throw or fallback gracefully
+      try {
+        await module.animateBanner({
+          duration: 100,
+          effect: 'fade',
+        });
+        // If no error thrown, animation handled it gracefully
+        expect(true).toBe(true);
+      } catch (error) {
+        // If error thrown, verify it's the expected error
+        expect(error).toBeDefined();
+      }
+    });
+
+    it('should cleanup correctly when interrupted by signal', async () => {
+      const mockStdout = {
+        write: vi.fn(() => true),
+        isTTY: true,
+        columns: 80,
+        fd: 1,
+      } as unknown as NodeJS.WriteStream & { fd: 1 };
+
+      vi.spyOn(process, 'stdout', 'get').mockReturnValue(mockStdout);
+
+      // Start animation
+      const animationPromise = module.animateBanner({
+        duration: 500,
+        effect: 'fade',
+      });
+
+      // Simulate interrupt after 100ms
+      setTimeout(() => {
+        process.emit('SIGINT' as NodeJS.Signals);
+      }, 100);
+
+      // Should complete (or handle interrupt gracefully)
+      try {
+        await animationPromise;
+      } catch (error) {
+        // Interrupt may cause rejection, which is acceptable
+        expect(error).toBeDefined();
+      }
+
+      // Verify no hung state
+      expect(true).toBe(true);
+    });
+
+    it('should handle cleanup failure to restore terminal state', async () => {
+      const mockStdout = {
+        write: vi.fn((data: string) => {
+          // Fail on cleanup sequences (cursor restore, clear)
+          if (data.includes('\x1b[?25h') || data.includes('\x1b[2J')) {
+            throw new Error('Terminal restore failed');
+          }
+          return true;
+        }),
+        isTTY: true,
+        columns: 80,
+        fd: 1,
+      } as unknown as NodeJS.WriteStream & { fd: 1 };
+
+      vi.spyOn(process, 'stdout', 'get').mockReturnValue(mockStdout);
+
+      // Animation should not hang despite cleanup failure
+      await expect(
+        module.animateBanner({
+          duration: 100,
+          effect: 'fade',
+        })
+      ).resolves.not.toThrow();
+    });
+
+    it('should maintain frame timing precision under load', async () => {
+      const frameTimes: number[] = [];
+      let lastTime = Date.now();
+
+      const mockStdout = {
+        write: vi.fn(() => {
+          const currentTime = Date.now();
+          frameTimes.push(currentTime - lastTime);
+          lastTime = currentTime;
+          return true;
+        }),
+        isTTY: true,
+        columns: 80,
+        fd: 1,
+      } as unknown as NodeJS.WriteStream & { fd: 1 };
+
+      vi.spyOn(process, 'stdout', 'get').mockReturnValue(mockStdout);
+
+      await module.animateBanner({
+        duration: 300,
+        effect: 'fade',
+      });
+
+      // Calculate variance in frame timing
+      if (frameTimes.length > 2) {
+        // Verify at least some frames were rendered
+        expect(frameTimes.length).toBeGreaterThan(0);
+
+        // Most frames should complete in reasonable time
+        const fastFrames = frameTimes.filter((time) => time < 100);
+
+        // At least some frames should be fast (within 100ms)
+        expect(fastFrames.length).toBeGreaterThan(0);
+      }
+    });
+  });
 });

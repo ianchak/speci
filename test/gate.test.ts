@@ -705,4 +705,71 @@ describe('Gate Runner', () => {
       });
     });
   });
+
+  describe('gate timeout edge cases', () => {
+    it('should timeout long-running command', async () => {
+      // Create a command that exceeds timeout
+      const result = await executeGateCommand(
+        'node -e "setTimeout(() => {}, 2000)"',
+        { timeout: 200 }
+      );
+
+      expect(result.isSuccess).toBe(false);
+      expect(result.exitCode).toBe(124); // Timeout exit code
+      expect(result.error).toContain('timed out');
+    });
+
+    it('should allow second command to succeed after first times out', async () => {
+      // First command times out
+      const result1 = await executeGateCommand(
+        'node -e "setTimeout(() => {}, 2000)"',
+        { timeout: 100 }
+      );
+
+      expect(result1.isSuccess).toBe(false);
+      expect(result1.exitCode).toBe(124);
+
+      // Second command succeeds - verifies cleanup doesn't affect subsequent commands
+      const result2 = await executeGateCommand('echo success');
+
+      expect(result2.isSuccess).toBe(true);
+      expect(result2.exitCode).toBe(0);
+      expect(result2.output).toContain('success');
+    });
+
+    it('should return consistent exit code for timeouts', async () => {
+      const result = await executeGateCommand(
+        'node -e "setTimeout(() => {}, 1000)"',
+        { timeout: 100 }
+      );
+
+      // Explicitly verify timeout exit code
+      expect(result.exitCode).toBe(124);
+      expect(result.isSuccess).toBe(false);
+      expect(result.error).toBeDefined();
+      expect(result.error).toContain('timed out');
+    });
+
+    it('should measure duration for timeout (within reason)', async () => {
+      const result = await executeGateCommand(
+        'node -e "setTimeout(() => {}, 1000)"',
+        { timeout: 200 }
+      );
+
+      expect(result.isSuccess).toBe(false);
+      expect(result.exitCode).toBe(124);
+      // Duration should be at least the timeout value
+      expect(result.duration).toBeGreaterThanOrEqual(180);
+    });
+
+    it('should handle very short timeouts gracefully', async () => {
+      const result = await executeGateCommand(
+        'node -e "setTimeout(() => {}, 500)"',
+        { timeout: 50 }
+      );
+
+      expect(result.isSuccess).toBe(false);
+      expect(result.exitCode).toBe(124);
+    });
+  });
 });

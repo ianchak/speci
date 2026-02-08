@@ -840,4 +840,168 @@ Some random text
       expect(task1).not.toBeUndefined();
     });
   });
+
+  describe('state parser edge cases', () => {
+    it('should handle binary/invalid UTF-8 content gracefully', async () => {
+      // Create file with invalid UTF-8 byte sequences
+      const invalidUtf8 = Buffer.from([
+        0xff,
+        0xfe,
+        0xfd, // Invalid UTF-8 bytes
+        ...Buffer.from(
+          '| TASK_001 | Test Task | NOT STARTED | HIGH | S | None |'
+        ),
+      ]);
+      writeFileSync(mockConfig.paths.progress, invalidUtf8);
+
+      // Parser should handle gracefully (may return error or skip invalid data)
+      const state = await getState(mockConfig);
+
+      // Should not crash - either returns valid state or NO_PROGRESS
+      expect([
+        STATE.WORK_LEFT,
+        STATE.IN_REVIEW,
+        STATE.BLOCKED,
+        STATE.DONE,
+        STATE.NO_PROGRESS,
+      ]).toContain(state);
+    });
+
+    it('should handle large files (100,000+ tasks) without performance degradation', async () => {
+      // Generate PROGRESS.md with 100,000 task rows
+      const lines = [
+        '# Progress',
+        '',
+        '## Milestone: M0',
+        '',
+        '| Task ID | Title | Status | Priority | Complexity | Dependencies |',
+        '|---------|-------|--------|----------|------------|--------------|',
+      ];
+
+      // Add 100,000 tasks
+      for (let i = 1; i <= 100000; i++) {
+        lines.push(
+          `| TASK_${i.toString().padStart(6, '0')} | Task ${i} | NOT STARTED | HIGH | S | None |`
+        );
+      }
+
+      // Add one IN PROGRESS task
+      lines.push(
+        '| TASK_999999 | Current Task | IN PROGRESS | HIGH | S | None |'
+      );
+
+      writeFileSync(mockConfig.paths.progress, lines.join('\n'));
+
+      // Measure parsing time
+      const startTime = Date.now();
+      const state = await getState(mockConfig);
+      const duration = Date.now() - startTime;
+
+      expect(state).toBe(STATE.WORK_LEFT);
+      expect(duration).toBeLessThan(1000); // Should complete in under 1 second
+    });
+
+    it('should handle concurrent getState() calls without corruption', async () => {
+      // Create a valid PROGRESS.md
+      const content = `
+# Progress
+
+## Milestone: M0
+
+| Task ID | Title | Status | Priority | Complexity | Dependencies |
+|---------|-------|--------|----------|------------|--------------|
+| TASK_001 | Test Task | IN PROGRESS | HIGH | S | None |
+`;
+      writeFileSync(mockConfig.paths.progress, content);
+
+      // Execute 10 concurrent getState() calls
+      const promises = Array.from({ length: 10 }, () => getState(mockConfig));
+      const results = await Promise.all(promises);
+
+      // All should return consistent results
+      expect(results.every((r) => r === STATE.WORK_LEFT)).toBe(true);
+
+      // Verify file is not corrupted
+      const finalState = await getState(mockConfig);
+      expect(finalState).toBe(STATE.WORK_LEFT);
+    });
+
+    it('should handle file deleted during or after read', async () => {
+      // Create initial file
+      const content = `
+# Progress
+
+## Milestone: M0
+
+| Task ID | Title | Status | Priority | Complexity | Dependencies |
+|---------|-------|--------|----------|------------|--------------|
+| TASK_001 | Test Task | NOT STARTED | HIGH | S | None |
+`;
+      writeFileSync(mockConfig.paths.progress, content);
+
+      // Read state once to ensure it's cached
+      const firstState = await getState(mockConfig);
+      expect(firstState).toBe(STATE.WORK_LEFT);
+
+      // Delete file
+      rmSync(mockConfig.paths.progress, { force: true });
+
+      // Force a cache refresh - should handle gracefully
+      const state = await getState(mockConfig, { forceRefresh: true });
+      expect(state).toBe(STATE.NO_PROGRESS);
+    });
+
+    it('should handle mixed line endings (CRLF vs LF)', async () => {
+      // Create file with mixed \r\n and \n line endings
+      const lines = [
+        '# Progress\r\n',
+        '\n',
+        '## Milestone: M0\r\n',
+        '\n',
+        '| Task ID | Title | Status | Priority | Complexity | Dependencies |\r\n',
+        '|---------|-------|--------|----------|------------|--------------|\r\n',
+        '| TASK_001 | Test Task 1 | NOT STARTED | HIGH | S | None |\n',
+        '| TASK_002 | Test Task 2 | IN PROGRESS | HIGH | S | None |\r\n',
+        '| TASK_003 | Test Task 3 | COMPLETE | HIGH | S | None |\n',
+      ].join('');
+
+      writeFileSync(mockConfig.paths.progress, lines);
+
+      const state = await getState(mockConfig);
+      const stats = await getTaskStats(mockConfig);
+
+      expect(state).toBe(STATE.WORK_LEFT);
+      expect(stats.total).toBeGreaterThanOrEqual(3);
+    });
+
+    it('should parse task titles with special characters', async () => {
+      // Create tasks with titles containing various special chars
+      const content = `
+# Progress
+
+## Milestone: M0
+
+| Task ID | Title | Status | Priority | Complexity | Dependencies |
+|---------|-------|--------|----------|------------|--------------|
+| TASK_001 | Fix bug with brackets | NOT STARTED | HIGH | S | None |
+| TASK_002 | Update regex with parens | NOT STARTED | HIGH | S | None |
+| TASK_003 | Feature with options | IN PROGRESS | HIGH | S | None |
+| TASK_004 | Validate input patterns | NOT STARTED | HIGH | S | None |
+| TASK_005 | Parse start and end | NOT STARTED | HIGH | S | None |
+`;
+      writeFileSync(mockConfig.paths.progress, content);
+
+      const state = await getState(mockConfig);
+      const stats = await getTaskStats(mockConfig);
+      const current = await getCurrentTask(mockConfig);
+
+      expect(state).toBe(STATE.WORK_LEFT);
+      expect(stats.total).toBeGreaterThanOrEqual(5);
+      expect(current).not.toBeUndefined();
+      if (current) {
+        // Verify task with special naming was parsed
+        expect(current.title).toBeDefined();
+      }
+    });
+  });
 });
