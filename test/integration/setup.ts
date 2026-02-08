@@ -39,6 +39,10 @@ export async function createTestProject(): Promise<TestProject> {
   await mkdir(join(root, 'docs'), { recursive: true });
   await mkdir(tasksDir, { recursive: true });
   await mkdir(logsDir, { recursive: true });
+  await mkdir(join(root, '.github', 'agents'), { recursive: true });
+
+  // Create mock agent files
+  await createMockAgentFiles(root);
 
   // Create a default config file
   const defaultConfig: SpeciConfig = {
@@ -243,6 +247,30 @@ if (${shouldSucceed}) {
 `;
 
   await writeFile(path, script, { mode: 0o755 });
+}
+
+/**
+ * Create mock agent files for testing
+ * @param root - Project root directory
+ */
+async function createMockAgentFiles(root: string): Promise<void> {
+  const agentsDir = join(root, '.github', 'agents');
+  const agents = ['plan', 'task', 'refactor', 'impl', 'review', 'fix', 'tidy'];
+
+  for (const agent of agents) {
+    const agentPath = join(agentsDir, `speci-${agent}.agent.md`);
+    const content = `---
+name: speci-${agent}
+description: Mock ${agent} agent for integration testing
+---
+
+# ${agent.charAt(0).toUpperCase() + agent.slice(1)} Agent
+
+This is a mock agent file used for integration testing.
+It provides minimal valid content to satisfy agent file validation.
+`;
+    await writeFile(agentPath, content);
+  }
 }
 
 /**

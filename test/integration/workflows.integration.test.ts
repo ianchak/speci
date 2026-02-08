@@ -12,7 +12,6 @@ import initCommand from '@/commands/init.js';
 import planCommand from '@/commands/plan.js';
 import taskCommand from '@/commands/task.js';
 import { createProductionContext } from '@/adapters/context-factory.js';
-import * as copilot from '@/copilot.js';
 
 describe('Workflow Integration', () => {
   let testProject: TestProject;
@@ -49,15 +48,13 @@ describe('Workflow Integration', () => {
         );
 
         // Mock Copilot for plan command
-        const planMock = vi.spyOn(copilot, 'runAgent').mockResolvedValueOnce({
-          isSuccess: true,
-          exitCode: 0,
-        });
+        const mockSpawn = vi
+          .spyOn(context.copilotRunner, 'spawn')
+          .mockResolvedValue(0);
 
         // Step 3: Plan
         const planResult = await planCommand({ prompt: 'feature.md' }, context);
         expect(planResult.success).toBe(true);
-        expect(planMock).toHaveBeenCalledTimes(1);
 
         // Step 4: Create PROGRESS.md (simulating plan output)
         const progressContent = `# Project Progress
@@ -97,16 +94,12 @@ Last Review ID: RA-20260207-001
         const planPath = join(testProject.root, 'docs', 'plan.md');
         await fs.writeFile(planPath, '# Plan\n\nDetailed plan');
 
-        // Mock Copilot for task command
-        const taskMock = vi.spyOn(copilot, 'runAgent').mockResolvedValueOnce({
-          isSuccess: true,
-          exitCode: 0,
-        });
-
-        // Step 5: Task
+        // Step 5: Task (using same mock)
         const taskResult = await taskCommand({ plan: 'docs/plan.md' }, context);
         expect(taskResult.success).toBe(true);
-        expect(taskMock).toHaveBeenCalledTimes(1);
+
+        // Verify spawn was called for both commands
+        expect(mockSpawn).toHaveBeenCalledTimes(2);
 
         // Verify all artifacts exist
         expect(fileExists(testProject.configPath)).toBe(true);
@@ -130,14 +123,14 @@ Last Review ID: RA-20260207-001
         const initResult = await initCommand({}, context);
         expect(initResult.success).toBe(true);
 
-        // Step 2: Plan should fail with missing source
-        const planResult = await planCommand(
-          { prompt: 'nonexistent.md' },
-          context
-        );
+        // Step 2: Plan should fail - prompt is text, not a file
+        // The plan command requires either a --prompt (text) or --input (file)
+        // Just passing text as prompt should work, but we need to test failure
+        // Let's test that without input it fails
+        const planResult = await planCommand({}, context);
         expect(planResult.success).toBe(false);
 
-        // Step 3: Create source and try again
+        // Step 3: Create source and mock Copilot failure
         const featurePath = join(testProject.root, 'feature.md');
         await fs.writeFile(
           featurePath,
@@ -145,11 +138,7 @@ Last Review ID: RA-20260207-001
         );
 
         // Mock Copilot failure
-        vi.spyOn(copilot, 'runAgent').mockResolvedValue({
-          isSuccess: false,
-          exitCode: 1,
-          error: 'Copilot unavailable',
-        });
+        vi.spyOn(context.copilotRunner, 'spawn').mockResolvedValue(1);
 
         const planResult2 = await planCommand(
           { prompt: 'feature.md' },

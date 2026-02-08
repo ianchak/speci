@@ -94,7 +94,7 @@ describe('Init Command Integration', () => {
     }
   });
 
-  it('should create .github/copilot directory structure', async () => {
+  it('should create .github/agents directory structure', async () => {
     const originalCwd = process.cwd();
     process.chdir(testProject.root);
 
@@ -105,7 +105,7 @@ describe('Init Command Integration', () => {
       const context = createProductionContext();
       await initCommand({}, context);
 
-      const githubDir = join(testProject.root, '.github', 'copilot');
+      const githubDir = join(testProject.root, '.github', 'agents');
       expect(fileExists(githubDir)).toBe(true);
     } finally {
       process.chdir(originalCwd);
@@ -120,7 +120,11 @@ describe('Init Command Integration', () => {
       const fs = await import('node:fs/promises');
       await fs.rm(testProject.configPath, { force: true });
 
-      // Create a file where a directory should be
+      // Remove docs directory and create a file in its place
+      await fs.rm(join(testProject.root, 'docs'), {
+        recursive: true,
+        force: true,
+      });
       const badPath = join(testProject.root, 'docs');
       await fs.writeFile(badPath, 'blocking file');
 

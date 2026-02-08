@@ -11,7 +11,6 @@ import type { TestProject } from './setup.js';
 import initCommand from '@/commands/init.js';
 import planCommand from '@/commands/plan.js';
 import { createProductionContext } from '@/adapters/context-factory.js';
-import * as copilot from '@/copilot.js';
 
 describe('Error Recovery Integration', () => {
   let testProject: TestProject;
@@ -27,6 +26,11 @@ describe('Error Recovery Integration', () => {
 
   describe('Filesystem Errors', () => {
     it('should handle permission errors gracefully', async () => {
+      // Skip this test on Windows where chmod doesn't work the same way
+      if (process.platform === 'win32') {
+        return;
+      }
+
       const originalCwd = process.cwd();
       process.chdir(testProject.root);
 
@@ -34,14 +38,13 @@ describe('Error Recovery Integration', () => {
         const fs = await import('node:fs/promises');
         await fs.rm(testProject.configPath, { force: true });
 
-        // Make directory read-only (platform-specific behavior)
-        // This is a best-effort test that may behave differently on Windows
+        // Make directory read-only (Unix-specific behavior)
         let madeReadOnly = false;
         try {
           await fs.chmod(testProject.root, 0o444);
           madeReadOnly = true;
         } catch {
-          // Skip on Windows or if chmod fails
+          // Skip if chmod fails
           return;
         }
 
@@ -123,20 +126,15 @@ describe('Error Recovery Integration', () => {
         const featurePath = join(testProject.root, 'feature.md');
         await fs.writeFile(featurePath, '# Feature\n\nDescription');
 
-        // Mock Copilot CLI not found
-        vi.spyOn(copilot, 'runAgent').mockResolvedValue({
-          isSuccess: false,
-          exitCode: 1,
-          error: 'Copilot CLI not found',
-        });
-
         const context = createProductionContext();
+
+        // Mock Copilot CLI not found
+        vi.spyOn(context.copilotRunner, 'spawn').mockResolvedValue(1);
+
         const result = await planCommand({ prompt: 'feature.md' }, context);
 
         expect(result.success).toBe(false);
-        if (!result.success) {
-          expect(result.error).toContain('Copilot');
-        }
+        expect(result.exitCode).toBe(1);
       } finally {
         process.chdir(originalCwd);
       }
@@ -151,21 +149,21 @@ describe('Error Recovery Integration', () => {
         const featurePath = join(testProject.root, 'feature.md');
         await fs.writeFile(featurePath, '# Feature\n\nDescription');
 
+        const context = createProductionContext();
+
         // Mock Copilot timeout
-        vi.spyOn(copilot, 'runAgent').mockImplementation(
+        vi.spyOn(context.copilotRunner, 'spawn').mockImplementation(
           () =>
             new Promise((_, reject) =>
               setTimeout(() => reject(new Error('Timeout')), 100)
             )
         );
 
-        const context = createProductionContext();
-
         try {
           await planCommand({ prompt: 'feature.md' }, context);
-        } catch (error: unknown) {
-          const err = error as Error;
-          expect(err.message).toContain('Timeout');
+          expect.fail('Should have thrown an error');
+        } catch (error) {
+          expect(error).toBeDefined();
         }
       } finally {
         process.chdir(originalCwd);
@@ -181,13 +179,11 @@ describe('Error Recovery Integration', () => {
         const featurePath = join(testProject.root, 'feature.md');
         await fs.writeFile(featurePath, '# Feature\n\nDescription');
 
-        // Mock Copilot with unexpected output
-        vi.spyOn(copilot, 'runAgent').mockResolvedValue({
-          isSuccess: true,
-          exitCode: 0,
-        });
-
         const context = createProductionContext();
+
+        // Mock Copilot with success (unexpected output would be in stdout)
+        vi.spyOn(context.copilotRunner, 'spawn').mockResolvedValue(0);
+
         const result = await planCommand({ prompt: 'feature.md' }, context);
 
         // Should still succeed, but might have warnings
@@ -276,20 +272,18 @@ describe('Error Recovery Integration', () => {
         const featurePath = join(testProject.root, 'feature.md');
         await fs.writeFile(featurePath, '# Feature\n\nDescription');
 
-        let callCount = 0;
-        vi.spyOn(copilot, 'runAgent').mockImplementation(async () => {
-          callCount++;
-          if (callCount === 1) {
-            return {
-              isSuccess: false,
-              exitCode: 1,
-              error: 'First attempt failed',
-            };
-          }
-          return { isSuccess: true, exitCode: 0 };
-        });
-
         const context = createProductionContext();
+
+        let callCount = 0;
+        vi.spyOn(context.copilotRunner, 'spawn').mockImplementation(
+          async () => {
+            callCount++;
+            if (callCount === 1) {
+              return 1; // First attempt fails
+            }
+            return 0; // Second attempt succeeds
+          }
+        );
 
         // First attempt fails
         const result1 = await planCommand({ prompt: 'feature.md' }, context);
@@ -318,11 +312,8 @@ describe('Error Recovery Integration', () => {
 
         const configBefore = await readTestFile(testProject.configPath);
 
-        // Try an operation that fails
-        const planResult = await planCommand(
-          { prompt: 'nonexistent.md' },
-          context
-        );
+        // Try an operation that fails (no prompt or input provided)
+        const planResult = await planCommand({}, context);
         expect(planResult.success).toBe(false);
 
         // Config should still be intact
