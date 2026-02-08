@@ -12,6 +12,7 @@ import { infoBox } from '@/ui/box.js';
 import { createProductionContext } from '@/adapters/context-factory.js';
 import { initializeCommand } from '@/utils/command-helpers.js';
 import { handleCommandError } from '@/utils/error-handler.js';
+import { executeCopilotCommand } from '@/utils/copilot-helper.js';
 import type { CommandContext, CommandResult } from '@/interfaces.js';
 import type { SpeciConfig } from '@/config.js';
 
@@ -131,16 +132,8 @@ export async function task(
       command: 'task',
     });
 
-    // Spawn Copilot with stdio:inherit
-    context.logger.debug(`Spawning: copilot ${args.join(' ')}`);
-    const exitCode = await context.copilotRunner.spawn(args, { inherit: true });
-
-    // Return result with exit code
-    if (exitCode === 0) {
-      return { success: true, exitCode: 0 };
-    } else {
-      return { success: false, exitCode };
-    }
+    // Execute copilot command with standard pattern
+    return await executeCopilotCommand(context, args);
   } catch (error) {
     // Special handling for agent file not found
     if (
