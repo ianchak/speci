@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { mkdirSync, rmSync, writeFileSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
-import { loadConfig } from '../lib/config.js';
+import { loadConfig, resetConfigCache } from '../lib/config.js';
 import type { IProcess } from '../lib/interfaces.js';
 
 describe('config with IProcess parameter', () => {
@@ -13,6 +13,7 @@ describe('config with IProcess parameter', () => {
     originalCwd = process.cwd();
     testDir = join(tmpdir(), `speci-test-config-process-${Date.now()}`);
     mkdirSync(testDir, { recursive: true });
+    resetConfigCache();
   });
 
   afterEach(() => {
@@ -40,7 +41,7 @@ describe('config with IProcess parameter', () => {
     };
 
     // Load config with mock process
-    const config = await loadConfig(mockProcess);
+    const config = await loadConfig({ processParam: mockProcess });
 
     expect(config).toBeDefined();
     expect(config.version).toBe('1.0.0');
@@ -72,7 +73,7 @@ describe('config with IProcess parameter', () => {
     };
 
     // Load config with mock process
-    const config = await loadConfig(mockProcess);
+    const config = await loadConfig({ processParam: mockProcess });
 
     // Verify env override was applied
     expect(config.gate.maxFixAttempts).toBe(7);
@@ -108,7 +109,7 @@ describe('config with IProcess parameter', () => {
       on: vi.fn(),
     };
 
-    const config = await loadConfig(mockProcess);
+    const config = await loadConfig({ processParam: mockProcess });
 
     expect(config).toBeDefined();
     // Should use defaults when no env overrides present

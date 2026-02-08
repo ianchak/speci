@@ -50,7 +50,9 @@ describe('Banner Animation Terminal Module', () => {
     it.skip('should return false when rows is undefined (non-TTY)', async () => {
       const module = await import('@/ui/banner-animation/terminal.js');
 
-      vi.spyOn(process.stdout, 'rows', 'get').mockReturnValue(undefined as unknown as number);
+      vi.spyOn(process.stdout, 'rows', 'get').mockReturnValue(
+        undefined as unknown as number
+      );
       expect(module.hasMinimumHeight()).toBe(false);
     });
 
@@ -66,7 +68,10 @@ describe('Banner Animation Terminal Module', () => {
     it.skip('should return false when --no-color flag is set', async () => {
       const module = await import('@/ui/banner-animation/terminal.js');
 
-      Object.defineProperty(process.stdout, 'isTTY', { value: true, writable: true });
+      Object.defineProperty(process.stdout, 'isTTY', {
+        value: true,
+        writable: true,
+      });
       vi.spyOn(process.stdout, 'rows', 'get').mockReturnValue(20);
       vi.spyOn(process.stdout, 'columns', 'get').mockReturnValue(80);
 
@@ -78,7 +83,10 @@ describe('Banner Animation Terminal Module', () => {
       const module = await import('@/ui/banner-animation/terminal.js');
 
       process.env.NO_COLOR = '1';
-      Object.defineProperty(process.stdout, 'isTTY', { value: true, writable: true });
+      Object.defineProperty(process.stdout, 'isTTY', {
+        value: true,
+        writable: true,
+      });
       vi.spyOn(process.stdout, 'rows', 'get').mockReturnValue(20);
       vi.spyOn(process.stdout, 'columns', 'get').mockReturnValue(80);
 
@@ -90,7 +98,10 @@ describe('Banner Animation Terminal Module', () => {
       const module = await import('@/ui/banner-animation/terminal.js');
 
       process.env.SPECI_NO_ANIMATION = '1';
-      Object.defineProperty(process.stdout, 'isTTY', { value: true, writable: true });
+      Object.defineProperty(process.stdout, 'isTTY', {
+        value: true,
+        writable: true,
+      });
       vi.spyOn(process.stdout, 'rows', 'get').mockReturnValue(20);
       vi.spyOn(process.stdout, 'columns', 'get').mockReturnValue(80);
 
@@ -101,7 +112,10 @@ describe('Banner Animation Terminal Module', () => {
     it.skip('should return false when not TTY', async () => {
       const module = await import('@/ui/banner-animation/terminal.js');
 
-      Object.defineProperty(process.stdout, 'isTTY', { value: false, writable: true });
+      Object.defineProperty(process.stdout, 'isTTY', {
+        value: false,
+        writable: true,
+      });
 
       const result = module.shouldAnimate();
       expect(result).toBe(false);
@@ -110,7 +124,10 @@ describe('Banner Animation Terminal Module', () => {
     it.skip('should return false when terminal width < 40', async () => {
       const module = await import('@/ui/banner-animation/terminal.js');
 
-      Object.defineProperty(process.stdout, 'isTTY', { value: true, writable: true });
+      Object.defineProperty(process.stdout, 'isTTY', {
+        value: true,
+        writable: true,
+      });
       vi.spyOn(process.stdout, 'rows', 'get').mockReturnValue(20);
       vi.spyOn(process.stdout, 'columns', 'get').mockReturnValue(39);
 
@@ -121,7 +138,10 @@ describe('Banner Animation Terminal Module', () => {
     it.skip('should return false when terminal height < 10', async () => {
       const module = await import('@/ui/banner-animation/terminal.js');
 
-      Object.defineProperty(process.stdout, 'isTTY', { value: true, writable: true });
+      Object.defineProperty(process.stdout, 'isTTY', {
+        value: true,
+        writable: true,
+      });
       vi.spyOn(process.stdout, 'rows', 'get').mockReturnValue(9);
       vi.spyOn(process.stdout, 'columns', 'get').mockReturnValue(80);
 
@@ -132,9 +152,16 @@ describe('Banner Animation Terminal Module', () => {
     it.skip('should use default dimensions when undefined', async () => {
       const module = await import('@/ui/banner-animation/terminal.js');
 
-      Object.defineProperty(process.stdout, 'isTTY', { value: true, writable: true });
-      vi.spyOn(process.stdout, 'rows', 'get').mockReturnValue(undefined as unknown as number);
-      vi.spyOn(process.stdout, 'columns', 'get').mockReturnValue(undefined as unknown as number);
+      Object.defineProperty(process.stdout, 'isTTY', {
+        value: true,
+        writable: true,
+      });
+      vi.spyOn(process.stdout, 'rows', 'get').mockReturnValue(
+        undefined as unknown as number
+      );
+      vi.spyOn(process.stdout, 'columns', 'get').mockReturnValue(
+        undefined as unknown as number
+      );
 
       // Should use defaults: 80x24, which passes both checks
       const result = module.shouldAnimate();

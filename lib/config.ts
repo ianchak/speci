@@ -17,6 +17,9 @@ import type { SpeciConfig } from '@/types.js';
 // Re-export SpeciConfig for backward compatibility
 export type { SpeciConfig } from '@/types.js';
 
+// Config cache for memoization (singleton pattern with lazy initialization)
+let cachedConfig: SpeciConfig | null = null;
+
 // Get the directory of the compiled output
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -109,6 +112,31 @@ function findConfigFile(startDir: string): string | null {
     }
     currentDir = parentDir;
   }
+}
+
+/**
+ * Deep freeze an object and all nested objects for immutability
+ * @param obj - Object to freeze
+ * @returns Frozen object
+ */
+function deepFreeze<T>(obj: T): T {
+  // Freeze the object itself
+  Object.freeze(obj);
+
+  // Recursively freeze all properties
+  Object.getOwnPropertyNames(obj).forEach((prop) => {
+    const value = (obj as Record<string, unknown>)[prop];
+
+    if (
+      value !== null &&
+      typeof value === 'object' &&
+      !Object.isFrozen(value)
+    ) {
+      deepFreeze(value);
+    }
+  });
+
+  return obj;
 }
 
 /**
@@ -485,20 +513,42 @@ function applyEnvOverrides(config: SpeciConfig, proc: IProcess): void {
  * Searches for speci.config.json starting from cwd, walking up parent directories.
  * Applies defaults and environment variable overrides.
  *
- * @param processParam - Optional IProcess instance for testing (defaults to global process)
- * @returns Validated SpeciConfig object
+ * Uses singleton pattern with lazy initialization - config is loaded once and cached
+ * for the process lifetime. Subsequent calls return the cached instance.
+ *
+ * @param options - Optional configuration options
+ * @param options.forceReload - Force reload from disk, bypassing cache
+ * @param options.processParam - Optional IProcess instance for testing (defaults to global process)
+ * @returns Validated SpeciConfig object (frozen for immutability)
  * @throws {Error} ERR-INP-03 if config file is malformed JSON
  * @throws {Error} ERR-INP-04 if config fails schema validation
  *
  * @example
  * ```typescript
+ * // First call - loads from disk
  * const config = loadConfig();
  * console.log(config.paths.progress); // 'docs/PROGRESS.md'
+ *
+ * // Subsequent calls - returns cached instance
+ * const config2 = loadConfig();
+ * console.log(config === config2); // true
+ *
+ * // Force reload if needed (testing/development)
+ * const config3 = loadConfig({ forceReload: true });
  * ```
  */
-export function loadConfig(processParam?: IProcess): SpeciConfig {
+export function loadConfig(options?: {
+  forceReload?: boolean;
+  processParam?: IProcess;
+}): SpeciConfig {
+  // Check cache unless forceReload requested
+  if (cachedConfig && !options?.forceReload) {
+    log.debug('Config cache hit');
+    return cachedConfig;
+  }
+
   const startTime = performance.now();
-  const proc = processParam || process;
+  const proc = options?.processParam || process;
 
   // Find config file
   const configPath = findConfigFile(proc.cwd());
@@ -524,10 +574,57 @@ export function loadConfig(processParam?: IProcess): SpeciConfig {
   // Apply environment variable overrides
   applyEnvOverrides(config, proc);
 
+  // Deep freeze for immutability
+  const frozenConfig = deepFreeze(config);
+
+  // Cache the result
+  cachedConfig = frozenConfig;
+
   const endTime = performance.now();
   log.debug(`Config loaded in ${(endTime - startTime).toFixed(2)}ms`);
 
-  return config;
+  return frozenConfig;
+}
+
+/**
+ * Reset the config cache
+ *
+ * Clears the cached config, forcing the next loadConfig() call to reload from disk.
+ * This function should only be used in tests to reset state between test cases.
+ *
+ * @example
+ * ```typescript
+ * // In tests
+ * beforeEach(() => {
+ *   resetConfigCache();
+ * });
+ * ```
+ */
+export function resetConfigCache(): void {
+  cachedConfig = null;
+  log.debug('Config cache cleared');
+}
+
+/**
+ * Get the cached config if it has been loaded
+ *
+ * Returns the cached config instance without triggering a load.
+ * Useful for checking if config has been loaded without side effects.
+ *
+ * @returns Cached config or null if not yet loaded
+ *
+ * @example
+ * ```typescript
+ * const config = getConfigIfLoaded();
+ * if (config) {
+ *   console.log('Config already loaded:', config.version);
+ * } else {
+ *   console.log('Config not yet loaded');
+ * }
+ * ```
+ */
+export function getConfigIfLoaded(): SpeciConfig | null {
+  return cachedConfig;
 }
 
 /**

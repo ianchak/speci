@@ -11,6 +11,8 @@ import {
   getConfigTemplatePath,
   getAgentsTemplatePath,
   getSubagentsTemplatePath,
+  resetConfigCache,
+  getConfigIfLoaded,
   type SpeciConfig,
 } from '../lib/config.js';
 
@@ -23,6 +25,9 @@ describe('config', () => {
     // Save original state
     originalCwd = process.cwd();
     originalEnv = { ...process.env };
+
+    // Reset cache before each test
+    resetConfigCache();
 
     // Create isolated test directory
     testDir = join(tmpdir(), `speci-test-${Date.now()}-${Math.random()}`);
@@ -653,6 +658,239 @@ describe('config', () => {
 
       expect(path).toContain('templates');
       expect(path).toContain('subagents');
+    });
+  });
+
+  describe('Config Memoization', () => {
+    describe('getConfigIfLoaded', () => {
+      it('should return null before config is loaded', () => {
+        const result = getConfigIfLoaded();
+        expect(result).toBeNull();
+      });
+
+      it('should return config after loadConfig is called', () => {
+        loadConfig();
+        const result = getConfigIfLoaded();
+        expect(result).not.toBeNull();
+        expect(result).toHaveProperty('version');
+      });
+    });
+
+    describe('loadConfig caching', () => {
+      it('should load config on first call', () => {
+        const config = loadConfig();
+        expect(config).toBeDefined();
+        expect(config.version).toBe('1.0.0');
+      });
+
+      it('should return cached config on second call', () => {
+        const config1 = loadConfig();
+        const config2 = loadConfig();
+
+        // Should be the exact same object reference
+        expect(config1).toBe(config2);
+      });
+
+      it('should not perform redundant I/O on cache hit', () => {
+        // Create a config file
+        writeFileSync(
+          'speci.config.json',
+          JSON.stringify({
+            version: '1.0.0',
+            paths: { progress: 'custom-progress.md' },
+          })
+        );
+
+        const config1 = loadConfig();
+
+        // Delete the config file
+        rmSync('speci.config.json');
+
+        // Second call should still succeed using cache
+        const config2 = loadConfig();
+        expect(config2).toBe(config1);
+        expect(config2.paths.progress).toBe('custom-progress.md');
+      });
+
+      it('should cache config with env overrides applied', () => {
+        process.env.SPECI_PROGRESS_PATH = 'env-progress.md';
+
+        const config1 = loadConfig();
+        const config2 = loadConfig();
+
+        expect(config1.paths.progress).toBe('env-progress.md');
+        expect(config2.paths.progress).toBe('env-progress.md');
+        expect(config1).toBe(config2);
+      });
+    });
+
+    describe('resetConfigCache', () => {
+      it('should clear the cache', () => {
+        loadConfig();
+        expect(getConfigIfLoaded()).not.toBeNull();
+
+        resetConfigCache();
+        expect(getConfigIfLoaded()).toBeNull();
+      });
+
+      it('should force reload on next loadConfig call after reset', () => {
+        const config1 = loadConfig();
+        resetConfigCache();
+        const config2 = loadConfig();
+
+        // Should be different object references
+        expect(config1).not.toBe(config2);
+        // But should have same values
+        expect(config1).toEqual(config2);
+      });
+
+      it('should reload with updated config file after reset', () => {
+        writeFileSync(
+          'speci.config.json',
+          JSON.stringify({
+            version: '1.0.0',
+            paths: { progress: 'original.md' },
+          })
+        );
+
+        const config1 = loadConfig();
+        expect(config1.paths.progress).toBe('original.md');
+
+        // Update config file
+        writeFileSync(
+          'speci.config.json',
+          JSON.stringify({
+            version: '1.0.0',
+            paths: { progress: 'updated.md' },
+          })
+        );
+
+        // Should still return cached version
+        const config2 = loadConfig();
+        expect(config2.paths.progress).toBe('original.md');
+
+        // After reset, should pick up new file
+        resetConfigCache();
+        const config3 = loadConfig();
+        expect(config3.paths.progress).toBe('updated.md');
+      });
+    });
+
+    describe('Config immutability', () => {
+      it('should return frozen config object', () => {
+        const config = loadConfig();
+        expect(Object.isFrozen(config)).toBe(true);
+      });
+
+      it('should throw error when attempting to modify config in strict mode', () => {
+        const config = loadConfig();
+
+        expect(() => {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          (config as any).version = '2.0.0';
+        }).toThrow();
+      });
+
+      it('should prevent modification of nested objects', () => {
+        const config = loadConfig();
+
+        expect(() => {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          (config.paths as any).progress = 'hacked.md';
+        }).toThrow();
+      });
+
+      it('should return the same frozen object on cache hit', () => {
+        const config1 = loadConfig();
+        const config2 = loadConfig();
+
+        expect(Object.isFrozen(config1)).toBe(true);
+        expect(Object.isFrozen(config2)).toBe(true);
+        expect(config1).toBe(config2);
+      });
+    });
+
+    describe('forceReload option', () => {
+      it('should bypass cache when forceReload is true', () => {
+        const config1 = loadConfig();
+        const config2 = loadConfig({ forceReload: true });
+
+        // Should be different object references
+        expect(config1).not.toBe(config2);
+        // But should have same values
+        expect(config1).toEqual(config2);
+      });
+
+      it('should reload with updated config file when forceReload is true', () => {
+        writeFileSync(
+          'speci.config.json',
+          JSON.stringify({
+            version: '1.0.0',
+            paths: { progress: 'original.md' },
+          })
+        );
+
+        const config1 = loadConfig();
+        expect(config1.paths.progress).toBe('original.md');
+
+        // Update config file
+        writeFileSync(
+          'speci.config.json',
+          JSON.stringify({
+            version: '1.0.0',
+            paths: { progress: 'updated.md' },
+          })
+        );
+
+        // Force reload should pick up new file
+        const config2 = loadConfig({ forceReload: true });
+        expect(config2.paths.progress).toBe('updated.md');
+      });
+
+      it('should update cache with forceReload result', () => {
+        writeFileSync(
+          'speci.config.json',
+          JSON.stringify({
+            version: '1.0.0',
+            paths: { progress: 'original.md' },
+          })
+        );
+
+        loadConfig();
+
+        writeFileSync(
+          'speci.config.json',
+          JSON.stringify({
+            version: '1.0.0',
+            paths: { progress: 'updated.md' },
+          })
+        );
+
+        const config1 = loadConfig({ forceReload: true });
+        const config2 = loadConfig();
+
+        // Cache should be updated
+        expect(config1).toBe(config2);
+        expect(config2.paths.progress).toBe('updated.md');
+      });
+    });
+
+    describe('Performance', () => {
+      it('should be significantly faster on cache hit', () => {
+        // First load
+        const start1 = performance.now();
+        loadConfig();
+        const duration1 = performance.now() - start1;
+
+        // Cached load
+        const start2 = performance.now();
+        loadConfig();
+        const duration2 = performance.now() - start2;
+
+        // Cache hit should be at least 50% faster
+        // (In practice it's usually 95%+ faster, but we use conservative threshold)
+        expect(duration2).toBeLessThan(duration1 * 0.5);
+      });
     });
   });
 });

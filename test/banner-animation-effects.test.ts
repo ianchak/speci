@@ -31,7 +31,10 @@ describe('Banner Animation Effects', () => {
       const result = renderWaveFrame(1.0);
       // At progress 1, banner should be fully revealed (contains non-space chars)
       // Strip ANSI codes to check actual content
-      const strippedLines = result.map(line => line.replace(/\x1b\[[0-9;]*m/g, ''));
+      // eslint-disable-next-line no-control-regex
+      const strippedLines = result.map((line) =>
+        line.replace(/\x1b\[[0-9;]*m/g, '')
+      );
       expect(
         strippedLines.some(
           (line) =>
@@ -130,7 +133,10 @@ describe('Banner Animation Effects', () => {
     it('should return fully revealed banner at progress 1', () => {
       const result = renderSweepFrame(1.0);
       // Strip ANSI codes to check actual content
-      const strippedLines = result.map(line => line.replace(/\x1b\[[0-9;]*m/g, ''));
+      // eslint-disable-next-line no-control-regex
+      const strippedLines = result.map((line) =>
+        line.replace(/\x1b\[[0-9;]*m/g, '')
+      );
       expect(
         strippedLines.some(
           (line) =>
