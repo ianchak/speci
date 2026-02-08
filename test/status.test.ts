@@ -16,6 +16,7 @@ import type { StatusOptions } from '../lib/commands/status.js';
 import { createMockContext } from '../lib/adapters/test-context.js';
 import type { CommandContext } from '../lib/interfaces.js';
 import type { SpeciConfig } from '../lib/config.js';
+import { resetStateCache } from '../lib/state.js';
 
 const TEST_DIR = join(process.cwd(), 'test', 'fixtures', 'status');
 const TEST_PROGRESS = join(TEST_DIR, 'PROGRESS.md');
@@ -29,6 +30,9 @@ let consoleErrorSpy: typeof console.error;
 let mockContext: CommandContext;
 
 beforeEach(() => {
+  // Reset state cache before each test
+  resetStateCache();
+
   // Create test directory
   if (!existsSync(TEST_DIR)) {
     mkdirSync(TEST_DIR, { recursive: true });
@@ -111,6 +115,9 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+  // Reset state cache after each test
+  resetStateCache();
+
   // Restore console
   console.log = consoleLogSpy;
   console.error = consoleErrorSpy;

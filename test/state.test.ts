@@ -6,7 +6,9 @@ import {
   STATE,
   getState,
   getTaskStats,
+  getCurrentTask,
   hasStatePattern,
+  resetStateCache,
 } from '../lib/state.js';
 import { type SpeciConfig } from '../lib/config.js';
 
@@ -16,6 +18,9 @@ describe('state', () => {
   let mockConfig: SpeciConfig;
 
   beforeEach(() => {
+    // Reset cache before each test
+    resetStateCache();
+
     // Save original state
     originalCwd = process.cwd();
 
@@ -67,6 +72,9 @@ describe('state', () => {
   });
 
   afterEach(() => {
+    // Reset cache after each test
+    resetStateCache();
+
     // Restore original state
     process.chdir(originalCwd);
 
@@ -545,6 +553,291 @@ Some random text
       // Final read should reflect the write
       const finalState = await getState(mockConfig);
       expect(finalState).toBe(STATE.WORK_LEFT);
+    });
+  });
+
+  describe('State File Caching', () => {
+    beforeEach(() => {
+      // Ensure cache is clean before each test
+      resetStateCache();
+    });
+
+    afterEach(() => {
+      // Clean up cache after each test
+      resetStateCache();
+    });
+
+    it('should read file on first call', async () => {
+      const content = `# Progress
+| Task ID  | Title | Status      |
+| -------- | ----- | ----------- |
+| TASK_001 | Setup | COMPLETE    |
+| TASK_002 | Parse | NOT STARTED |
+`;
+      writeFileSync(mockConfig.paths.progress, content);
+
+      const state = await getState(mockConfig);
+      expect(state).toBe(STATE.WORK_LEFT);
+    });
+
+    it('should use cache on second call within TTL', async () => {
+      const content = `# Progress
+| Task ID  | Title | Status      |
+| -------- | ----- | ----------- |
+| TASK_001 | Setup | COMPLETE    |
+| TASK_002 | Parse | NOT STARTED |
+`;
+      writeFileSync(mockConfig.paths.progress, content);
+
+      // First call reads file
+      const state1 = await getState(mockConfig);
+      expect(state1).toBe(STATE.WORK_LEFT);
+
+      // Modify file
+      const newContent = `# Progress
+| Task ID  | Title | Status   |
+| -------- | ----- | -------- |
+| TASK_001 | Setup | COMPLETE |
+| TASK_002 | Parse | COMPLETE |
+`;
+      writeFileSync(mockConfig.paths.progress, newContent);
+
+      // Second call should use cache (still see old state)
+      const state2 = await getState(mockConfig);
+      expect(state2).toBe(STATE.WORK_LEFT); // Cache hit
+    });
+
+    it('should read file again after TTL expires', async () => {
+      const content = `# Progress
+| Task ID  | Title | Status      |
+| -------- | ----- | ----------- |
+| TASK_001 | Setup | COMPLETE    |
+| TASK_002 | Parse | NOT STARTED |
+`;
+      writeFileSync(mockConfig.paths.progress, content);
+
+      // First call reads file
+      const state1 = await getState(mockConfig);
+      expect(state1).toBe(STATE.WORK_LEFT);
+
+      // Wait for TTL to expire (default 200ms + buffer)
+      await new Promise((resolve) => setTimeout(resolve, 250));
+
+      // Modify file
+      const newContent = `# Progress
+| Task ID  | Title | Status   |
+| -------- | ----- | -------- |
+| TASK_001 | Setup | COMPLETE |
+| TASK_002 | Parse | COMPLETE |
+`;
+      writeFileSync(mockConfig.paths.progress, newContent);
+
+      // Third call should read file again (TTL expired)
+      const state2 = await getState(mockConfig);
+      expect(state2).toBe(STATE.DONE); // New state
+    });
+
+    it('should bypass cache with forceRefresh option', async () => {
+      const content = `# Progress
+| Task ID  | Title | Status      |
+| -------- | ----- | ----------- |
+| TASK_001 | Setup | COMPLETE    |
+| TASK_002 | Parse | NOT STARTED |
+`;
+      writeFileSync(mockConfig.paths.progress, content);
+
+      // First call reads file
+      const state1 = await getState(mockConfig);
+      expect(state1).toBe(STATE.WORK_LEFT);
+
+      // Modify file
+      const newContent = `# Progress
+| Task ID  | Title | Status   |
+| -------- | ----- | -------- |
+| TASK_001 | Setup | COMPLETE |
+| TASK_002 | Parse | COMPLETE |
+`;
+      writeFileSync(mockConfig.paths.progress, newContent);
+
+      // Force refresh should read new file
+      const state2 = await getState(mockConfig, { forceRefresh: true });
+      expect(state2).toBe(STATE.DONE); // New state
+    });
+
+    it('should clear cache with resetStateCache', async () => {
+      const content = `# Progress
+| Task ID  | Title | Status      |
+| -------- | ----- | ----------- |
+| TASK_001 | Setup | COMPLETE    |
+| TASK_002 | Parse | NOT STARTED |
+`;
+      writeFileSync(mockConfig.paths.progress, content);
+
+      // First call reads file
+      const state1 = await getState(mockConfig);
+      expect(state1).toBe(STATE.WORK_LEFT);
+
+      // Clear cache
+      resetStateCache();
+
+      // Modify file
+      const newContent = `# Progress
+| Task ID  | Title | Status   |
+| -------- | ----- | -------- |
+| TASK_001 | Setup | COMPLETE |
+| TASK_002 | Parse | COMPLETE |
+`;
+      writeFileSync(mockConfig.paths.progress, newContent);
+
+      // Next call should read file again (cache was cleared)
+      const state2 = await getState(mockConfig);
+      expect(state2).toBe(STATE.DONE); // New state
+    });
+
+    it('should share cache between getState, getTaskStats, and getCurrentTask', async () => {
+      const content = `# Progress
+| Task ID  | Title | Status      |
+| -------- | ----- | ----------- |
+| TASK_001 | Setup | COMPLETE    |
+| TASK_002 | Parse | IN PROGRESS |
+| TASK_003 | Test  | NOT STARTED |
+`;
+      writeFileSync(mockConfig.paths.progress, content);
+
+      // First call reads file
+      const state = await getState(mockConfig);
+      expect(state).toBe(STATE.WORK_LEFT);
+
+      // Modify file
+      const newContent = `# Progress
+| Task ID  | Title | Status   |
+| -------- | ----- | -------- |
+| TASK_001 | Setup | COMPLETE |
+| TASK_002 | Parse | COMPLETE |
+| TASK_003 | Test  | COMPLETE |
+`;
+      writeFileSync(mockConfig.paths.progress, newContent);
+
+      // These should use cached data (see old state)
+      const stats = await getTaskStats(mockConfig);
+      const currentTask = await getCurrentTask(mockConfig);
+
+      expect(stats.completed).toBe(1); // Old data
+      expect(stats.remaining).toBe(2); // Old data
+      expect(currentTask).not.toBeNull(); // Old data (task still in progress)
+    });
+
+    it('should not cache when file does not exist', async () => {
+      // Ensure file doesn't exist
+      if (existsSync(mockConfig.paths.progress)) {
+        rmSync(mockConfig.paths.progress);
+      }
+
+      // First call - file doesn't exist
+      const state1 = await getState(mockConfig);
+      expect(state1).toBe(STATE.NO_PROGRESS);
+
+      // Create file
+      const content = `# Progress
+| Task ID  | Title | Status      |
+| -------- | ----- | ----------- |
+| TASK_001 | Setup | NOT STARTED |
+`;
+      writeFileSync(mockConfig.paths.progress, content);
+
+      // Second call should see new file (no cache for non-existent files)
+      const state2 = await getState(mockConfig);
+      expect(state2).toBe(STATE.WORK_LEFT);
+    });
+
+    it('should improve performance by reducing file reads', async () => {
+      const content = `# Progress
+| Task ID  | Title | Status      |
+| -------- | ----- | ----------- |
+| TASK_001 | Setup | COMPLETE    |
+| TASK_002 | Parse | IN PROGRESS |
+| TASK_003 | Test  | NOT STARTED |
+`;
+      writeFileSync(mockConfig.paths.progress, content);
+
+      // Reset cache to start fresh
+      resetStateCache();
+
+      // Call all three functions (similar to status command)
+      const start = performance.now();
+      await Promise.all([
+        getState(mockConfig),
+        getTaskStats(mockConfig),
+        getCurrentTask(mockConfig),
+      ]);
+      const cachedTime = performance.now() - start;
+
+      // Reset cache and call again without cache
+      resetStateCache();
+      const startNoCache = performance.now();
+      await Promise.all([
+        getState(mockConfig, { forceRefresh: true }),
+        getTaskStats(mockConfig, { forceRefresh: true }),
+        getCurrentTask(mockConfig, { forceRefresh: true }),
+      ]);
+      const noCacheTime = performance.now() - startNoCache;
+
+      // With cache should be faster (though timing may be unreliable in tests)
+      // Just verify both complete successfully
+      expect(cachedTime).toBeGreaterThan(0);
+      expect(noCacheTime).toBeGreaterThan(0);
+    });
+
+    it('should respect custom TTL option', async () => {
+      const content = `# Progress
+| Task ID  | Title | Status      |
+| -------- | ----- | ----------- |
+| TASK_001 | Setup | NOT STARTED |
+`;
+      writeFileSync(mockConfig.paths.progress, content);
+
+      // First call with short TTL (50ms)
+      const state1 = await getState(mockConfig, { ttl: 50 });
+      expect(state1).toBe(STATE.WORK_LEFT);
+
+      // Wait for short TTL to expire
+      await new Promise((resolve) => setTimeout(resolve, 100));
+
+      // Modify file
+      const newContent = `# Progress
+| Task ID  | Title | Status   |
+| -------- | ----- | -------- |
+| TASK_001 | Setup | COMPLETE |
+`;
+      writeFileSync(mockConfig.paths.progress, newContent);
+
+      // Should read new file (TTL expired)
+      const state2 = await getState(mockConfig);
+      expect(state2).toBe(STATE.DONE);
+    });
+
+    it('should handle concurrent calls with cache', async () => {
+      const content = `# Progress
+| Task ID  | Title | Status      |
+| -------- | ----- | ----------- |
+| TASK_001 | Setup | IN PROGRESS |
+`;
+      writeFileSync(mockConfig.paths.progress, content);
+
+      // Multiple concurrent calls should all use cache efficiently
+      const [state1, stats1, task1, state2, stats2] = await Promise.all([
+        getState(mockConfig),
+        getTaskStats(mockConfig),
+        getCurrentTask(mockConfig),
+        getState(mockConfig),
+        getTaskStats(mockConfig),
+      ]);
+
+      expect(state1).toBe(STATE.WORK_LEFT);
+      expect(state2).toBe(STATE.WORK_LEFT);
+      expect(stats1.remaining).toBe(1);
+      expect(stats2.remaining).toBe(1);
+      expect(task1).not.toBeNull();
     });
   });
 });

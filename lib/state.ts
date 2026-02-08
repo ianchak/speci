@@ -3,6 +3,9 @@
  *
  * Reads and parses PROGRESS.md to determine the current loop state.
  * Provides state detection and task statistics for orchestrator decision-making.
+ *
+ * Implements caching with configurable TTL to reduce redundant file I/O when
+ * multiple state functions are called in quick succession.
  */
 
 import { readFile } from 'node:fs/promises';
@@ -13,6 +16,31 @@ import { STATE } from '@/types.js';
 // Re-export types for backward compatibility
 export { STATE } from '@/types.js';
 export type { TaskStats, CurrentTask } from '@/types.js';
+
+/**
+ * Cache entry for state file content
+ */
+interface StateFileCache {
+  lines: string[];
+  timestamp: number;
+  ttl: number;
+}
+
+/**
+ * Options for state functions
+ */
+export interface StateOptions {
+  /** Force cache bypass and read file */
+  forceRefresh?: boolean;
+  /** Cache TTL in milliseconds (default: 200ms) */
+  ttl?: number;
+}
+
+// Module-level cache for state file reads
+let stateFileCache: StateFileCache | null = null;
+
+// Default TTL for cache (200ms)
+const DEFAULT_TTL = 200;
 
 // Pre-compile regex patterns at module load for performance
 const PATTERNS = {
@@ -40,9 +68,75 @@ export function hasStatePattern(content: string, pattern: RegExp): boolean {
 }
 
 /**
+ * Reset the state file cache
+ *
+ * Useful for testing or when you need to force a fresh read.
+ *
+ * @example
+ * ```typescript
+ * resetStateCache();
+ * const state = await getState(config); // Will read from file
+ * ```
+ */
+export function resetStateCache(): void {
+  stateFileCache = null;
+}
+
+/**
+ * Read state file with caching
+ *
+ * Implements TTL-based caching to reduce redundant file I/O.
+ * Cache is shared across all state functions (getState, getTaskStats, getCurrentTask).
+ *
+ * @param progressPath - Path to PROGRESS.md file
+ * @param options - Cache options
+ * @returns Array of file lines or null if file doesn't exist
+ */
+async function readStateFile(
+  progressPath: string,
+  options?: StateOptions
+): Promise<string[] | null> {
+  // Check if file exists
+  if (!existsSync(progressPath)) {
+    return null;
+  }
+
+  const now = Date.now();
+  const ttl = options?.ttl ?? DEFAULT_TTL;
+  const forceRefresh = options?.forceRefresh ?? false;
+
+  // Check cache validity
+  if (
+    stateFileCache &&
+    !forceRefresh &&
+    now - stateFileCache.timestamp < stateFileCache.ttl
+  ) {
+    // Cache hit - return cached lines
+    return stateFileCache.lines;
+  }
+
+  // Cache miss or expired - read from file
+  const content = await readFile(progressPath, 'utf8');
+  const lines = content.split('\n');
+
+  // Update cache
+  stateFileCache = {
+    lines,
+    timestamp: now,
+    ttl,
+  };
+
+  return lines;
+}
+
+/**
  * Get current orchestration state by parsing PROGRESS.md
  *
+ * Uses cached file content when called within TTL window (default 200ms).
+ * Cache is shared with getTaskStats() and getCurrentTask().
+ *
  * @param config - Speci configuration
+ * @param options - Cache options
  * @returns Current STATE enum value
  * @throws {Error} ERR-STA-02 if PROGRESS.md cannot be parsed
  *
@@ -52,18 +146,27 @@ export function hasStatePattern(content: string, pattern: RegExp): boolean {
  * if (state === STATE.WORK_LEFT) {
  *   // Start implementation
  * }
+ *
+ * // Force fresh read
+ * const freshState = await getState(config, { forceRefresh: true });
  * ```
  */
-export async function getState(config: SpeciConfig): Promise<STATE> {
+export async function getState(
+  config: SpeciConfig,
+  options?: StateOptions
+): Promise<STATE> {
   const progressPath = config.paths.progress;
 
-  // Check file existence
-  if (!existsSync(progressPath)) {
+  // Read file (with caching)
+  const lines = await readStateFile(progressPath, options);
+
+  // File doesn't exist
+  if (lines === null) {
     return STATE.NO_PROGRESS;
   }
 
-  // Read file content
-  const content = await readFile(progressPath, 'utf8');
+  // Join lines for pattern matching
+  const content = lines.join('\n');
 
   // Check patterns in priority order (early exit)
   for (const { state, pattern } of STATE_PRIORITY) {
@@ -79,7 +182,11 @@ export async function getState(config: SpeciConfig): Promise<STATE> {
 /**
  * Get task statistics from PROGRESS.md
  *
+ * Uses cached file content when called within TTL window (default 200ms).
+ * Cache is shared with getState() and getCurrentTask().
+ *
  * @param config - Speci configuration
+ * @param options - Cache options
  * @returns TaskStats object with counts
  *
  * @example
@@ -88,15 +195,19 @@ export async function getState(config: SpeciConfig): Promise<STATE> {
  * console.log(`${stats.completed}/${stats.total} tasks complete`);
  * ```
  */
-export async function getTaskStats(config: SpeciConfig): Promise<TaskStats> {
+export async function getTaskStats(
+  config: SpeciConfig,
+  options?: StateOptions
+): Promise<TaskStats> {
   const progressPath = config.paths.progress;
 
-  if (!existsSync(progressPath)) {
+  // Read file (with caching)
+  const lines = await readStateFile(progressPath, options);
+
+  // File doesn't exist
+  if (lines === null) {
     return { total: 0, completed: 0, remaining: 0, inReview: 0, blocked: 0 };
   }
-
-  const content = await readFile(progressPath, 'utf8');
-  const lines = content.split('\n');
 
   const stats: TaskStats = {
     total: 0,
@@ -152,20 +263,34 @@ export async function getTaskStats(config: SpeciConfig): Promise<TaskStats> {
 /**
  * Get the current active task (IN PROGRESS or IN_REVIEW)
  *
+ * Uses cached file content when called within TTL window (default 200ms).
+ * Cache is shared with getState() and getTaskStats().
+ *
  * @param config - Speci configuration
+ * @param options - Cache options
  * @returns Current task info or null if no active task
+ *
+ * @example
+ * ```typescript
+ * const task = await getCurrentTask(config);
+ * if (task) {
+ *   console.log(`Current task: ${task.id} - ${task.title}`);
+ * }
+ * ```
  */
 export async function getCurrentTask(
-  config: SpeciConfig
+  config: SpeciConfig,
+  options?: StateOptions
 ): Promise<CurrentTask | null> {
   const progressPath = config.paths.progress;
 
-  if (!existsSync(progressPath)) {
+  // Read file (with caching)
+  const lines = await readStateFile(progressPath, options);
+
+  // File doesn't exist
+  if (lines === null) {
     return null;
   }
-
-  const content = await readFile(progressPath, 'utf8');
-  const lines = content.split('\n');
 
   // Look for IN PROGRESS first, then IN_REVIEW
   const ACTIVE_STATUSES = ['IN PROGRESS', 'IN_REVIEW', 'IN REVIEW'];

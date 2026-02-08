@@ -10,6 +10,7 @@ import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { refactor } from '../lib/commands/refactor.js';
 import * as copilotModule from '../lib/copilot.js';
+import { resetConfigCache } from '../lib/config.js';
 
 describe('refactor command', () => {
   let testDir: string;
@@ -18,6 +19,9 @@ describe('refactor command', () => {
   let originalExit: typeof process.exit;
 
   beforeEach(() => {
+    // Reset config cache before each test to avoid stale config
+    resetConfigCache();
+
     // Save original state
     originalCwd = process.cwd();
     originalEnv = { ...process.env };

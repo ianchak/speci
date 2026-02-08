@@ -14,7 +14,12 @@ import {
   validateConfig,
   type SpeciConfig,
 } from '../lib/config.js';
-import { getState, STATE, getTaskStats } from '../lib/state.js';
+import {
+  getState,
+  STATE,
+  getTaskStats,
+  resetStateCache,
+} from '../lib/state.js';
 import {
   acquireLock,
   releaseLock,
@@ -30,6 +35,9 @@ describe('MVT_M2: Core Libraries Integration', () => {
   let lockPath: string;
 
   beforeEach(() => {
+    // Reset state cache before each test
+    resetStateCache();
+
     // Create isolated test directory
     testDir = join(tmpdir(), `speci-mvt-${Date.now()}`);
     mkdirSync(testDir, { recursive: true });
@@ -41,6 +49,9 @@ describe('MVT_M2: Core Libraries Integration', () => {
   });
 
   afterEach(() => {
+    // Reset state cache after each test
+    resetStateCache();
+
     // Cleanup test directory
     try {
       if (existsSync(lockPath)) {
