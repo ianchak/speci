@@ -7,12 +7,10 @@
  */
 
 import { resolve } from 'node:path';
-import { resolveAgentPath } from '@/config.js';
-import { renderBanner } from '@/ui/banner.js';
 import { drawBox } from '@/ui/box.js';
 import { colorize } from '@/ui/colors.js';
-import { getAgentFilename } from '@/constants.js';
 import { createProductionContext } from '@/adapters/context-factory.js';
+import { initializeCommand } from '@/utils/command-helpers.js';
 import type { CommandContext, CommandResult } from '@/interfaces.js';
 
 /**
@@ -68,34 +66,7 @@ export async function plan(
   context: CommandContext = createProductionContext()
 ): Promise<CommandResult> {
   try {
-    // Display banner
-    renderBanner();
-    console.log();
-
-    // Load configuration
-    const config = await context.configLoader.load();
-
-    // Validate agent file exists
-    const commandName = 'plan';
-    const agentName = (options.agent || getAgentFilename(commandName)).replace(
-      /\.agent\.md$/,
-      ''
-    );
-    const agentPath = resolveAgentPath(commandName, options.agent);
-
-    if (!context.fs.existsSync(agentPath)) {
-      context.logger.error(`Agent file not found: ${agentPath}`);
-      context.logger.info(
-        'Run "speci init" to create agents or provide --agent <filename>'
-      );
-      return {
-        success: false,
-        exitCode: 1,
-        error: `Agent file not found: ${agentPath}`,
-      };
-    }
-
-    // Require at least --prompt or --input
+    // Require at least --prompt or --input (validate before initialization)
     if (!options.prompt && (!options.input || options.input.length === 0)) {
       context.logger.error('Missing required input');
       context.logger.info('Provide at least one of:');
@@ -130,6 +101,14 @@ export async function plan(
         };
       }
     }
+
+    // Initialize command with shared helper (skip preflight as plan doesn't need it)
+    const { config, agentName } = await initializeCommand({
+      commandName: 'plan',
+      agentOverride: options.agent,
+      skipPreflight: true,
+      context,
+    });
 
     // Build prompt referencing input files (Copilot will read them)
     const promptParts: string[] = [];
@@ -174,7 +153,7 @@ export async function plan(
       prompt: fullPrompt || undefined,
       agent: agentName,
       shouldAllowAll: config.copilot.permissions === 'allow-all',
-      command: commandName,
+      command: 'plan',
     });
 
     // Add output flag if specified

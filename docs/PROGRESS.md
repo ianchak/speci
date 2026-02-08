@@ -96,7 +96,7 @@
 | TASK_013 | Error Catalog Tests             | COMPLETE    | PASSED        | HIGH     | S (≤2h)    | TASK_010           | SA-20260208-006 | 1        |
 | TASK_014 | Discriminated Union Error Types | COMPLETE    | PASSED        | HIGH     | L (8-16h)  | TASK_009           | SA-20260208-007 | 1        |
 | TASK_015 | Standardize Logging             | NOT STARTED | —             | MEDIUM   | M (4-8h)   | TASK_008           |                 |          |
-| TASK_016 | Extract Command Initialization  | IN REVIEW   | —             | HIGH     | M (4-8h)   | TASK_007           | SA-20260208-008 | 1        |
+| TASK_016 | Extract Command Initialization  | IN PROGRESS | FAILED        | HIGH     | M (4-8h)   | TASK_007           | SA-20260208-009 | 2        |
 | TASK_017 | Encapsulate Module-Level State  | NOT STARTED | —             | HIGH     | M (4-8h)   | TASK_007           |                 |          |
 | TASK_018 | Reduce Cross-Module Coupling    | NOT STARTED | —             | HIGH     | L (8-16h)  | TASK_007           |                 |          |
 | MVT_M2   | Core Improvements Manual Test   | NOT STARTED | —             | —        | 45 min     | TASK_010-018       |                 |          |
@@ -208,7 +208,7 @@ Last Subagent ID: SA-20260208-008
 
 ## Review Tracking
 
-Last Review ID: RA-20260208-017
+Last Review ID: RA-20260208-018
 
 ---
 
@@ -216,28 +216,81 @@ Last Review ID: RA-20260208-017
 
 ### For Reviewer
 
-| Field             | Value                                                                                                     |
-| ----------------- | --------------------------------------------------------------------------------------------------------- |
-| Task              | TASK_016                                                                                                  |
-| Impl Agent        | SA-20260208-008                                                                                           |
-| Files Changed     | `lib/utils/command-helpers.ts`, `lib/commands/task.ts`, `lib/commands/refactor.ts`                       |
-| Tests Added       | `test/command-helpers.test.ts` (24 new tests)                                                             |
-| Rework?           | No                                                                                                        |
-| Focus Areas       | Verify initializeCommand properly sequences banner, config load, preflight, and agent validation; Check that error handling matches original behavior for agent file not found; Validate that task and refactor commands maintain exact same behavior as before |
-| Known Limitations | Plan command NOT refactored due to test incompatibility issues (plan doesn't run preflight). Only task and refactor commands refactored. Net reduction ~60 lines instead of target 90+ lines. |
-| Gate Results      | format:✅ lint:✅ typecheck:✅ test:✅ (1019 tests passing)                                              |
+| Field             | Value |
+| ----------------- | ----- |
+| Task              | -     |
+| Impl Agent        | -     |
+| Files Changed     | -     |
+| Tests Added       | -     |
+| Rework?           | -     |
+| Focus Areas       | -     |
+| Known Limitations | -     |
+| Gate Results      | -     |
 
 ### For Fix Agent
 
-| Field           | Value                                                                                                                                                                                                                                          |
-| --------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Task            | TASK_010                                                                                                                                                                                                                                       |
-| Task Goal       | Create comprehensive integration test suite verifying end-to-end workflows without heavy mocking                                                                                                                                              |
-| Review Agent    | RA-20260208-012                                                                                                                                                                                                                                |
-| Failed Gate     | test:integration (13/30 tests failing, exit code 1)                                                                                                                                                                                           |
-| Primary Error   | Multiple test files: Agent file checks fail before mocks can intercept - commands validate agent file existence using direct fs checks that run before vi.spyOn mocks are effective                                                           |
-| Root Cause Hint | Commands call resolveAgentPath() which does fs.existsSync() checks synchronously during initialization, before test mocks of runAgent() take effect. Need to either mock fs operations, create actual agent files in setup, or refactor code |
-| Do NOT          | Rewrite test architecture - framework is solid. Don't add real Copilot CLI calls. Don't skip failing tests with test.skip(). Don't change command code unnecessarily - focus on test setup                                                    |
+| Field           | Value                                                                                                     |
+| --------------- | --------------------------------------------------------------------------------------------------------- |
+| Task            | TASK_016                                                                                                  |
+| Task Goal       | Extract 90+ lines of duplicated command initialization logic into shared utility module                  |
+| Review Agent    | RA-20260208-018                                                                                           |
+| Failed Gate     | none (all gates pass)                                                                                     |
+| Primary Error   | `lib/commands/plan.ts:66-96` - plan.ts not refactored, still contains duplicated initialization code     |
+| Root Cause Hint | Plan command doesn't call preflight(), so initializeCommand() needs skipPreflight:true for plan          |
+| Do NOT          | Change command behavior or add new features; focus only on extracting duplication per acceptance criteria |
+
+### Review Failure Notes
+
+**Task:** TASK_016 - Extract Command Initialization
+**Task Goal:** Extract 90+ lines of duplicated command initialization logic into a shared utility module
+**Review Agent:** RA-20260208-018
+
+---
+
+#### Blocking Issues (must fix to pass)
+
+1. **AC5 NOT MET: lib/commands/plan.ts not refactored to use shared initialization**
+   - Location: `lib/commands/plan.ts:66-96`
+   - Expected: Plan command should use `initializeCommand()` helper like task and refactor commands
+   - Actual: Plan command still has 30+ lines of duplicated initialization code (banner, config load, agent validation)
+   - Fix: Refactor plan.ts to use `initializeCommand({ commandName: 'plan', skipPreflight: true, ... })` since plan doesn't need preflight checks
+
+2. **AC8 NOT MET: Net reduction target not met (only ~60 lines instead of 90+)**
+   - Location: Overall codebase
+   - Expected: Net reduction of 90+ lines of duplicated code across all three commands
+   - Actual: Only ~60 lines reduced because plan.ts was not refactored
+   - Fix: Complete the plan.ts refactoring to achieve the target reduction
+
+---
+
+#### Non-Blocking Issues (fix if time permits)
+
+None - implementation is otherwise excellent.
+
+---
+
+#### What Passed Review
+
+- AC1: New file `lib/utils/command-helpers.ts` created ✅
+- AC2: `initializeCommand()` function extracts common pattern ✅
+- AC3: `normalizeAgentName()` function centralizes agent name resolution ✅
+- AC4: `validateAgentFile()` function centralizes validation logic ✅
+- AC6: lib/commands/task.ts refactored properly ✅
+- AC7: lib/commands/refactor.ts refactored properly ✅
+- AC8 partial: All existing tests pass (1019 tests) ✅
+- Tests: 24 comprehensive unit tests for command-helpers.ts ✅
+- Code quality: Excellent JSDoc, type safety, error handling ✅
+- Gates: lint ✅ typecheck ✅ test ✅ (all pass, exit code 0)
+
+---
+
+#### Fix Agent Instructions
+
+1. **Start with:** Refactor plan.ts to use `initializeCommand()` with `skipPreflight: true`
+2. **Then:** Verify all tests still pass (especially plan.test.ts)
+3. **Verify:** Run `npm test -- plan.test.ts` first to ensure plan-specific tests pass
+4. **Context:** Plan command has unique requirements - it doesn't call preflight() and requires --prompt or --input validation BEFORE initialization. You'll need to restructure the command to validate required options first, then call initializeCommand() with skipPreflight: true.
+5. **Do NOT:** Change plan command behavior, add features, or modify error messages. Only extract duplication into initializeCommand() helper.
 
 ---
 
