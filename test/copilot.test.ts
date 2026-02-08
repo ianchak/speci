@@ -804,4 +804,239 @@ describe('copilot', () => {
       expect(callCount).toBe(1);
     });
   });
+
+  describe('Retry Logic Comprehensive Edge Cases', () => {
+    it('should retry and succeed after transient failure (AC#36)', async () => {
+      vi.useFakeTimers();
+      let callCount = 0;
+      vi.mocked(spawn).mockImplementation(() => {
+        callCount++;
+        const proc = new EventEmitter() as ChildProcess;
+        proc.stdout = new EventEmitter() as never;
+        proc.stderr = new EventEmitter() as never;
+
+        setTimeout(() => {
+          // First call fails with retryable error, second succeeds
+          const exitCode = callCount === 1 ? 429 : 0;
+          proc.emit('close', exitCode);
+        }, 10);
+
+        return proc;
+      });
+
+      const promise = runAgent(config, 'test-agent', 'plan');
+
+      // Fast-forward through retry delay (1000ms for first retry)
+      await vi.advanceTimersByTimeAsync(1100);
+
+      const result = await promise;
+
+      expect(result.isSuccess).toBe(true);
+      expect(callCount).toBe(2); // Initial attempt + 1 retry
+      expect(result.exitCode).toBe(0);
+
+      vi.useRealTimers();
+    });
+
+    it('should exhaust maxRetries and return lastError (AC#37)', async () => {
+      vi.useFakeTimers();
+      let callCount = 0;
+      vi.mocked(spawn).mockImplementation(() => {
+        callCount++;
+        const proc = new EventEmitter() as ChildProcess;
+        proc.stdout = new EventEmitter() as never;
+        proc.stderr = new EventEmitter() as never;
+
+        setTimeout(() => {
+          proc.emit('close', 429); // Always fail with retryable error
+        }, 10);
+
+        return proc;
+      });
+
+      const promise = runAgent(config, 'test-agent', 'plan', {
+        maxRetries: 2,
+        baseDelay: 100,
+        maxDelay: 10000,
+        retryableExitCodes: [429, 52, 124, 7, 6],
+      });
+
+      // Fast-forward through all retries (100ms + 200ms delays)
+      await vi.advanceTimersByTimeAsync(500);
+
+      const result = await promise;
+
+      expect(result.isSuccess).toBe(false);
+      expect(callCount).toBe(3); // Initial + 2 retries
+      if (!result.isSuccess) {
+        expect(result.exitCode).toBe(429);
+        expect(result.error).toBeDefined();
+      }
+
+      vi.useRealTimers();
+    });
+
+    it('should use exponential backoff timing (AC#38)', async () => {
+      vi.useFakeTimers();
+      const timestamps: number[] = [];
+      let callCount = 0;
+
+      vi.mocked(spawn).mockImplementation(() => {
+        callCount++;
+        timestamps.push(Date.now());
+        const proc = new EventEmitter() as ChildProcess;
+        proc.stdout = new EventEmitter() as never;
+        proc.stderr = new EventEmitter() as never;
+
+        setTimeout(() => {
+          proc.emit('close', 429); // Always fail
+        }, 10);
+
+        return proc;
+      });
+
+      const promise = runAgent(config, 'test-agent', 'plan', {
+        maxRetries: 3,
+        baseDelay: 1000,
+        maxDelay: 10000,
+        retryableExitCodes: [429, 52, 124, 7, 6],
+      });
+
+      // Fast-forward through retries: 1s, 2s, 4s
+      await vi.advanceTimersByTimeAsync(8000);
+
+      await promise;
+
+      expect(callCount).toBe(4); // Initial + 3 retries
+      expect(timestamps.length).toBe(4);
+
+      // Verify exponential backoff delays (with tolerance)
+      const delay1 = timestamps[1] - timestamps[0]; // Should be ~1000ms
+      const delay2 = timestamps[2] - timestamps[1]; // Should be ~2000ms
+      const delay3 = timestamps[3] - timestamps[2]; // Should be ~4000ms
+
+      expect(delay1).toBeGreaterThanOrEqual(950);
+      expect(delay1).toBeLessThanOrEqual(1050);
+      expect(delay2).toBeGreaterThanOrEqual(1950);
+      expect(delay2).toBeLessThanOrEqual(2050);
+      expect(delay3).toBeGreaterThanOrEqual(3950);
+      expect(delay3).toBeLessThanOrEqual(4050);
+
+      vi.useRealTimers();
+    });
+
+    it('should skip retry for non-retryable exit codes (AC#39)', async () => {
+      let callCount = 0;
+      vi.mocked(spawn).mockImplementation(() => {
+        callCount++;
+        const proc = new EventEmitter() as ChildProcess;
+        proc.stdout = new EventEmitter() as never;
+        proc.stderr = new EventEmitter() as never;
+
+        setTimeout(() => {
+          proc.emit('close', 1); // Exit code 1 is not retryable
+        }, 10);
+
+        return proc;
+      });
+
+      const result = await runAgent(config, 'test-agent', 'plan');
+
+      expect(result.isSuccess).toBe(false);
+      expect(callCount).toBe(1); // No retries
+      if (!result.isSuccess) {
+        expect(result.exitCode).toBe(1);
+      }
+    });
+
+    it('should return lastError with full context (AC#40)', async () => {
+      vi.useFakeTimers();
+      vi.mocked(spawn).mockImplementation(() => {
+        const proc = new EventEmitter() as ChildProcess;
+        proc.stdout = new EventEmitter() as never;
+        proc.stderr = new EventEmitter() as never;
+
+        setTimeout(() => {
+          proc.emit('close', 429);
+        }, 10);
+
+        return proc;
+      });
+
+      const promise = runAgent(config, 'test-agent', 'plan', {
+        maxRetries: 1,
+        baseDelay: 100,
+        maxDelay: 10000,
+        retryableExitCodes: [429, 52, 124, 7, 6],
+      });
+
+      await vi.advanceTimersByTimeAsync(200);
+
+      const result = await promise;
+
+      expect(result.isSuccess).toBe(false);
+      if (!result.isSuccess) {
+        // Verify error contains context about failure
+        expect(result.exitCode).toBe(429);
+        expect(result.error).toBeDefined();
+        // Error should be descriptive (actual implementation may vary)
+        expect(typeof result.error).toBe('string');
+      }
+
+      vi.useRealTimers();
+    });
+
+    it('should verify backoff delays increase exponentially (AC#41)', async () => {
+      vi.useFakeTimers();
+      const delayCaptures: number[] = [];
+      let lastTimestamp = Date.now();
+      let callCount = 0;
+
+      vi.mocked(spawn).mockImplementation(() => {
+        callCount++;
+        const currentTimestamp = Date.now();
+        if (callCount > 1) {
+          delayCaptures.push(currentTimestamp - lastTimestamp);
+        }
+        lastTimestamp = currentTimestamp;
+
+        const proc = new EventEmitter() as ChildProcess;
+        proc.stdout = new EventEmitter() as never;
+        proc.stderr = new EventEmitter() as never;
+
+        setTimeout(() => {
+          proc.emit('close', 52); // Network error (retryable)
+        }, 10);
+
+        return proc;
+      });
+
+      const promise = runAgent(config, 'test-agent', 'plan', {
+        maxRetries: 4,
+        baseDelay: 1000,
+        maxDelay: 20000,
+        retryableExitCodes: [52, 429, 124, 7, 6],
+      });
+
+      // Fast-forward through delays: 1s, 2s, 4s, 8s
+      await vi.advanceTimersByTimeAsync(16000);
+
+      await promise;
+
+      expect(callCount).toBe(5); // Initial + 4 retries
+      expect(delayCaptures.length).toBe(4);
+
+      // Verify exponential pattern (with ±50ms tolerance)
+      expect(delayCaptures[0]).toBeGreaterThanOrEqual(950); // 1000ms
+      expect(delayCaptures[0]).toBeLessThanOrEqual(1050);
+      expect(delayCaptures[1]).toBeGreaterThanOrEqual(1950); // 2000ms
+      expect(delayCaptures[1]).toBeLessThanOrEqual(2050);
+      expect(delayCaptures[2]).toBeGreaterThanOrEqual(3950); // 4000ms
+      expect(delayCaptures[2]).toBeLessThanOrEqual(4050);
+      expect(delayCaptures[3]).toBeGreaterThanOrEqual(7950); // 8000ms
+      expect(delayCaptures[3]).toBeLessThanOrEqual(8050);
+
+      vi.useRealTimers();
+    });
+  });
 });
