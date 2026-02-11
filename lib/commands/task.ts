@@ -7,7 +7,6 @@
  */
 
 import { relative, resolve } from 'node:path';
-import { renderBanner } from '@/ui/banner.js';
 import { infoBox } from '@/ui/box.js';
 import { createProductionContext } from '@/adapters/context-factory.js';
 import { initializeCommand } from '@/utils/command-helpers.js';
@@ -71,9 +70,6 @@ export async function task(
   config?: SpeciConfig
 ): Promise<CommandResult> {
   try {
-    // Display banner
-    renderBanner();
-
     // Validate required option (must come before initialization)
     if (!options.plan) {
       context.logger.error('Missing required input');
@@ -98,12 +94,10 @@ export async function task(
     }
 
     // Initialize command (config + preflight + agent validation)
-    // Note: skipBanner=true because we already rendered it above
     const { config: loadedConfig, agentName } = await initializeCommand({
       commandName: 'task',
       agentOverride: options.agent,
       config, // Pass pre-loaded config if provided
-      skipBanner: true,
       context,
     });
 

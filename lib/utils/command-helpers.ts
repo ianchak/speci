@@ -8,7 +8,6 @@
 
 import { resolveAgentPath } from '@/config.js';
 import { preflight } from '@/utils/preflight.js';
-import { renderBanner } from '@/ui/banner.js';
 import { getAgentFilename } from '@/constants.js';
 import { createError } from '@/errors.js';
 import { createProductionContext } from '@/adapters/context-factory.js';
@@ -36,8 +35,6 @@ export interface InitializeCommandOptions {
   agentOverride?: string;
   /** Pre-loaded configuration (if not provided, will load from context) */
   config?: SpeciConfig;
-  /** Skip banner rendering (useful for tests) */
-  skipBanner?: boolean;
   /** Skip preflight checks (useful for tests) */
   skipPreflight?: boolean;
   /** Dependency injection context (defaults to production) */
@@ -106,12 +103,11 @@ export function validateAgentFile(
  * Initialize command with common setup sequence
  *
  * Orchestrates the full initialization sequence for agent-based commands:
- * 1. Render banner (optional via skipBanner)
- * 2. Load configuration (or use provided config)
- * 3. Run preflight checks (optional via skipPreflight)
- * 4. Normalize agent name
- * 5. Resolve agent path
- * 6. Validate agent file exists
+ * 1. Load configuration (or use provided config)
+ * 2. Run preflight checks (optional via skipPreflight)
+ * 3. Normalize agent name
+ * 4. Resolve agent path
+ * 5. Validate agent file exists
  *
  * @param options - Initialization options
  * @returns Promise resolving to initialization result with config, agentName, agentPath
@@ -137,10 +133,9 @@ export function validateAgentFile(
  *   config, // Pass pre-loaded config
  * });
  *
- * // For testing (skip banner and preflight)
+ * // For testing (skip preflight)
  * const result = await initializeCommand({
  *   commandName: 'refactor',
- *   skipBanner: true,
  *   skipPreflight: true,
  *   context: mockContext,
  * });
@@ -151,16 +146,10 @@ export async function initializeCommand(
 ): Promise<InitializeCommandResult> {
   const context = options.context || createProductionContext();
 
-  // Step 1: Render banner (optional)
-  if (!options.skipBanner) {
-    renderBanner();
-    console.log();
-  }
-
-  // Step 2: Load configuration (or use provided config)
+  // Step 1: Load configuration (or use provided config)
   const config = options.config ?? (await context.configLoader.load());
 
-  // Step 3: Run preflight checks (optional)
+  // Step 2: Run preflight checks (optional)
   if (!options.skipPreflight) {
     await preflight(
       config,
@@ -174,20 +163,20 @@ export async function initializeCommand(
     );
   }
 
-  // Step 4: Normalize agent name
+  // Step 3: Normalize agent name
   const agentName = normalizeAgentName(
     options.commandName,
     options.agentOverride
   );
 
-  // Step 5: Resolve agent path
+  // Step 4: Resolve agent path
   const agentPath = resolveAgentPath(
     options.commandName,
     options.agentOverride,
     context.process
   );
 
-  // Step 6: Validate agent file exists
+  // Step 5: Validate agent file exists
   validateAgentFile(agentPath, context);
 
   return {

@@ -137,4 +137,61 @@ describe('CLI Initialize', () => {
       expect(shouldShowBanner([])).toBe(true);
     });
   });
+
+  describe('willFailValidation()', () => {
+    it('should return false for empty args', async () => {
+      const { willFailValidation } = await import('../lib/cli/initialize.js');
+
+      expect(willFailValidation([])).toBe(false);
+    });
+
+    it('should return true for plan command without --prompt or --input', async () => {
+      const { willFailValidation } = await import('../lib/cli/initialize.js');
+
+      expect(willFailValidation(['plan'])).toBe(true);
+      expect(willFailValidation(['p'])).toBe(true);
+      expect(willFailValidation(['plan', '--verbose'])).toBe(true);
+    });
+
+    it('should return false for plan command with --prompt', async () => {
+      const { willFailValidation } = await import('../lib/cli/initialize.js');
+
+      expect(willFailValidation(['plan', '-p', 'test'])).toBe(false);
+      expect(willFailValidation(['plan', '--prompt', 'test'])).toBe(false);
+      expect(willFailValidation(['p', '-p', 'test'])).toBe(false);
+    });
+
+    it('should return false for plan command with --input', async () => {
+      const { willFailValidation } = await import('../lib/cli/initialize.js');
+
+      expect(willFailValidation(['plan', '-i', 'file.md'])).toBe(false);
+      expect(willFailValidation(['plan', '--input', 'file.md'])).toBe(false);
+      expect(willFailValidation(['p', '-i', 'file.md'])).toBe(false);
+    });
+
+    it('should return true for task command without --plan', async () => {
+      const { willFailValidation } = await import('../lib/cli/initialize.js');
+
+      expect(willFailValidation(['task'])).toBe(true);
+      expect(willFailValidation(['t'])).toBe(true);
+      expect(willFailValidation(['task', '--verbose'])).toBe(true);
+    });
+
+    it('should return false for task command with --plan', async () => {
+      const { willFailValidation } = await import('../lib/cli/initialize.js');
+
+      expect(willFailValidation(['task', '-p', 'plan.md'])).toBe(false);
+      expect(willFailValidation(['task', '--plan', 'plan.md'])).toBe(false);
+      expect(willFailValidation(['t', '-p', 'plan.md'])).toBe(false);
+    });
+
+    it('should return false for other commands', async () => {
+      const { willFailValidation } = await import('../lib/cli/initialize.js');
+
+      expect(willFailValidation(['run'])).toBe(false);
+      expect(willFailValidation(['init'])).toBe(false);
+      expect(willFailValidation(['refactor'])).toBe(false);
+      expect(willFailValidation(['status'])).toBe(false);
+    });
+  });
 });

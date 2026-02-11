@@ -7,7 +7,6 @@
  */
 
 import { isAbsolute, resolve } from 'node:path';
-import { renderBanner } from '@/ui/banner.js';
 import { infoBox } from '@/ui/box.js';
 import { createProductionContext } from '@/adapters/context-factory.js';
 import { initializeCommand } from '@/utils/command-helpers.js';
@@ -100,10 +99,6 @@ export async function refactor(
   config?: SpeciConfig
 ): Promise<CommandResult> {
   try {
-    // Display banner
-    renderBanner();
-    console.log();
-
     // Validate and resolve scope if provided (must come before initialization)
     let scopePath: string | undefined;
     if (options.scope) {
@@ -116,12 +111,10 @@ export async function refactor(
     }
 
     // Initialize command (config + preflight + agent validation)
-    // Note: skipBanner=true because we already rendered it above
     const { config: loadedConfig, agentName } = await initializeCommand({
       commandName: 'refactor',
       agentOverride: options.agent,
       config, // Pass pre-loaded config if provided
-      skipBanner: true,
       context,
     });
 

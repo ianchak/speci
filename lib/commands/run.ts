@@ -21,7 +21,6 @@ import {
 import { preflight } from '@/utils/preflight.js';
 import { runGate } from '@/utils/gate.js';
 import { runAgent } from '@/copilot.js';
-import { renderBanner } from '@/ui/banner.js';
 import { createError } from '@/errors.js';
 import { log, closeLogFile } from '@/utils/logger.js';
 import { handleCommandError } from '@/utils/error-handler.js';
@@ -58,15 +57,12 @@ export async function run(
   context: CommandContext = createProductionContext(),
   config?: SpeciConfig
 ): Promise<CommandResult> {
-  // 1. Display banner
-  renderBanner();
-
-  // 2. Load configuration (or use provided config)
+  // 1. Load configuration (or use provided config)
   const loadedConfig = config ?? (await context.configLoader.load());
   const maxIterations =
     options.maxIterations ?? loadedConfig.loop.maxIterations;
 
-  // 3. Run preflight checks
+  // 2. Run preflight checks
   await preflight(
     loadedConfig,
     {
@@ -78,7 +74,7 @@ export async function run(
     context.process
   );
 
-  // 4. Check existing lock
+  // 3. Check existing lock
   if (await isLocked(loadedConfig)) {
     const lockInfo = await getLockInfo(loadedConfig);
     if (!options.force) {
@@ -92,7 +88,7 @@ export async function run(
     }
   }
 
-  // 5. Dry run check and pre-run confirmation
+  // 4. Dry run check and pre-run confirmation
   if (options.dryRun) {
     const initialState = await getState(loadedConfig);
     displayDryRun(initialState, loadedConfig, maxIterations);
@@ -107,10 +103,10 @@ export async function run(
     }
   }
 
-  // 6. Acquire lock
+  // 5. Acquire lock
   await acquireLock(loadedConfig, context.process, 'run');
 
-  // 7. Setup cleanup handlers (before creating log file)
+  // 6. Setup cleanup handlers (before creating log file)
   installSignalHandlers();
 
   // Register cleanup functions

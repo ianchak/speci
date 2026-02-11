@@ -9,7 +9,6 @@ import {
   validateAgentFile,
   initializeCommand,
 } from '../lib/utils/command-helpers.js';
-import * as banner from '../lib/ui/banner.js';
 import * as preflight from '../lib/utils/preflight.js';
 import { createMockContext } from '../lib/adapters/test-context.js';
 import type { SpeciConfig } from '../lib/config.js';
@@ -116,7 +115,6 @@ describe('command-helpers', () => {
   describe('initializeCommand', () => {
     let mockContext: ReturnType<typeof createMockContext>;
     let mockConfig: SpeciConfig;
-    let renderBannerSpy: ReturnType<typeof vi.fn>;
     let loadConfigSpy: ReturnType<typeof vi.fn>;
     let preflightSpy: ReturnType<typeof vi.fn>;
 
@@ -162,7 +160,6 @@ describe('command-helpers', () => {
         },
       };
 
-      renderBannerSpy = vi.spyOn(banner, 'renderBanner').mockReturnValue('');
       loadConfigSpy = vi
         .spyOn(mockContext.configLoader, 'load')
         .mockResolvedValue(mockConfig);
@@ -184,7 +181,6 @@ describe('command-helpers', () => {
         context: mockContext,
       });
 
-      expect(renderBannerSpy).toHaveBeenCalledOnce();
       expect(loadConfigSpy).toHaveBeenCalledOnce();
       expect(preflightSpy).toHaveBeenCalledWith(
         mockConfig,
@@ -201,17 +197,6 @@ describe('command-helpers', () => {
       expect(result.agentPath).toContain('speci-plan.agent.md');
     });
 
-    it('should skip banner when skipBanner is true', async () => {
-      await initializeCommand({
-        commandName: 'task',
-        skipBanner: true,
-        context: mockContext,
-      });
-
-      expect(renderBannerSpy).not.toHaveBeenCalled();
-      expect(loadConfigSpy).toHaveBeenCalledOnce();
-    });
-
     it('should skip preflight when skipPreflight is true', async () => {
       await initializeCommand({
         commandName: 'refactor',
@@ -219,7 +204,6 @@ describe('command-helpers', () => {
         context: mockContext,
       });
 
-      expect(renderBannerSpy).toHaveBeenCalledOnce();
       expect(loadConfigSpy).toHaveBeenCalledOnce();
       expect(preflightSpy).not.toHaveBeenCalled();
     });
@@ -288,15 +272,13 @@ describe('command-helpers', () => {
       }
     });
 
-    it('should work with skipBanner and skipPreflight combined', async () => {
+    it('should work with skipPreflight and custom context', async () => {
       const result = await initializeCommand({
         commandName: 'plan',
-        skipBanner: true,
         skipPreflight: true,
         context: mockContext,
       });
 
-      expect(renderBannerSpy).not.toHaveBeenCalled();
       expect(preflightSpy).not.toHaveBeenCalled();
       expect(loadConfigSpy).toHaveBeenCalledOnce();
       expect(result.config).toBe(mockConfig);
@@ -363,7 +345,6 @@ describe('command-helpers', () => {
         commandName: 'task',
         config: providedConfig,
         agentOverride: 'custom.agent.md',
-        skipBanner: true,
         skipPreflight: true,
         context: mockContext,
       });

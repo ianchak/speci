@@ -6,7 +6,6 @@
  */
 
 import { join, relative } from 'node:path';
-import { renderBanner } from '@/ui/banner.js';
 import {
   getDefaults,
   getAgentsTemplatePath,
@@ -294,8 +293,7 @@ export async function init(
   _config?: SpeciConfig
 ): Promise<CommandResult> {
   try {
-    // Display welcome banner
-    renderBanner();
+    // Display welcome message
     context.logger.raw('');
     context.logger.info('Initializing Speci in current directory...');
     context.logger.raw('');

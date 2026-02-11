@@ -53,7 +53,7 @@ async function main(): Promise<void> {
   } else {
     // Regular command: show banner if appropriate, then execute
     if (shouldShowBanner(args)) {
-      const result = displayBanner({ color: program.opts().color });
+      const result = displayBanner({ color: program.opts().color, args });
       if (result instanceof Promise) {
         await result;
       }
