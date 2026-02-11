@@ -102,7 +102,7 @@ describe('task command', () => {
     it('should exit with error when --plan flag is missing', async () => {
       const result = await task({});
       expect(result.success).toBe(false);
-      expect(result.exitCode).toBe(2);
+      expect(result.exitCode).toBe(1);
     });
 
     it('should display usage message when --plan is missing', async () => {
@@ -116,7 +116,7 @@ describe('task command', () => {
       const errorCalls = logErrorSpy.mock.calls.map((call) => call.join(' '));
       const hasUsageMessage = errorCalls.some(
         (msg) =>
-          msg.includes('Missing required option') || msg.includes('--plan')
+          msg.includes('Missing required input') || msg.includes('--plan')
       );
       expect(hasUsageMessage).toBe(true);
     });

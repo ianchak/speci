@@ -73,16 +73,20 @@ export async function task(
   try {
     // Display banner
     renderBanner();
-    console.log();
 
     // Validate required option (must come before initialization)
     if (!options.plan) {
-      context.logger.error('Missing required option: --plan <path>');
-      context.logger.muted('Usage: speci task --plan <path-to-plan.md>');
+      context.logger.error('Missing required input');
+      context.logger.info('Required option:');
+      context.logger.muted('  --plan <path>  Path to plan file');
+      context.logger.raw('');
+      context.logger.info('Examples:');
+      context.logger.muted('  speci task --plan docs/plan.md');
+      context.logger.muted('  speci t -p docs/plan.md');
       return {
         success: false,
-        exitCode: 2,
-        error: 'Missing required option: --plan',
+        exitCode: 1,
+        error: 'Missing required input',
       };
     }
 

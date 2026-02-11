@@ -152,7 +152,7 @@ Examples:
       .command('task')
       .alias('t')
       .description('Generate tasks from implementation plan')
-      .requiredOption('-p, --plan <path>', 'Path to plan file')
+      .option('-p, --plan <path>', 'Path to plan file')
       .option('-a, --agent <path>', 'Use custom agent file')
       .option('-v, --verbose', 'Show detailed output')
       .addHelpText(
