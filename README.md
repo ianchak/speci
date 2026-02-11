@@ -56,8 +56,11 @@ cd speci
 # Install dependencies
 npm install
 
+# Build
+npm run build
+
 # Run speci
-npx tsx bin/speci.ts --help
+node dist/bin/speci.js --help
 ```
 
 For production use, you can install globally (after publishing to npm):

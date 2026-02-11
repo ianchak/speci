@@ -8,13 +8,33 @@
  * Respects NO_COLOR and FORCE_COLOR environment variables.
  */
 
-import { createRequire } from 'node:module';
+import { existsSync, readFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { HEX_COLORS } from '@/ui/palette.js';
 import { colorize, supportsColor } from '@/ui/colors.js';
 
-// Use createRequire for reliable JSON imports in ESM (works in both runtime and tests)
-const esmRequire = createRequire(import.meta.url);
-const pkg = esmRequire('../../package.json') as { version: string };
+function findPackageJson(startDir: string): string | null {
+  let currentDir = startDir;
+  for (let i = 0; i < 6; i += 1) {
+    const candidate = join(currentDir, 'package.json');
+    if (existsSync(candidate)) {
+      return candidate;
+    }
+    const parent = dirname(currentDir);
+    if (parent === currentDir) {
+      break;
+    }
+    currentDir = parent;
+  }
+  return null;
+}
+
+const moduleDir = dirname(fileURLToPath(import.meta.url));
+const pkgPath = findPackageJson(moduleDir);
+const pkg = pkgPath
+  ? (JSON.parse(readFileSync(pkgPath, 'utf-8')) as { version: string })
+  : { version: '0.0.0' };
 
 /** Package version from package.json */
 export const VERSION = pkg.version;
