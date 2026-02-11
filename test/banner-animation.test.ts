@@ -7,6 +7,7 @@
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import type { TerminalSnapshot } from '../lib/ui/terminal.js';
+import { VERSION } from '../lib/ui/banner.js';
 
 /**
  * Create a mock terminal snapshot for testing
@@ -2781,7 +2782,7 @@ describe('Version Animation (TASK_016)', () => {
     });
 
     it('should animate version with fade-in effect', async () => {
-      await module.animateVersion('v0.2.0', 150);
+      await module.animateVersion(VERSION, 150);
 
       // Should have written multiple frames
       expect(writes.length).toBeGreaterThan(3);
@@ -2792,7 +2793,7 @@ describe('Version Animation (TASK_016)', () => {
       const tolerance = 100;
 
       const start = Date.now();
-      await module.animateVersion('v0.2.0', duration);
+      await module.animateVersion(VERSION, duration);
       const elapsed = Date.now() - start;
 
       expect(elapsed).toBeGreaterThanOrEqual(duration - tolerance);
@@ -2801,7 +2802,7 @@ describe('Version Animation (TASK_016)', () => {
 
     it('should handle short duration (300ms)', async () => {
       const start = Date.now();
-      await module.animateVersion('v0.2.0', 100);
+      await module.animateVersion(VERSION, 100);
       const elapsed = Date.now() - start;
 
       expect(elapsed).toBeGreaterThanOrEqual(80);
@@ -2810,7 +2811,7 @@ describe('Version Animation (TASK_016)', () => {
 
     it('should handle longer duration (500ms)', async () => {
       const start = Date.now();
-      await module.animateVersion('v0.2.0', 200);
+      await module.animateVersion(VERSION, 200);
       const elapsed = Date.now() - start;
 
       expect(elapsed).toBeGreaterThanOrEqual(180);
@@ -2827,7 +2828,7 @@ describe('Version Animation (TASK_016)', () => {
 
     it('should use lower FPS for performance (30fps)', async () => {
       const duration = 100;
-      await module.animateVersion('v0.2.0', duration);
+      await module.animateVersion(VERSION, duration);
 
       // At 30 FPS, expect ~3 frames for 100ms animation
       // Allow some tolerance for timing variance
@@ -2973,7 +2974,7 @@ describe('Version Animation (TASK_016)', () => {
       const tolerance = 100;
 
       const start = Date.now();
-      await module.animateVersion('v0.2.0', customDuration);
+      await module.animateVersion(VERSION, customDuration);
       const elapsed = Date.now() - start;
 
       expect(elapsed).toBeGreaterThanOrEqual(customDuration - tolerance);

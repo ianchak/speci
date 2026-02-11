@@ -39,6 +39,7 @@ import {
   type AnimationState,
   type CleanupFn,
 } from './renderer.js';
+import { VERSION } from '@/ui/banner.js';
 
 /**
  * Re-export public API
@@ -183,7 +184,7 @@ export async function animateBanner(options?: AnimationOptions): Promise<void> {
 
       const showVersion = options?.showVersion ?? true;
       if (showVersion) {
-        await animateVersion('0.2.0', VERSION_DURATION);
+        await animateVersion(VERSION, VERSION_DURATION);
       }
     } catch {
       process.stdout.write(ANSI_CURSOR_UP_6);
