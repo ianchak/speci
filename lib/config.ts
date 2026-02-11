@@ -27,7 +27,28 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 // Path to bundled templates (relative to compiled lib/ directory)
-const TEMPLATES_DIR = join(__dirname, '..', 'templates');
+const TEMPLATES_DIR_CANDIDATES = [
+  join(__dirname, '..', 'templates'),
+  join(__dirname, '..', '..', 'templates'),
+];
+
+let cachedTemplatesDir: string | null = null;
+
+function resolveTemplatesDir(): string {
+  if (cachedTemplatesDir) {
+    return cachedTemplatesDir;
+  }
+
+  for (const candidate of TEMPLATES_DIR_CANDIDATES) {
+    if (existsSync(candidate)) {
+      cachedTemplatesDir = candidate;
+      return candidate;
+    }
+  }
+
+  cachedTemplatesDir = TEMPLATES_DIR_CANDIDATES[0];
+  return cachedTemplatesDir;
+}
 
 type AgentName =
   | 'plan'
@@ -594,6 +615,7 @@ export function loadConfig(options?: {
  */
 export function resetConfigCache(): void {
   cachedConfig = null;
+  cachedTemplatesDir = null;
   log.debug('Config cache cleared');
 }
 
@@ -661,7 +683,7 @@ export function resolveAgentPath(
  */
 export function resolveSubagentPath(subagentName: string): string {
   const bundledPath = join(
-    TEMPLATES_DIR,
+    resolveTemplatesDir(),
     'agents',
     'subagents',
     `${subagentName}.prompt.md`
@@ -682,7 +704,7 @@ export function resolveSubagentPath(subagentName: string): string {
  * @returns Absolute path to config template
  */
 export function getConfigTemplatePath(): string {
-  return join(TEMPLATES_DIR, CONFIG_FILENAME);
+  return join(resolveTemplatesDir(), CONFIG_FILENAME);
 }
 
 /**
@@ -690,7 +712,7 @@ export function getConfigTemplatePath(): string {
  * @returns Absolute path to agents template directory
  */
 export function getAgentsTemplatePath(): string {
-  return join(TEMPLATES_DIR, 'agents');
+  return join(resolveTemplatesDir(), 'agents');
 }
 
 /**
@@ -698,7 +720,7 @@ export function getAgentsTemplatePath(): string {
  * @returns Absolute path to subagents template directory
  */
 export function getSubagentsTemplatePath(): string {
-  return join(TEMPLATES_DIR, 'agents', 'subagents');
+  return join(resolveTemplatesDir(), 'agents', 'subagents');
 }
 
 /**

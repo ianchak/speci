@@ -1,7 +1,9 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { mkdirSync, rmSync, writeFileSync, existsSync } from 'node:fs';
-import { join } from 'node:path';
+import * as fs from 'node:fs';
+import { join, dirname } from 'node:path';
 import { tmpdir } from 'node:os';
+import { fileURLToPath } from 'node:url';
 import {
   loadConfig,
   validateConfig,
@@ -36,6 +38,8 @@ describe('config', () => {
   });
 
   afterEach(() => {
+    vi.restoreAllMocks();
+
     // Restore original state
     process.chdir(originalCwd);
     process.env = originalEnv;
@@ -649,6 +653,33 @@ describe('config', () => {
 
       expect(path).toContain('templates');
       expect(path).toContain('agents');
+    });
+
+    it('should fall back to package-root templates when needed', () => {
+      const configModuleDir = dirname(
+        fileURLToPath(new URL('../lib/config.js', import.meta.url))
+      );
+      const primaryPath = join(configModuleDir, '..', 'templates');
+      const fallbackPath = join(configModuleDir, '..', '..', 'templates');
+
+      const originalExistsSync = fs.existsSync;
+      const existsSpy = vi
+        .spyOn(fs, 'existsSync')
+        .mockImplementation((path) => {
+          if (path === primaryPath) {
+            return false;
+          }
+          if (path === fallbackPath) {
+            return true;
+          }
+
+          return originalExistsSync(path);
+        });
+
+      const path = getAgentsTemplatePath();
+
+      expect(path).toBe(join(fallbackPath, 'agents'));
+      existsSpy.mockRestore();
     });
   });
 
