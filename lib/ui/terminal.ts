@@ -22,6 +22,7 @@ export interface TerminalSnapshot {
  */
 class TerminalState {
   private savedState: TerminalSnapshot | null = null;
+  private isAltScreen = false;
 
   /**
    * Capture current terminal state
@@ -49,8 +50,11 @@ class TerminalState {
     if (!toRestore) return;
 
     try {
-      // Exit alternate screen
-      process.stdout.write('\x1b[?1049l');
+      if (this.isAltScreen) {
+        // Exit alternate screen
+        process.stdout.write('\x1b[?1049l');
+        this.isAltScreen = false;
+      }
       // Show cursor
       process.stdout.write('\x1b[?25h');
       // Enable line wrap
@@ -72,6 +76,7 @@ class TerminalState {
    */
   enterAltScreen(): void {
     process.stdout.write('\x1b[?1049h');
+    this.isAltScreen = true;
   }
 
   /**
@@ -81,6 +86,7 @@ class TerminalState {
    */
   exitAltScreen(): void {
     process.stdout.write('\x1b[?1049l');
+    this.isAltScreen = false;
   }
 
   /**
