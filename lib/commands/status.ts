@@ -176,28 +176,86 @@ async function runLiveDashboard(
   const config = await context.configLoader.load();
   let running = true;
   let refreshCount = 0;
+  let intervalId: ReturnType<typeof setInterval> | null = null;
+  const isVsCodeTerminal =
+    context.process.env.TERM_PROGRAM === 'vscode' ||
+    context.process.env.VSCODE_INJECTION === '1';
+  const useAltScreen = !isVsCodeTerminal;
 
   // Setup terminal for fullscreen
-  terminalState.capture();
-  terminalState.enterAltScreen();
+  if (useAltScreen) {
+    terminalState.capture();
+    terminalState.enterAltScreen();
+  }
   terminalState.hideCursor();
   // Clear screen once at start (subsequent renders will overwrite in place)
   context.process.stdout.write('\x1b[2J');
 
-  // Cleanup function
-  const cleanup = () => {
-    running = false;
-    terminalState.showCursor();
-    terminalState.exitAltScreen();
-    terminalState.restore();
-  };
+  // Promise resolver for when exit is triggered
+  let resolveExit: (() => void) | null = null;
 
-  // Handle exit signals
+  // Handle exit signals - cleanup and prevent default exit behavior
   const handleExit = () => {
-    cleanup();
-    // Return instead of calling process.exit() - let caller handle exit
+    if (!running) return; // Prevent double cleanup
+    running = false;
+    try {
+      // Clear the refresh interval
+      if (intervalId !== null) {
+        clearInterval(intervalId);
+        intervalId = null;
+      }
+
+      // Restore stdin state - must be done carefully
+      if (context.process.stdin.isTTY) {
+        const stdin = context.process.stdin;
+        if (typeof stdin.removeListener === 'function') {
+          stdin.removeListener('data', handleKeypress);
+        }
+        if (typeof stdin.setRawMode === 'function') {
+          stdin.setRawMode(false);
+        }
+        if (typeof stdin.pause === 'function') {
+          stdin.pause();
+        }
+      }
+
+      terminalState.showCursor();
+      if (useAltScreen) {
+        // Restore terminal state (cursor, alt screen, etc.)
+        terminalState.exitAltScreen();
+        terminalState.restore();
+      } else {
+        // Clear the screen and return cursor to home in regular terminals
+        context.process.stdout.write('\x1b[2J\x1b[H');
+      }
+
+      // Write a newline to ensure clean prompt
+      context.process.stdout.write('\n');
+    } catch {
+      // Ignore cleanup errors to avoid crashing on exit
+    } finally {
+      // Signal completion on next tick to ensure all cleanup is processed
+      if (resolveExit) {
+        setImmediate(() => resolveExit!());
+      }
+    }
   };
 
+  // Handle keypress for 'q' to quit
+  // Note: Ctrl+C (0x03) is handled via SIGINT signal, not here
+  const handleKeypress = (key: Buffer) => {
+    if (key.length === 0) {
+      return;
+    }
+    const code = key[0];
+    // q, Q, or ESC to quit (Ctrl+C triggers SIGINT which calls handleExit)
+    if (code === 0x71 || code === 0x51 || code === 0x1b) {
+      handleExit();
+    }
+  };
+
+  // Register signal handlers
+  // These intercept signals and do cleanup instead of default termination
   context.process.on('SIGINT', handleExit);
   context.process.on('SIGTERM', handleExit);
 
@@ -205,17 +263,7 @@ async function runLiveDashboard(
   if (context.process.stdin.isTTY) {
     context.process.stdin.setRawMode(true);
     context.process.stdin.resume();
-    context.process.stdin.on('data', (key: Buffer) => {
-      // q, Q, Ctrl+C, or ESC to quit
-      if (
-        key[0] === 0x71 || // q
-        key[0] === 0x51 || // Q
-        key[0] === 0x03 || // Ctrl+C
-        key[0] === 0x1b // ESC
-      ) {
-        handleExit();
-      }
-    });
+    context.process.stdin.on('data', handleKeypress);
   }
 
   // Initial render
@@ -223,25 +271,33 @@ async function runLiveDashboard(
     const statusData = await gatherStatusData(config);
     renderFullscreen(statusData, refreshCount, verbose, context);
   } catch (error) {
-    cleanup();
+    handleExit();
     throw error;
   }
 
-  // Refresh loop
-  const intervalId = setInterval(async () => {
+  // Refresh loop - wrapped in a promise to wait for exit
+  return new Promise<void>((resolve) => {
+    resolveExit = resolve;
+
     if (!running) {
-      clearInterval(intervalId);
+      resolve();
       return;
     }
 
-    try {
-      refreshCount++;
-      const statusData = await gatherStatusData(config);
-      renderFullscreen(statusData, refreshCount, verbose, context);
-    } catch {
-      // Silently continue on errors during refresh
-    }
-  }, REFRESH_INTERVAL);
+    intervalId = setInterval(async () => {
+      if (!running) {
+        return;
+      }
+
+      try {
+        refreshCount++;
+        const statusData = await gatherStatusData(config);
+        renderFullscreen(statusData, refreshCount, verbose, context);
+      } catch {
+        // Silently continue on errors during refresh
+      }
+    }, REFRESH_INTERVAL);
+  });
 }
 
 /**
