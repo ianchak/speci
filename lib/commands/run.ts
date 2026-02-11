@@ -418,13 +418,13 @@ function displayDryRun(
   config: SpeciConfig,
   maxIterations: number
 ): void {
-  log.info('\n=== DRY RUN MODE ===\n');
-  log.info(`Current state: ${state}`);
-  log.info(`Action: ${getActionForState(state)}`);
-  log.info(`Max iterations: ${maxIterations}`);
-  log.info(`Gate commands: ${config.gate.commands.join(', ')}`);
-  log.info(`Max fix attempts: ${config.gate.maxFixAttempts}`);
-  log.info('\nNo actions will be executed.');
+  log.warnPlain('\n=== DRY RUN MODE ===\n');
+  log.muted(`Current state: ${state}`);
+  log.muted(`Action: ${getActionForState(state)}`);
+  log.muted(`Max iterations: ${maxIterations}`);
+  log.muted(`Gate commands: ${config.gate.commands.join(', ')}`);
+  log.muted(`Max fix attempts: ${config.gate.maxFixAttempts}`);
+  log.warnPlain('\nNo actions will be executed.');
 }
 
 /**

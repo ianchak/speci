@@ -132,6 +132,42 @@ export const log = {
   raw(message: string): void {
     console.log(message);
   },
+
+  /**
+   * Log informational message without glyph prefix (blue styled)
+   * Use for multi-line or formatted messages where prefix would look awkward
+   * @param message - Message to log
+   */
+  infoPlain(message: string): void {
+    console.log(colorize(message, 'sky400'));
+  },
+
+  /**
+   * Log warning message without glyph prefix (yellow/amber styled)
+   * Use for multi-line or formatted messages where prefix would look awkward
+   * @param message - Message to log
+   */
+  warnPlain(message: string): void {
+    console.warn(colorize(message, 'warning'));
+  },
+
+  /**
+   * Log error message without glyph prefix (red styled)
+   * Use for multi-line or formatted messages where prefix would look awkward
+   * @param message - Message to log
+   */
+  errorPlain(message: string): void {
+    console.error(colorize(message, 'error'));
+  },
+
+  /**
+   * Log success message without glyph prefix (green styled)
+   * Use for multi-line or formatted messages where prefix would look awkward
+   * @param message - Message to log
+   */
+  successPlain(message: string): void {
+    console.log(colorize(message, 'success'));
+  },
 };
 
 /**

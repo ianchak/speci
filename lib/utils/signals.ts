@@ -124,12 +124,12 @@ export async function runCleanup(): Promise<void> {
 function handleSigint(): void {
   if (signalReceived) {
     // Second Ctrl+C - force exit
-    log.error('\nForce exiting...');
+    log.errorPlain('\nForce exiting...');
     process.exit(130);
   }
 
   signalReceived = true;
-  log.info('\nInterrupted. Cleaning up...');
+  log.infoPlain('\nInterrupted. Cleaning up...');
 
   runCleanup()
     .then(() => process.exit(130))
@@ -149,7 +149,7 @@ function handleSigint(): void {
  * Graceful shutdown with same cleanup as SIGINT.
  */
 function handleSigterm(): void {
-  log.info('\nReceived SIGTERM. Shutting down gracefully...');
+  log.infoPlain('\nReceived SIGTERM. Shutting down gracefully...');
 
   runCleanup()
     .then(() => process.exit(143))
