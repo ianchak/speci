@@ -84,7 +84,7 @@ export async function plan(
       context.logger.info(
         '  --input <files...> Input files for context (design docs, specs)'
       );
-      context.logger.info('');
+      context.logger.raw('');
       context.logger.info('Examples:');
       context.logger.info('  speci plan -p "Build a REST API for users"');
       context.logger.info('  speci plan -i docs/design.md');

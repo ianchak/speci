@@ -101,7 +101,7 @@ function displayActionSummary(
     );
   }
 
-  context.logger.info(''); // Blank line for spacing
+  context.logger.raw(''); // Blank line for spacing
 }
 
 /**
@@ -267,7 +267,7 @@ async function copyAgentFiles(
  * @param context - Command context for logging
  */
 function displaySuccess(context: CommandContext): void {
-  context.logger.info('');
+  context.logger.raw('');
   context.logger.info('Next steps:');
   context.logger.muted('  1. Generate your plan with: speci plan');
   context.logger.muted(
@@ -276,7 +276,7 @@ function displaySuccess(context: CommandContext): void {
   context.logger.muted(
     '  3. After a manual check start the implementation loop: speci run'
   );
-  context.logger.info('');
+  context.logger.raw('');
 }
 
 /**
@@ -296,9 +296,9 @@ export async function init(
   try {
     // Display welcome banner
     renderBanner();
-    context.logger.info('');
+    context.logger.raw('');
     context.logger.info('Initializing Speci in current directory...');
-    context.logger.info('');
+    context.logger.raw('');
 
     // Use default configuration
     const config = getDefaults();
