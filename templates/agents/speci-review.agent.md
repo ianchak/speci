@@ -62,12 +62,47 @@ Auto-FAIL the review if ANY command fails, or output indicates TypeScript errors
 - Acceptance criteria met
 - No breaking changes
 
+### APPROVE WITH WAIVER (PASSED) if:
+
+- Task design flaw detected (see below)
+- All achievable acceptance criteria are met
+- Gates pass
+- Implementation is high quality
+
 ### REQUEST REWORK (FAILED) if:
 
 - Any acceptance criterion missing
 - Gate fails
 - Tests missing/inadequate
 - Breaking changes
+
+### ESCALATE (DESIGN_FLAW) if:
+
+- Acceptance criteria are contradictory or mathematically impossible
+- Task has failed 3+ attempts with the same root cause
+- The implementation correctly addresses all technically achievable requirements
+
+## Task Design Flaw Detection
+
+A **task design flaw** exists when:
+
+1. Acceptance criteria conflict with each other (e.g., "add tests to modules A,B,C" + "increase overall coverage by X%" when A,B,C already have 95%+ coverage)
+2. The task scope makes a metric target mathematically impossible
+3. Multiple review cycles fail on the same issue that cannot be fixed within scope
+
+**Detection signals:**
+
+- 3+ failed review attempts on the same blocking issue
+- Fix agent repeatedly cannot resolve the issue
+- Root cause is "scope limitation" or "conflicting requirements"
+
+**When detected:**
+
+1. Mark the impossible AC as `WAIVED (Design Flaw)` in Review Failure Notes
+2. Document why the AC is impossible in the current scope
+3. If all other ACs pass and gates are green, mark task as PASSED
+4. Add `Design Flaw Resolution` note explaining the waiver
+5. Update the task file with a `## Design Flaw Resolution` section for future reference
 
 ## Quick fixes policy
 

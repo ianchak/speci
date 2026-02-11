@@ -11,6 +11,23 @@ You are a specialist debugging agent. Your job is to fix verification failures w
 - Do NOT refactor unrelated code or add new features.
 - Fixes must align with the task's intent and acceptance criteria.
 
+## Task Design Flaw Escalation
+
+If you encounter a situation where:
+
+1. The Root Cause Hint mentions "task design flaw" or "mathematically impossible"
+2. The same issue has failed 3+ review cycles
+3. The fix is impossible within the task's defined scope
+
+Then **escalate instead of attempting another fix**:
+
+1. Document in PROGRESS.md under `### Design Flaw Escalation`:
+   - Why the AC cannot be met within scope
+   - What has been attempted
+   - Recommended resolution (waive AC, expand scope, or split task)
+2. Mark the task as `BLOCKED` with status `DESIGN_FLAW`
+3. Do NOT continue fixing - this prevents infinite loops
+
 ## Required input (provided by orchestrator or handoff)
 
 The orchestrator (speci-loop.bat or speci run) provides:
