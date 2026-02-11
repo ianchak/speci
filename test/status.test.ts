@@ -237,14 +237,14 @@ This is some malformed content
     it('should calculate task statistics correctly', async () => {
       const progressContent = `# Progress
 
-| Task ID  | Title  | Status      |
-| -------- | ------ | ----------- |
-| TASK_001 | Task 1 | COMPLETE    |
-| TASK_002 | Task 2 | COMPLETE    |
-| TASK_003 | Task 3 | NOT STARTED |
-| TASK_004 | Task 4 | IN PROGRESS |
-| TASK_005 | Task 5 | IN_REVIEW   |
-| TASK_006 | Task 6 | BLOCKED     |
+| Task ID  | Title  | Status      | Review | Priority | Complexity | Deps |
+| -------- | ------ | ----------- | ------ | -------- | ---------- | ---- |
+| TASK_001 | Task 1 | COMPLETE    | PASSED | HIGH     | S          | None |
+| TASK_002 | Task 2 | COMPLETE    | PASSED | HIGH     | S          | None |
+| TASK_003 | Task 3 | NOT STARTED | -      | HIGH     | S          | None |
+| TASK_004 | Task 4 | IN PROGRESS | -      | HIGH     | S          | None |
+| TASK_005 | Task 5 | IN_REVIEW   | -      | HIGH     | S          | None |
+| TASK_006 | Task 6 | BLOCKED     | -      | HIGH     | S          | None |
 `;
       writeFileSync(TEST_PROGRESS, progressContent, 'utf8');
       writeConfig();
@@ -273,9 +273,9 @@ This is some malformed content
     it('should handle single task', async () => {
       const progressContent = `# Progress
 
-| Task ID  | Title  | Status   |
-| -------- | ------ | -------- |
-| TASK_001 | Task 1 | COMPLETE |
+| Task ID  | Title  | Status   | Review | Priority | Complexity | Deps |
+| -------- | ------ | -------- | ------ | -------- | ---------- | ---- |
+| TASK_001 | Task 1 | COMPLETE | PASSED | HIGH     | S          | None |
 `;
       writeFileSync(TEST_PROGRESS, progressContent, 'utf8');
       writeConfig();

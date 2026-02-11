@@ -226,14 +226,14 @@ Some random text
   describe('getTaskStats', () => {
     it('should return correct counts for various statuses', async () => {
       const content = `# Progress
-| Task ID  | Title    | Status      |
-| -------- | -------- | ----------- |
-| TASK_001 | Setup    | COMPLETE    |
-| TASK_002 | Parse    | COMPLETE    |
-| TASK_003 | Test     | IN_REVIEW   |
-| TASK_004 | Build    | NOT STARTED |
-| TASK_005 | Deploy   | IN PROGRESS |
-| TASK_006 | Monitor  | BLOCKED     |
+| Task ID  | Title    | Status      | Review | Priority | Complexity | Deps |
+| -------- | -------- | ----------- | ------ | -------- | ---------- | ---- |
+| TASK_001 | Setup    | COMPLETE    | PASSED | HIGH     | S          | None |
+| TASK_002 | Parse    | COMPLETE    | PASSED | HIGH     | S          | None |
+| TASK_003 | Test     | IN_REVIEW   | -      | HIGH     | S          | None |
+| TASK_004 | Build    | NOT STARTED | -      | HIGH     | S          | None |
+| TASK_005 | Deploy   | IN PROGRESS | -      | HIGH     | S          | None |
+| TASK_006 | Monitor  | BLOCKED     | -      | HIGH     | S          | None |
 `;
       writeFileSync(mockConfig.paths.progress, content);
       const stats = await getTaskStats(mockConfig);
@@ -268,11 +268,11 @@ Some random text
 
     it('should handle alternative status names', async () => {
       const content = `# Progress
-| Task ID  | Title | Status    |
-| -------- | ----- | --------- |
-| TASK_001 | Test1 | COMPLETED |
-| TASK_002 | Test2 | DONE      |
-| TASK_003 | Test3 | IN REVIEW |
+| Task ID  | Title | Status    | Review | Priority | Complexity | Deps |
+| -------- | ----- | --------- | ------ | -------- | ---------- | ---- |
+| TASK_001 | Test1 | COMPLETED | PASSED | HIGH     | S          | None |
+| TASK_002 | Test2 | DONE      | PASSED | HIGH     | S          | None |
+| TASK_003 | Test3 | IN REVIEW | -      | HIGH     | S          | None |
 `;
       writeFileSync(mockConfig.paths.progress, content);
       const stats = await getTaskStats(mockConfig);
@@ -374,11 +374,11 @@ Some random text
 
     it('should handle concurrent getTaskStats calls', async () => {
       const content = `# Progress
-| Task ID  | Title    | Status      |
-| -------- | -------- | ----------- |
-| TASK_001 | Setup    | COMPLETE    |
-| TASK_002 | Parse    | IN_REVIEW   |
-| TASK_003 | Test     | NOT STARTED |
+| Task ID  | Title    | Status      | Review | Priority | Complexity | Deps |
+| -------- | -------- | ----------- | ------ | -------- | ---------- | ---- |
+| TASK_001 | Setup    | COMPLETE    | PASSED | HIGH     | S          | None |
+| TASK_002 | Parse    | IN_REVIEW   | -      | HIGH     | S          | None |
+| TASK_003 | Test     | NOT STARTED | -      | HIGH     | S          | None |
 `;
       writeFileSync(mockConfig.paths.progress, content);
 
@@ -461,11 +461,11 @@ Some random text
     it('should handle concurrent mixed state operations', async () => {
       const content = `# Progress
 
-| Task ID  | Title | Status      |
-| -------- | ----- | ----------- |
-| TASK_001 | Setup | COMPLETE    |
-| TASK_002 | Parse | IN_PROGRESS |
-| TASK_003 | Test  | NOT STARTED |
+| Task ID  | Title | Status      | Review | Priority | Complexity | Deps |
+| -------- | ----- | ----------- | ------ | -------- | ---------- | ---- |
+| TASK_001 | Setup | COMPLETE    | PASSED | HIGH     | S          | None |
+| TASK_002 | Parse | IN_PROGRESS | -      | HIGH     | S          | None |
+| TASK_003 | Test  | NOT STARTED | -      | HIGH     | S          | None |
 `;
       writeFileSync(mockConfig.paths.progress, content);
 
@@ -696,11 +696,11 @@ Some random text
 
     it('should share cache between getState, getTaskStats, and getCurrentTask', async () => {
       const content = `# Progress
-| Task ID  | Title | Status      |
-| -------- | ----- | ----------- |
-| TASK_001 | Setup | COMPLETE    |
-| TASK_002 | Parse | IN PROGRESS |
-| TASK_003 | Test  | NOT STARTED |
+| Task ID  | Title | Status      | Review | Priority | Complexity | Deps |
+| -------- | ----- | ----------- | ------ | -------- | ---------- | ---- |
+| TASK_001 | Setup | COMPLETE    | PASSED | HIGH     | S          | None |
+| TASK_002 | Parse | IN PROGRESS | -      | HIGH     | S          | None |
+| TASK_003 | Test  | NOT STARTED | -      | HIGH     | S          | None |
 `;
       writeFileSync(mockConfig.paths.progress, content);
 
@@ -710,11 +710,11 @@ Some random text
 
       // Modify file
       const newContent = `# Progress
-| Task ID  | Title | Status   |
-| -------- | ----- | -------- |
-| TASK_001 | Setup | COMPLETE |
-| TASK_002 | Parse | COMPLETE |
-| TASK_003 | Test  | COMPLETE |
+| Task ID  | Title | Status   | Review | Priority | Complexity | Deps |
+| -------- | ----- | -------- | ------ | -------- | ---------- | ---- |
+| TASK_001 | Setup | COMPLETE | PASSED | HIGH     | S          | None |
+| TASK_002 | Parse | COMPLETE | PASSED | HIGH     | S          | None |
+| TASK_003 | Test  | COMPLETE | PASSED | HIGH     | S          | None |
 `;
       writeFileSync(mockConfig.paths.progress, newContent);
 
@@ -818,9 +818,9 @@ Some random text
 
     it('should handle concurrent calls with cache', async () => {
       const content = `# Progress
-| Task ID  | Title | Status      |
-| -------- | ----- | ----------- |
-| TASK_001 | Setup | IN PROGRESS |
+| Task ID  | Title | Status      | Review | Priority | Complexity | Deps |
+| -------- | ----- | ----------- | ------ | -------- | ---------- | ---- |
+| TASK_001 | Setup | IN PROGRESS | -      | HIGH     | S          | None |
 `;
       writeFileSync(mockConfig.paths.progress, content);
 

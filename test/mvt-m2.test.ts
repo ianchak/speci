@@ -230,12 +230,12 @@ describe('MVT_M2: Core Libraries Integration', () => {
     it('should parse task statistics correctly', async () => {
       const progressContent = `# Progress
 
-| Task ID | Title | Status | Priority |
-|---------|-------|--------|----------|
-| TASK_001 | Test 1 | COMPLETE | High |
-| TASK_002 | Test 2 | IN REVIEW | High |
-| TASK_003 | Test 3 | NOT STARTED | High |
-| TASK_004 | Test 4 | BLOCKED | High |
+| Task ID | Title | Status | Review | Priority | Complexity | Deps |
+|---------|-------|--------|--------|----------|------------|------|
+| TASK_001 | Test 1 | COMPLETE | PASSED | High | S | None |
+| TASK_002 | Test 2 | IN REVIEW | - | High | S | None |
+| TASK_003 | Test 3 | NOT STARTED | - | High | S | None |
+| TASK_004 | Test 4 | BLOCKED | - | High | S | None |
 `;
 
       writeFileSync(progressPath, progressContent);

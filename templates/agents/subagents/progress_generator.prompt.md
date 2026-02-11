@@ -71,11 +71,11 @@ The orchestrator provides:
 
 ## Milestone: M[X] - [Name]
 
-| Task ID  | Title       | Status      | Priority | Complexity | Dependencies |
-| -------- | ----------- | ----------- | -------- | ---------- | ------------ |
-| TASK_XXX | [Feature]   | NOT STARTED | HIGH     | M          | TASK_YYY     |
-| TASK_YYY | [Feature]   | NOT STARTED | MEDIUM   | S          | None         |
-| MVT_MX   | Manual Test | NOT STARTED | —        | 30 min     | TASK_XXX     |
+| Task ID  | Title       | Status      | Review Status | Priority | Complexity | Dependencies | Assigned To | Attempts |
+| -------- | ----------- | ----------- | ------------- | -------- | ---------- | ------------ | ----------- | -------- |
+| TASK_XXX | [Feature]   | NOT STARTED | —             | HIGH     | M          | TASK_YYY     |             |          |
+| TASK_YYY | [Feature]   | NOT STARTED | —             | MEDIUM   | S          | None         |             |          |
+| MVT_MX   | Manual Test | NOT STARTED | —             | —        | 30 min     | TASK_XXX     |             |          |
 
 ### Dependencies
 

@@ -229,6 +229,11 @@ export async function getTaskStats(
     'IN PROGRESS',
   ]);
 
+  // Minimum columns required (Task ID, Title, Status, Review Status, Priority, Complexity, Dependencies, Assigned To, Attempts)
+  // Actual task tables have 9 data columns = 10+ elements after split (including empty first element)
+  // Risk Areas and other tables have fewer columns
+  const MIN_TASK_TABLE_COLUMNS = 7; // At least 6 data columns to be a real task table
+
   for (const line of lines) {
     // Match task rows: | TASK_001 | Title | Status | ... |
     if (!PATTERNS.TASK_ROW.test(line)) continue;
@@ -236,12 +241,14 @@ export async function getTaskStats(
     // Split on '|' — leading '|' produces empty first element
     // Columns: ['', ' TASK_001 ', ' Title ', ' Status ', ...]
     const cols = line.split('|');
-    if (cols.length < 4) continue;
+
+    // Skip rows with too few columns (not a real task table, e.g., Risk Areas)
+    if (cols.length < MIN_TASK_TABLE_COLUMNS) continue;
 
     // Status is always the 3rd data column (index 3 after split)
     const status = cols[3].trim().toUpperCase();
 
-    // Skip rows that don't have a valid task status (e.g., Risk Areas table)
+    // Skip rows that don't have a valid task status
     if (!VALID_STATUSES.has(status)) continue;
 
     stats.total++;
