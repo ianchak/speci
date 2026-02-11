@@ -78,7 +78,7 @@ export async function task(
     // Validate required option (must come before initialization)
     if (!options.plan) {
       context.logger.error('Missing required option: --plan <path>');
-      context.logger.info('Usage: speci task --plan <path-to-plan.md>');
+      context.logger.muted('Usage: speci task --plan <path-to-plan.md>');
       return {
         success: false,
         exitCode: 2,

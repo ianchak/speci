@@ -78,17 +78,17 @@ export async function plan(
     if (!options.prompt && (!options.input || options.input.length === 0)) {
       context.logger.error('Missing required input');
       context.logger.info('Provide at least one of:');
-      context.logger.info(
+      context.logger.muted(
         '  --prompt <text>    Initial prompt describing what to plan'
       );
-      context.logger.info(
+      context.logger.muted(
         '  --input <files...> Input files for context (design docs, specs)'
       );
       context.logger.raw('');
       context.logger.info('Examples:');
-      context.logger.info('  speci plan -p "Build a REST API for users"');
-      context.logger.info('  speci plan -i docs/design.md');
-      context.logger.info('  speci plan -i spec.md -p "Focus on auth"');
+      context.logger.muted('  speci plan -p "Build a REST API for users"');
+      context.logger.muted('  speci plan -i docs/design.md');
+      context.logger.muted('  speci plan -i spec.md -p "Focus on auth"');
       return {
         success: false,
         exitCode: 1,
