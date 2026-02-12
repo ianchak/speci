@@ -54,6 +54,7 @@ describe('Terminal State Management', () => {
   describe('State Restoration', () => {
     it('should restore terminal state with escape sequences', () => {
       const state = terminalState.capture();
+      terminalState.enterAltScreen();
       terminalState.restore(state);
 
       // Verify escape sequences were written

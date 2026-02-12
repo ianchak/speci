@@ -107,7 +107,7 @@ export async function acquireLock(
 
     // If lock is stale, remove it
     if (info.isStale) {
-      log.info(`Removed stale lock from PID ${info.pid}`);
+      log.infoPlain(`Removed stale lock from PID ${info.pid}`);
       await releaseLock(config);
     } else {
       throw createError(

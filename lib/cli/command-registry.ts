@@ -296,11 +296,11 @@ Examples:
       log.error(`Unknown command '${unknownCmd}'`);
 
       if (suggestions.length > 0) {
-        log.info(`Did you mean: speci ${suggestions[0]}?`);
+        log.infoPlain(`Did you mean: speci ${suggestions[0]}?`);
       }
 
       log.info('Available commands:');
-      availableCommands.forEach((cmd) => log.info(`  ${cmd}`));
+      availableCommands.forEach((cmd) => log.muted(`  ${cmd}`));
 
       await exitWithCleanup(2);
     });
@@ -313,9 +313,9 @@ Examples:
     if (err instanceof PreflightError) {
       log.error(`Preflight check failed: ${err.check}`);
       log.error(err.message);
-      log.info('To fix this:');
+      log.infoPlain('\nTo fix this:');
       for (const step of err.remediation) {
-        log.info(`  • ${step}`);
+        log.muted(`  • ${step}`);
       }
       exitWithCleanup(err.exitCode);
     }

@@ -40,6 +40,12 @@ vi.mock('../lib/config.js', async () => {
 
 describe('copilot', () => {
   let config: SpeciConfig;
+  const fastRetryPolicy = {
+    maxRetries: 1,
+    baseDelay: 5,
+    maxDelay: 20,
+    retryableExitCodes: [429, 52, 124, 7, 6],
+  };
 
   beforeEach(() => {
     config = getDefaults();
@@ -263,7 +269,12 @@ describe('copilot', () => {
       const mockChild = new EventEmitter();
       (spawn as ReturnType<typeof vi.fn>).mockReturnValue(mockChild);
 
-      const promise = runAgent(config, 'impl', 'Test Implementation');
+      const promise = runAgent(
+        config,
+        'impl',
+        'Test Implementation',
+        fastRetryPolicy
+      );
 
       // Simulate success
       setTimeout(() => mockChild.emit('close', 0), 10);
@@ -282,7 +293,12 @@ describe('copilot', () => {
       const mockChild = new EventEmitter();
       (spawn as ReturnType<typeof vi.fn>).mockReturnValue(mockChild);
 
-      const promise = runAgent(config, 'impl', 'Test Implementation');
+      const promise = runAgent(
+        config,
+        'impl',
+        'Test Implementation',
+        fastRetryPolicy
+      );
 
       // Simulate failure
       setTimeout(() => mockChild.emit('close', 1), 10);
@@ -303,19 +319,24 @@ describe('copilot', () => {
         .mockReturnValueOnce(mockChild1)
         .mockReturnValueOnce(mockChild2);
 
-      const promise = runAgent(config, 'impl', 'Test Implementation');
+      const promise = runAgent(
+        config,
+        'impl',
+        'Test Implementation',
+        fastRetryPolicy
+      );
 
       // First attempt fails with rate limit (429 -> retryable)
       setTimeout(() => mockChild1.emit('close', 429), 10);
       // Second attempt succeeds
-      setTimeout(() => mockChild2.emit('close', 0), 1100);
+      setTimeout(() => mockChild2.emit('close', 0), 50);
 
       const result = await promise;
 
       expect(spawn).toHaveBeenCalledTimes(2);
       expect(result.isSuccess).toBe(true);
       expect(result.exitCode).toBe(0);
-    }, 10000);
+    });
 
     it('should retry on exit code 52 (network error)', async () => {
       const mockChild1 = new EventEmitter();
@@ -324,19 +345,24 @@ describe('copilot', () => {
         .mockReturnValueOnce(mockChild1)
         .mockReturnValueOnce(mockChild2);
 
-      const promise = runAgent(config, 'impl', 'Test Implementation');
+      const promise = runAgent(
+        config,
+        'impl',
+        'Test Implementation',
+        fastRetryPolicy
+      );
 
       // First attempt fails with network error (52 -> retryable)
       setTimeout(() => mockChild1.emit('close', 52), 10);
       // Second attempt succeeds
-      setTimeout(() => mockChild2.emit('close', 0), 1100);
+      setTimeout(() => mockChild2.emit('close', 0), 50);
 
       const result = await promise;
 
       expect(spawn).toHaveBeenCalledTimes(2);
       expect(result.isSuccess).toBe(true);
       expect(result.exitCode).toBe(0);
-    }, 10000);
+    });
 
     it('should retry on exit code 124 (timeout)', async () => {
       const mockChild1 = new EventEmitter();
@@ -345,19 +371,24 @@ describe('copilot', () => {
         .mockReturnValueOnce(mockChild1)
         .mockReturnValueOnce(mockChild2);
 
-      const promise = runAgent(config, 'impl', 'Test Implementation');
+      const promise = runAgent(
+        config,
+        'impl',
+        'Test Implementation',
+        fastRetryPolicy
+      );
 
       // First attempt fails with timeout (124 -> retryable)
       setTimeout(() => mockChild1.emit('close', 124), 10);
       // Second attempt succeeds
-      setTimeout(() => mockChild2.emit('close', 0), 1100);
+      setTimeout(() => mockChild2.emit('close', 0), 50);
 
       const result = await promise;
 
       expect(spawn).toHaveBeenCalledTimes(2);
       expect(result.isSuccess).toBe(true);
       expect(result.exitCode).toBe(0);
-    }, 10000);
+    });
 
     it('should retry on exit code 7 (connection failure)', async () => {
       const mockChild1 = new EventEmitter();
@@ -366,19 +397,24 @@ describe('copilot', () => {
         .mockReturnValueOnce(mockChild1)
         .mockReturnValueOnce(mockChild2);
 
-      const promise = runAgent(config, 'impl', 'Test Implementation');
+      const promise = runAgent(
+        config,
+        'impl',
+        'Test Implementation',
+        fastRetryPolicy
+      );
 
       // First attempt fails with connection failure (7 -> retryable)
       setTimeout(() => mockChild1.emit('close', 7), 10);
       // Second attempt succeeds
-      setTimeout(() => mockChild2.emit('close', 0), 1100);
+      setTimeout(() => mockChild2.emit('close', 0), 50);
 
       const result = await promise;
 
       expect(spawn).toHaveBeenCalledTimes(2);
       expect(result.isSuccess).toBe(true);
       expect(result.exitCode).toBe(0);
-    }, 10000);
+    });
 
     it('should retry on exit code 6 (DNS resolution failure)', async () => {
       const mockChild1 = new EventEmitter();
@@ -387,19 +423,24 @@ describe('copilot', () => {
         .mockReturnValueOnce(mockChild1)
         .mockReturnValueOnce(mockChild2);
 
-      const promise = runAgent(config, 'impl', 'Test Implementation');
+      const promise = runAgent(
+        config,
+        'impl',
+        'Test Implementation',
+        fastRetryPolicy
+      );
 
       // First attempt fails with DNS failure (6 -> retryable)
       setTimeout(() => mockChild1.emit('close', 6), 10);
       // Second attempt succeeds
-      setTimeout(() => mockChild2.emit('close', 0), 1100);
+      setTimeout(() => mockChild2.emit('close', 0), 50);
 
       const result = await promise;
 
       expect(spawn).toHaveBeenCalledTimes(2);
       expect(result.isSuccess).toBe(true);
       expect(result.exitCode).toBe(0);
-    }, 10000);
+    });
 
     it('should not retry on ENOENT error', async () => {
       const mockChild = new EventEmitter();
@@ -614,11 +655,16 @@ describe('copilot', () => {
         return proc;
       });
 
-      await runAgent(config, 'test-agent', 'plan');
+      await runAgent(config, 'test-agent', 'plan', {
+        maxRetries: 2,
+        baseDelay: 5,
+        maxDelay: 20,
+        retryableExitCodes: [429, 52, 124, 7, 6],
+      });
 
       // Should retry but eventually fail if all retries exhausted
       expect(callCount).toBeGreaterThan(1);
-    }, 15000); // Increase timeout for retry delays
+    });
 
     it('should handle timeout errors (exit code 124)', async () => {
       let callCount = 0;
@@ -638,11 +684,16 @@ describe('copilot', () => {
         return proc;
       });
 
-      await runAgent(config, 'test-agent', 'plan');
+      await runAgent(config, 'test-agent', 'plan', {
+        maxRetries: 2,
+        baseDelay: 5,
+        maxDelay: 20,
+        retryableExitCodes: [429, 52, 124, 7, 6],
+      });
 
       // Should retry for timeout
       expect(callCount).toBeGreaterThan(1);
-    }, 15000); // Increase timeout for retry delays
+    });
 
     it('should return error with context when all retries exhausted', async () => {
       let callCount = 0;
@@ -665,7 +716,12 @@ describe('copilot', () => {
         return proc;
       });
 
-      const result = await runAgent(config, 'test-agent', 'plan');
+      const result = await runAgent(config, 'test-agent', 'plan', {
+        maxRetries: 2,
+        baseDelay: 5,
+        maxDelay: 20,
+        retryableExitCodes: [429, 52, 124, 7, 6],
+      });
 
       expect(result.isSuccess).toBe(false);
       expect(callCount).toBeGreaterThan(1); // Should have retried
@@ -673,9 +729,10 @@ describe('copilot', () => {
         expect(result.error).toBeDefined();
         expect(result.exitCode).toBe(7);
       }
-    }, 15000); // Increase timeout for retry delays
+    });
 
     it('should use exponential backoff for retries', async () => {
+      vi.useFakeTimers();
       const timestamps: number[] = [];
       let callCount = 0;
 
@@ -693,7 +750,15 @@ describe('copilot', () => {
         return proc;
       });
 
-      await runAgent(config, 'test-agent', 'plan');
+      const promise = runAgent(config, 'test-agent', 'plan', {
+        maxRetries: 2,
+        baseDelay: 100,
+        maxDelay: 200,
+        retryableExitCodes: [429, 52, 124, 7, 6],
+      });
+
+      await vi.advanceTimersByTimeAsync(1000);
+      await promise;
 
       // Should have made initial attempt + retries
       expect(callCount).toBeGreaterThan(1);
@@ -706,7 +771,9 @@ describe('copilot', () => {
         // Second delay should be longer than first (exponential growth)
         expect(delay2).toBeGreaterThan(delay1 * 1.5);
       }
-    }, 15000); // Increase timeout for retry delays
+
+      vi.useRealTimers();
+    });
   });
 
   describe('spawnCopilot stdio options', () => {

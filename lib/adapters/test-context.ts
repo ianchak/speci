@@ -74,6 +74,10 @@ export function createMockProcess(): IProcess {
 export function createMockLogger(): ILogger {
   return {
     info: vi.fn(),
+    infoPlain: vi.fn(),
+    warnPlain: vi.fn(),
+    errorPlain: vi.fn(),
+    successPlain: vi.fn(),
     error: vi.fn(),
     warn: vi.fn(),
     success: vi.fn(),

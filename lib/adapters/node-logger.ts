@@ -21,6 +21,22 @@ export class NodeLogger implements ILogger {
     log.info(message);
   }
 
+  infoPlain(message: string): void {
+    log.infoPlain(message);
+  }
+
+  warnPlain(message: string): void {
+    log.warnPlain(message);
+  }
+
+  errorPlain(message: string): void {
+    log.errorPlain(message);
+  }
+
+  successPlain(message: string): void {
+    log.successPlain(message);
+  }
+
   error(message: string): void {
     log.error(message);
   }

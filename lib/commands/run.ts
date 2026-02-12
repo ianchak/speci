@@ -165,7 +165,9 @@ async function mainLoop(
   while (iteration < maxIterations) {
     iteration++;
     logIteration(logFile, iteration, 'START');
-    context.logger.info(`\n--- Iteration ${iteration}/${maxIterations} ---`);
+    context.logger.infoPlain(
+      `\n--- Iteration ${iteration}/${maxIterations} ---`
+    );
 
     // 1. Get current state
     const state = await getState(config);
@@ -225,7 +227,7 @@ async function handleWorkLeft(
   context: CommandContext
 ): Promise<void> {
   // 1. Run impl agent
-  context.logger.info('Dispatching implementation agent...');
+  context.logger.infoPlain('Dispatching implementation agent...');
   logAgent(logFile, 'impl', 'START');
   const implResult = await runAgent(config, 'impl', 'Implementation Agent');
   logAgent(logFile, 'impl', implResult.isSuccess ? 'SUCCESS' : 'FAILED');
@@ -236,7 +238,7 @@ async function handleWorkLeft(
   }
 
   // 2. Run gates
-  context.logger.info('Running gate commands...');
+  context.logger.infoPlain('Running gate commands...');
   const gateResult = await runGate(config);
   logGate(logFile, gateResult);
 
@@ -299,7 +301,7 @@ async function handleInReview(
   _options: RunOptions,
   context: CommandContext
 ): Promise<void> {
-  context.logger.info('Dispatching review agent...');
+  context.logger.infoPlain('Dispatching review agent...');
   logAgent(logFile, 'review', 'START');
   const reviewResult = await runAgent(config, 'review', 'Review Agent');
   logAgent(logFile, 'review', reviewResult.isSuccess ? 'SUCCESS' : 'FAILED');
@@ -323,7 +325,7 @@ async function handleBlocked(
   _options: RunOptions,
   context: CommandContext
 ): Promise<void> {
-  context.logger.info('Dispatching tidy agent to unblock tasks...');
+  context.logger.infoPlain('Dispatching tidy agent to unblock tasks...');
   logAgent(logFile, 'tidy', 'START');
   const tidyResult = await runAgent(config, 'tidy', 'Tidy Agent');
   logAgent(logFile, 'tidy', tidyResult.isSuccess ? 'SUCCESS' : 'FAILED');
@@ -362,10 +364,10 @@ async function confirmRun(
   state: STATE,
   _config: SpeciConfig
 ): Promise<boolean> {
-  log.info(`Current state: ${state}`);
+  log.infoPlain(`Current state: ${state}`);
 
   const action = getActionForState(state);
-  log.info(`Action: ${action}`);
+  log.infoPlain(`Action: ${action}`);
 
   const rl = createInterface({
     input: process.stdin,
@@ -376,7 +378,7 @@ async function confirmRun(
     rl.question('\nProceed with run? [Y/n] ', (answer) => {
       rl.close();
       if (answer.toLowerCase() === 'n' || answer.toLowerCase() === 'no') {
-        log.info('Run cancelled.');
+        log.infoPlain('Run cancelled.');
         resolve(false);
       } else {
         resolve(true);

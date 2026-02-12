@@ -1,6 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { mkdirSync, rmSync, writeFileSync, existsSync } from 'node:fs';
-import * as fs from 'node:fs';
 import { join, dirname } from 'node:path';
 import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
@@ -655,17 +654,22 @@ describe('config', () => {
       expect(path).toContain('agents');
     });
 
-    it('should fall back to package-root templates when needed', () => {
+    it('should fall back to package-root templates when needed', async () => {
+      vi.resetModules();
+
       const configModuleDir = dirname(
         fileURLToPath(new URL('../lib/config.js', import.meta.url))
       );
       const primaryPath = join(configModuleDir, '..', 'templates');
       const fallbackPath = join(configModuleDir, '..', '..', 'templates');
 
-      const originalExistsSync = fs.existsSync;
-      const existsSpy = vi
-        .spyOn(fs, 'existsSync')
-        .mockImplementation((path) => {
+      const actualFs = await vi.importActual<typeof import('node:fs')>(
+        'node:fs'
+      );
+
+      vi.doMock('node:fs', () => ({
+        ...actualFs,
+        existsSync: (path: Parameters<typeof actualFs.existsSync>[0]) => {
           if (path === primaryPath) {
             return false;
           }
@@ -673,13 +677,18 @@ describe('config', () => {
             return true;
           }
 
-          return originalExistsSync(path);
-        });
+          return actualFs.existsSync(path);
+        },
+      }));
 
-      const path = getAgentsTemplatePath();
+      const freshConfig = await import('../lib/config.js');
+      freshConfig.resetConfigCache();
+      const path = freshConfig.getAgentsTemplatePath();
 
       expect(path).toBe(join(fallbackPath, 'agents'));
-      existsSpy.mockRestore();
+
+      vi.doUnmock('node:fs');
+      vi.resetModules();
     });
   });
 

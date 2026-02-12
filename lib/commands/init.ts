@@ -295,7 +295,7 @@ export async function init(
   try {
     // Display welcome message
     context.logger.raw('');
-    context.logger.info('Initializing Speci in current directory...');
+    context.logger.infoPlain('Initializing Speci in current directory...');
     context.logger.raw('');
 
     // Use default configuration

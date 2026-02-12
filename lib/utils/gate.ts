@@ -155,7 +155,9 @@ export async function runGate(config: SpeciConfig): Promise<GateResult> {
     return { isSuccess: true, results: [], totalDuration: 0 };
   }
 
-  log.info(`Running gate checks (${commands.length} commands, ${strategy})...`);
+  log.infoPlain(
+    `Running gate checks (${commands.length} commands, ${strategy})...`
+  );
   const startTime = Date.now();
   let results: GateCommandResult[];
 
@@ -183,14 +185,14 @@ export async function runGate(config: SpeciConfig): Promise<GateResult> {
 
     // Log results after all complete (avoid interleaving)
     for (let i = 0; i < results.length; i++) {
-      log.info(`  ${getGlyph('pointer')} ${commands[i]}`);
+      log.infoPlain(`  ${getGlyph('pointer')} ${commands[i]}`);
       logCommandResult(results[i]);
     }
   } else {
     // Sequential execution (existing behavior)
     results = [];
     for (const command of commands) {
-      log.info(`  ${getGlyph('pointer')} ${command}`);
+      log.infoPlain(`  ${getGlyph('pointer')} ${command}`);
       const result = await executeGateCommand(command);
       results.push(result);
       logCommandResult(result);

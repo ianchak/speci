@@ -15,6 +15,10 @@ describe('CommandRegistry', () => {
     mockContext = {
       logger: {
         info: vi.fn(),
+        infoPlain: vi.fn(),
+        warnPlain: vi.fn(),
+        errorPlain: vi.fn(),
+        successPlain: vi.fn(),
         warn: vi.fn(),
         error: vi.fn(),
         success: vi.fn(),

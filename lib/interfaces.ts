@@ -172,6 +172,30 @@ export interface ILogger {
   info(message: string): void;
 
   /**
+   * Log informational message without glyph prefix
+   * @param message - Message to log
+   */
+  infoPlain(message: string): void;
+
+  /**
+   * Log warning message without glyph prefix
+   * @param message - Warning message to log
+   */
+  warnPlain(message: string): void;
+
+  /**
+   * Log error message without glyph prefix
+   * @param message - Error message to log
+   */
+  errorPlain(message: string): void;
+
+  /**
+   * Log success message without glyph prefix
+   * @param message - Success message to log
+   */
+  successPlain(message: string): void;
+
+  /**
    * Log error message
    * @param message - Error message to log
    */

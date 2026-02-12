@@ -53,7 +53,7 @@ describe('Gate Runner', () => {
 
     it('should handle timeout', async () => {
       const result = await executeGateCommand(
-        'node -e "setTimeout(() => {}, 2000)"',
+        'node -e "setTimeout(() => {}, 400)"',
         { timeout: 100 }
       );
 
@@ -710,7 +710,7 @@ describe('Gate Runner', () => {
     it('should timeout long-running command', async () => {
       // Create a command that exceeds timeout
       const result = await executeGateCommand(
-        'node -e "setTimeout(() => {}, 2000)"',
+        'node -e "setTimeout(() => {}, 400)"',
         { timeout: 200 }
       );
 
@@ -722,7 +722,7 @@ describe('Gate Runner', () => {
     it('should allow second command to succeed after first times out', async () => {
       // First command times out
       const result1 = await executeGateCommand(
-        'node -e "setTimeout(() => {}, 2000)"',
+        'node -e "setTimeout(() => {}, 400)"',
         { timeout: 100 }
       );
 
@@ -739,7 +739,7 @@ describe('Gate Runner', () => {
 
     it('should return consistent exit code for timeouts', async () => {
       const result = await executeGateCommand(
-        'node -e "setTimeout(() => {}, 1000)"',
+        'node -e "setTimeout(() => {}, 400)"',
         { timeout: 100 }
       );
 
@@ -752,7 +752,7 @@ describe('Gate Runner', () => {
 
     it('should measure duration for timeout (within reason)', async () => {
       const result = await executeGateCommand(
-        'node -e "setTimeout(() => {}, 1000)"',
+        'node -e "setTimeout(() => {}, 400)"',
         { timeout: 200 }
       );
 
@@ -764,7 +764,7 @@ describe('Gate Runner', () => {
 
     it('should handle very short timeouts gracefully', async () => {
       const result = await executeGateCommand(
-        'node -e "setTimeout(() => {}, 500)"',
+        'node -e "setTimeout(() => {}, 200)"',
         { timeout: 50 }
       );
 
@@ -779,7 +779,7 @@ describe('Gate Runner', () => {
       // Note: Windows doesn't support SIGTERM signal handlers like Unix
       // This test verifies the timeout mechanism still works
       const result = await executeGateCommand(
-        'node -e "process.on(\'SIGTERM\', () => {}); setTimeout(() => {}, 2000);"',
+        'node -e "process.on(\'SIGTERM\', () => {}); setTimeout(() => {}, 400);"',
         { timeout: 200 }
       );
 
@@ -794,7 +794,7 @@ describe('Gate Runner', () => {
       // This test verifies AC#32 (already exists above at line 722)
       // but we're adding it again here for completeness in the "advanced" section
       const result1 = await executeGateCommand(
-        'node -e "setTimeout(() => {}, 2000)"',
+        'node -e "setTimeout(() => {}, 400)"',
         { timeout: 150 }
       );
 
@@ -814,7 +814,7 @@ describe('Gate Runner', () => {
       // The existing implementation doesn't have explicit cleanup phase timeouts
       // This test verifies the timeout mechanism completes within reasonable bounds
       const result = await executeGateCommand(
-        'node -e "process.on(\'exit\', () => { const start = Date.now(); while(Date.now() - start < 500); }); setTimeout(() => {}, 2000);"',
+        'node -e "process.on(\'exit\', () => { const start = Date.now(); while(Date.now() - start < 500); }); setTimeout(() => {}, 400);"',
         { timeout: 200 }
       );
 
@@ -827,7 +827,7 @@ describe('Gate Runner', () => {
     it('should verify exit code 124 for timeout (AC#34)', async () => {
       // Explicit verification that timeout exit code is always 124
       const result = await executeGateCommand(
-        'node -e "setTimeout(() => {}, 2000)"',
+        'node -e "setTimeout(() => {}, 400)"',
         { timeout: 100 }
       );
 
