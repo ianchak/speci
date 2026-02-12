@@ -3611,13 +3611,13 @@ describe('Performance Benchmarks (TASK_021)', () => {
 
       // Start first animation (don't await yet)
       const animation1 = module.animateBanner({
-        duration: 200,
+        duration: 120,
         effect: 'fade',
       });
 
       // Attempt second animation immediately
       const animation2 = module.animateBanner({
-        duration: 200,
+        duration: 120,
         effect: 'fade',
       });
 
@@ -3640,15 +3640,15 @@ describe('Performance Benchmarks (TASK_021)', () => {
 
       // Start animation
       const animationPromise = module.animateBanner({
-        duration: 300,
+        duration: 150,
         effect: 'fade',
       });
 
-      // Simulate terminal resize after 100ms
+      // Simulate terminal resize shortly after animation starts
       setTimeout(() => {
         mockStdout.columns = 120;
         process.emit('SIGWINCH' as NodeJS.Signals);
-      }, 100);
+      }, 30);
 
       // Should complete without crashing
       await expect(animationPromise).resolves.not.toThrow();
@@ -3692,14 +3692,14 @@ describe('Performance Benchmarks (TASK_021)', () => {
 
       // Start animation
       const animationPromise = module.animateBanner({
-        duration: 500,
+        duration: 200,
         effect: 'fade',
       });
 
-      // Simulate interrupt after 100ms
+      // Simulate interrupt shortly after animation starts
       setTimeout(() => {
         process.emit('SIGINT' as NodeJS.Signals);
-      }, 100);
+      }, 30);
 
       // Should complete (or handle interrupt gracefully)
       try {
@@ -3757,7 +3757,7 @@ describe('Performance Benchmarks (TASK_021)', () => {
       vi.spyOn(process, 'stdout', 'get').mockReturnValue(mockStdout);
 
       await module.animateBanner({
-        duration: 300,
+        duration: 150,
         effect: 'fade',
       });
 
@@ -3806,7 +3806,7 @@ describe('Performance Benchmarks (TASK_021)', () => {
 
       // Start animation with longer duration to ensure timer is active
       const animationPromise = module.animateBanner({
-        duration: 500,
+        duration: 200,
         effect: 'fade',
       });
 

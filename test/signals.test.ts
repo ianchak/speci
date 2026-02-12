@@ -180,6 +180,15 @@ describe('Signal Handling', () => {
   });
 
   describe('Cleanup Timeout', () => {
+    beforeEach(() => {
+      vi.useFakeTimers();
+    });
+
+    afterEach(async () => {
+      await vi.runOnlyPendingTimersAsync();
+      vi.useRealTimers();
+    });
+
     it('should complete cleanup before timeout with fast handlers', async () => {
       const fn = vi.fn();
       registerCleanup(async () => {
@@ -187,7 +196,9 @@ describe('Signal Handling', () => {
         fn();
       });
 
-      await runCleanup();
+      const cleanupPromise = runCleanup();
+      await vi.advanceTimersByTimeAsync(200);
+      await cleanupPromise;
 
       expect(fn).toHaveBeenCalledOnce();
     });
@@ -206,9 +217,14 @@ describe('Signal Handling', () => {
         });
 
         const startTime = Date.now();
+        const cleanupPromise = runCleanup();
+        await vi.advanceTimersByTimeAsync(5001);
         // Should reject with timeout error
-        await expect(runCleanup()).rejects.toThrow('Cleanup timeout');
+        await expect(cleanupPromise).rejects.toThrow('Cleanup timeout');
         const duration = Date.now() - startTime;
+
+        // Let pending long cleanup finish to avoid state leakage
+        await vi.advanceTimersByTimeAsync(10000);
 
         // Should timeout around 5 seconds (5000ms), not wait 10 seconds
         expect(duration).toBeLessThan(6000);
@@ -235,8 +251,13 @@ describe('Signal Handling', () => {
           await new Promise((resolve) => setTimeout(resolve, 10000));
         });
 
+        const cleanupPromise = runCleanup();
+        await vi.advanceTimersByTimeAsync(5001);
         // Should reject with timeout error
-        await expect(runCleanup()).rejects.toThrow('Cleanup timeout');
+        await expect(cleanupPromise).rejects.toThrow('Cleanup timeout');
+
+        // Let pending long cleanup finish to avoid state leakage
+        await vi.advanceTimersByTimeAsync(10000);
 
         mockConsoleError.mockRestore();
       }

@@ -663,9 +663,8 @@ describe('config', () => {
       const primaryPath = join(configModuleDir, '..', 'templates');
       const fallbackPath = join(configModuleDir, '..', '..', 'templates');
 
-      const actualFs = await vi.importActual<typeof import('node:fs')>(
-        'node:fs'
-      );
+      const actualFs =
+        await vi.importActual<typeof import('node:fs')>('node:fs');
 
       vi.doMock('node:fs', () => ({
         ...actualFs,
