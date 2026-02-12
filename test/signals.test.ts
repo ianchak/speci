@@ -218,9 +218,11 @@ describe('Signal Handling', () => {
 
         const startTime = Date.now();
         const cleanupPromise = runCleanup();
+        const timeoutAssertion =
+          expect(cleanupPromise).rejects.toThrow('Cleanup timeout');
         await vi.advanceTimersByTimeAsync(5001);
         // Should reject with timeout error
-        await expect(cleanupPromise).rejects.toThrow('Cleanup timeout');
+        await timeoutAssertion;
         const duration = Date.now() - startTime;
 
         // Let pending long cleanup finish to avoid state leakage
@@ -252,9 +254,11 @@ describe('Signal Handling', () => {
         });
 
         const cleanupPromise = runCleanup();
+        const timeoutAssertion =
+          expect(cleanupPromise).rejects.toThrow('Cleanup timeout');
         await vi.advanceTimersByTimeAsync(5001);
         // Should reject with timeout error
-        await expect(cleanupPromise).rejects.toThrow('Cleanup timeout');
+        await timeoutAssertion;
 
         // Let pending long cleanup finish to avoid state leakage
         await vi.advanceTimersByTimeAsync(10000);

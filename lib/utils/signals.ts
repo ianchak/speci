@@ -62,13 +62,16 @@ export async function runCleanup(): Promise<void> {
   if (isCleaningUp) return;
   isCleaningUp = true;
 
-  // Create timeout promise
-  const timeoutPromise = new Promise<void>((_, reject) =>
-    setTimeout(
-      () => reject(new Error('Cleanup timeout after 5s')),
+  let timeoutId: NodeJS.Timeout | null = null;
+
+  // Create timeout promise that resolves to an outcome marker instead of rejecting.
+  // This prevents dangling unhandled rejections when cleanup wins the race.
+  const timeoutPromise = new Promise<{ status: 'timeout' }>((resolve) => {
+    timeoutId = setTimeout(
+      () => resolve({ status: 'timeout' }),
       CLEANUP_TIMEOUT_MS
-    )
-  );
+    );
+  });
 
   // Create cleanup promise
   const cleanupPromise = (async () => {
@@ -100,16 +103,31 @@ export async function runCleanup(): Promise<void> {
     }
   })();
 
+  // Normalize cleanup result into explicit outcomes so rejections are always consumed.
+  const cleanupOutcomePromise = cleanupPromise
+    .then(() => ({ status: 'ok' as const }))
+    .catch((error) => ({ status: 'error' as const, error }));
+
   // Race cleanup against timeout
   try {
-    await Promise.race([cleanupPromise, timeoutPromise]);
+    const result = await Promise.race([cleanupOutcomePromise, timeoutPromise]);
+
+    if (result.status === 'timeout') {
+      const timeoutError = new Error('Cleanup timeout after 5s');
+      log.error(`Cleanup did not complete in time: ${timeoutError.message}`);
+      throw timeoutError;
+    }
+
+    if (result.status === 'error') {
+      throw result.error;
+    }
   } catch (error) {
-    log.error(
-      `Cleanup did not complete in time: ${error instanceof Error ? error.message : String(error)}`
-    );
-    // Rethrow to signal handler
+    // Rethrow to signal handler/caller
     throw error;
   } finally {
+    if (timeoutId) {
+      clearTimeout(timeoutId);
+    }
     // Reset flag to allow future cleanup cycles (important for tests)
     isCleaningUp = false;
   }
