@@ -24,7 +24,7 @@ You are a progress file maintenance agent for this software project. Your ONLY j
 
 1. Read docs/PROGRESS.md completely.
 2. Identify all BLOCKED tasks.
-3. For each BLOCKED task, read its task file (docs/tasks/TASK_XXX.md) to find dependencies.
+3. For each BLOCKED task, read its task file using the `File` column from the PROGRESS.md milestone table (e.g., `docs/tasks/TASK_001_yolo_options_interface.md`) to find dependencies. Do NOT guess filenames from the Task ID.
 
 ### Step 2: Check dependency fulfillment
 

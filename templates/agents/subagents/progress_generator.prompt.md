@@ -23,10 +23,12 @@ The orchestrator provides:
 
 1. Generate Subagent ID: `SA-PROG-<YYYYMMDD>-<seq>`
 2. Mark progress generation IN PROGRESS (if state exists)
-3. SCAN docs/tasks/ for ALL task and MVT files
+3. SCAN docs/tasks/ for ALL task and MVT files — **record exact filenames** (e.g., `TASK_001_yolo_options_interface.md`)
 4. READ plan to understand milestones
 5. BUILD dependency graph
 6. CREATE docs/PROGRESS.md with **ALL tasks as NOT STARTED**
+   - **IMPORTANT**: Each task row MUST include a `File` column with the exact filename from docs/tasks/
+   - Agents use this column to locate task files — without it they will fail to find files
    - **IMPORTANT**: Include the `<SOURCE>` path in the Overview table as `Plan File`
    - This allows impl/review agents to reference the original plan for context
 7. Mark COMPLETE in state file (if exists)
@@ -71,11 +73,11 @@ The orchestrator provides:
 
 ## Milestone: M[X] - [Name]
 
-| Task ID  | Title       | Status      | Review Status | Priority | Complexity | Dependencies | Assigned To | Attempts |
-| -------- | ----------- | ----------- | ------------- | -------- | ---------- | ------------ | ----------- | -------- |
-| TASK_XXX | [Feature]   | NOT STARTED | —             | HIGH     | M          | TASK_YYY     |             |          |
-| TASK_YYY | [Feature]   | NOT STARTED | —             | MEDIUM   | S          | None         |             |          |
-| MVT_MX   | Manual Test | NOT STARTED | —             | —        | 30 min     | TASK_XXX     |             |          |
+| Task ID  | Title       | File                      | Status      | Review Status | Priority | Complexity | Dependencies | Assigned To | Attempts |
+| -------- | ----------- | ------------------------- | ----------- | ------------- | -------- | ---------- | ------------ | ----------- | -------- |
+| TASK_XXX | [Feature]   | TASK_XXX_feature_name.md  | NOT STARTED | —             | HIGH     | M          | TASK_YYY     |             |          |
+| TASK_YYY | [Feature]   | TASK_YYY_other_feature.md | NOT STARTED | —             | MEDIUM   | S          | None         |             |          |
+| MVT_MX   | Manual Test | MVT_MX_milestone_name.md  | NOT STARTED | —             | —        | 30 min     | TASK_XXX     |             |          |
 
 ### Dependencies
 

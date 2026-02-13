@@ -180,6 +180,31 @@ export async function getState(
 }
 
 /**
+ * Find the status value in a split table row by scanning columns for a valid status.
+ *
+ * Handles both old format (Status at column index 3) and new format with File column
+ * (Status at column index 4+). Scans from index 3 onward for the first valid status.
+ *
+ * @param cols - Array of column values from splitting a table row on '|'
+ * @param validStatuses - Set of recognized status strings
+ * @returns Uppercase status string, or undefined if no valid status found
+ */
+function findStatusInColumns(
+  cols: string[],
+  validStatuses: Set<string>
+): string | undefined {
+  // Start from index 3 (skip: empty first element, Task ID, Title)
+  // Status could be at index 3 (old format) or 4 (new format with File column)
+  for (let i = 3; i < cols.length && i <= 5; i++) {
+    const value = cols[i].trim().toUpperCase();
+    if (validStatuses.has(value)) {
+      return value;
+    }
+  }
+  return undefined;
+}
+
+/**
  * Get task statistics from PROGRESS.md
  *
  * Uses cached file content when called within TTL window (default 200ms).
@@ -245,11 +270,12 @@ export async function getTaskStats(
     // Skip rows with too few columns (not a real task table, e.g., Risk Areas)
     if (cols.length < MIN_TASK_TABLE_COLUMNS) continue;
 
-    // Status is always the 3rd data column (index 3 after split)
-    const status = cols[3].trim().toUpperCase();
+    // Find the Status column dynamically (handles both with and without File column)
+    // Scan from index 3 onward for the first column containing a valid status value
+    const status = findStatusInColumns(cols, VALID_STATUSES);
 
     // Skip rows that don't have a valid task status
-    if (!VALID_STATUSES.has(status)) continue;
+    if (!status) continue;
 
     stats.total++;
 
@@ -300,7 +326,19 @@ export async function getCurrentTask(
   }
 
   // Look for IN PROGRESS first, then IN_REVIEW
-  const ACTIVE_STATUSES = ['IN PROGRESS', 'IN_REVIEW', 'IN REVIEW'];
+  const ACTIVE_STATUSES = new Set(['IN PROGRESS', 'IN_REVIEW', 'IN REVIEW']);
+
+  // Valid task statuses for column detection
+  const VALID_STATUSES = new Set([
+    'COMPLETE',
+    'COMPLETED',
+    'DONE',
+    'BLOCKED',
+    'IN_REVIEW',
+    'IN REVIEW',
+    'NOT STARTED',
+    'IN PROGRESS',
+  ]);
 
   for (const line of lines) {
     if (!PATTERNS.TASK_ROW.test(line)) continue;
@@ -310,9 +348,12 @@ export async function getCurrentTask(
 
     const taskId = cols[1].trim();
     const title = cols[2].trim();
-    const status = cols[3].trim().toUpperCase();
 
-    if (ACTIVE_STATUSES.includes(status)) {
+    // Find the Status column dynamically (handles both with and without File column)
+    const status = findStatusInColumns(cols, VALID_STATUSES);
+    if (!status) continue;
+
+    if (ACTIVE_STATUSES.has(status)) {
       return { id: taskId, title, status };
     }
   }

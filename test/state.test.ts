@@ -300,6 +300,58 @@ Some random text
       expect(stats.inReview).toBe(0);
       expect(stats.blocked).toBe(0);
     });
+
+    it('should parse rows with File column (new format)', async () => {
+      const content = `# Progress
+
+| Task ID  | Title                  | File                              | Status      | Review Status | Priority | Complexity | Dependencies | Assigned To | Attempts |
+| -------- | ---------------------- | --------------------------------- | ----------- | ------------- | -------- | ---------- | ------------ | ----------- | -------- |
+| TASK_001 | YoloOptions Interface  | TASK_001_yolo_options_interface.md | COMPLETE    | PASSED        | HIGH     | S          | None         | SA-001      | 1        |
+| TASK_002 | Yolo Command Skeleton  | TASK_002_yolo_command_skeleton.md  | IN PROGRESS | —             | HIGH     | S          | TASK_001     | SA-002      | 1        |
+| TASK_003 | Command Registry       | TASK_003_command_registry.md       | NOT STARTED | —             | HIGH     | S          | TASK_001     |             |          |
+| TASK_004 | CLI Verification       | TASK_004_cli_verification.md       | BLOCKED     | —             | HIGH     | S          | TASK_003     |             |          |
+`;
+      writeFileSync(mockConfig.paths.progress, content);
+      const stats = await getTaskStats(mockConfig);
+
+      expect(stats.total).toBe(4);
+      expect(stats.completed).toBe(1);
+      expect(stats.remaining).toBe(2); // IN PROGRESS + NOT STARTED
+      expect(stats.inReview).toBe(0);
+      expect(stats.blocked).toBe(1);
+    });
+
+    it('should detect state correctly with File column format', async () => {
+      const content = `# Progress
+
+| Task ID  | Title                  | File                              | Status      | Review Status | Priority | Complexity | Dependencies | Assigned To | Attempts |
+| -------- | ---------------------- | --------------------------------- | ----------- | ------------- | -------- | ---------- | ------------ | ----------- | -------- |
+| TASK_001 | YoloOptions Interface  | TASK_001_yolo_options_interface.md | COMPLETE    | PASSED        | HIGH     | S          | None         | SA-001      | 1        |
+| TASK_002 | Yolo Command Skeleton  | TASK_002_yolo_command_skeleton.md  | IN REVIEW   | —             | HIGH     | S          | TASK_001     | SA-002      | 1        |
+| TASK_003 | Command Registry       | TASK_003_command_registry.md       | NOT STARTED | —             | HIGH     | S          | TASK_001     |             |          |
+`;
+      writeFileSync(mockConfig.paths.progress, content);
+      const state = await getState(mockConfig);
+      expect(state).toBe(STATE.IN_REVIEW);
+    });
+
+    it('should find current task correctly with File column format', async () => {
+      const content = `# Progress
+
+| Task ID  | Title                  | File                              | Status      | Review Status | Priority | Complexity | Dependencies | Assigned To | Attempts |
+| -------- | ---------------------- | --------------------------------- | ----------- | ------------- | -------- | ---------- | ------------ | ----------- | -------- |
+| TASK_001 | YoloOptions Interface  | TASK_001_yolo_options_interface.md | COMPLETE    | PASSED        | HIGH     | S          | None         | SA-001      | 1        |
+| TASK_002 | Yolo Command Skeleton  | TASK_002_yolo_command_skeleton.md  | IN PROGRESS | —             | HIGH     | S          | TASK_001     | SA-002      | 1        |
+| TASK_003 | Command Registry       | TASK_003_command_registry.md       | NOT STARTED | —             | HIGH     | S          | TASK_001     |             |          |
+`;
+      writeFileSync(mockConfig.paths.progress, content);
+      const current = await getCurrentTask(mockConfig);
+
+      expect(current).not.toBeUndefined();
+      expect(current?.id).toBe('TASK_002');
+      expect(current?.title).toBe('Yolo Command Skeleton');
+      expect(current?.status).toBe('IN PROGRESS');
+    });
   });
 
   describe('hasStatePattern', () => {

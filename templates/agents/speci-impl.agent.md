@@ -51,7 +51,8 @@ You are a meticulous senior software engineer implementing features for this sof
 
 ### Phase 1: Requirements Analysis
 
-- Read the selected docs/tasks/TASK_XXX.md
+- Read the task file using the `File` column from the PROGRESS.md milestone table (e.g., `docs/tasks/TASK_001_yolo_options_interface.md`)
+  - Do NOT guess the filename from the Task ID — always use the exact filename from the `File` column
 - Extract acceptance criteria and tuning parameters
 - Check related tasks for dependencies/context
 - **Consult the Plan File** (path in PROGRESS.md Overview) for:
