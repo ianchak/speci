@@ -76,12 +76,9 @@ export function buildCopilotArgs(
     args.push('--yolo');
   }
 
-  // Model flag - per-command model takes precedence over general model
-  const commandModel = config.copilot.models?.[options.command];
-  const model = commandModel || config.copilot.model;
-  if (model) {
-    args.push('--model', model);
-  }
+  // Model flag - only per-command model is used
+  const model = config.copilot.models[options.command];
+  args.push('--model', model);
 
   args.push('--no-ask-user');
 

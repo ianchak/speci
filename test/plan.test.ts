@@ -46,7 +46,6 @@ describe('plan command', () => {
       },
       copilot: {
         permissions: 'allow-all' as const,
-        model: null,
         models: {
           plan: null,
           task: null,
@@ -105,16 +104,21 @@ describe('plan command', () => {
     const realCopilotRunner = {
       buildArgs: vi.fn(
         (
-          config: { copilot: { permissions: string; model: string | null } },
-          options: { agent: string; prompt?: string }
+          config: {
+            copilot: {
+              permissions: string;
+              models: { plan: string | null };
+            };
+          },
+          options: { agent: string; prompt?: string; command?: string }
         ) => {
           const args = ['-p', options.prompt || 'Execute agent instructions'];
           args.push(`--agent=${options.agent}`);
           if (config.copilot.permissions === 'allow-all') {
             args.push('--allow-all');
           }
-          if (config.copilot.model) {
-            args.push('--model', config.copilot.model);
+          if (options.command === 'plan' && config.copilot.models.plan) {
+            args.push('--model', config.copilot.models.plan);
           }
           return args;
         }
@@ -211,29 +215,34 @@ describe('plan command', () => {
       expect(args).toContain('--allow-all');
     });
 
-    it('should pass model flag when specified in config', async () => {
-      // Update config with model
+    it('should pass model flag when specified for plan agent in config', async () => {
+      // Update config with per-agent model
       const configPath = join(testDir, 'speci.config.json');
       const configContent = existsSync(configPath)
         ? readFileSync(configPath, 'utf8')
         : '{}';
       const config = JSON.parse(configContent);
-      config.copilot.model = 'gpt-4';
+      config.copilot.models.plan = 'gpt-4';
       writeFileSync(configPath, JSON.stringify(config, null, 2));
 
       // Create mock copilot runner with updated config
       const buildArgsSpy = vi.fn(
         (
-          config: { copilot: { permissions: string; model: string | null } },
-          options: { agent: string; prompt?: string }
+          config: {
+            copilot: {
+              permissions: string;
+              models: { plan: string | null };
+            };
+          },
+          options: { agent: string; prompt?: string; command?: string }
         ) => {
           const args = ['-p', options.prompt || 'Execute agent instructions'];
           args.push(`--agent=${options.agent}`);
           if (config.copilot.permissions === 'allow-all') {
             args.push('--allow-all');
           }
-          if (config.copilot.model) {
-            args.push('--model', config.copilot.model);
+          if (options.command === 'plan' && config.copilot.models.plan) {
+            args.push('--model', config.copilot.models.plan);
           }
           return args;
         }

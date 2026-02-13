@@ -76,7 +76,7 @@ describe('config', () => {
       const defaults = getDefaults();
 
       expect(defaults.copilot.permissions).toBe('allow-all');
-      expect(defaults.copilot.model).toBeNull();
+      expect(defaults.copilot.models).toBeDefined();
       expect(defaults.copilot.extraFlags).toEqual([]);
     });
 
@@ -151,15 +151,14 @@ describe('config', () => {
         version: '1.0.0',
         copilot: {
           permissions: 'invalid' as 'allow-all',
-          model: null,
           models: {
-            plan: null,
-            task: null,
-            refactor: null,
-            impl: null,
-            review: null,
-            fix: null,
-            tidy: null,
+            plan: 'claude-opus-4.6',
+            task: 'claude-sonnet-4.5',
+            refactor: 'claude-sonnet-4.5',
+            impl: 'gpt-5.3-codex',
+            review: 'claude-sonnet-4.5',
+            fix: 'claude-sonnet-4.5',
+            tidy: 'gpt-5.2',
           },
           extraFlags: [],
         },
@@ -254,7 +253,6 @@ describe('config', () => {
       process.env.SPECI_LOCK_PATH = 'env/lock';
       process.env.SPECI_MAX_ITERATIONS = '50';
       process.env.SPECI_MAX_FIX_ATTEMPTS = '3';
-      process.env.SPECI_MODEL = 'gpt-4';
 
       const config = loadConfig();
 
@@ -264,7 +262,6 @@ describe('config', () => {
       expect(config.paths.lock).toBe('env/lock');
       expect(config.loop.maxIterations).toBe(50);
       expect(config.gate.maxFixAttempts).toBe(3);
-      expect(config.copilot.model).toBe('gpt-4');
     });
 
     it('should handle invalid environment variable values gracefully', () => {
@@ -403,22 +400,6 @@ describe('config', () => {
 
       // Should use default value
       expect(config.paths.progress).toBe('docs/PROGRESS.md');
-    });
-
-    it('should support SPECI_COPILOT_MODEL alias', () => {
-      process.env.SPECI_COPILOT_MODEL = 'gpt-5';
-
-      const config = loadConfig();
-
-      expect(config.copilot.model).toBe('gpt-5');
-    });
-
-    it('should support SPECI_MODEL alias', () => {
-      process.env.SPECI_MODEL = 'claude-opus';
-
-      const config = loadConfig();
-
-      expect(config.copilot.model).toBe('claude-opus');
     });
 
     it('should apply multiple env overrides together', () => {

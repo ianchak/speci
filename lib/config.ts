@@ -59,6 +59,16 @@ type AgentName =
   | 'fix'
   | 'tidy';
 
+const DEFAULT_COPILOT_MODELS: Record<AgentName, string> = {
+  plan: 'claude-opus-4.6',
+  task: 'claude-sonnet-4.5',
+  refactor: 'claude-sonnet-4.5',
+  impl: 'gpt-5.3-codex',
+  review: 'claude-sonnet-4.5',
+  fix: 'claude-sonnet-4.5',
+  tidy: 'gpt-5.2',
+};
+
 /**
  * Get hardcoded default configuration
  *
@@ -90,15 +100,8 @@ export function getDefaults(): SpeciConfig {
     },
     copilot: {
       permissions: 'allow-all',
-      model: null,
       models: {
-        plan: null,
-        task: null,
-        refactor: null,
-        impl: null,
-        review: null,
-        fix: null,
-        tidy: null,
+        ...DEFAULT_COPILOT_MODELS,
       },
       extraFlags: [],
     },
@@ -301,18 +304,6 @@ const ENV_MAPPINGS: EnvMapping[] = [
     envVar: 'SPECI_MAX_FIX_ATTEMPTS',
     configPath: ['gate', 'maxFixAttempts'],
     type: 'number',
-  },
-
-  // String overrides
-  {
-    envVar: 'SPECI_COPILOT_MODEL',
-    configPath: ['copilot', 'model'],
-    type: 'string',
-  },
-  {
-    envVar: 'SPECI_MODEL',
-    configPath: ['copilot', 'model'],
-    type: 'string',
   },
 
   // Enum overrides

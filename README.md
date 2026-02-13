@@ -286,7 +286,15 @@ The configuration file is created by `speci init` and can be customized:
   },
   "copilot": {
     "permissions": "allow-all",
-    "model": null,
+    "models": {
+      "plan": "claude-opus-4.6",
+      "task": "claude-sonnet-4.5",
+      "refactor": "claude-sonnet-4.5",
+      "impl": "gpt-5.3-codex",
+      "review": "claude-sonnet-4.5",
+      "fix": "claude-sonnet-4.5",
+      "tidy": "gpt-5.2"
+    },
     "extraFlags": []
   },
   "gate": {
@@ -320,7 +328,6 @@ Environment variables can override configuration file settings:
 | `SPECI_TASKS_PATH`       | `paths.tasks`         | Path to tasks directory                       |
 | `SPECI_LOG_PATH`         | `paths.logs`          | Path to log directory                         |
 | `SPECI_LOCK_PATH`        | `paths.lock`          | Path to lock file                             |
-| `SPECI_COPILOT_MODEL`    | `copilot.model`       | Copilot model to use                          |
 | `SPECI_MAX_ITERATIONS`   | `loop.maxIterations`  | Maximum loop iterations                       |
 | `SPECI_ENABLE_AUTO_FIX`  | `loop.enableAutoFix`  | Enable automatic gate fix attempts            |
 | `SPECI_MAX_FIX_ATTEMPTS` | `gate.maxFixAttempts` | Maximum fix attempts                          |

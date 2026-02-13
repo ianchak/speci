@@ -57,7 +57,15 @@ describe('task command', () => {
       },
       copilot: {
         permissions: 'allow-all' as const,
-        model: null,
+        models: {
+          plan: null,
+          task: null,
+          refactor: null,
+          impl: null,
+          review: null,
+          fix: null,
+          tidy: null,
+        },
         extraFlags: [],
       },
       gate: {
@@ -241,14 +249,15 @@ describe('task command', () => {
       expect(promptArg).toContain('plan.md');
     });
 
-    it('should pass model flag when specified in config', async () => {
-      // Update config with model
+    it('should pass model flag when specified for task agent in config', async () => {
+      // Update config with per-agent model
       const configPath = join(testDir, 'speci.config.json');
       const configContent = existsSync(configPath)
         ? readFileSync(configPath, 'utf8')
         : '{}';
       const config = JSON.parse(configContent);
-      config.copilot.model = 'gpt-4';
+      config.copilot.models = config.copilot.models || {};
+      config.copilot.models.task = 'gpt-4';
       writeFileSync(configPath, JSON.stringify(config, null, 2));
 
       const spawnSpy = vi

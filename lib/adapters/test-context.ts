@@ -116,7 +116,6 @@ export function createMockConfigLoader(
     },
     copilot: {
       permissions: 'allow-all',
-      model: null,
       models: {
         plan: null,
         task: null,

@@ -129,8 +129,8 @@ describe('copilot', () => {
       expect(args).not.toContain('--yolo');
     });
 
-    it('should include model flag when model is configured', () => {
-      config.copilot.model = 'gpt-4';
+    it('should include model flag when per-command model is configured', () => {
+      config.copilot.models.plan = 'gpt-4';
       const options: CopilotArgsOptions = {
         agent: 'test-agent',
         command: 'plan',
@@ -143,7 +143,6 @@ describe('copilot', () => {
     });
 
     it('should use per-command model when command is specified', () => {
-      config.copilot.model = 'gpt-4'; // default model
       config.copilot.models.plan = 'claude-opus-4.5'; // per-command model
       const options: CopilotArgsOptions = {
         agent: 'test-agent',
@@ -154,12 +153,9 @@ describe('copilot', () => {
 
       expect(args).toContain('--model');
       expect(args).toContain('claude-opus-4.5');
-      expect(args).not.toContain('gpt-4');
     });
 
-    it('should fall back to default model when per-command model is null', () => {
-      config.copilot.model = 'gpt-4'; // default model
-      config.copilot.models.task = null; // no per-command model
+    it('should include model flag for task command from required config', () => {
       const options: CopilotArgsOptions = {
         agent: 'test-agent',
         command: 'task',
@@ -168,12 +164,10 @@ describe('copilot', () => {
       const args = buildCopilotArgs(config, options);
 
       expect(args).toContain('--model');
-      expect(args).toContain('gpt-4');
+      expect(args).toContain(config.copilot.models.task);
     });
 
-    it('should not include model flag when both default and per-command are null', () => {
-      config.copilot.model = null;
-      config.copilot.models.refactor = null;
+    it('should include model flag for refactor command from required config', () => {
       const options: CopilotArgsOptions = {
         agent: 'test-agent',
         command: 'refactor',
@@ -181,7 +175,8 @@ describe('copilot', () => {
 
       const args = buildCopilotArgs(config, options);
 
-      expect(args).not.toContain('--model');
+      expect(args).toContain('--model');
+      expect(args).toContain(config.copilot.models.refactor);
     });
 
     it('should append extra flags from config', () => {

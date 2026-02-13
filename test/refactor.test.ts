@@ -60,7 +60,15 @@ describe('refactor command', () => {
       },
       copilot: {
         permissions: 'allow-all' as const,
-        model: null,
+        models: {
+          plan: null,
+          task: null,
+          refactor: null,
+          impl: null,
+          review: null,
+          fix: null,
+          tidy: null,
+        },
         extraFlags: [],
       },
       gate: {
@@ -276,14 +284,15 @@ describe('refactor command', () => {
       expect(promptArg).toContain('src');
     });
 
-    it('should pass model flag when specified in config', async () => {
-      // Update config with model
+    it('should pass model flag when specified for refactor agent in config', async () => {
+      // Update config with per-agent model
       const configPath = join(testDir, 'speci.config.json');
       const configContent = existsSync(configPath)
         ? readFileSync(configPath, 'utf8')
         : '{}';
       const config = JSON.parse(configContent);
-      config.copilot.model = 'gpt-4';
+      config.copilot.models = config.copilot.models || {};
+      config.copilot.models.refactor = 'gpt-4';
       writeFileSync(configPath, JSON.stringify(config, null, 2));
 
       const spawnSpy = vi

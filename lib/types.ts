@@ -63,15 +63,14 @@ export interface SpeciConfig {
   };
   copilot: {
     permissions: 'allow-all' | 'yolo' | 'strict' | 'none';
-    model: string | null;
     models: {
-      plan: string | null;
-      task: string | null;
-      refactor: string | null;
-      impl: string | null;
-      review: string | null;
-      fix: string | null;
-      tidy: string | null;
+      plan: string;
+      task: string;
+      refactor: string;
+      impl: string;
+      review: string;
+      fix: string;
+      tidy: string;
     };
     extraFlags: string[];
   };

@@ -115,9 +115,9 @@ describe('Deep Merge Type Safety (TASK_032)', () => {
       expect(config.copilot.permissions).toBe('strict');
       expect(config.copilot.models.impl).toBe('claude-opus-4.6');
 
-      // Other model settings should remain null
-      expect(config.copilot.models.plan).toBeNull();
-      expect(config.copilot.models.task).toBeNull();
+      // Other model settings should use required defaults
+      expect(config.copilot.models.plan).toBe('claude-opus-4.6');
+      expect(config.copilot.models.task).toBe('claude-sonnet-4.5');
     });
   });
 
@@ -130,9 +130,7 @@ describe('Deep Merge Type Safety (TASK_032)', () => {
           agents: {
             impl: null,
           },
-          copilot: {
-            model: null,
-          },
+          copilot: {},
         })
       );
 
@@ -140,7 +138,6 @@ describe('Deep Merge Type Safety (TASK_032)', () => {
 
       // Null values should be preserved
       expect(config.agents.impl).toBeNull();
-      expect(config.copilot.model).toBeNull();
     });
 
     it('should not merge undefined values from partial config', () => {
@@ -306,7 +303,6 @@ describe('Deep Merge Type Safety (TASK_032)', () => {
           },
           copilot: {
             permissions: 'yolo',
-            model: 'gpt-5',
             models: {
               impl: 'claude-opus-4.6',
               review: 'claude-sonnet-4.5',
@@ -331,7 +327,6 @@ describe('Deep Merge Type Safety (TASK_032)', () => {
       expect(config.agents.impl).toBe('custom/impl.md');
       expect(config.agents.review).toBe('custom/review.md');
       expect(config.copilot.permissions).toBe('yolo');
-      expect(config.copilot.model).toBe('gpt-5');
       expect(config.copilot.models.impl).toBe('claude-opus-4.6');
       expect(config.copilot.models.review).toBe('claude-sonnet-4.5');
       expect(config.gate.commands).toEqual(['npm run format', 'npm run lint']);
@@ -342,7 +337,7 @@ describe('Deep Merge Type Safety (TASK_032)', () => {
       expect(config.paths.logs).toBe('.speci-logs');
       expect(config.paths.lock).toBe('.speci-lock');
       expect(config.agents.plan).toBeNull();
-      expect(config.copilot.models.plan).toBeNull();
+      expect(config.copilot.models.plan).toBe('claude-opus-4.6');
     });
   });
 });
