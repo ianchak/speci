@@ -31,6 +31,7 @@ import {
 } from '@/utils/signals.js';
 import { createProductionContext } from '@/adapters/context-factory.js';
 import type { CommandContext, CommandResult } from '@/interfaces.js';
+import { renderIterationDisplay } from '@/ui/progress-bar.js';
 
 /**
  * Options for the run command
@@ -165,9 +166,14 @@ async function mainLoop(
   while (iteration < maxIterations) {
     iteration++;
     logIteration(logFile, iteration, 'START');
-    context.logger.infoPlain(
-      `\n--- Iteration ${iteration}/${maxIterations} ---`
-    );
+    const lines = renderIterationDisplay({
+      current: iteration,
+      total: maxIterations,
+    });
+    context.logger.raw('');
+    for (const line of lines) {
+      context.logger.infoPlain(line);
+    }
 
     // 1. Get current state
     const state = await getState(config);
@@ -251,9 +257,17 @@ async function handleWorkLeft(
   let fixAttempt = 0;
   while (!gateResult.isSuccess && fixAttempt < config.gate.maxFixAttempts) {
     fixAttempt++;
-    context.logger.warn(
-      `Gate failed. Running fix agent (attempt ${fixAttempt}/${config.gate.maxFixAttempts})...`
-    );
+    context.logger.warn('Gate failed. Running fix agent...');
+    const fixLines = renderIterationDisplay({
+      current: fixAttempt,
+      total: config.gate.maxFixAttempts,
+      label: 'Fix Attempt',
+      fillColor: 'warning',
+      borderColor: 'warning',
+    });
+    for (const line of fixLines) {
+      context.logger.infoPlain(line);
+    }
 
     logAgent(logFile, 'fix', 'START', fixAttempt);
     const fixResult = await runAgent(config, 'fix', 'Fix Agent');
