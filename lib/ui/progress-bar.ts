@@ -8,7 +8,7 @@
  * Supports both Unicode and ASCII fallback rendering.
  */
 
-import { colorize } from '@/ui/colors.js';
+import { colorize, visibleLength } from '@/ui/colors.js';
 import { getGlyph, supportsUnicode } from '@/ui/glyphs.js';
 import type { ColorName } from '@/ui/colors.js';
 
@@ -164,10 +164,13 @@ export function renderIterationDisplay(options: ProgressBarOptions): string[] {
     borderColor = 'sky500',
   } = options;
 
-  const border = renderBorder(borderWidth, borderColor);
   const label = formatIterationLabel(options);
   const bar = renderBar(current, total, barWidth, fillColor, emptyColor);
   const content = `  ${label}  ${bar}`;
+
+  const contentWidth = visibleLength(content);
+  const actualBorderWidth = Math.max(borderWidth, contentWidth);
+  const border = renderBorder(actualBorderWidth, borderColor);
 
   return [border, content, border];
 }
