@@ -12,6 +12,16 @@ import { task } from '../lib/commands/task.js';
 import * as copilotModule from '../lib/copilot.js';
 import { resetConfigCache } from '../lib/config.js';
 
+// Mock preflight to skip agent template check (tested in preflight.test.ts)
+vi.mock('../lib/utils/preflight.js', async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import('../lib/utils/preflight.js')>();
+  return {
+    ...actual,
+    preflight: vi.fn().mockResolvedValue(undefined),
+  };
+});
+
 describe('task command', () => {
   let testDir: string;
   let originalCwd: string;

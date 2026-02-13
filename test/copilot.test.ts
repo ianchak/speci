@@ -228,7 +228,7 @@ describe('copilot', () => {
       expect(args).toContain('--share');
       const shareIndex = args.indexOf('--share');
       const sharePath = args[shareIndex + 1];
-      expect(sharePath).toMatch(/\.speci-logs[\/\\]speci-impl-.*\.md$/);
+      expect(sharePath).toMatch(/\.speci-logs[/\\]speci-impl-.*\.md$/);
     });
 
     it('should not include --share flag when logsDir is not provided', () => {

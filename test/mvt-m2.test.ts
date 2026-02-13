@@ -451,6 +451,7 @@ describe('MVT_M2: Core Libraries Integration', () => {
           requireConfig: false,
           requireProgress: false,
           requireGit: false,
+          requireAgents: false,
         });
       } catch {
         // Ignore failures, we're testing performance
