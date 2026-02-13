@@ -136,6 +136,8 @@ export interface CopilotArgsOptions {
   agent: string;
   shouldAllowAll?: boolean;
   command: CommandName;
+  /** Directory for session share logs (--share flag). When set, Copilot writes session markdown here. */
+  logsDir?: string;
 }
 
 /**

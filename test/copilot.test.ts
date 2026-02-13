@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { spawn, type ChildProcess } from 'node:child_process';
+import { existsSync, mkdirSync } from 'node:fs';
 import { EventEmitter } from 'node:events';
 import {
   buildCopilotArgs,
@@ -15,6 +16,16 @@ import { log } from '../lib/utils/logger.js';
 vi.mock('node:child_process', () => ({
   spawn: vi.fn(),
 }));
+
+// Mock node:fs for existsSync/mkdirSync used by runAgent
+vi.mock('node:fs', async () => {
+  const actual = await vi.importActual<typeof import('node:fs')>('node:fs');
+  return {
+    ...actual,
+    existsSync: vi.fn().mockReturnValue(true),
+    mkdirSync: vi.fn(),
+  };
+});
 
 // Mock logger
 vi.mock('../lib/utils/logger.js', () => ({
@@ -193,6 +204,47 @@ describe('copilot', () => {
       expect(args).toContain('--verbose');
       expect(args).toContain('--debug');
     });
+
+    it('should include --share flag when logsDir is provided', () => {
+      const options: CopilotArgsOptions = {
+        agent: 'speci-impl',
+        command: 'impl',
+        logsDir: '.speci-logs',
+      };
+
+      const args = buildCopilotArgs(config, options);
+
+      expect(args).toContain('--share');
+      const shareIndex = args.indexOf('--share');
+      const sharePath = args[shareIndex + 1];
+      expect(sharePath).toMatch(/\.speci-logs[\/\\]speci-impl-.*\.md$/);
+    });
+
+    it('should not include --share flag when logsDir is not provided', () => {
+      const options: CopilotArgsOptions = {
+        agent: 'speci-impl',
+        command: 'impl',
+      };
+
+      const args = buildCopilotArgs(config, options);
+
+      expect(args).not.toContain('--share');
+    });
+
+    it('should place --share before extra flags', () => {
+      config.copilot.extraFlags = ['--verbose'];
+      const options: CopilotArgsOptions = {
+        agent: 'speci-plan',
+        command: 'plan',
+        logsDir: '.speci-logs',
+      };
+
+      const args = buildCopilotArgs(config, options);
+
+      const shareIndex = args.indexOf('--share');
+      const verboseIndex = args.indexOf('--verbose');
+      expect(shareIndex).toBeLessThan(verboseIndex);
+    });
   });
 
   describe('spawnCopilot', () => {
@@ -285,6 +337,48 @@ describe('copilot', () => {
         // Success case doesn't have error property
         expect('error' in result).toBe(false);
       }
+    });
+
+    it('should create logs directory if it does not exist', async () => {
+      vi.mocked(existsSync).mockReturnValueOnce(false);
+      const mockChild = new EventEmitter();
+      (spawn as ReturnType<typeof vi.fn>).mockReturnValue(mockChild);
+
+      const promise = runAgent(
+        config,
+        'impl',
+        'Test Implementation',
+        fastRetryPolicy
+      );
+
+      setTimeout(() => mockChild.emit('close', 0), 10);
+      await promise;
+
+      expect(mkdirSync).toHaveBeenCalledWith(config.paths.logs, {
+        recursive: true,
+      });
+    });
+
+    it('should pass --share flag to copilot with logs directory path', async () => {
+      const mockChild = new EventEmitter();
+      (spawn as ReturnType<typeof vi.fn>).mockReturnValue(mockChild);
+
+      const promise = runAgent(
+        config,
+        'impl',
+        'Test Implementation',
+        fastRetryPolicy
+      );
+
+      setTimeout(() => mockChild.emit('close', 0), 10);
+      await promise;
+
+      const spawnCall = vi.mocked(spawn).mock.calls[0];
+      const args = spawnCall[1] as string[];
+      expect(args).toContain('--share');
+      const shareIndex = args.indexOf('--share');
+      const sharePath = args[shareIndex + 1];
+      expect(sharePath).toMatch(/\.speci-logs[\\/\\\\]speci-impl-.*\.md$/);
     });
 
     it('should return failure for non-zero exit code', async () => {

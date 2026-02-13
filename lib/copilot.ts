@@ -8,6 +8,8 @@
  */
 
 import { spawn } from 'node:child_process';
+import { existsSync, mkdirSync } from 'node:fs';
+import { join } from 'node:path';
 import type {
   SpeciConfig,
   CommandName,
@@ -85,6 +87,13 @@ export function buildCopilotArgs(
   args.push('--model', model);
 
   args.push('--no-ask-user');
+
+  // Session share log
+  if (options.logsDir) {
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+    const sharePath = join(options.logsDir, `${options.agent}-${timestamp}.md`);
+    args.push('--share', sharePath);
+  }
 
   // Extra flags
   args.push(...config.copilot.extraFlags);
@@ -167,9 +176,17 @@ export async function runAgent(
       // Use the agent name directly (e.g., 'speci-plan')
       // Copilot CLI looks for agents in .github/copilot/agents/
       const agentFileName = getAgentFilename(agentName);
+
+      // Ensure logs directory exists for --share output
+      const logsDir = config.paths.logs;
+      if (!existsSync(logsDir)) {
+        mkdirSync(logsDir, { recursive: true });
+      }
+
       const args = buildCopilotArgs(config, {
         agent: agentFileName,
         command: agentName as CommandName,
+        logsDir,
       });
 
       log.infoPlain(renderCopilotCommandBox(args));
