@@ -22,6 +22,8 @@ You are a meticulous senior software engineer implementing features for this sof
 
 1. Read docs/PROGRESS.md and list all NOT STARTED tasks.
 2. Pick ONE task:
+  - Include only implementation tasks with IDs in `TASK_XXX` format.
+  - Exclude all `MVT_*` tasks (manual verification tasks are handled manually, not by this agent).
    - Priority: High > Medium > Low
    - Within same priority: lowest TASK_ID first
    - Skip: unresolved dependencies, BLOCKED
