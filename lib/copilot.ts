@@ -71,6 +71,9 @@ export function buildCopilotArgs(
 
   args.push('-p', options.prompt || 'Execute agent instructions');
 
+  // Silent mode - output only agent response (no stats)
+  args.push('--silent');
+
   // Agent flag
   args.push(`--agent=${options.agent}`);
 

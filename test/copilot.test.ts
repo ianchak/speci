@@ -78,6 +78,17 @@ describe('copilot', () => {
       expect(args).toContain('--allow-all');
     });
 
+    it('should always include --silent flag', () => {
+      const options: CopilotArgsOptions = {
+        agent: 'test-agent',
+        command: 'plan',
+      };
+
+      const args = buildCopilotArgs(config, options);
+
+      expect(args).toContain('--silent');
+    });
+
     it('should build args for one-shot mode with prompt', () => {
       const options: CopilotArgsOptions = {
         prompt: 'test prompt',
