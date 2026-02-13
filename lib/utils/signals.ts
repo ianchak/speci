@@ -121,9 +121,6 @@ export async function runCleanup(): Promise<void> {
     if (result.status === 'error') {
       throw result.error;
     }
-  } catch (error) {
-    // Rethrow to signal handler/caller
-    throw error;
   } finally {
     if (timeoutId) {
       clearTimeout(timeoutId);
