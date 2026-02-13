@@ -9,6 +9,7 @@ import {
   type AgentRunResult,
 } from '../lib/copilot.js';
 import { getDefaults, type SpeciConfig } from '../lib/config.js';
+import { log } from '../lib/utils/logger.js';
 
 // Mock child_process
 vi.mock('node:child_process', () => ({
@@ -18,6 +19,7 @@ vi.mock('node:child_process', () => ({
 // Mock logger
 vi.mock('../lib/utils/logger.js', () => ({
   log: {
+    infoPlain: vi.fn(),
     debug: vi.fn(),
     warn: vi.fn(),
     error: vi.fn(),
@@ -276,6 +278,7 @@ describe('copilot', () => {
 
       const result: AgentRunResult = await promise;
 
+      expect(log.infoPlain).toHaveBeenCalledTimes(1);
       expect(result.isSuccess).toBe(true);
       expect(result.exitCode).toBe(0);
       if (result.isSuccess) {

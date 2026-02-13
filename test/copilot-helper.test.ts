@@ -28,6 +28,8 @@ describe('copilot-helper', () => {
 
       const result = await executeCopilotCommand(context, args);
 
+      expect(context.logger.infoPlain).toHaveBeenCalledTimes(1);
+
       // Verify debug log was called with correct message
       expect(context.logger.debug).toHaveBeenCalledWith(
         'Spawning: copilot -p Test prompt --agent=speci-plan --allow-all --no-ask-user'
@@ -95,6 +97,7 @@ describe('copilot-helper', () => {
       const result = await executeCopilotCommand(context, args);
 
       expect(result.success).toBe(true);
+      expect(context.logger.infoPlain).toHaveBeenCalledTimes(1);
       expect(context.logger.debug).toHaveBeenCalledWith('Spawning: copilot ');
     });
 

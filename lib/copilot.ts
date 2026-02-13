@@ -16,6 +16,10 @@ import type {
 } from '@/types.js';
 import { log } from '@/utils/logger.js';
 import { getAgentFilename } from '@/constants.js';
+import {
+  formatCopilotCommand,
+  renderCopilotCommandBox,
+} from '@/utils/copilot-command-display.js';
 
 // Re-export types for backward compatibility
 export type {
@@ -168,7 +172,8 @@ export async function runAgent(
         command: agentName as CommandName,
       });
 
-      log.debug(`Spawning copilot: copilot ${args.join(' ')}`);
+      log.infoPlain(renderCopilotCommandBox(args));
+      log.debug(`Spawning copilot: ${formatCopilotCommand(args)}`);
       const exitCode = await spawnCopilot(args);
 
       if (exitCode === 0) {

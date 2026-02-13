@@ -6,6 +6,10 @@
 
 import type { CommandResult } from '../interfaces.js';
 import type { CommandContext } from '../interfaces.js';
+import {
+  formatCopilotCommand,
+  renderCopilotCommandBox,
+} from './copilot-command-display.js';
 
 /**
  * Execute copilot command with standard pattern
@@ -23,8 +27,10 @@ export async function executeCopilotCommand(
   context: CommandContext,
   args: string[]
 ): Promise<CommandResult> {
+  context.logger.infoPlain(renderCopilotCommandBox(args));
+
   // Log debug message
-  context.logger.debug(`Spawning: copilot ${args.join(' ')}`);
+  context.logger.debug(`Spawning: ${formatCopilotCommand(args)}`);
 
   // Spawn copilot process with stdio:inherit
   const exitCode = await context.copilotRunner.spawn(args, { inherit: true });
