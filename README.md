@@ -1,29 +1,40 @@
 # speci
 
-AI-powered implementation loop orchestrator for GitHub Copilot.
+AI-powered implementation loop orchestrator for GitHub Copilot. Speci automates development workflows by dispatching Copilot agents to plan, implement, review, and fix code, with quality gate validation (lint, typecheck, test) between each step.
 
-## Features
+## How It Works
 
-- **Automated Implementation Loops** - Orchestrates Copilot-driven development workflows
-- **Gate Validation** - Runs lint, typecheck, and test commands before committing
-- **Progress Tracking** - Maintains state in PROGRESS.md with task completion tracking
-- **Beautiful CLI** - Ice Blue styling with unicode glyphs and ANSI colors
+Speci operates as an autonomous loop that reads a PROGRESS.md file to determine what needs to be done, then dispatches the appropriate Copilot agent:
+
+1. **Plan** your feature or change (generates a structured plan)
+2. **Task** breaks the plan into trackable tasks with a PROGRESS.md file
+3. **Run** enters the implementation loop:
+   - Tasks marked WORK_LEFT get an implementation agent
+   - Gate validation runs your lint, typecheck, and test commands
+   - If gates fail, a fix agent attempts repairs (up to a configurable limit)
+   - Tasks marked IN_REVIEW get a review agent
+   - Tasks marked BLOCKED get a tidy agent
+   - The loop continues until all tasks are DONE or limits are reached
 
 ## Quick Start
 
 ```bash
 # Initialize speci in your project
-npx tsx bin/speci.ts init
+npx speci init
 
-# Start the implementation loop
-npx tsx bin/speci.ts run
+# Create a plan from a prompt or design doc
+npx speci plan -p "Add user authentication with JWT"
+
+# Break the plan into tasks and generate PROGRESS.md
+npx speci task --plan docs/plan.md
+
+# Run the implementation loop
+npx speci run
 ```
 
-## Installation
+## Prerequisites
 
-### Prerequisites
-
-- **Node.js** 22.x or later
+- **Node.js** 18.0.0 or later
 - **GitHub Copilot CLI** installed and authenticated
 - **Git repository** initialized in your project
 
@@ -44,236 +55,187 @@ On first launch, use the `/login` slash command to authenticate, or set the `GH_
 
 See https://docs.github.com/en/copilot/how-tos/copilot-cli/install-copilot-cli for more details.
 
-### Running speci
-
-speci is designed to run with `tsx` for development:
+## Installation
 
 ```bash
-# Clone the repository
-git clone <repository-url>
-cd speci
+# Run directly without installing
+npx speci --help
 
-# Install dependencies
-npm install
-
-# Build
-npm run build
-
-# Run speci
-node dist/bin/speci.js --help
-```
-
-For production use, you can install globally (after publishing to npm):
-
-```bash
+# Or install globally
 npm install -g speci
 ```
 
 ## Commands
 
+All commands support `-v, --verbose` for detailed output and `--no-color` to disable colored output.
+
 ### `speci init` (alias: `i`)
 
-Initialize speci in your current project by creating configuration files and directory structure.
-
-**Usage:**
+Initialize speci in your current project. Creates configuration files, task directories, and Copilot agent definitions.
 
 ```bash
-speci init [options]
+npx speci init
 ```
 
 **Options:**
 
-- `-u, --update-agents` - Update agent files even if they already exist
-- `-v, --verbose` - Show detailed output
+| Flag                  | Description                                   |
+| --------------------- | --------------------------------------------- |
+| `-y, --yes`           | Accept all defaults                           |
+| `-u, --update-agents` | Update agent files even if they already exist |
 
 **Creates:**
 
-- `speci.config.json` - Configuration file
-- `docs/tasks/` - Task definition directory
-- `.speci-logs/` - Log file directory
-- `.github/copilot/agents/` - Copilot agent definitions
-
-**Examples:**
+- `speci.config.json` in the project root
+- `docs/tasks/` directory for task definitions
+- `.speci-logs/` directory for execution logs
+- `.github/agents/` directory with Copilot agent definitions
 
 ```bash
 # Initialize with defaults
-speci init
+npx speci init -y
 
-# Update agent files to latest version
-speci init --update-agents
-
-# Short alias version
-speci i
+# Update bundled agent files to the latest version
+npx speci init --update-agents
 ```
 
 ### `speci plan` (alias: `p`)
 
-Generate an implementation plan using Copilot with an initial prompt or input files.
-
-**Usage:**
+Generate an implementation plan using Copilot. Requires at least `--prompt` or `--input`.
 
 ```bash
-speci plan [options]
+npx speci plan -p "Build a REST API for user authentication"
 ```
 
 **Options:**
 
-- `-p, --prompt <text>` - Initial prompt describing what to plan
-- `-i, --input <files...>` - Input files for context (design docs, specs)
-- `-a, --agent <filename>` - Use custom agent file from `.github/copilot/agents/`
-- `-o, --output <path>` - Save plan to specific file
-- `-v, --verbose` - Show detailed output
-
-**Note:** At least `--prompt` or `--input` must be provided.
-
-**Examples:**
+| Flag                     | Description                                  |
+| ------------------------ | -------------------------------------------- |
+| `-p, --prompt <text>`    | Initial prompt describing what to plan       |
+| `-i, --input <files...>` | Input files for context (design docs, specs) |
+| `-a, --agent <path>`     | Path to a custom agent file                  |
+| `-o, --output <path>`    | Save plan to a specific file                 |
 
 ```bash
-# Plan with an initial prompt
-speci plan -p "Build a REST API for user authentication"
-
 # Plan using a design doc as context
-speci plan -i docs/design.md
+npx speci plan -i docs/design.md
 
 # Combine input files with a prompt
-speci plan -i spec.md -p "Focus on the authentication module"
+npx speci plan -i spec.md -p "Focus on the authentication module"
 
 # Save plan to a specific file
-speci plan -i design.md -o docs/plan.md
+npx speci plan -i design.md -o docs/plan.md
 
-# Use custom agent from .github/copilot/agents/
-speci p -a my-custom-plan.agent.md -p "My feature"
+# Use a custom agent
+npx speci p -a .github/agents/my-planner.agent.md -p "My feature"
 ```
 
 ### `speci task` (alias: `t`)
 
-Generate task definitions from an implementation plan.
-
-**Usage:**
+Generate task definitions and a PROGRESS.md file from an implementation plan.
 
 ```bash
-speci task --plan <path> [options]
+npx speci task --plan docs/plan.md
 ```
 
 **Options:**
 
-- `-p, --plan <path>` - Path to plan file (required)
-- `-a, --agent <filename>` - Use custom agent file from `.github/copilot/agents/`
-- `-v, --verbose` - Show detailed output
-
-**Examples:**
-
-```bash
-# Generate tasks from plan
-speci task --plan docs/plan.md
-
-# Short alias version
-speci t -p docs/plan.md
-```
+| Flag                 | Description                  |
+| -------------------- | ---------------------------- |
+| `-p, --plan <path>`  | Path to plan file (required) |
+| `-a, --agent <path>` | Path to a custom agent file  |
 
 ### `speci refactor` (alias: `r`)
 
-Analyze codebase for refactoring opportunities using Copilot.
-
-**Usage:**
+Analyze the codebase for refactoring opportunities using Copilot.
 
 ```bash
-speci refactor [options]
+npx speci refactor
 ```
 
 **Options:**
 
-- `-s, --scope <path>` - Directory or glob pattern to analyze
-- `-o, --output <path>` - Save refactoring plan to file
-- `-a, --agent <filename>` - Use custom agent file from `.github/copilot/agents/`
-- `-v, --verbose` - Show detailed output
-
-**Examples:**
+| Flag                  | Description                          |
+| --------------------- | ------------------------------------ |
+| `-s, --scope <path>`  | Directory or glob pattern to analyze |
+| `-o, --output <path>` | Save refactoring plan to a file      |
+| `-a, --agent <path>`  | Path to a custom agent file          |
 
 ```bash
-# Analyze entire project
-speci refactor
+# Analyze a specific directory
+npx speci refactor --scope src/
 
-# Analyze specific directory
-speci refactor --scope lib/
+# Analyze only TypeScript files
+npx speci r -s "src/**/*.ts"
 
-# Analyze TypeScript files only
-speci r -s "lib/**/*.ts"
+# Save the refactoring plan
+npx speci refactor -o docs/refactor-plan.md
 ```
 
 ### `speci status` (alias: `s`)
 
-Show current loop state and task statistics.
-
-**Usage:**
+Show current loop state and task statistics. By default, opens a live fullscreen dashboard that refreshes automatically. Press `q` or `ESC` to exit the dashboard.
 
 ```bash
-speci status [options]
+npx speci status
 ```
 
 **Options:**
 
-- `--json` - Output status as JSON
-- `-v, --verbose` - Show detailed status information
+| Flag     | Description                                 |
+| -------- | ------------------------------------------- |
+| `--json` | Output status as JSON and exit              |
+| `--once` | Show status once and exit (non-interactive) |
 
-**Examples:**
+**Status fields:**
+
+- Current loop state (WORK_LEFT, IN_REVIEW, BLOCKED, DONE)
+- Task statistics (total, completed, remaining, in review, blocked)
+- Lock status and current task
 
 ```bash
-# Show current status
-speci status
+# Static one-time output
+npx speci status --once
 
-# Output as JSON for scripts
-speci s --json
-
-# Detailed status information
-speci status --verbose
+# Machine-readable output for scripts
+npx speci s --json
 ```
-
-**Output Fields:**
-
-- Current loop state (WORK_LEFT, IN_REVIEW, COMPLETE, etc.)
-- Task completion statistics
-- Current iteration number
-- Lock status
 
 ### `speci run`
 
-Execute the implementation loop. Acquires a lock file to prevent concurrent runs.
-
-**Usage:**
+Execute the implementation loop. This is the main command that drives autonomous development. It acquires a lock file to prevent concurrent runs and logs all agent activity to `.speci-logs/`.
 
 ```bash
-speci run [options]
+npx speci run
 ```
 
 **Options:**
 
-- `--max-iterations <n>` - Maximum loop iterations
-- `--dry-run` - Show what would execute without running
-- `--force` - Override existing lock file
-- `-y, --yes` - Skip confirmation prompt
-- `-v, --verbose` - Show detailed output
+| Flag                   | Description                             |
+| ---------------------- | --------------------------------------- |
+| `--max-iterations <n>` | Maximum loop iterations (default: 100)  |
+| `--dry-run`            | Show what would execute without running |
+| `--force`              | Override an existing lock file          |
+| `-y, --yes`            | Skip the confirmation prompt            |
 
-**Examples:**
+This command has no short alias, by design, to prevent accidental execution.
 
 ```bash
-# Start implementation loop
-speci run
+# Preview what would happen
+npx speci run --dry-run
 
-# Limit to 5 iterations
-speci run --max-iterations 5
+# Limit to 10 iterations
+npx speci run --max-iterations 10
 
-# Preview actions without executing
-speci run --dry-run
+# Skip confirmation and force past a stale lock
+npx speci run -y --force
 ```
-
-**Note:** This command intentionally has no short alias for safety.
 
 ## Configuration
 
 ### speci.config.json
 
-The configuration file is created by `speci init` and can be customized:
+Created by `speci init`. Speci discovers this file by walking up from the current directory, similar to how ESLint finds its config.
 
 ```json
 {
@@ -282,7 +244,16 @@ The configuration file is created by `speci init` and can be customized:
     "progress": "docs/PROGRESS.md",
     "tasks": "docs/tasks",
     "logs": ".speci-logs",
-    "lock": ".speci.lock"
+    "lock": ".speci-lock"
+  },
+  "agents": {
+    "plan": null,
+    "task": null,
+    "refactor": null,
+    "impl": null,
+    "review": null,
+    "fix": null,
+    "tidy": null
   },
   "copilot": {
     "permissions": "allow-all",
@@ -298,8 +269,8 @@ The configuration file is created by `speci init` and can be customized:
     "extraFlags": []
   },
   "gate": {
-    "commands": ["npm run lint", "npm run typecheck", "npm run test"],
-    "maxFixAttempts": 3,
+    "commands": ["npm run lint", "npm run typecheck", "npm test"],
+    "maxFixAttempts": 5,
     "strategy": "sequential"
   },
   "loop": {
@@ -308,73 +279,124 @@ The configuration file is created by `speci init` and can be customized:
 }
 ```
 
-**Gate Configuration:**
+### Configuration Reference
 
-- `gate.commands` - Array of shell commands to run as quality gates
-- `gate.maxFixAttempts` - Maximum number of automatic fix attempts after gate failures
-- `gate.strategy` - Execution strategy for gate commands:
-  - `"sequential"` (default) - Run commands one after another
-  - `"parallel"` - Run all commands concurrently (30-50% faster for independent commands)
+**paths** - File and directory locations used by speci.
 
-**Note:** Parallel execution requires commands to be independent (no shared resources like lock files or ports).
+| Field      | Default            | Description                          |
+| ---------- | ------------------ | ------------------------------------ |
+| `progress` | `docs/PROGRESS.md` | Path to the progress tracking file   |
+| `tasks`    | `docs/tasks`       | Directory for task definition files  |
+| `logs`     | `.speci-logs`      | Directory for execution logs         |
+| `lock`     | `.speci-lock`      | Lock file to prevent concurrent runs |
+
+**agents** - Custom agent overrides. Set to `null` to use the bundled agent template, or provide a path to your own agent file.
+
+| Field      | Description                     |
+| ---------- | ------------------------------- |
+| `plan`     | Planning agent                  |
+| `task`     | Task generation agent           |
+| `refactor` | Refactoring analysis agent      |
+| `impl`     | Implementation agent            |
+| `review`   | Code review agent               |
+| `fix`      | Gate failure fix agent          |
+| `tidy`     | Cleanup agent for blocked tasks |
+
+**copilot** - Copilot CLI settings.
+
+| Field         | Default     | Description                                               |
+| ------------- | ----------- | --------------------------------------------------------- |
+| `permissions` | `allow-all` | Permission mode: `allow-all`, `yolo`, `strict`, or `none` |
+| `models`      | (see above) | Model to use for each agent type                          |
+| `extraFlags`  | `[]`        | Additional flags passed to the Copilot CLI                |
+
+**gate** - Quality gate configuration. Gate commands run after each implementation step.
+
+| Field            | Default                 | Description                                           |
+| ---------------- | ----------------------- | ----------------------------------------------------- |
+| `commands`       | `["npm run lint", ...]` | Shell commands to run as quality gates                |
+| `maxFixAttempts` | `5`                     | Maximum automatic fix attempts after gate failures    |
+| `strategy`       | `sequential`            | `sequential` or `parallel` execution of gate commands |
+
+Parallel strategy can be 30-50% faster but requires that gate commands are independent (no shared resources like lock files or ports).
+
+**loop** - Loop behavior settings.
+
+| Field           | Default | Description                             |
+| --------------- | ------- | --------------------------------------- |
+| `maxIterations` | `100`   | Maximum loop iterations before stopping |
 
 ### Environment Variables
 
-Environment variables can override configuration file settings:
+Environment variables override corresponding config file settings.
 
-| Variable                 | Config Path           | Description                                   |
-| ------------------------ | --------------------- | --------------------------------------------- |
-| `SPECI_PROGRESS_PATH`    | `paths.progress`      | Path to PROGRESS.md file                      |
-| `SPECI_TASKS_PATH`       | `paths.tasks`         | Path to tasks directory                       |
-| `SPECI_LOG_PATH`         | `paths.logs`          | Path to log directory                         |
-| `SPECI_LOCK_PATH`        | `paths.lock`          | Path to lock file                             |
-| `SPECI_MAX_ITERATIONS`   | `loop.maxIterations`  | Maximum loop iterations                       |
-| `SPECI_ENABLE_AUTO_FIX`  | `loop.enableAutoFix`  | Enable automatic gate fix attempts            |
-| `SPECI_MAX_FIX_ATTEMPTS` | `gate.maxFixAttempts` | Maximum fix attempts                          |
-| `SPECI_DEBUG`            | N/A                   | Enable debug logging (1 or true)              |
-| `SPECI_NO_ANIMATION`     | N/A                   | Disable banner animation (any value disables) |
-| `NO_COLOR`               | N/A                   | Disable colored output                        |
+| Variable                    | Config Path           | Description                          |
+| --------------------------- | --------------------- | ------------------------------------ |
+| `SPECI_PROGRESS_PATH`       | `paths.progress`      | Path to PROGRESS.md file             |
+| `SPECI_TASKS_PATH`          | `paths.tasks`         | Path to tasks directory              |
+| `SPECI_LOG_PATH`            | `paths.logs`          | Path to log directory                |
+| `SPECI_LOGS_PATH`           | `paths.logs`          | Alias for `SPECI_LOG_PATH`           |
+| `SPECI_LOCK_PATH`           | `paths.lock`          | Path to lock file                    |
+| `SPECI_MAX_ITERATIONS`      | `loop.maxIterations`  | Maximum loop iterations              |
+| `SPECI_MAX_FIX_ATTEMPTS`    | `gate.maxFixAttempts` | Maximum fix attempts                 |
+| `SPECI_COPILOT_PERMISSIONS` | `copilot.permissions` | Permission mode                      |
+| `SPECI_DEBUG`               | N/A                   | Enable debug logging (`1` or `true`) |
+| `SPECI_NO_ANIMATION`        | N/A                   | Disable banner animation             |
+| `NO_COLOR`                  | N/A                   | Disable colored output               |
+
+Speci warns if it detects an unknown `SPECI_*` environment variable that looks like a typo of a known one.
 
 ## Error Codes
 
-speci uses structured error codes for clear diagnostics:
+Speci uses structured error codes for diagnostics. Use `--verbose` to see full error details including causes and suggested solutions.
 
 ### Prerequisite Errors (ERR-PRE-\*)
 
 | Code       | Message                          | Solution                                      |
 | ---------- | -------------------------------- | --------------------------------------------- |
-| ERR-PRE-01 | Copilot CLI is not installed     | Run: `npm install -g @github/copilot`         |
+| ERR-PRE-01 | Copilot CLI is not installed     | Run `npm install -g @github/copilot`          |
 | ERR-PRE-02 | Copilot CLI is not authenticated | Run `/login` in Copilot CLI or set `GH_TOKEN` |
 | ERR-PRE-03 | Not a git repository             | Run `git init` in your project root           |
-| ERR-PRE-04 | Configuration file not found     | Run `speci init` to create configuration      |
-| ERR-PRE-05 | PROGRESS.md file not found       | Run `speci init` or create manually           |
+| ERR-PRE-04 | Configuration file not found     | Run `npx speci init`                          |
+| ERR-PRE-05 | PROGRESS.md file not found       | Run `npx speci task --plan <plan-file>`       |
+| ERR-PRE-06 | No PROGRESS.md found during run  | Generate tasks first with `npx speci task`    |
 
 ### Input Errors (ERR-INP-\*)
 
-| Code       | Message                   | Solution                                                   |
-| ---------- | ------------------------- | ---------------------------------------------------------- |
-| ERR-INP-01 | Required argument missing | Check command usage with `--help`                          |
-| ERR-INP-02 | Agent file not found      | Run `speci init` or add agent to `.github/copilot/agents/` |
-| ERR-INP-03 | Config file is malformed  | Fix JSON syntax in speci.config.json                       |
-| ERR-INP-04 | Config validation failed  | Check config against schema                                |
-| ERR-INP-05 | Plan file not found       | Provide valid path with `--plan`                           |
+| Code       | Message                          | Solution                                                       |
+| ---------- | -------------------------------- | -------------------------------------------------------------- |
+| ERR-INP-01 | Required argument missing        | Check command usage with `--help`                              |
+| ERR-INP-02 | Agent file not found             | Verify the path, or set to `null` in config for bundled agents |
+| ERR-INP-03 | Config file is malformed         | Fix JSON syntax in `speci.config.json`                         |
+| ERR-INP-04 | Config validation failed         | Check config values against the reference above                |
+| ERR-INP-05 | Plan file not found              | Provide a valid path with `--plan`                             |
+| ERR-INP-06 | Config version is not compatible | Update to version 1.x or re-run `npx speci init`               |
+| ERR-INP-07 | Path escapes project directory   | Use paths within the project root, avoid `../` traversal       |
+| ERR-INP-08 | Invalid permissions value        | Use `allow-all`, `yolo`, `strict`, or `none`                   |
+| ERR-INP-09 | Invalid maxFixAttempts value     | Must be a positive integer                                     |
+| ERR-INP-10 | Invalid maxIterations value      | Must be a positive integer                                     |
+| ERR-INP-11 | Subagent prompt not found        | Reinstall speci or provide a custom agent path                 |
 
 ### State Errors (ERR-STA-\*)
 
-| Code       | Message                  | Solution                                 |
-| ---------- | ------------------------ | ---------------------------------------- |
-| ERR-STA-01 | Lock file already exists | Wait for other instance or use `--force` |
-| ERR-STA-02 | Cannot parse PROGRESS.md | Verify PROGRESS.md format                |
-| ERR-STA-03 | Invalid state transition | Check PROGRESS.md state markers          |
+| Code       | Message                           | Solution                                        |
+| ---------- | --------------------------------- | ----------------------------------------------- |
+| ERR-STA-01 | Another speci instance is running | Wait for it to finish or use `--force`          |
+| ERR-STA-02 | Cannot parse PROGRESS.md          | Verify the markdown table format in PROGRESS.md |
+| ERR-STA-03 | Invalid state transition          | Check PROGRESS.md state markers                 |
 
 ### Execution Errors (ERR-EXE-\*)
 
-| Code       | Message                   | Solution                                     |
-| ---------- | ------------------------- | -------------------------------------------- |
-| ERR-EXE-01 | Gate command failed       | Fix lint/typecheck/test errors               |
-| ERR-EXE-02 | Copilot execution failed  | Check Copilot authentication and permissions |
-| ERR-EXE-03 | Max iterations reached    | Review progress and increase limit if needed |
-| ERR-EXE-04 | Max fix attempts exceeded | Review gate failures and fix manually        |
+| Code       | Message                             | Solution                                                  |
+| ---------- | ----------------------------------- | --------------------------------------------------------- |
+| ERR-EXE-01 | Gate command failed                 | Fix lint, typecheck, or test errors in your code          |
+| ERR-EXE-02 | Copilot execution failed            | Check Copilot authentication and permissions              |
+| ERR-EXE-03 | Max iterations reached              | Review progress and increase `--max-iterations` if needed |
+| ERR-EXE-04 | Max fix attempts exceeded           | Review gate failures and fix issues manually              |
+| ERR-EXE-05 | Failed to create directory          | Check file system permissions and disk space              |
+| ERR-EXE-06 | Failed to write file                | Check file system permissions and disk space              |
+| ERR-EXE-07 | Agent templates directory not found | Reinstall speci                                           |
+| ERR-EXE-08 | Failed to copy agent files          | Check file system permissions and disk space              |
 
 ### Exit Codes
 
@@ -390,7 +412,7 @@ speci uses structured error codes for clear diagnostics:
 
 ### "Copilot CLI not found"
 
-The GitHub Copilot CLI must be installed:
+The GitHub Copilot CLI must be installed and available in your PATH:
 
 ```bash
 # Install via npm
@@ -406,19 +428,22 @@ brew install copilot-cli
 copilot --version
 ```
 
-### "Lock file exists"
+### "Another speci instance is running"
 
-Another speci instance may be running:
+A lock file from a previous run may still exist:
 
 ```bash
-# Check if speci is running
+# Check if speci is actually running
+# On Linux/macOS:
 ps aux | grep speci
+# On Windows:
+tasklist | findstr speci
 
-# If stale, remove lock manually
-rm .speci.lock
+# If the process is not running, force past the stale lock
+npx speci run --force
 
-# Or force override
-speci run --force
+# Or remove the lock file manually
+rm .speci-lock
 ```
 
 ### "Config file not found"
@@ -426,138 +451,45 @@ speci run --force
 Initialize speci in your project:
 
 ```bash
-speci init
+npx speci init
 ```
 
 ### "PROGRESS.md file not found"
 
-Run the task command to generate the progress file from your plan:
+Generate tasks from a plan first. The task command creates the PROGRESS.md file:
 
 ```bash
-speci task --plan docs/plan.md
+npx speci plan -p "Describe what you want to build"
+npx speci task --plan docs/plan.md
 ```
 
-### Gate Commands Failing
+### Gate commands failing
 
-Ensure your project has the necessary scripts in `package.json`:
+Speci runs gate commands defined in `speci.config.json`. Make sure your project has the corresponding scripts in `package.json`:
 
 ```json
 {
   "scripts": {
-    "lint": "eslint . --ext .ts",
+    "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "test": "vitest run"
   }
 }
 ```
 
-### Verbose Mode Not Working
+You can customize which commands speci runs by editing the `gate.commands` array in `speci.config.json`.
 
-Enable verbose output to see detailed logs:
+### Verbose mode
 
-```bash
-# Use --verbose flag
-speci run --verbose
-
-# Or set environment variable
-SPECI_DEBUG=1 speci run
-```
-
-## Verbose Mode
-
-Use `--verbose` (or `-v`) with any command for detailed output:
+Use `--verbose` (or `-v`) with any command for detailed output including stack traces, config loading details, state transitions, and timing information:
 
 ```bash
-# Show detailed execution logs
-speci run --verbose
+npx speci run --verbose
 
-# See config loading details
-speci status --verbose
-
-# Debug init process
-speci init --verbose
+# Or set the environment variable
+SPECI_DEBUG=1 npx speci run
 ```
-
-**Verbose mode shows:**
-
-- Stack traces on errors
-- Configuration loading details
-- State transition logs
-- Child process details
-- Debug timing information
-
-**Note:** Verbose mode respects `NO_COLOR` environment variable.
-
-## Validation Module
-
-Speci provides a centralized validation module in `lib/validation/` for type-safe input validation:
-
-### PathValidator
-
-Validates file system paths with builder pattern:
-
-```typescript
-import { PathValidator } from '@/validation/path-validator.js';
-
-const result = new PathValidator(filePath)
-  .exists()
-  .isReadable()
-  .isWithinProject(projectRoot)
-  .validate();
-
-if (!result.success) {
-  console.error(result.error.message);
-  result.error.suggestions?.forEach((s) => console.log(s));
-}
-```
-
-### ConfigValidator
-
-Validates configuration objects:
-
-```typescript
-import { ConfigValidator } from '@/validation/config-validator.js';
-
-const result = new ConfigValidator(config)
-  .validateVersion()
-  .validatePaths()
-  .validateCopilot()
-  .validate();
-```
-
-### InputValidator
-
-Validates command input (files, prompts):
-
-```typescript
-import { InputValidator } from '@/validation/input-validator.js';
-
-const result = new InputValidator(fs)
-  .requireInput(files, prompt)
-  .validateFiles(files)
-  .validate();
-```
-
-All validators return `ValidationResult<T>`, a discriminated union with consistent error messages and actionable suggestions.
 
 ## License
 
 MIT
-
-## Contributing
-
-Contributions are welcome! Please ensure:
-
-- Code passes all gates (`npm run lint`, `npm run typecheck`, `npm run test`)
-- Tests are included for new features
-- Documentation is updated
-- Commit messages follow conventional commits format
-
-## Support
-
-For issues and questions:
-
-- Check the [Troubleshooting](#troubleshooting) section
-- Review [Error Codes](#error-codes) for diagnostics
-- Enable verbose mode (`--verbose`) for detailed logs
-- Open an issue on GitHub with reproduction steps
