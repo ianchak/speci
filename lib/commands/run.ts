@@ -244,12 +244,10 @@ async function handleWorkLeft(
   }
 
   // 2. Run gates
-  context.logger.infoPlain('Running gate commands...');
   const gateResult = await runGate(config);
   logGate(logFile, gateResult);
 
   if (gateResult.isSuccess) {
-    context.logger.success('All gates passed!');
     return;
   }
 

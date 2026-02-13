@@ -9,6 +9,7 @@ import { spawn } from 'node:child_process';
 import type { SpeciConfig } from '@/config.js';
 import { log } from '@/utils/logger.js';
 import { getGlyph } from '@/ui/glyphs.js';
+import { colorize } from '@/ui/colors.js';
 
 const DEFAULT_TIMEOUT = 5 * 60 * 1000; // 5 minutes
 
@@ -123,19 +124,37 @@ export async function executeGateCommand(
 }
 
 /**
- * Log the result of a gate command execution
+ * Format a duration in milliseconds to a human-readable string
+ * @param ms - Duration in milliseconds
+ * @returns Formatted string (e.g. "123ms" or "1.5s")
+ */
+export function formatDuration(ms: number): string {
+  if (ms < 1000) {
+    return `${ms}ms`;
+  }
+  return `${(ms / 1000).toFixed(1)}s`;
+}
+
+/**
+ * Log a gate command with its result on a single line
+ * @param command - The command that was executed
  * @param result - Command result to log
  */
-function logCommandResult(result: GateCommandResult): void {
+function logCommandLine(command: string, result: GateCommandResult): void {
+  const duration = formatDuration(result.duration);
   if (result.isSuccess) {
-    log.success(`    ${getGlyph('success')} Passed (${result.duration}ms)`);
+    log.raw(
+      `  ${colorize(`${getGlyph('pointer')}`, 'sky400')} ${colorize(command, 'sky400')}  ${colorize(`${getGlyph('success')} passed`, 'success')}  ${colorize(duration, 'dim')}`
+    );
   } else {
-    log.error(`    ${getGlyph('error')} Failed (exit code ${result.exitCode})`);
+    log.raw(
+      `  ${colorize(`${getGlyph('pointer')}`, 'sky400')} ${colorize(command, 'sky400')}  ${colorize(`${getGlyph('error')} failed`, 'error')}  ${colorize(`exit ${result.exitCode}`, 'dim')}`
+    );
     if (result.error) {
       const errorLines = result.error.split('\n').slice(0, 5);
       for (const line of errorLines) {
         if (line.trim()) {
-          log.error(`      ${line}`);
+          log.errorPlain(`      ${line}`);
         }
       }
     }
@@ -155,6 +174,7 @@ export async function runGate(config: SpeciConfig): Promise<GateResult> {
     return { isSuccess: true, results: [], totalDuration: 0 };
   }
 
+  log.raw('');
   log.infoPlain(
     `Running gate checks (${commands.length} commands, ${strategy})...`
   );
@@ -185,17 +205,15 @@ export async function runGate(config: SpeciConfig): Promise<GateResult> {
 
     // Log results after all complete (avoid interleaving)
     for (let i = 0; i < results.length; i++) {
-      log.infoPlain(`  ${getGlyph('pointer')} ${commands[i]}`);
-      logCommandResult(results[i]);
+      logCommandLine(commands[i], results[i]);
     }
   } else {
     // Sequential execution (existing behavior)
     results = [];
     for (const command of commands) {
-      log.infoPlain(`  ${getGlyph('pointer')} ${command}`);
       const result = await executeGateCommand(command);
       results.push(result);
-      logCommandResult(result);
+      logCommandLine(command, result);
     }
   }
 
@@ -203,8 +221,9 @@ export async function runGate(config: SpeciConfig): Promise<GateResult> {
   const isSuccess = results.every((r) => r.isSuccess);
 
   if (isSuccess) {
+    log.raw('');
     log.success(
-      `Gate passed! All ${commands.length} checks completed in ${totalDuration}ms`
+      `Gate passed ${getGlyph('bullet')} ${commands.length}/${commands.length} checks in ${formatDuration(totalDuration)}`
     );
     return {
       isSuccess: true,
@@ -214,8 +233,12 @@ export async function runGate(config: SpeciConfig): Promise<GateResult> {
   }
 
   // At least one command failed
-  const firstError = results.find((r) => !r.isSuccess);
-  log.error(`Gate failed: ${firstError?.command}`);
+  const failed = results.filter((r) => !r.isSuccess);
+  const firstError = failed[0];
+  log.raw('');
+  log.error(
+    `Gate failed ${getGlyph('bullet')} ${failed.length}/${commands.length} checks failed`
+  );
 
   return {
     isSuccess: false,
