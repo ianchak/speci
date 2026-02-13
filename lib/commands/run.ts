@@ -227,7 +227,7 @@ async function handleWorkLeft(
   context: CommandContext
 ): Promise<void> {
   // 1. Run impl agent
-  context.logger.infoPlain('Dispatching implementation agent...');
+  context.logger.infoPlain('Dispatching implementation agent...\n');
   logAgent(logFile, 'impl', 'START');
   const implResult = await runAgent(config, 'impl', 'Implementation Agent');
   logAgent(logFile, 'impl', implResult.isSuccess ? 'SUCCESS' : 'FAILED');
@@ -301,7 +301,7 @@ async function handleInReview(
   _options: RunOptions,
   context: CommandContext
 ): Promise<void> {
-  context.logger.infoPlain('Dispatching review agent...');
+  context.logger.infoPlain('Dispatching review agent...\n');
   logAgent(logFile, 'review', 'START');
   const reviewResult = await runAgent(config, 'review', 'Review Agent');
   logAgent(logFile, 'review', reviewResult.isSuccess ? 'SUCCESS' : 'FAILED');
@@ -325,7 +325,7 @@ async function handleBlocked(
   _options: RunOptions,
   context: CommandContext
 ): Promise<void> {
-  context.logger.infoPlain('Dispatching tidy agent to unblock tasks...');
+  context.logger.infoPlain('Dispatching tidy agent to unblock tasks...\n');
   logAgent(logFile, 'tidy', 'START');
   const tidyResult = await runAgent(config, 'tidy', 'Tidy Agent');
   logAgent(logFile, 'tidy', tidyResult.isSuccess ? 'SUCCESS' : 'FAILED');
