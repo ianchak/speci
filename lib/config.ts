@@ -89,15 +89,6 @@ export function getDefaults(): SpeciConfig {
       logs: '.speci-logs',
       lock: '.speci-lock',
     },
-    agents: {
-      plan: null,
-      task: null,
-      refactor: null,
-      impl: null,
-      review: null,
-      fix: null,
-      tidy: null,
-    },
     copilot: {
       permissions: 'allow-all',
       models: {
@@ -636,10 +627,8 @@ export function getConfigIfLoaded(): SpeciConfig | null {
  * Resolve agent path in .github/copilot/agents directory
  *
  * Agents must exist in .github/copilot/agents/ (created by `speci init`).
- * Use --agent CLI flag to specify a different agent filename.
  *
  * @param agentName - Name of agent to resolve (e.g., 'impl', 'review')
- * @param overrideFilename - Optional filename override (e.g., 'my-custom.agent.md')
  * @param processParam - Optional IProcess instance for testing (defaults to global process)
  * @returns Absolute path to agent file in .github/copilot/agents/
  *
@@ -647,19 +636,14 @@ export function getConfigIfLoaded(): SpeciConfig | null {
  * ```typescript
  * const implPath = resolveAgentPath('impl');
  * // Returns: '/project/.github/copilot/agents/speci-impl.agent.md'
- *
- * const customPath = resolveAgentPath('impl', 'my-custom.agent.md');
- * // Returns: '/project/.github/copilot/agents/my-custom.agent.md'
  * ```
  */
 export function resolveAgentPath(
   agentName: AgentName,
-  overrideFilename?: string,
   processParam?: IProcess
 ): string {
   const proc = processParam || process;
-  const filename =
-    overrideFilename || `${getAgentFilename(agentName)}.agent.md`;
+  const filename = `${getAgentFilename(agentName)}.agent.md`;
   const agentPath = join(proc.cwd(), GITHUB_AGENTS_DIR, filename);
 
   log.debug(`Using agent: ${agentPath}`);

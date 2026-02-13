@@ -105,15 +105,6 @@ describe('Validation Module Integration', () => {
           logs: 'logs',
           lock: '.speci-lock',
         },
-        agents: {
-          plan: null,
-          task: null,
-          refactor: null,
-          impl: null,
-          review: null,
-          fix: null,
-          tidy: null,
-        },
         gate: {
           commands: ['npm test'],
           maxFixAttempts: 3,
@@ -155,15 +146,6 @@ describe('Validation Module Integration', () => {
           tasks: 'docs/tasks',
           logs: 'logs',
           lock: '.speci-lock',
-        },
-        agents: {
-          plan: null,
-          task: null,
-          refactor: null,
-          impl: null,
-          review: null,
-          fix: null,
-          tidy: null,
         },
         gate: {
           maxFixAttempts: 3,

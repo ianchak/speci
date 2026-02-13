@@ -56,15 +56,6 @@ describe('CommandRegistry', () => {
         logs: '.speci/logs',
         lock: '.speci/lock',
       },
-      agents: {
-        plan: null,
-        task: null,
-        refactor: null,
-        impl: null,
-        review: null,
-        fix: null,
-        tidy: null,
-      },
       gate: {
         commands: ['npm run lint', 'npm run typecheck', 'npm test'],
         maxFixAttempts: 3,

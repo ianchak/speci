@@ -29,15 +29,6 @@ const mockConfig: SpeciConfig = {
     logs: join(TEST_DIR, '.speci-logs'),
     lock: join(TEST_DIR, '.speci-lock'),
   },
-  agents: {
-    plan: null,
-    task: null,
-    refactor: null,
-    impl: null,
-    review: null,
-    fix: null,
-    tidy: null,
-  },
   copilot: {
     permissions: 'allow-all',
     models: {

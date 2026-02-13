@@ -96,7 +96,6 @@ export async function task(
     // Initialize command (config + preflight + agent validation)
     const { config: loadedConfig, agentName } = await initializeCommand({
       commandName: 'task',
-      agentOverride: options.agent,
       config, // Pass pre-loaded config if provided
       context,
     });
@@ -130,9 +129,7 @@ export async function task(
       error.message.includes('Agent file not found')
     ) {
       context.logger.error(error.message);
-      context.logger.info(
-        'Run "speci init" to create agents or provide --agent <filename>'
-      );
+      context.logger.info('Run "speci init" to create agents');
       return {
         success: false,
         exitCode: 1,

@@ -147,15 +147,6 @@ describe('preflight', () => {
           logs: '',
           lock: '',
         },
-        agents: {
-          plan: null,
-          task: null,
-          refactor: null,
-          impl: null,
-          review: null,
-          fix: null,
-          tidy: null,
-        },
         copilot: {
           permissions: 'allow-all',
           models: {
@@ -191,15 +182,6 @@ describe('preflight', () => {
           tasks: '',
           logs: '',
           lock: '',
-        },
-        agents: {
-          plan: null,
-          task: null,
-          refactor: null,
-          impl: null,
-          review: null,
-          fix: null,
-          tidy: null,
         },
         copilot: {
           permissions: 'allow-all',
@@ -428,15 +410,6 @@ describe('preflight', () => {
           logs: '',
           lock: '',
         },
-        agents: {
-          plan: null,
-          task: null,
-          refactor: null,
-          impl: null,
-          review: null,
-          fix: null,
-          tidy: null,
-        },
         copilot: {
           permissions: 'allow-all',
           models: {
@@ -553,15 +526,6 @@ describe('preflight', () => {
           tasks: '',
           logs: '',
           lock: '',
-        },
-        agents: {
-          plan: null,
-          task: null,
-          refactor: null,
-          impl: null,
-          review: null,
-          fix: null,
-          tidy: null,
         },
         copilot: {
           permissions: 'allow-all',

@@ -34,15 +34,6 @@ const mockConfig: SpeciConfig = {
     logs: '.speci/logs',
     lock: testLockPath,
   },
-  agents: {
-    plan: null,
-    task: null,
-    refactor: null,
-    impl: null,
-    review: null,
-    fix: null,
-    tidy: null,
-  },
   copilot: {
     permissions: 'allow-all',
     models: {

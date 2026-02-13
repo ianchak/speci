@@ -60,18 +60,6 @@ describe('config', () => {
       expect(defaults.paths).toHaveProperty('lock', '.speci-lock');
     });
 
-    it('should have all agents set to null by default', () => {
-      const defaults = getDefaults();
-
-      expect(defaults.agents.plan).toBeNull();
-      expect(defaults.agents.task).toBeNull();
-      expect(defaults.agents.refactor).toBeNull();
-      expect(defaults.agents.impl).toBeNull();
-      expect(defaults.agents.review).toBeNull();
-      expect(defaults.agents.fix).toBeNull();
-      expect(defaults.agents.tidy).toBeNull();
-    });
-
     it('should have correct copilot defaults', () => {
       const defaults = getDefaults();
 

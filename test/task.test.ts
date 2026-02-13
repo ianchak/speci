@@ -198,27 +198,6 @@ describe('task command', () => {
       expect(hasAgentArg).toBe(true);
     });
 
-    it('should use custom agent when override provided', async () => {
-      // Create custom agent file in .github/agents/
-      writeFileSync('.github/agents/custom-task.md', '# Custom Task Agent');
-
-      const spawnSpy = vi
-        .spyOn(copilotModule, 'spawnCopilot')
-        .mockResolvedValue(0);
-
-      await task({ plan: 'plan.md', agent: 'custom-task.md' }).catch(() => {
-        // Ignore process.exit error
-      });
-
-      expect(spawnSpy).toHaveBeenCalled();
-      const args = spawnSpy.mock.calls[0][0];
-      const hasAgentArg = args.some(
-        (arg: string) =>
-          arg.startsWith('--agent=') && arg.includes('custom-task.md')
-      );
-      expect(hasAgentArg).toBe(true);
-    });
-
     it('should exit with error when agent file not found', async () => {
       const result = await task({ plan: 'plan.md', agent: 'nonexistent.md' });
       expect(result.success).toBe(false);

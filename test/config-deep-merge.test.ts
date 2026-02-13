@@ -73,28 +73,6 @@ describe('Deep Merge Type Safety (TASK_032)', () => {
       expect(config.paths.lock).toBe('.speci-lock');
     });
 
-    it('should merge nested agents config without losing other agents', () => {
-      writeFileSync(
-        'speci.config.json',
-        JSON.stringify({
-          version: '1.0.0',
-          agents: {
-            impl: 'custom/impl.md',
-          },
-        })
-      );
-
-      const config = loadConfig();
-
-      // Custom agent should be set
-      expect(config.agents.impl).toBe('custom/impl.md');
-
-      // Other agents should remain null (default)
-      expect(config.agents.plan).toBeNull();
-      expect(config.agents.task).toBeNull();
-      expect(config.agents.review).toBeNull();
-    });
-
     it('should merge nested copilot.models without losing copilot.permissions', () => {
       writeFileSync(
         'speci.config.json',
@@ -122,24 +100,6 @@ describe('Deep Merge Type Safety (TASK_032)', () => {
   });
 
   describe('Deep merge handles null and undefined correctly', () => {
-    it('should preserve null values in config', () => {
-      writeFileSync(
-        'speci.config.json',
-        JSON.stringify({
-          version: '1.0.0',
-          agents: {
-            impl: null,
-          },
-          copilot: {},
-        })
-      );
-
-      const config = loadConfig();
-
-      // Null values should be preserved
-      expect(config.agents.impl).toBeNull();
-    });
-
     it('should not merge undefined values from partial config', () => {
       writeFileSync(
         'speci.config.json',
@@ -271,7 +231,6 @@ describe('Deep Merge Type Safety (TASK_032)', () => {
       // TypeScript should know these properties exist without casts
       expect(config.version).toBeDefined();
       expect(config.paths.progress).toBeDefined();
-      expect(config.agents.impl).toBeDefined();
       expect(config.copilot.permissions).toBeDefined();
       expect(config.gate.commands).toBeDefined();
       expect(config.loop.maxIterations).toBeDefined();
@@ -282,7 +241,6 @@ describe('Deep Merge Type Safety (TASK_032)', () => {
 
       expect(Object.isFrozen(config)).toBe(true);
       expect(Object.isFrozen(config.paths)).toBe(true);
-      expect(Object.isFrozen(config.agents)).toBe(true);
       expect(Object.isFrozen(config.copilot)).toBe(true);
     });
   });
@@ -296,10 +254,6 @@ describe('Deep Merge Type Safety (TASK_032)', () => {
           paths: {
             progress: 'custom/progress.md',
             tasks: 'custom/tasks',
-          },
-          agents: {
-            impl: 'custom/impl.md',
-            review: 'custom/review.md',
           },
           copilot: {
             permissions: 'yolo',
@@ -324,8 +278,6 @@ describe('Deep Merge Type Safety (TASK_032)', () => {
       expect(config.version).toBe('1.0.0');
       expect(config.paths.progress).toBe('custom/progress.md');
       expect(config.paths.tasks).toBe('custom/tasks');
-      expect(config.agents.impl).toBe('custom/impl.md');
-      expect(config.agents.review).toBe('custom/review.md');
       expect(config.copilot.permissions).toBe('yolo');
       expect(config.copilot.models.impl).toBe('claude-opus-4.6');
       expect(config.copilot.models.review).toBe('claude-sonnet-4.5');
@@ -336,7 +288,6 @@ describe('Deep Merge Type Safety (TASK_032)', () => {
       // Default values should fill in gaps
       expect(config.paths.logs).toBe('.speci-logs');
       expect(config.paths.lock).toBe('.speci-lock');
-      expect(config.agents.plan).toBeNull();
       expect(config.copilot.models.plan).toBe('claude-opus-4.6');
     });
   });

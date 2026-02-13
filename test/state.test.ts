@@ -38,15 +38,6 @@ describe('state', () => {
         logs: join(testDir, '.speci-logs'),
         lock: join(testDir, '.speci-lock'),
       },
-      agents: {
-        plan: null,
-        task: null,
-        refactor: null,
-        impl: null,
-        review: null,
-        fix: null,
-        tidy: null,
-      },
       copilot: {
         permissions: 'allow-all',
         models: {

@@ -73,15 +73,6 @@ describe('MVT_M2: Core Libraries Integration', () => {
           logs: '.speci-logs',
           lock: '.speci-lock',
         },
-        agents: {
-          plan: null,
-          task: null,
-          refactor: null,
-          impl: 'ralph-impl',
-          review: 'ralph-review',
-          fix: null,
-          tidy: null,
-        },
         gate: {
           commands: ['npm run lint', 'npm run typecheck', 'npm test'],
           maxFixAttempts: 3,
@@ -93,7 +84,6 @@ describe('MVT_M2: Core Libraries Integration', () => {
       expect(config.version).toBe('1.0.0');
       expect(config.paths.progress).toBe('docs/PROGRESS.md');
       expect(config.paths.tasks).toBe('docs/tasks');
-      expect(config.agents.impl).toBe('ralph-impl');
       expect(config.gate.commands).toEqual([
         'npm run lint',
         'npm run typecheck',

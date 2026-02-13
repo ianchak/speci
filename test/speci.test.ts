@@ -167,14 +167,12 @@ describe('CLI Entry Point', () => {
       const program = new Command();
       const initCmd = program
         .command('init')
-        .option('-y, --yes', 'Accept all defaults')
         .option('-u, --update-agents', 'Update agent files')
         .option('-v, --verbose', 'Show detailed output');
 
-      initCmd.parse(['node', 'speci', 'init', '--yes', '--verbose']);
+      initCmd.parse(['node', 'speci', 'init', '--verbose']);
       const opts = initCmd.opts();
 
-      expect(opts.yes).toBe(true);
       expect(opts.verbose).toBe(true);
     });
 
@@ -309,17 +307,13 @@ describe('CLI Entry Point', () => {
       const program = new Command();
       program.name('speci');
 
-      const initCmd = program
-        .command('init')
-        .description('Initialize Speci')
-        .option('-y, --yes', 'Accept defaults');
+      const initCmd = program.command('init').description('Initialize Speci');
 
       initCmd.addHelpText(
         'after',
         `
 Examples:
-  $ speci init              Interactive setup wizard
-  $ speci init --yes        Quick setup with defaults
+  $ speci init              Set up Speci in current project
 `
       );
 
@@ -327,7 +321,6 @@ Examples:
       const helpText = initCmd.helpInformation();
       expect(helpText).toContain('init');
       expect(helpText).toContain('Initialize Speci');
-      expect(helpText).toContain('--yes');
     });
 
     it('should verify all commands have description strings defined', () => {

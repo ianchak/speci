@@ -81,7 +81,6 @@ npx speci init
 
 | Flag                  | Description                                   |
 | --------------------- | --------------------------------------------- |
-| `-y, --yes`           | Accept all defaults                           |
 | `-u, --update-agents` | Update agent files even if they already exist |
 
 **Creates:**
@@ -92,9 +91,6 @@ npx speci init
 - `.github/agents/` directory with Copilot agent definitions
 
 ```bash
-# Initialize with defaults
-npx speci init -y
-
 # Update bundled agent files to the latest version
 npx speci init --update-agents
 ```
@@ -113,7 +109,6 @@ npx speci plan -p "Build a REST API for user authentication"
 | ------------------------ | -------------------------------------------- |
 | `-p, --prompt <text>`    | Initial prompt describing what to plan       |
 | `-i, --input <files...>` | Input files for context (design docs, specs) |
-| `-a, --agent <path>`     | Path to a custom agent file                  |
 | `-o, --output <path>`    | Save plan to a specific file                 |
 
 ```bash
@@ -125,9 +120,6 @@ npx speci plan -i spec.md -p "Focus on the authentication module"
 
 # Save plan to a specific file
 npx speci plan -i design.md -o docs/plan.md
-
-# Use a custom agent
-npx speci p -a .github/agents/my-planner.agent.md -p "My feature"
 ```
 
 ### `speci task` (alias: `t`)
@@ -140,10 +132,9 @@ npx speci task --plan docs/plan.md
 
 **Options:**
 
-| Flag                 | Description                  |
-| -------------------- | ---------------------------- |
-| `-p, --plan <path>`  | Path to plan file (required) |
-| `-a, --agent <path>` | Path to a custom agent file  |
+| Flag                | Description                  |
+| ------------------- | ---------------------------- |
+| `-p, --plan <path>` | Path to plan file (required) |
 
 ### `speci refactor` (alias: `r`)
 
@@ -159,7 +150,6 @@ npx speci refactor
 | --------------------- | ------------------------------------ |
 | `-s, --scope <path>`  | Directory or glob pattern to analyze |
 | `-o, --output <path>` | Save refactoring plan to a file      |
-| `-a, --agent <path>`  | Path to a custom agent file          |
 
 ```bash
 # Analyze a specific directory
@@ -246,15 +236,6 @@ Created by `speci init`. Speci discovers this file by walking up from the curren
     "logs": ".speci-logs",
     "lock": ".speci-lock"
   },
-  "agents": {
-    "plan": null,
-    "task": null,
-    "refactor": null,
-    "impl": null,
-    "review": null,
-    "fix": null,
-    "tidy": null
-  },
   "copilot": {
     "permissions": "allow-all",
     "models": {
@@ -289,18 +270,6 @@ Created by `speci init`. Speci discovers this file by walking up from the curren
 | `tasks`    | `docs/tasks`       | Directory for task definition files  |
 | `logs`     | `.speci-logs`      | Directory for execution logs         |
 | `lock`     | `.speci-lock`      | Lock file to prevent concurrent runs |
-
-**agents** - Custom agent overrides. Set to `null` to use the bundled agent template, or provide a path to your own agent file.
-
-| Field      | Description                     |
-| ---------- | ------------------------------- |
-| `plan`     | Planning agent                  |
-| `task`     | Task generation agent           |
-| `refactor` | Refactoring analysis agent      |
-| `impl`     | Implementation agent            |
-| `review`   | Code review agent               |
-| `fix`      | Gate failure fix agent          |
-| `tidy`     | Cleanup agent for blocked tasks |
 
 **copilot** - Copilot CLI settings.
 

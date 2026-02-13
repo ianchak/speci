@@ -105,15 +105,6 @@ export function createMockConfigLoader(
       logs: '.speci-logs',
       lock: '.speci-lock',
     },
-    agents: {
-      plan: null,
-      task: null,
-      refactor: null,
-      impl: null,
-      review: null,
-      fix: null,
-      tidy: null,
-    },
     copilot: {
       permissions: 'allow-all',
       models: {

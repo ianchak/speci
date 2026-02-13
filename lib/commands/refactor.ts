@@ -113,7 +113,6 @@ export async function refactor(
     // Initialize command (config + preflight + agent validation)
     const { config: loadedConfig, agentName } = await initializeCommand({
       commandName: 'refactor',
-      agentOverride: options.agent,
       config, // Pass pre-loaded config if provided
       context,
     });
@@ -153,9 +152,7 @@ export async function refactor(
       error.message.includes('Agent file not found')
     ) {
       context.logger.error(error.message);
-      context.logger.info(
-        'Run "speci init" to create agents or provide --agent <filename>'
-      );
+      context.logger.info('Run "speci init" to create agents');
       return {
         success: false,
         exitCode: 1,

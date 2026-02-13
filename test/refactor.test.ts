@@ -230,30 +230,6 @@ describe('refactor command', () => {
   });
 
   describe('agent path resolution', () => {
-    it('should use custom agent when override provided', async () => {
-      // Create custom agent file in .github/agents/
-      writeFileSync(
-        '.github/agents/custom-refactor.md',
-        '# Custom Refactor Agent'
-      );
-
-      const spawnSpy = vi
-        .spyOn(copilotModule, 'spawnCopilot')
-        .mockResolvedValue(0);
-
-      await refactor({ agent: 'custom-refactor.md' }).catch(() => {
-        // Ignore process.exit error
-      });
-
-      expect(spawnSpy).toHaveBeenCalled();
-      const args = spawnSpy.mock.calls[0][0];
-      const hasAgentArg = args.some(
-        (arg: string) =>
-          arg.startsWith('--agent=') && arg.includes('custom-refactor.md')
-      );
-      expect(hasAgentArg).toBe(true);
-    });
-
     it('should exit with error when agent file not found', async () => {
       const result = await refactor({ agent: 'nonexistent.md' });
       expect(result.success).toBe(false);

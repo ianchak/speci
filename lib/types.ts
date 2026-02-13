@@ -52,15 +52,6 @@ export interface SpeciConfig {
     logs: string;
     lock: string;
   };
-  agents: {
-    plan: string | null;
-    task: string | null;
-    refactor: string | null;
-    impl: string | null;
-    review: string | null;
-    fix: string | null;
-    tidy: string | null;
-  };
   copilot: {
     permissions: 'allow-all' | 'yolo' | 'strict' | 'none';
     models: {

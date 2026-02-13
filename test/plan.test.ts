@@ -35,15 +35,6 @@ describe('plan command', () => {
         logs: '.speci-logs',
         lock: '.speci-lock',
       },
-      agents: {
-        plan: null,
-        task: null,
-        refactor: null,
-        impl: null,
-        review: null,
-        fix: null,
-        tidy: null,
-      },
       copilot: {
         permissions: 'allow-all' as const,
         models: {
@@ -166,34 +157,11 @@ describe('plan command', () => {
       expect(hasAgentArg).toBe(true);
     });
 
-    it('should use custom agent when override provided', async () => {
-      // Create custom agent file in .github/agents/
-      writeFileSync('.github/agents/custom-plan.md', '# Custom Plan Agent');
-
-      const spawnSpy = vi
-        .spyOn(mockContext.copilotRunner, 'spawn')
-        .mockResolvedValue(0);
-
-      const result = await plan(
-        { agent: 'custom-plan.md', prompt: 'test plan' },
-        mockContext
-      );
-
-      expect(result.success).toBe(true);
-      expect(spawnSpy).toHaveBeenCalled();
-      const args = spawnSpy.mock.calls[0][0];
-      const hasAgentArg = args.some(
-        (arg: string) =>
-          arg.startsWith('--agent=') && arg.includes('custom-plan.md')
-      );
-      expect(hasAgentArg).toBe(true);
-    });
-
     it('should return error when agent file not found', async () => {
-      const result = await plan(
-        { agent: 'nonexistent.md', prompt: 'test plan' },
-        mockContext
-      );
+      // Mock fs.existsSync to return false for agent file
+      vi.spyOn(mockContext.fs, 'existsSync').mockReturnValue(false);
+
+      const result = await plan({ prompt: 'test plan' }, mockContext);
 
       expect(result.success).toBe(false);
       expect(result.exitCode).toBe(1);

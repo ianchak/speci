@@ -37,15 +37,6 @@ describe('types module', () => {
           logs: 'logs',
           lock: '.speci-lock',
         },
-        agents: {
-          plan: null,
-          task: null,
-          refactor: null,
-          impl: null,
-          review: null,
-          fix: null,
-          tidy: null,
-        },
         copilot: {
           permissions: 'allow-all',
           models: {
@@ -221,15 +212,6 @@ describe('types module', () => {
           tasks: 'docs/tasks',
           logs: 'logs',
           lock: '.speci-lock',
-        },
-        agents: {
-          plan: null,
-          task: null,
-          refactor: null,
-          impl: null,
-          review: null,
-          fix: null,
-          tidy: null,
         },
         copilot: {
           permissions: 'allow-all',

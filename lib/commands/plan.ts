@@ -121,7 +121,6 @@ export async function plan(
     // Initialize command with shared helper (skip preflight as plan doesn't need it)
     const { config: loadedConfig, agentName } = await initializeCommand({
       commandName: 'plan',
-      agentOverride: options.agent,
       config, // Pass pre-loaded config if provided
       skipPreflight: true,
       context,

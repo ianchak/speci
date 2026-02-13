@@ -59,15 +59,6 @@ beforeEach(() => {
       logs: join(TEST_DIR, '.speci-logs'),
       lock: TEST_LOCK,
     },
-    agents: {
-      plan: null,
-      task: null,
-      refactor: null,
-      impl: null,
-      review: null,
-      fix: null,
-      tidy: null,
-    },
     copilot: {
       permissions: 'allow-all' as const,
       models: {
@@ -545,7 +536,6 @@ function writeConfig(): void {
       logs: join(TEST_DIR, '.speci-logs'),
       lock: TEST_LOCK,
     },
-    agents: {},
     copilot: {},
     gate: {},
     loop: {},

@@ -79,15 +79,6 @@ describe('Gate Runner', () => {
         logs: 'logs',
         lock: '.speci.lock',
       },
-      agents: {
-        plan: null,
-        task: null,
-        refactor: null,
-        impl: null,
-        review: null,
-        fix: null,
-        tidy: null,
-      },
       copilot: {
         permissions: 'allow-all',
         models: {
@@ -183,15 +174,6 @@ describe('Gate Runner', () => {
         logs: 'logs',
         lock: '.speci.lock',
       },
-      agents: {
-        plan: null,
-        task: null,
-        refactor: null,
-        impl: null,
-        review: null,
-        fix: null,
-        tidy: null,
-      },
       copilot: {
         permissions: 'allow-all',
         models: {
@@ -242,15 +224,6 @@ describe('Gate Runner', () => {
         tasks: 'docs/tasks',
         logs: 'logs',
         lock: '.speci.lock',
-      },
-      agents: {
-        plan: null,
-        task: null,
-        refactor: null,
-        impl: null,
-        review: null,
-        fix: null,
-        tidy: null,
       },
       copilot: {
         permissions: 'allow-all',
@@ -389,15 +362,6 @@ describe('Gate Runner', () => {
         tasks: 'docs/tasks',
         logs: 'logs',
         lock: '.speci.lock',
-      },
-      agents: {
-        plan: null,
-        task: null,
-        refactor: null,
-        impl: null,
-        review: null,
-        fix: null,
-        tidy: null,
       },
       copilot: {
         permissions: 'allow-all',
@@ -631,15 +595,6 @@ describe('Gate Runner', () => {
           tasks: 'docs/tasks',
           logs: 'logs',
           lock: '.speci.lock',
-        },
-        agents: {
-          plan: null,
-          task: null,
-          refactor: null,
-          impl: null,
-          review: null,
-          fix: null,
-          tidy: null,
         },
         copilot: {
           permissions: 'allow-all',
@@ -891,15 +846,6 @@ describe('Gate Runner', () => {
           tasks: './tasks',
           logs: './.speci-logs',
           lock: './.speci-lock',
-        },
-        agents: {
-          plan: null,
-          task: null,
-          refactor: null,
-          impl: null,
-          review: null,
-          fix: null,
-          tidy: null,
         },
         copilot: {
           permissions: 'allow-all',

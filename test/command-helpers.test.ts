@@ -15,36 +15,8 @@ import type { SpeciConfig } from '../lib/config.js';
 
 describe('command-helpers', () => {
   describe('normalizeAgentName', () => {
-    it('should use default agent name when override is undefined', () => {
+    it('should use default agent name', () => {
       const result = normalizeAgentName('plan');
-      expect(result).toBe('speci-plan');
-    });
-
-    it('should use default agent name when override is null', () => {
-      const result = normalizeAgentName('task', null);
-      expect(result).toBe('speci-task');
-    });
-
-    it('should strip .agent.md suffix from override', () => {
-      const result = normalizeAgentName('plan', 'custom-agent.agent.md');
-      expect(result).toBe('custom-agent');
-    });
-
-    it('should handle override without .agent.md suffix', () => {
-      const result = normalizeAgentName('refactor', 'my-custom');
-      expect(result).toBe('my-custom');
-    });
-
-    it('should handle multiple .agent.md occurrences', () => {
-      const result = normalizeAgentName(
-        'plan',
-        'test.agent.md.agent.md.agent.md'
-      );
-      expect(result).toBe('test.agent.md.agent.md');
-    });
-
-    it('should handle empty string override', () => {
-      const result = normalizeAgentName('plan', '');
       expect(result).toBe('speci-plan');
     });
 
@@ -128,15 +100,6 @@ describe('command-helpers', () => {
           logs: '.speci/logs',
           lock: '.speci-lock',
         },
-        agents: {
-          plan: null,
-          task: null,
-          refactor: null,
-          impl: null,
-          review: null,
-          fix: null,
-          tidy: null,
-        },
         copilot: {
           permissions: 'allow-all',
           models: {
@@ -205,17 +168,6 @@ describe('command-helpers', () => {
 
       expect(loadConfigSpy).toHaveBeenCalledOnce();
       expect(preflightSpy).not.toHaveBeenCalled();
-    });
-
-    it('should use custom agent name when agentOverride is provided', async () => {
-      const result = await initializeCommand({
-        commandName: 'plan',
-        agentOverride: 'custom-agent.agent.md',
-        context: mockContext,
-      });
-
-      expect(result.agentName).toBe('custom-agent');
-      expect(result.agentPath).toContain('custom-agent.agent.md');
     });
 
     it('should throw when agent file does not exist', async () => {
@@ -294,17 +246,6 @@ describe('command-helpers', () => {
       );
     });
 
-    it('should handle agent path resolution with custom agent', async () => {
-      const result = await initializeCommand({
-        commandName: 'refactor',
-        agentOverride: 'my-refactor.agent.md',
-        context: mockContext,
-      });
-
-      expect(result.agentName).toBe('my-refactor');
-      expect(result.agentPath).toContain('my-refactor.agent.md');
-    });
-
     it('should use provided config instead of loading when config parameter is provided', async () => {
       const providedConfig: SpeciConfig = {
         ...mockConfig,
@@ -343,14 +284,13 @@ describe('command-helpers', () => {
       const result = await initializeCommand({
         commandName: 'task',
         config: providedConfig,
-        agentOverride: 'custom.agent.md',
         skipPreflight: true,
         context: mockContext,
       });
 
       expect(loadConfigSpy).not.toHaveBeenCalled();
       expect(result.config).toBe(providedConfig);
-      expect(result.agentName).toBe('custom');
+      expect(result.agentName).toBe('speci-task');
     });
   });
 });

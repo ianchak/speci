@@ -75,23 +75,6 @@ describe('init command', () => {
       expect(config.gate.maxFixAttempts).toBe(5);
     });
 
-    it('should include all default agent paths as null', async () => {
-      await init();
-
-      const configContent = readFileSync('speci.config.json', 'utf8');
-      const config = JSON.parse(configContent);
-
-      expect(config.agents).toEqual({
-        plan: null,
-        task: null,
-        refactor: null,
-        impl: null,
-        review: null,
-        fix: null,
-        tidy: null,
-      });
-    });
-
     it('should include default copilot settings', async () => {
       await init();
 
@@ -227,7 +210,6 @@ describe('init command', () => {
       // All default properties should be present
       expect(config.version).toBe(defaults.version);
       expect(config.paths).toBeDefined();
-      expect(config.agents).toBeDefined();
       expect(config.copilot).toBeDefined();
       expect(config.gate).toBeDefined();
       expect(config.loop).toBeDefined();

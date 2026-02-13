@@ -31,8 +31,6 @@ type AgentCommandName =
 export interface InitializeCommandOptions {
   /** Command name for agent resolution */
   commandName: AgentCommandName;
-  /** Custom agent filename override */
-  agentOverride?: string;
   /** Pre-loaded configuration (if not provided, will load from context) */
   config?: SpeciConfig;
   /** Skip preflight checks (useful for tests) */
@@ -54,28 +52,19 @@ export interface InitializeCommandResult {
 }
 
 /**
- * Normalize agent name by removing .agent.md suffix
+ * Get agent name for a command
  *
- * @param commandName - Command name for default agent resolution
- * @param agentOverride - Optional custom agent filename
- * @returns Normalized agent name without .agent.md suffix
+ * @param commandName - Command name for agent resolution
+ * @returns Agent name without .agent.md suffix
  *
  * @example
  * ```typescript
  * normalizeAgentName('plan') // 'speci-plan'
- * normalizeAgentName('plan', 'custom-agent.agent.md') // 'custom-agent'
- * normalizeAgentName('task', 'my-agent') // 'my-agent'
+ * normalizeAgentName('task') // 'speci-task'
  * ```
  */
-export function normalizeAgentName(
-  commandName: AgentCommandName,
-  agentOverride?: string | null
-): string {
-  const baseAgentName =
-    agentOverride && agentOverride !== ''
-      ? agentOverride
-      : getAgentFilename(commandName);
-  return baseAgentName.replace(/\.agent\.md$/, '');
+export function normalizeAgentName(commandName: AgentCommandName): string {
+  return getAgentFilename(commandName);
 }
 
 /**
@@ -120,12 +109,6 @@ export function validateAgentFile(
  *   commandName: 'plan',
  * });
  *
- * // With custom agent
- * const result = await initializeCommand({
- *   commandName: 'task',
- *   agentOverride: 'custom-task.agent.md',
- * });
- *
  * // With pre-loaded config (avoids repeated loading)
  * const config = await context.configLoader.load();
  * const result = await initializeCommand({
@@ -164,17 +147,10 @@ export async function initializeCommand(
   }
 
   // Step 3: Normalize agent name
-  const agentName = normalizeAgentName(
-    options.commandName,
-    options.agentOverride
-  );
+  const agentName = normalizeAgentName(options.commandName);
 
   // Step 4: Resolve agent path
-  const agentPath = resolveAgentPath(
-    options.commandName,
-    options.agentOverride,
-    context.process
-  );
+  const agentPath = resolveAgentPath(options.commandName, context.process);
 
   // Step 5: Validate agent file exists
   validateAgentFile(agentPath, context);

@@ -80,16 +80,13 @@ export class CommandRegistry {
       .command('init')
       .alias('i')
       .description('Initialize Speci in current project')
-      .option('-y, --yes', 'Accept all defaults')
       .option('-u, --update-agents', 'Update agent files even if they exist')
       .option('-v, --verbose', 'Show detailed output')
       .addHelpText(
         'after',
         `
 Examples:
-  $ speci init              Interactive setup wizard
-  $ speci init --yes        Quick setup with defaults
-  $ speci i -y              Force initialize with defaults
+  $ speci init              Set up Speci in current project
   $ speci init -u           Update agent files to latest version
 `
       )
@@ -118,7 +115,6 @@ Examples:
         '-i, --input <files...>',
         'Input files for context (design docs, specs)'
       )
-      .option('-a, --agent <path>', 'Use custom agent file')
       .option('-o, --output <path>', 'Output plan to file')
       .option('-v, --verbose', 'Show detailed output')
       .addHelpText(
@@ -129,7 +125,6 @@ Examples:
   $ speci plan -i docs/design.md                  Plan using design doc as context
   $ speci plan -i spec.md -p "Focus on auth"      Combine input files with prompt
   $ speci plan -i design.md -o docs/plan.md       Save plan to specific file
-  $ speci p -a custom-agent.md -p "My feature"    Use custom agent
 `
       )
       .action(async (options) => {
@@ -153,7 +148,6 @@ Examples:
       .alias('t')
       .description('Generate tasks from implementation plan')
       .option('-p, --plan <path>', 'Path to plan file')
-      .option('-a, --agent <path>', 'Use custom agent file')
       .option('-v, --verbose', 'Show detailed output')
       .addHelpText(
         'after',
@@ -185,7 +179,6 @@ Examples:
       .description('Analyze codebase for refactoring opportunities')
       .option('-s, --scope <path>', 'Directory or glob pattern to analyze')
       .option('-o, --output <path>', 'Output refactoring plan to file')
-      .option('-a, --agent <path>', 'Use custom agent file')
       .option('-v, --verbose', 'Show detailed output')
       .addHelpText(
         'after',
