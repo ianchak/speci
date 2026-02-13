@@ -96,6 +96,15 @@ For EACH command:
 
 DO NOT COMMIT unless all four pass.
 
+#### Terminal discipline
+
+- Set a **90-second timeout** on every terminal command. If a command produces no output for 90 seconds, **stop/kill the shell immediately** and open a fresh one.
+  - Exception: dependency installs (`npm install`, `yarn`, `pnpm install`, etc.) and test suites may be silent for longer. Allow up to **5 minutes** before killing these.
+- **Never** call `read_powershell` more than **twice** on a silent command. Two consecutive "still running" responses = the process is hung.
+  - Exception: for dependency installs and test suites, allow up to **four** consecutive silent polls before killing.
+- After killing a hung shell, retry the same command **once** in a new terminal. If it hangs again, report the failure and move on — do not enter a polling loop.
+- Prefer `2>&1` redirection so stderr is captured in the same stream; this avoids false "no output" signals.
+
 ## Commit
 
 - Commit with conventional commit message:
