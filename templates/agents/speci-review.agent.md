@@ -39,8 +39,24 @@ Auto-FAIL the review if ANY command fails, or output indicates TypeScript errors
   - Exception: dependency installs (`npm install`, `yarn`, `pnpm install`, etc.) and test suites may be silent for longer. Allow up to **5 minutes** before killing these.
 - **Never** call `read_powershell` more than **twice** on a silent command. Two consecutive "still running" responses = the process is hung.
   - Exception: for dependency installs and test suites, allow up to **four** consecutive silent polls before killing.
-- After killing a hung shell, retry the same command **once** in a new terminal. If it hangs again, treat it as a gate failure and auto-FAIL the review.
 - Prefer `2>&1` redirection so stderr is captured in the same stream; this avoids false "no output" signals.
+
+#### Gate command hang recovery
+
+When an `npm run` gate command hangs, follow this sequence:
+
+1. Kill the hung shell.
+2. In a fresh terminal, run the **direct fallback command** (not the same npm script):
+
+| npm script          | Direct fallback command                         |
+| ------------------- | ----------------------------------------------- |
+| `npm run lint`      | `npx eslint . --ext .ts 2>&1`                   |
+| `npm run typecheck` | `npx tsc --noEmit 2>&1`                         |
+| `npm test`          | `npx vitest run --config vitest.config.ts 2>&1` |
+| `npm run format`    | `npx prettier --write "**/*.{ts,json,md}" 2>&1` |
+
+3. If the direct command **exits 0** with no errors → gate is **PASSED**.
+4. If the direct command also hangs or fails → treat it as a gate failure and auto-FAIL the review. Do not enter a polling loop.
 
 ## Review checklist
 
