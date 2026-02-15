@@ -16,6 +16,80 @@ Speci operates as an autonomous loop that reads a PROGRESS.md file to determine 
    - Tasks marked BLOCKED get a tidy agent
    - The loop continues until all tasks are DONE or limits are reached
 
+### Workflow Diagram
+
+```
+  ┌─────────────────────────────────────────────────────────────────────┐
+  │                        speci workflow                               │
+  └─────────────────────────────────────────────────────────────────────┘
+
+  ┌──────────┐      ┌──────────┐      ┌──────────────────────────────┐
+  │          │      │          │      │          speci run           │
+  │  plan    ├─────►│  task    ├─────►│    (implementation loop)     │
+  │  agent   │      │  agent   │      │                              │
+  └──────────┘      └──────────┘      └──────────────┬───────────────┘
+   Generates a       Breaks plan                     │
+   structured        into tasks &                    ▼
+   plan              PROGRESS.md          ┌─────────────────────┐
+                                          │  Read PROGRESS.md   │◄─────────────┐
+                                          │  Determine STATE    │              │
+                                          └────────┬────────────┘              │
+                         ┌─────────────────────────┼──────────────────┐        │
+                         │                         │                  │        │
+                         ▼                         ▼                  ▼        │
+                  ┌─────────────┐         ┌──────────────┐   ┌────────────┐    │
+                  │  WORK_LEFT  │         │  IN_REVIEW   │   │  BLOCKED   │    │
+                  └──────┬──────┘         └──────┬───────┘   └─────┬──────┘    │
+                         │                       │                 │           │
+                         ▼                       ▼                 ▼           │
+                  ┌─────────────┐         ┌──────────────┐   ┌────────────┐    │
+                  │    impl     │         │   review     │   │   tidy     │    │
+                  │    agent    │         │   agent      │   │   agent    │    │
+                  └──────┬──────┘         └──────┬───────┘   └─────┬──────┘    │
+                         │                       │                 │           │
+                         ▼                       │                 │           │
+                  ┌─────────────┐                │                 │           │
+                  │  run gates  │                │                 │           │
+                  │ lint/type/  │                │                 │           │
+                  │   test      │                │                 │           │
+                  └──┬──────┬───┘                │                 │           │
+                     │      │                    │                 │           │
+                pass ▼      ▼ fail               │                 │           │
+                     │ ┌─────────┐               │                 │           │
+                     │ │  fix    │               │                 │           │
+                     │ │  agent  │               │                 │           │
+                     │ └────┬────┘               │                 │           │
+                     │      │                    │                 │           │
+                     │      ▼                    │                 │           │
+                     │ ┌─────────┐               │                 │           │
+                     │ │ re-run  │               │                 │           │
+                     │ │ gates   ├──► (retry up  │                 │           │
+                     │ └─────────┘    to N times)│                 │           │
+                     │                           │                 │           │
+                     └───────────┬───────────────┘                 │           │
+                                 │                                 │           │
+                                 └────────────┬────────────────────┘           │
+                                              │                                │
+                                              ▼                                │
+                                    ┌───────────────────┐                      │
+                                    │  State changed?   │                      │
+                                    │  DONE? ─► exit    │                      │
+                                    │  otherwise ───────┼──────────────────────┘
+                                    └───────────────────┘
+```
+
+### Agent Summary
+
+| Agent      | Triggered By     | Purpose                                        |
+| ---------- | ---------------- | ---------------------------------------------- |
+| `plan`     | `speci plan`     | Generate a structured implementation plan      |
+| `task`     | `speci task`     | Break plan into tasks and create PROGRESS.md   |
+| `refactor` | `speci refactor` | Analyze codebase for refactoring opportunities |
+| `impl`     | WORK_LEFT        | Implement the next task                        |
+| `review`   | IN_REVIEW        | Review completed work for correctness          |
+| `fix`      | Gate failure     | Repair lint, typecheck, or test failures       |
+| `tidy`     | BLOCKED          | Clean up or unblock dependencies               |
+
 ## Quick Start
 
 ```bash
