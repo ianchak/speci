@@ -40,7 +40,9 @@ tmp/
 temp/
 *.tmp
 
-.github/
+.github/agents/
+.github/prompts/
+.github/copilot-instructions.md
 speci.config.json
 .speci-lock
 docs/
