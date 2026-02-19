@@ -115,7 +115,7 @@ npx speci run
 
 ## Prerequisites
 
-- **Node.js** 18.0.0 or later
+- **Node.js** 22.0.0 or later
 - **GitHub Copilot CLI** installed and authenticated
 - **Git repository** initialized in your project
 
