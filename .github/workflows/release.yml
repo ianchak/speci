@@ -56,13 +56,14 @@ jobs:
         with:
           node-version: 22
           cache: npm
-          registry-url: https://registry.npmjs.org
+
+      - name: Upgrade npm for OIDC trusted publishing
+        run: |
+          npm install -g npm@^11.5.1
+          echo "npm version: $(npm --version)"
 
       - name: Install dependencies
         run: npm ci
-
-      - name: Upgrade npm for OIDC trusted publishing
-        run: npm install -g npm@^11.5.1
 
       - name: Build
         run: npm run build
