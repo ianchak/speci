@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/ianchak/speci/actions/workflows/ci.yml/badge.svg)](https://github.com/ianchak/speci/actions/workflows/ci.yml)
 [![Release](https://github.com/ianchak/speci/actions/workflows/release.yml/badge.svg)](https://github.com/ianchak/speci/actions/workflows/release.yml)
-[![npm version](https://img.shields.io/npm/v/speci.svg)](https://www.npmjs.com/package/speci)
+[![codecov](https://codecov.io/gh/ianchak/speci/graph/badge.svg?token=SS57WL1RRX)](https://codecov.io/gh/ianchak/speci)
 [![Node.js](https://img.shields.io/node/v/speci.svg)](https://nodejs.org/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-strict-blue.svg)](https://www.typescriptlang.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
