@@ -114,7 +114,7 @@ export function getDefaults(): SpeciConfig {
 function findConfigFile(startDir: string): string | undefined {
   let currentDir = startDir;
 
-  // eslint-disable-next-line no-constant-condition
+   
   while (true) {
     const configPath = join(currentDir, CONFIG_FILENAME);
     if (existsSync(configPath)) {

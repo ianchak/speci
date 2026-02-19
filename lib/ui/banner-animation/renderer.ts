@@ -144,9 +144,9 @@ export async function runAnimationLoop(
   const startTime = state.startTime;
   let isFirstFrame = true;
 
-  // eslint-disable-next-line no-useless-catch
+   
   try {
-    // eslint-disable-next-line no-constant-condition
+     
     while (true) {
       if (!state.isRunning) {
         break;
@@ -211,7 +211,7 @@ export async function animateVersion(
 
   let isFirstFrame = true;
 
-  // eslint-disable-next-line no-constant-condition
+   
   while (true) {
     const elapsed = Date.now() - startTime;
     const progress = Math.min(1.0, elapsed / duration);

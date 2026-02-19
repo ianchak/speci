@@ -170,7 +170,7 @@ describe('CLI Entry Point', () => {
         .option('-u, --update-agents', 'Update agent files')
         .option('-v, --verbose', 'Show detailed output');
 
-      initCmd.parse(['node', 'speci', 'init', '--verbose']);
+      initCmd.parse(['node', 'speci', '--verbose']);
       const opts = initCmd.opts();
 
       expect(opts.verbose).toBe(true);
@@ -186,7 +186,7 @@ describe('CLI Entry Point', () => {
         .option('-o, --output <path>', 'Output file')
         .option('-v, --verbose', 'Show detailed output');
 
-      planCmd.parse(['node', 'speci', 'plan', '--prompt', 'test', '--verbose']);
+      planCmd.parse(['node', 'speci', '--prompt', 'test', '--verbose']);
       const opts = planCmd.opts();
 
       expect(opts.prompt).toBe('test');
@@ -201,14 +201,7 @@ describe('CLI Entry Point', () => {
         .option('-a, --agent <path>', 'Custom agent file')
         .option('-v, --verbose', 'Show detailed output');
 
-      taskCmd.parse([
-        'node',
-        'speci',
-        'task',
-        '--plan',
-        'docs/plan.md',
-        '--verbose',
-      ]);
+      taskCmd.parse(['node', 'speci', '--plan', 'docs/plan.md', '--verbose']);
       const opts = taskCmd.opts();
 
       expect(opts.plan).toBe('docs/plan.md');
@@ -225,14 +218,7 @@ describe('CLI Entry Point', () => {
         .option('-y, --yes', 'Skip confirmation')
         .option('-v, --verbose', 'Show detailed output');
 
-      runCmd.parse([
-        'node',
-        'speci',
-        'run',
-        '--max-iterations',
-        '5',
-        '--dry-run',
-      ]);
+      runCmd.parse(['node', 'speci', '--max-iterations', '5', '--dry-run']);
       const opts = runCmd.opts();
 
       expect(opts.maxIterations).toBe(5);
@@ -247,7 +233,7 @@ describe('CLI Entry Point', () => {
         .option('--once', 'Show once and exit')
         .option('-v, --verbose', 'Show detailed status');
 
-      statusCmd.parse(['node', 'speci', 'status', '--json']);
+      statusCmd.parse(['node', 'speci', '--json']);
       const opts = statusCmd.opts();
 
       expect(opts.json).toBe(true);

@@ -924,9 +924,9 @@ describe('renderWaveFrame', () => {
       expect(frame).toHaveLength(6);
       frame.forEach((line: string, i: number) => {
         // Should contain ANSI color codes
-        // eslint-disable-next-line no-control-regex
+
         expect(line).toContain('\x1b[38;2;'); // ANSI RGB color prefix
-        // eslint-disable-next-line no-control-regex
+
         expect(line).toContain('\x1b[0m'); // ANSI reset
 
         // Strip ANSI codes and verify matches BANNER_ART
@@ -1015,7 +1015,7 @@ describe('renderWaveFrame', () => {
       const frame = module.renderWaveFrame(1.0);
 
       // Extract all color codes from first line
-      // eslint-disable-next-line no-control-regex
+
       const colorMatches = [
         // eslint-disable-next-line no-control-regex
         ...frame[0].matchAll(/\x1b\[38;2;(\d+);(\d+);(\d+)m/g),
@@ -2039,7 +2039,7 @@ describe('animateBanner', () => {
 
       // Should have ANSI color codes (from renderWaveFrame)
       const output = writes.join('');
-      // eslint-disable-next-line no-control-regex
+
       expect(output).toContain('\x1b[38;2;');
     });
   });
@@ -2363,7 +2363,7 @@ describe('renderFadeFrame', () => {
         expect(plainLine).toEqual(bannerModule.BANNER_ART[i]);
 
         // Should contain ANSI codes (even for black)
-        // eslint-disable-next-line no-control-regex
+
         expect(line).toContain('\x1b[38;2;'); // ANSI RGB color prefix
       });
     });
@@ -2374,9 +2374,9 @@ describe('renderFadeFrame', () => {
       expect(frame).toHaveLength(6);
       frame.forEach((line: string, i: number) => {
         // Should contain ANSI color codes
-        // eslint-disable-next-line no-control-regex
+
         expect(line).toContain('\x1b[38;2;'); // ANSI RGB color prefix
-        // eslint-disable-next-line no-control-regex
+
         expect(line).toContain('\x1b[0m'); // ANSI reset
 
         // Strip ANSI codes and verify matches BANNER_ART
@@ -2392,7 +2392,7 @@ describe('renderFadeFrame', () => {
       expect(frame).toHaveLength(6);
       frame.forEach((line: string, i: number) => {
         // Should contain ANSI color codes
-        // eslint-disable-next-line no-control-regex
+
         expect(line).toContain('\x1b[38;2;'); // ANSI RGB color prefix
 
         // Strip ANSI codes and verify matches BANNER_ART
@@ -2467,9 +2467,9 @@ describe('renderSweepFrame', () => {
       expect(frame).toHaveLength(6);
       frame.forEach((line: string, i: number) => {
         // Should contain ANSI color codes
-        // eslint-disable-next-line no-control-regex
+
         expect(line).toContain('\x1b[38;2;'); // ANSI RGB color prefix
-        // eslint-disable-next-line no-control-regex
+
         expect(line).toContain('\x1b[0m'); // ANSI reset
 
         // Strip ANSI codes and verify matches BANNER_ART
@@ -3353,8 +3353,6 @@ describe('Performance Benchmarks (TASK_021)', () => {
 
   describe('Non-Blocking Behavior', () => {
     it('animation is non-blocking (returns control)', async () => {
-      let controlReturned = false;
-
       // Start animation
       const animationPromise = module.animateBanner({
         duration: 100,
@@ -3362,7 +3360,7 @@ describe('Performance Benchmarks (TASK_021)', () => {
       });
 
       // This should execute immediately if animation is non-blocking
-      controlReturned = true;
+      const controlReturned = true;
 
       await animationPromise;
 

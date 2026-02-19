@@ -104,10 +104,10 @@ export async function checkConfigExists(
 ): Promise<void> {
   const proc = processParam || process;
   let currentDir = proc.cwd();
-  let parentDir = '';
+  let parentDir: string;
 
   // Walk up directory tree
-  // eslint-disable-next-line no-constant-condition
+
   while (true) {
     const configPath = join(currentDir, CONFIG_FILENAME);
     if (existsSync(configPath)) {
@@ -164,10 +164,10 @@ export async function checkGitRepository(
 ): Promise<void> {
   const proc = processParam || process;
   let currentDir = proc.cwd();
-  let parentDir = '';
+  let parentDir: string;
 
   // Walk up directory tree
-  // eslint-disable-next-line no-constant-condition
+
   while (true) {
     const gitPath = join(currentDir, '.git');
     if (existsSync(gitPath)) {
