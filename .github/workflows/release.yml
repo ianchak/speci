@@ -56,6 +56,7 @@ jobs:
         with:
           node-version: 22
           cache: npm
+          registry-url: https://registry.npmjs.org
 
       - name: Install dependencies
         run: npm ci
@@ -76,21 +77,15 @@ jobs:
           git diff --cached --quiet || git commit -m "chore: version packages"
           git push
 
-      - name: Configure npm registry
-        run: npm config set registry https://registry.npmjs.org
-
-      - name: Upgrade npm for OIDC support
-        run: |
-          npm install -g npm@latest
-          echo "npm version: $(npm --version)"
-
       - name: Publish to npm
         run: |
           LOCAL_VERSION=$(node -p "require('./package.json').version")
           PUBLISHED=$(npm view speci version 2>/dev/null || echo "none")
           if [ "$LOCAL_VERSION" != "$PUBLISHED" ]; then
             echo "Publishing speci@$LOCAL_VERSION (registry has $PUBLISHED)"
-            npm publish --access public
+            npm publish --provenance --access public
           else
             echo "speci@$LOCAL_VERSION already published, skipping"
           fi
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

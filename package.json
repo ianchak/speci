@@ -4,10 +4,11 @@
   "type": "module",
   "description": "CLI tool for orchestrating Copilot-driven development workflows",
   "bin": {
-    "speci": "./dist/bin/speci.js"
+    "speci": "dist/bin/speci.js"
   },
   "files": [
-    "dist/",
+    "dist/bin/",
+    "dist/lib/",
     "templates/"
   ],
   "publishConfig": {
@@ -19,7 +20,7 @@
   },
   "scripts": {
     "dev": "tsx bin/speci.ts",
-    "build": "tsc && tsc-alias",
+    "build": "tsc -p tsconfig.build.json && tsc-alias -p tsconfig.build.json",
     "prepack": "npm run build",
     "typecheck": "tsc --noEmit",
     "lint": "eslint . --ext .ts",
