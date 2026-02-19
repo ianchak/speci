@@ -66,6 +66,8 @@ jobs:
 
       - name: Version packages
         run: npx changeset version
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Commit version bump
         run: |
