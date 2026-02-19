@@ -66,6 +66,16 @@ The orchestrator provides:
 - [ ] Critical path accurate
 - [ ] MVTs depend on all milestone tasks
 
+### Integration Wiring Completeness (CRITICAL)
+
+- [ ] Every task that creates new files has a non-empty "Integration Wiring" section
+- [ ] For each new component: there is a documented consumer (who imports/calls it)
+- [ ] For each new component: there is a registration/initialization point identified
+- [ ] Integration/wiring tasks exist for milestones with 2+ interacting components
+- [ ] Integration tasks depend on all component tasks they wire together
+- [ ] No orphaned components (created but never consumed by anything)
+- [ ] End-to-end integration tests exist in the testing strategy of relevant tasks
+
 ### Progress File Alignment
 
 - [ ] All tasks/MVTs listed in PROGRESS.md

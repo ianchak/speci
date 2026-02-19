@@ -74,6 +74,21 @@ Create file: `docs/tasks/TASK_XXX_feature_name.md`
 
 [How this interacts with existing systems]
 
+### Integration Wiring
+
+> CRITICAL: If this component needs to be registered, imported, or initialized somewhere to be reachable from the running application, document it here. An implemented but unwired component is dead code.
+
+| Wiring Step | File to Modify | What to Add | Why |
+| ----------- | -------------- | ----------- | --- |
+
+If this task creates a new module/class/function, answer:
+
+1. **Who calls it?** — What existing code will invoke this new component?
+2. **Where is it registered?** — Entry point, router, registry, index file, config, etc.
+3. **How is it activated?** — Import, dependency injection, event subscription, plugin registration, etc.
+
+If the answer to any of these is "nothing yet" — this task MUST either include the wiring as part of its scope, OR a dependent integration task MUST exist that handles it.
+
 ## Files to Create/Modify
 
 | File   | Action | Purpose |
@@ -122,12 +137,22 @@ Create file: `docs/tasks/TASK_XXX_feature_name.md`
 - Vertical slices preferred
 - No "research" tasks
 
+### Integration Wiring Rule
+
+- If a task creates a new component, it MUST either:
+  (a) Include wiring steps in its own scope (preferred for small wiring), OR
+  (b) Have a dependent integration task that wires it in
+- The "Integration Wiring" section must never be empty for tasks that create new files
+- Check the plan's Section 3.4 (Integration Map) and Section 5.3 (Integration Touchpoints) for wiring requirements
+- If the plan specifies a Phase 3 (Integration & Wiring) step for this component, ensure the task covers it or references the integration task that does
+
 ### Dependency Management
 
 - Explicit dependencies only
 - Minimize coupling
 - Critical path first
 - MVT depends on all milestone tasks
+- Integration/wiring tasks should depend on the component tasks they connect
 
 ### File Conventions
 

@@ -59,6 +59,8 @@ You are a meticulous senior software engineer implementing features for this sof
   - Architectural rationale behind the task
   - Broader context (how this task fits the overall design)
   - Related sections that may inform implementation decisions
+  - **Section 3.4 (Integration Map)**: Check if this component needs wiring — who consumes it and where it's registered
+  - **Section 5.3 (Integration Touchpoints)**: Check if any entry points, registries, or index files need updating
 - If this is a rework, explicitly map each review note to a fix
 
 ### Phase 2: Test Specification
@@ -79,6 +81,17 @@ Write tests that cover:
 - Use project constants/config (no magic numbers)
 - Add JSDoc for public APIs
 - Keep changes small and verifiable
+
+#### Integration Wiring (MANDATORY for tasks that create new modules)
+
+If the task file has an "Integration Wiring" section, you MUST:
+
+1. Implement all wiring steps listed in that section
+2. Verify the new component is reachable from the running application (imported, registered, called)
+3. If the task specifies registration in a router/registry/index file, do it in THIS task — do not assume it will happen later
+4. Add at least one integration test that proves the wired connection works (e.g., import and call through the normal entry point, not just direct import)
+
+If the task does NOT have an Integration Wiring section but creates new files, check the plan's Section 3.4 (Integration Map) for wiring requirements. If wiring is needed and no separate integration task handles it, include the wiring in your implementation.
 
 ### Phase 4: Verification (MANDATORY PRE-COMMIT GATE)
 

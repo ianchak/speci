@@ -74,6 +74,16 @@ When an `npm run` gate command hangs, follow this sequence:
 - All acceptance criteria from the task file are met.
 - **Plan alignment**: Implementation aligns with architectural intent described in the Plan File (check PROGRESS.md Overview → `Plan File` for path).
 
+### Integration wiring
+
+- If the task creates new modules/classes/functions: verify they are actually reachable from the application (imported, registered, called — not just defined)
+- Check the task file's "Integration Wiring" section (if present): all wiring steps must be implemented
+- Check the Plan File's Section 3.4 (Integration Map): if this component is listed, verify the "Registered In" and "Consumed By" entries are satisfied in the code
+- New commands should be registered in routers/registries
+- New modules should be exported from barrel/index files where appropriate
+- New config options should be added to schemas and defaults
+- At least one test should verify the component works through its normal entry point (not just direct import)
+
 ### Test coverage
 
 - Unit + edge case + error handling tests exist
@@ -100,6 +110,7 @@ When an `npm run` gate command hangs, follow this sequence:
 - Gate fails
 - Tests missing/inadequate
 - Breaking changes
+- **New component is orphaned** (created but not wired into the system — no consumer imports/calls it, not registered in any entry point)
 
 ### ESCALATE (DESIGN_FLAW) if:
 

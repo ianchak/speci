@@ -132,12 +132,17 @@ Last Updated: [ISO timestamp]
 PHASE 0: SETUP (orchestrator does this directly)
 ├── Read <SOURCE> → Extract feature list
 ├── Group into milestones (3-7 tasks each)
+├── Identify integration points (components that must be wired together)
 └── Create GENERATION_STATE.md
 
 PHASE 1: GENERATION LOOP (spawn subagents)
 ├── For each milestone:
 │   ├── For each feature: spawn task_generator
 │   ├── For each task: spawn task_reviewer
+│   ├── INTEGRATION CHECK: If milestone has 2+ components that interact,
+│   │   spawn task_generator for an integration/wiring task
+│   │   (covers: registration, imports, initialization, end-to-end test)
+│   ├── Review integration task if generated
 │   └── Spawn mvt_generator
 └── Update GENERATION_STATE.md after each
 
@@ -177,7 +182,14 @@ You are the orchestration agent. Your job is coordination only.
 For each milestone in <STATE>:
 For each feature: 1. Spawn subagent: "Read .github/agents/subagents/task_generator.prompt.md and generate TASK_XXX for [feature] in milestone [M]" 2. Update <STATE> 3. Spawn subagent: "Read .github/agents/subagents/task_reviewer.prompt.md and review TASK_XXX" 4. Update <STATE>
 
-After all features: 5. Spawn subagent: "Read .github/agents/subagents/mvt_generator.prompt.md and generate MVT_MX" 6. Update <STATE>
+After all features in a milestone: 5. INTEGRATION CHECK: Review the plan's Section 3.4 (Integration Map) and Section 4 Phase 3 (Integration & Wiring). If multiple components in this milestone need to be wired together, registered in entry points, or connected to existing systems:
+
+- Spawn task_generator for a dedicated integration task (e.g., TASK_XXX_integrate_milestone_components)
+- This task should cover: importing new modules, registering in routers/registries, updating config/initialization, adding end-to-end integration tests
+- The integration task should depend on ALL component tasks it wires together
+- Review the integration task
+
+6. Spawn subagent: "Read .github/agents/subagents/mvt_generator.prompt.md and generate MVT_MX" 7. Update <STATE>
 
 **FINALIZATION:**
 

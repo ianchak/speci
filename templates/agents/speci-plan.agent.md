@@ -159,6 +159,15 @@ Use `create_file` to create the plan document with this skeleton:
 
 [To be filled during Initial Plan phase]
 
+### 3.4 Integration Map
+
+> How each new component connects to the existing system. Every component MUST have at least one consumer and one initialization/registration point.
+
+| Component | Consumed By | Registered In | Initialization Code | Wire-Up Notes |
+| --------- | ----------- | ------------- | ------------------- | ------------- |
+
+[To be filled during Initial Plan phase]
+
 ## 4. Implementation Steps
 
 ### Phase 1: Foundation
@@ -169,7 +178,11 @@ Use `create_file` to create the plan document with this skeleton:
 
 [To be filled during Initial Plan phase]
 
-### Phase 3: Integration
+### Phase 3: Integration & Wiring
+
+> CRITICAL: This phase must include explicit steps for wiring components together.
+> Each step must specify: (1) what is being connected, (2) where the glue code lives,
+> (3) how to verify the connection works end-to-end.
 
 [To be filled during Initial Plan phase]
 
@@ -188,6 +201,13 @@ Use `create_file` to create the plan document with this skeleton:
 
 | Path | Changes | Reason |
 | ---- | ------- | ------ |
+
+### Integration Touchpoints
+
+> Files that must be modified to wire new components into the existing system (entry points, registries, routers, config, index files, etc.)
+
+| File | Integration Change | Connects Component | To System |
+| ---- | ------------------ | ------------------ | --------- |
 
 ## 6. Data Structures
 
@@ -214,6 +234,8 @@ Use `create_file` to create the plan document with this skeleton:
 [To be filled during Initial Plan phase]
 
 ### Integration Tests
+
+> Tests that verify components work together through their normal entry points (not just direct imports). Every entry in Section 3.4 (Integration Map) should have at least one integration test.
 
 [To be filled during Initial Plan phase]
 

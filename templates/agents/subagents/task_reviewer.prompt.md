@@ -60,6 +60,16 @@ The orchestrator provides:
 - [ ] Out of scope clearly defined
 - [ ] No obvious gaps
 
+### Integration Wiring (CRITICAL)
+
+- [ ] If task creates new files: "Integration Wiring" section is filled (not empty/placeholder)
+- [ ] Every new component has a documented consumer (who calls/imports it)
+- [ ] Registration/initialization point is identified (where it gets wired in)
+- [ ] Either this task includes wiring steps, OR a dependent integration task exists that handles it
+- [ ] Integration test verifies the component is reachable from the running application
+- [ ] If the plan has Section 3.4 (Integration Map) entries for this component, they are reflected in the task
+- [ ] Wiring files are listed in "Files to Create/Modify" table
+
 ## Refinement Actions
 
 If issues found, edit task file directly:
@@ -76,6 +86,7 @@ Task approved when:
 - Content aligns with plan
 - Task implementable as written
 - Dependencies valid
+- **Integration wiring is explicit** — no component left orphaned (created but never imported/registered/called)
 
 ## Return Summary
 
