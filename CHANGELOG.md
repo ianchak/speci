@@ -1,5 +1,11 @@
 # speci
 
+## 0.7.5
+
+### Patch Changes
+
+- [`7f2fa66`](https://github.com/ianchak/speci/commit/7f2fa66a49d88ec53b0427110c245363d7501379) Thanks [@ianchak](https://github.com/ianchak)! - Bump default Copilot model versions from claude-sonnet-4.5 to claude-sonnet-4.6 for task, refactor, review, and fix agents in the config template.
+
 ## 0.7.4
 
 ### Patch Changes
