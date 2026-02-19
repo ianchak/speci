@@ -80,7 +80,17 @@ jobs:
         run: npm config set registry https://registry.npmjs.org
 
       - name: Upgrade npm for OIDC support
-        run: npm install -g npm@latest
+        run: |
+          npm install -g npm@latest
+          echo "npm version: $(npm --version)"
 
       - name: Publish to npm
-        run: npx changeset publish
+        run: |
+          LOCAL_VERSION=$(node -p "require('./package.json').version")
+          PUBLISHED=$(npm view speci version 2>/dev/null || echo "none")
+          if [ "$LOCAL_VERSION" != "$PUBLISHED" ]; then
+            echo "Publishing speci@$LOCAL_VERSION (registry has $PUBLISHED)"
+            npm publish --access public
+          else
+            echo "speci@$LOCAL_VERSION already published, skipping"
+          fi
