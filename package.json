@@ -3,6 +3,10 @@
   "version": "0.7.3",
   "type": "module",
   "description": "CLI tool for orchestrating Copilot-driven development workflows",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ianchak/speci"
+  },
   "bin": {
     "speci": "dist/bin/speci.js"
   },
