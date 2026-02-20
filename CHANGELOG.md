@@ -1,5 +1,21 @@
 # speci
 
+## 0.8.0
+
+### Minor Changes
+
+- [`6c939e6`](https://github.com/ianchak/speci/commit/6c939e6f10073aef3431c8f3d7c4e0f22dfab1d0) Thanks [@ianchak](https://github.com/ianchak)! - feat(commands): add `yolo` command
+
+  Introduces the `yolo` command (`lib/commands/yolo.ts`) that runs the full
+  `plan → task → run` pipeline in a single unattended invocation.
+  - Added `YoloOptions` interface for command configuration
+  - Registered `yolo` command in the CLI entry point (`bin/speci.ts`)
+  - Wires `plan`, `task`, and `run` phases with phase-aware error messages and performance logging
+
+- [`16cdfab`](https://github.com/ianchak/speci/commit/16cdfab7d6508428a6b26f32f01fa4a25c2a5c44) Thanks [@ianchak](https://github.com/ianchak)! - Add `writeFailureNotes` to populate the `### For Fix Agent` section of PROGRESS.md with structured gate failure context.
+
+  The orchestration loop in `run` now calls `writeFailureNotes` immediately after the initial gate failure and after each subsequent retry failure, so the fix agent always has up-to-date information on which commands failed, the primary error message, and a root-cause hint before it is dispatched.
+
 ## 0.7.5
 
 ### Patch Changes
