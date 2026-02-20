@@ -1,5 +1,11 @@
 # speci
 
+## 0.8.5
+
+### Patch Changes
+
+- [`2eb4ba0`](https://github.com/ianchak/speci/commit/2eb4ba00be0523d605a775aa3449cc75cd1f70ff) Thanks [@ianchak](https://github.com/ianchak)! - fix(yolo): release yolo-held lock before run phase to prevent ERR-STA-01 lock conflict
+
 ## 0.8.4
 
 ### Patch Changes
