@@ -180,6 +180,18 @@ export const ERROR_CODES: Record<string, ErrorDefinition> = {
     cause: 'Agent file copy operation failed',
     solution: 'Check filesystem permissions and available disk space',
   },
+  'ERR-EXE-09': {
+    message: 'Failed to read tasks directory: {{path}}',
+    cause: 'Directory listing failed due to permissions or filesystem error',
+    solution: 'Check directory permissions and ensure the path exists',
+  },
+  'ERR-EXE-10': {
+    message: 'Failed to delete during clean: {{path}}',
+    cause:
+      'File or directory deletion failed due to permissions or open file handles',
+    solution:
+      'Check file permissions and ensure no other process has the file open',
+  },
 
   // UI Errors (ERR-UI-*)
   'ERR-UI-01': {

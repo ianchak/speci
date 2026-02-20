@@ -46,10 +46,12 @@ describe('Error Catalog', () => {
         'ERR-EXE-06',
         'ERR-EXE-07',
         'ERR-EXE-08',
+        'ERR-EXE-09',
+        'ERR-EXE-10',
         'ERR-UI-01',
       ];
 
-      expect(Object.keys(ERROR_CODES)).toHaveLength(29);
+      expect(Object.keys(ERROR_CODES)).toHaveLength(31);
       for (const code of expectedCodes) {
         expect(ERROR_CODES).toHaveProperty(code);
       }
@@ -140,9 +142,9 @@ describe('Error Catalog', () => {
       expect(def?.message).toBe('Copilot execution failed');
     });
 
-    it('should return definition for each of the 29 error codes', () => {
+    it('should return definition for each of the 31 error codes', () => {
       const allCodes = Object.keys(ERROR_CODES);
-      expect(allCodes.length).toBe(29);
+      expect(allCodes.length).toBe(31);
       for (const code of allCodes) {
         const def = getErrorDefinition(code);
         expect(def, `${code} should have a definition`).toBeDefined();
@@ -404,6 +406,24 @@ describe('Error Catalog', () => {
         ).not.toThrow();
       }
     });
+
+    it('should interpolate path for ERR-EXE-09', () => {
+      const formatted = formatError(
+        'ERR-EXE-09',
+        JSON.stringify({ path: '/some/path' })
+      );
+      expect(formatted).toContain('Failed to read tasks directory: /some/path');
+    });
+
+    it('should interpolate path for ERR-EXE-10', () => {
+      const formatted = formatError(
+        'ERR-EXE-10',
+        JSON.stringify({ path: '/some/file.md' })
+      );
+      expect(formatted).toContain(
+        'Failed to delete during clean: /some/file.md'
+      );
+    });
   });
 
   describe('New Error Codes Coverage', () => {
@@ -467,6 +487,18 @@ describe('Error Catalog', () => {
     it('should have ERR-EXE-08 for agent file copy failures', () => {
       const def = getErrorDefinition('ERR-EXE-08');
       expect(def).toBeDefined();
+    });
+
+    it('should have ERR-EXE-09 for tasks directory read failures', () => {
+      const def = getErrorDefinition('ERR-EXE-09');
+      expect(def).toBeDefined();
+      expect(def?.message).toContain('read tasks directory');
+    });
+
+    it('should have ERR-EXE-10 for clean deletion failures', () => {
+      const def = getErrorDefinition('ERR-EXE-10');
+      expect(def).toBeDefined();
+      expect(def?.message).toContain('delete during clean');
     });
 
     it('should have ERR-UI-01 for invalid hex color', () => {
