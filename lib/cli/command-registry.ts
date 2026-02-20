@@ -14,6 +14,7 @@ import { refactor } from '../commands/refactor.js';
 import { run } from '../commands/run.js';
 import { yolo } from '../commands/yolo.js';
 import { status } from '../commands/status.js';
+import { clean } from '../commands/clean.js';
 import { findSimilarCommands } from '../utils/suggest.js';
 import { debug, log } from '../utils/logger.js';
 import { exitWithCleanup } from '../utils/exit.js';
@@ -72,6 +73,7 @@ export class CommandRegistry {
     this.registerRunCommand();
     this.registerYoloCommand();
     this.registerStatusCommand();
+    this.registerCleanCommand();
   }
 
   /**
@@ -307,6 +309,32 @@ Examples:
   }
 
   /**
+   * Register the clean command
+   */
+  private registerCleanCommand(): void {
+    this.program
+      .command('clean')
+      .alias('c')
+      .description('Remove generated task files and progress file')
+      .option('-v, --verbose', 'Show detailed output')
+      .addHelpText(
+        'after',
+        `
+Examples:
+  $ speci clean                        Remove generated task files and progress file
+  $ speci c                            Short alias version
+  $ speci task --clean -p plan.md      Clean before generating tasks
+`
+      )
+      .action(async (options) => {
+        const result = await clean(options, this.context, this.config);
+        if (!result.success) {
+          await exitWithCleanup(result.exitCode);
+        }
+      });
+  }
+
+  /**
    * Register handler for unknown commands
    */
   private registerUnknownCommandHandler(): void {
@@ -318,6 +346,7 @@ Examples:
       'run',
       'yolo',
       'status',
+      'clean',
     ];
 
     this.program.on('command:*', async (operands) => {
