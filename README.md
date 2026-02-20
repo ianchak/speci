@@ -221,9 +221,15 @@ npx speci task --plan docs/plan.md
 
 **Options:**
 
-| Flag                | Description                  |
-| ------------------- | ---------------------------- |
-| `-p, --plan <path>` | Path to plan file (required) |
+| Flag                | Description                                     |
+| ------------------- | ----------------------------------------------- |
+| `-p, --plan <path>` | Path to plan file (required)                    |
+| `-c, --clean`       | Clean task files and progress before generating |
+
+```bash
+# Clean existing tasks and regenerate from a new plan
+npx speci task --clean --plan docs/plan.md
+```
 
 ### `speci refactor` (alias: `r`)
 
@@ -338,6 +344,29 @@ npx speci yolo -i spec.md -p "Focus on the authentication module"
 
 # Override a stale lock
 npx speci yolo -p "Build feature" --force
+```
+
+### `speci clean` (alias: `c`)
+
+Remove generated task files and the PROGRESS.md file. Useful for resetting before re-running the full pipeline. This command is safe to run multiple times (idempotent) and refuses to run while a lock file is present.
+
+```bash
+npx speci clean
+```
+
+**Options:**
+
+| Flag            | Description          |
+| --------------- | -------------------- |
+| `-v, --verbose` | Show detailed output |
+
+```bash
+# Reset and regenerate tasks from a plan
+npx speci clean
+npx speci task --plan docs/plan.md
+
+# Or combine into a single task command
+npx speci task --clean --plan docs/plan.md
 ```
 
 ## Configuration
@@ -475,16 +504,18 @@ Speci uses structured error codes for diagnostics. Use `--verbose` to see full e
 
 ### Execution Errors (ERR-EXE-\*)
 
-| Code       | Message                             | Solution                                                  |
-| ---------- | ----------------------------------- | --------------------------------------------------------- |
-| ERR-EXE-01 | Gate command failed                 | Fix lint, typecheck, or test errors in your code          |
-| ERR-EXE-02 | Copilot execution failed            | Check Copilot authentication and permissions              |
-| ERR-EXE-03 | Max iterations reached              | Review progress and increase `--max-iterations` if needed |
-| ERR-EXE-04 | Max fix attempts exceeded           | Review gate failures and fix issues manually              |
-| ERR-EXE-05 | Failed to create directory          | Check file system permissions and disk space              |
-| ERR-EXE-06 | Failed to write file                | Check file system permissions and disk space              |
-| ERR-EXE-07 | Agent templates directory not found | Reinstall speci                                           |
-| ERR-EXE-08 | Failed to copy agent files          | Check file system permissions and disk space              |
+| Code       | Message                             | Solution                                                             |
+| ---------- | ----------------------------------- | -------------------------------------------------------------------- |
+| ERR-EXE-01 | Gate command failed                 | Fix lint, typecheck, or test errors in your code                     |
+| ERR-EXE-02 | Copilot execution failed            | Check Copilot authentication and permissions                         |
+| ERR-EXE-03 | Max iterations reached              | Review progress and increase `--max-iterations` if needed            |
+| ERR-EXE-04 | Max fix attempts exceeded           | Review gate failures and fix issues manually                         |
+| ERR-EXE-05 | Failed to create directory          | Check file system permissions and disk space                         |
+| ERR-EXE-06 | Failed to write file                | Check file system permissions and disk space                         |
+| ERR-EXE-07 | Agent templates directory not found | Reinstall speci                                                      |
+| ERR-EXE-08 | Failed to copy agent files          | Check file system permissions and disk space                         |
+| ERR-EXE-09 | Failed to read tasks directory      | Check directory permissions and ensure the path exists               |
+| ERR-EXE-10 | Failed to delete during clean       | Check file permissions and ensure no other process has the file open |
 
 ### Exit Codes
 
