@@ -61,11 +61,11 @@ type AgentName =
 
 const DEFAULT_COPILOT_MODELS: Record<AgentName, string> = {
   plan: 'claude-opus-4.6',
-  task: 'claude-sonnet-4.5',
-  refactor: 'claude-sonnet-4.5',
+  task: 'claude-sonnet-4.6',
+  refactor: 'claude-sonnet-4.6',
   impl: 'gpt-5.3-codex',
-  review: 'claude-sonnet-4.5',
-  fix: 'claude-sonnet-4.5',
+  review: 'claude-sonnet-4.6',
+  fix: 'claude-sonnet-4.6',
   tidy: 'gpt-5.2',
 };
 
@@ -623,18 +623,18 @@ export function getConfigIfLoaded(): SpeciConfig | null {
 }
 
 /**
- * Resolve agent path in .github/copilot/agents directory
+ * Resolve agent path in .github/agents directory
  *
- * Agents must exist in .github/copilot/agents/ (created by `speci init`).
+ * Agents must exist in .github/agents/ (created by `speci init`).
  *
  * @param agentName - Name of agent to resolve (e.g., 'impl', 'review')
  * @param processParam - Optional IProcess instance for testing (defaults to global process)
- * @returns Absolute path to agent file in .github/copilot/agents/
+ * @returns Absolute path to agent file in .github/agents/
  *
  * @example
  * ```typescript
  * const implPath = resolveAgentPath('impl');
- * // Returns: '/project/.github/copilot/agents/speci-impl.agent.md'
+ * // Returns: '/project/.github/agents/speci-impl.agent.md'
  * ```
  */
 export function resolveAgentPath(
