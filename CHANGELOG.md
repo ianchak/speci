@@ -1,5 +1,11 @@
 # speci
 
+## 0.8.4
+
+### Patch Changes
+
+- [`32dd044`](https://github.com/ianchak/speci/commit/32dd04436cf005c360e3aeeb18e7d93d3135fdfb) Thanks [@ianchak](https://github.com/ianchak)! - fix(pkg): add license and author fields to package.json and create LICENSE file for npm detection
+
 ## 0.8.3
 
 ### Patch Changes
