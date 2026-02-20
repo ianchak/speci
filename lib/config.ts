@@ -114,7 +114,6 @@ export function getDefaults(): SpeciConfig {
 function findConfigFile(startDir: string): string | undefined {
   let currentDir = startDir;
 
-   
   while (true) {
     const configPath = join(currentDir, CONFIG_FILENAME);
     if (existsSync(configPath)) {

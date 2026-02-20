@@ -45,4 +45,5 @@ temp/
 .github/copilot-instructions.md
 speci.config.json
 .speci-lock
+.speci-logs/
 docs/

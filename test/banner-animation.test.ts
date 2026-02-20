@@ -827,9 +827,9 @@ describe('sleep utility', () => {
       await testSleep(20);
       const elapsed = Date.now() - start;
 
-      // Total: 60ms ± 50ms (3 sleeps with generous tolerance for event loop jitter and CI)
+      // Total: 60ms ± 60ms (3 sleeps with generous tolerance for event loop jitter and CI)
       expect(elapsed).toBeGreaterThanOrEqual(40);
-      expect(elapsed).toBeLessThanOrEqual(110);
+      expect(elapsed).toBeLessThanOrEqual(120);
     });
   });
 

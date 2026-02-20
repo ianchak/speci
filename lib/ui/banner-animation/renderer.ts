@@ -144,9 +144,7 @@ export async function runAnimationLoop(
   const startTime = state.startTime;
   let isFirstFrame = true;
 
-   
   try {
-     
     while (true) {
       if (!state.isRunning) {
         break;
@@ -211,7 +209,6 @@ export async function animateVersion(
 
   let isFirstFrame = true;
 
-   
   while (true) {
     const elapsed = Date.now() - startTime;
     const progress = Math.min(1.0, elapsed / duration);
