@@ -1,9 +1,12 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { join } from 'node:path';
+import { join, resolve } from 'node:path';
+import { tmpdir } from 'node:os';
 import { clean, cleanFiles } from '../lib/commands/clean.js';
 import { createMockContext } from '../lib/adapters/test-context.js';
 import type { SpeciConfig } from '../lib/config.js';
 import type { CommandContext } from '../lib/interfaces.js';
+
+const MOCK_CWD = join(tmpdir(), 'speci-test-project');
 
 function createConfig(overrides?: Partial<SpeciConfig['paths']>): SpeciConfig {
   return {
@@ -43,7 +46,7 @@ describe('cleanFiles', () => {
   let config: SpeciConfig;
 
   beforeEach(() => {
-    context = createMockContext({ cwd: 'C:\\project' });
+    context = createMockContext({ cwd: MOCK_CWD });
     config = createConfig();
   });
 
@@ -379,8 +382,8 @@ describe('cleanFiles', () => {
 
   it('rejects paths outside project root before deletion', () => {
     const outsideConfig = createConfig({
-      progress: 'C:\\outside\\PROGRESS.md',
-      tasks: 'C:\\outside\\tasks',
+      progress: resolve(MOCK_CWD, '../outside/PROGRESS.md'),
+      tasks: resolve(MOCK_CWD, '../outside/tasks'),
     });
 
     const result = cleanFiles(outsideConfig, context);
@@ -424,7 +427,7 @@ describe('clean', () => {
   let config: SpeciConfig;
 
   beforeEach(() => {
-    context = createMockContext({ cwd: 'C:\\project' });
+    context = createMockContext({ cwd: MOCK_CWD });
     config = createConfig();
   });
 
