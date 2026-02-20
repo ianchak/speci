@@ -1,7 +1,13 @@
 import { join, resolve, sep } from 'node:path';
+import { createProductionContext } from '@/adapters/context-factory.js';
 import type { SpeciConfig } from '@/config.js';
 import { formatError } from '@/errors.js';
 import type { CommandContext, CommandResult } from '@/interfaces.js';
+import { handleCommandError } from '@/utils/error-handler.js';
+
+export interface CleanOptions {
+  verbose?: boolean;
+}
 
 /**
  * Remove task files and progress file with safe guards and idempotent behavior.
@@ -125,3 +131,29 @@ export function cleanFiles(
     };
   }
 }
+
+/**
+ * Clean command handler.
+ *
+ * @param options - Command options
+ * @param context - Injected command context
+ * @param config - Optional pre-loaded configuration
+ * @returns Promise resolving to command result
+ */
+export async function clean(
+  options: CleanOptions,
+  context: CommandContext = createProductionContext(),
+  config?: SpeciConfig
+): Promise<CommandResult> {
+  try {
+    const loadedConfig = config ?? (await context.configLoader.load());
+    if (options.verbose) {
+      context.logger.setVerbose(true);
+    }
+    return cleanFiles(loadedConfig, context);
+  } catch (error) {
+    return handleCommandError(error, 'Clean', context.logger);
+  }
+}
+
+export default clean;

@@ -81,6 +81,7 @@ describe('plan command', () => {
       mkdirSync: (_path: string, options?: { recursive?: boolean }) =>
         mkdirSync(_path, options),
       unlinkSync: vi.fn(),
+      rmSync: vi.fn(),
       readdirSync: vi.fn(() => []),
       statSync: vi.fn(() => ({
         isDirectory: () => false,
@@ -236,6 +237,7 @@ describe('plan command', () => {
         mkdirSync: (_path: string, options?: { recursive?: boolean }) =>
           mkdirSync(_path, options),
         unlinkSync: vi.fn(),
+        rmSync: vi.fn(),
         readdirSync: vi.fn(() => []),
         statSync: vi.fn(() => ({
           isDirectory: () => false,

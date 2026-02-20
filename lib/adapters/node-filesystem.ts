@@ -10,6 +10,7 @@ import {
   writeFileSync,
   mkdirSync,
   unlinkSync,
+  rmSync,
   readdirSync,
   statSync,
   copyFileSync,
@@ -49,6 +50,13 @@ export class NodeFileSystem implements IFileSystem {
 
   unlinkSync(path: string): void {
     unlinkSync(path);
+  }
+
+  rmSync(
+    path: string,
+    options?: { recursive?: boolean; force?: boolean }
+  ): void {
+    rmSync(path, options);
   }
 
   readdirSync(path: string): string[] {

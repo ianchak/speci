@@ -30,6 +30,9 @@ describe('config', () => {
     // Reset cache before each test
     resetConfigCache();
 
+    // Suppress warning output from intentional invalid-value tests
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+
     // Create isolated test directory
     testDir = join(tmpdir(), `speci-test-${Date.now()}-${Math.random()}`);
     mkdirSync(testDir, { recursive: true });

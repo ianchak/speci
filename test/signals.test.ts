@@ -70,6 +70,11 @@ describe('Signal Handling', () => {
     });
 
     it('should continue cleanup even if one function throws', async () => {
+      // Suppress expected error log from the intentional throw
+      const consoleErrorSpy = vi
+        .spyOn(console, 'error')
+        .mockImplementation(() => {});
+
       const order: number[] = [];
       registerCleanup(() => {
         order.push(1);
@@ -84,6 +89,8 @@ describe('Signal Handling', () => {
 
       // Should throw but all cleanups should still run
       await expect(runCleanup()).rejects.toThrow('Cleanup error');
+
+      consoleErrorSpy.mockRestore();
 
       expect(order).toEqual([3, 2, 1]);
     });

@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { join } from 'node:path';
-import { cleanFiles } from '../lib/commands/clean.js';
+import { clean, cleanFiles } from '../lib/commands/clean.js';
 import { createMockContext } from '../lib/adapters/test-context.js';
 import type { SpeciConfig } from '../lib/config.js';
 import type { CommandContext } from '../lib/interfaces.js';
@@ -199,5 +199,73 @@ describe('cleanFiles', () => {
     expect(result.success).toBe(false);
     expect(result.exitCode).toBe(1);
     expect(result.error).toContain('[ERR-EXE-10]');
+  });
+});
+
+describe('clean', () => {
+  let context: CommandContext;
+  let config: SpeciConfig;
+
+  beforeEach(() => {
+    context = createMockContext({ cwd: 'C:\\project' });
+    config = createConfig();
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('loads config when not provided and delegates to cleanFiles', async () => {
+    vi.spyOn(context.fs, 'existsSync').mockReturnValue(false);
+
+    const result = await clean({}, context);
+
+    expect(result).toEqual({ success: true, exitCode: 0 });
+    expect(context.configLoader.load).toHaveBeenCalledTimes(1);
+  });
+
+  it('uses provided config without calling config loader', async () => {
+    vi.spyOn(context.fs, 'existsSync').mockReturnValue(false);
+
+    const result = await clean({}, context, config);
+
+    expect(result).toEqual({ success: true, exitCode: 0 });
+    expect(context.configLoader.load).not.toHaveBeenCalled();
+  });
+
+  it('enables verbose mode before delegating when verbose option is set', async () => {
+    vi.spyOn(context.fs, 'existsSync').mockImplementation((path: string) => {
+      return path === config.paths.tasks;
+    });
+    vi.spyOn(context.fs, 'readdirSync').mockReturnValue(['a.md']);
+
+    const result = await clean({ verbose: true }, context, config);
+
+    expect(result).toEqual({ success: true, exitCode: 0 });
+    expect(context.logger.setVerbose).toHaveBeenCalledWith(true);
+    expect(context.fs.rmSync).toHaveBeenCalledWith(
+      join(config.paths.tasks, 'a.md'),
+      {
+        recursive: true,
+        force: true,
+      }
+    );
+  });
+
+  it('returns handleCommandError result when config loading throws', async () => {
+    vi.spyOn(context.configLoader, 'load').mockRejectedValue(
+      new Error('config load failed')
+    );
+
+    const result = await clean({}, context);
+
+    expect(result).toEqual({
+      success: false,
+      exitCode: 1,
+      error: 'config load failed',
+    });
+    expect(context.logger.error).toHaveBeenCalledWith(
+      'Clean command failed: config load failed'
+    );
   });
 });

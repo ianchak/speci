@@ -62,6 +62,16 @@ export interface IFileSystem {
   unlinkSync(path: string): void;
 
   /**
+   * Remove file or directory (synchronous)
+   * @param path - Path to remove
+   * @param options - Options for removal
+   */
+  rmSync(
+    path: string,
+    options?: { recursive?: boolean; force?: boolean }
+  ): void;
+
+  /**
    * Read directory contents (synchronous)
    * @param path - Directory path to read
    * @returns Array of filenames in directory
