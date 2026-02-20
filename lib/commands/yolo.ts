@@ -26,7 +26,7 @@ export interface YoloOptions {
   prompt?: string;
   /** Input files to include as context (design docs, specs, etc.) */
   input?: string[];
-  /** Output file path for plan (defaults to docs/plan-YYYYMMDD-HHmmss.md) */
+  /** Output file path for plan (defaults to docs/plan-YYYYMMDD-HHmmss_implementation_plan.md) */
   output?: string;
   /** Override existing lock file */
   force?: boolean;
@@ -48,7 +48,7 @@ function validateAndResolvePath(pathValue: string, cwd: string): string {
 /**
  * Generates a timestamped plan output path so concurrent or successive yolo runs
  * never silently overwrite each other's plan files.
- * Format: docs/plan-YYYYMMDD-HHmmss.md
+ * Format matches the plan agent's natural naming: docs/plan-YYYYMMDD-HHmmss_implementation_plan.md
  */
 function generatePlanOutputPath(): string {
   const ts = new Date()
@@ -56,7 +56,7 @@ function generatePlanOutputPath(): string {
     .replace(/[-:]/g, '')
     .replace('T', '-')
     .substring(0, 15);
-  return `docs/plan-${ts}.md`;
+  return `docs/plan-${ts}_implementation_plan.md`;
 }
 
 async function formatLockConflictError(config: SpeciConfig): Promise<string> {

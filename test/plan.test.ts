@@ -275,7 +275,7 @@ describe('plan command', () => {
       };
       expect(passedOptions.prompt).toContain('plan.md');
       expect(passedOptions.prompt).toContain(
-        'write your complete plan to the file'
+        'Use this exact path as the plan document file for ALL phases'
       );
     });
   });

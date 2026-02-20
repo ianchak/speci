@@ -82,15 +82,7 @@ describe('init command', () => {
       const config = JSON.parse(configContent);
 
       expect(config.copilot.permissions).toBe('allow-all');
-      expect(config.copilot.models).toEqual({
-        plan: 'claude-opus-4.6',
-        task: 'claude-sonnet-4.5',
-        refactor: 'claude-sonnet-4.5',
-        impl: 'gpt-5.3-codex',
-        review: 'claude-sonnet-4.5',
-        fix: 'claude-sonnet-4.5',
-        tidy: 'gpt-5.2',
-      });
+      expect(config.copilot.models).toEqual(getDefaults().copilot.models);
       expect(config.copilot.extraFlags).toEqual([]);
     });
 

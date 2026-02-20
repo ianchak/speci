@@ -5,6 +5,7 @@ import { tmpdir } from 'node:os';
 import {
   loadConfig,
   resetConfigCache,
+  getDefaults,
   type SpeciConfig,
 } from '../lib/config.js';
 
@@ -94,8 +95,9 @@ describe('Deep Merge Type Safety (TASK_032)', () => {
       expect(config.copilot.models.impl).toBe('claude-opus-4.6');
 
       // Other model settings should use required defaults
-      expect(config.copilot.models.plan).toBe('claude-opus-4.6');
-      expect(config.copilot.models.task).toBe('claude-sonnet-4.5');
+      const defaults = getDefaults();
+      expect(config.copilot.models.plan).toBe(defaults.copilot.models.plan);
+      expect(config.copilot.models.task).toBe(defaults.copilot.models.task);
     });
   });
 

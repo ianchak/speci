@@ -147,11 +147,13 @@ export async function plan(
       promptParts.push(options.prompt);
     }
 
-    // If output file specified, instruct Copilot to write to that file via prompt
+    // If output file specified, tell the agent which path to use as the plan document
+    // throughout all phases (do NOT say "when done" — the plan agent creates and
+    // updates the file incrementally from Phase 1, not just at the end)
     if (options.output) {
       const resolvedOutput = resolve(options.output);
       promptParts.push(
-        `\nWhen you are done, write your complete plan to the file: ${resolvedOutput}`
+        `\nIMPORTANT: Use this exact path as the plan document file for ALL phases (create it in Phase 1 and update it throughout): ${resolvedOutput}`
       );
     }
 

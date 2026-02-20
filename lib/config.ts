@@ -59,18 +59,12 @@ type AgentName =
   | 'fix'
   | 'tidy';
 
-const DEFAULT_COPILOT_MODELS: Record<AgentName, string> = {
-  plan: 'claude-opus-4.6',
-  task: 'claude-sonnet-4.6',
-  refactor: 'claude-sonnet-4.6',
-  impl: 'gpt-5.3-codex',
-  review: 'claude-sonnet-4.6',
-  fix: 'claude-sonnet-4.6',
-  tidy: 'gpt-5.2',
-};
-
 /**
- * Get hardcoded default configuration
+ * Get default configuration by reading from the bundled template file.
+ *
+ * The template file (`templates/speci.config.json`) is the single source of
+ * truth for default values. Falls back to hardcoded values only if the
+ * template cannot be found (should never happen in a properly installed package).
  *
  * @returns Default SpeciConfig object with all standard paths and settings
  *
@@ -81,6 +75,15 @@ const DEFAULT_COPILOT_MODELS: Record<AgentName, string> = {
  * ```
  */
 export function getDefaults(): SpeciConfig {
+  const templatePath = join(resolveTemplatesDir(), CONFIG_FILENAME);
+
+  if (existsSync(templatePath)) {
+    const content = readFileSync(templatePath, 'utf-8');
+    return JSON.parse(content) as SpeciConfig;
+  }
+
+  // Hardcoded fallback — only reached if the template is not bundled
+  log.debug('Template file not found, using hardcoded defaults');
   return {
     version: '1.0.0',
     paths: {
@@ -92,7 +95,13 @@ export function getDefaults(): SpeciConfig {
     copilot: {
       permissions: 'allow-all',
       models: {
-        ...DEFAULT_COPILOT_MODELS,
+        plan: 'claude-opus-4.6',
+        task: 'claude-sonnet-4.6',
+        refactor: 'claude-sonnet-4.6',
+        impl: 'gpt-5.3-codex',
+        review: 'claude-sonnet-4.6',
+        fix: 'claude-sonnet-4.6',
+        tidy: 'gpt-5.2',
       },
       extraFlags: [],
     },

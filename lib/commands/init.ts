@@ -9,6 +9,7 @@ import { join, relative } from 'node:path';
 import {
   getDefaults,
   getAgentsTemplatePath,
+  getConfigTemplatePath,
   GITHUB_AGENTS_DIR,
   type SpeciConfig,
 } from '@/config.js';
@@ -146,20 +147,21 @@ async function createDirectories(
 
 /**
  * Create required files
- * @param config - Config to write
  * @param existing - Existing files flags
  * @param context - Command context for filesystem and logging
  */
 async function createFiles(
-  config: SpeciConfig,
   existing: ReturnType<typeof checkExistingFiles>,
   context: CommandContext
 ): Promise<void> {
-  // Create speci.config.json
+  // Create speci.config.json by copying the bundled template verbatim
   if (!existing.configExists) {
     try {
-      const configContent = JSON.stringify(config, null, 2) + '\n';
-      context.fs.writeFileSync(CONFIG_FILENAME, configContent, 'utf8');
+      const templateContent = context.fs.readFileSync(
+        getConfigTemplatePath(),
+        'utf8'
+      );
+      context.fs.writeFileSync(CONFIG_FILENAME, templateContent, 'utf8');
       context.logger.success(`Created ${CONFIG_FILENAME}`);
     } catch (error) {
       throw createError(
@@ -311,7 +313,7 @@ export async function init(
     await createDirectories(config, existing, context);
 
     // Create files
-    await createFiles(config, existing, context);
+    await createFiles(existing, context);
 
     // Copy agent files to .github/copilot/agents/
     await copyAgentFiles(existing, options.updateAgents, context);

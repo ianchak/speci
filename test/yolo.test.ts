@@ -267,7 +267,9 @@ describe('yolo command', () => {
       {
         prompt: 'build feature',
         input: [join(PROJECT_CWD, 'docs', 'spec.md')],
-        output: expect.stringMatching(/^docs\/plan-\d{8}-\d{6}\.md$/),
+        output: expect.stringMatching(
+          /^docs\/plan-\d{8}-\d{6}_implementation_plan\.md$/
+        ),
         verbose: true,
       },
       context,
@@ -464,7 +466,9 @@ describe('yolo command', () => {
 
     expect(taskModule.task).toHaveBeenCalledWith(
       expect.objectContaining({
-        plan: expect.stringMatching(/^docs\/plan-\d{8}-\d{6}\.md$/),
+        plan: expect.stringMatching(
+          /^docs\/plan-\d{8}-\d{6}_implementation_plan\.md$/
+        ),
       }),
       context,
       mockConfig

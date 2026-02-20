@@ -1,6 +1,5 @@
 {
   "version": "1.0.0",
-  "_comment": "Speci CLI Configuration - Autonomous task loop orchestrator",
 
   "paths": {
     "progress": "docs/PROGRESS.md",
@@ -26,7 +25,6 @@
   "gate": {
     "commands": ["npm run lint", "npm run typecheck", "npm test"],
     "maxFixAttempts": 5,
-    "_comment_strategy": "Optional: 'sequential' (default) or 'parallel'. Parallel can speed up independent commands by 30-50%.",
     "strategy": "sequential"
   },
 
