@@ -1,3 +1,5 @@
+import { join } from 'node:path';
+import { tmpdir } from 'node:os';
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
 import { createMockContext } from '../lib/adapters/test-context.js';
 import { yolo } from '../lib/commands/yolo.js';
@@ -10,6 +12,8 @@ import * as errorHandlerModule from '../lib/utils/error-handler.js';
 import * as lockModule from '../lib/utils/lock.js';
 import * as preflightModule from '../lib/utils/preflight.js';
 import * as signalsModule from '../lib/utils/signals.js';
+
+const PROJECT_CWD = join(tmpdir(), 'speci-test-project');
 
 describe('yolo command', () => {
   const mockConfig: SpeciConfig = {
@@ -141,7 +145,7 @@ describe('yolo command', () => {
   });
 
   it('normalizes valid input and output paths', async () => {
-    const context = createMockContext({ mockConfig, cwd: 'C:\\project' });
+    const context = createMockContext({ mockConfig, cwd: PROJECT_CWD });
     const options = {
       input: ['./docs/spec.md'],
       output: './docs/plan.md',
@@ -149,8 +153,8 @@ describe('yolo command', () => {
 
     await yolo(options, context, mockConfig);
 
-    expect(options.input).toEqual(['C:\\project\\docs\\spec.md']);
-    expect(options.output).toBe('C:\\project\\docs\\plan.md');
+    expect(options.input).toEqual([join(PROJECT_CWD, 'docs', 'spec.md')]);
+    expect(options.output).toBe(join(PROJECT_CWD, 'docs', 'plan.md'));
   });
 
   it('propagates preflight errors', async () => {
@@ -248,11 +252,11 @@ describe('yolo command', () => {
   });
 
   it('executes plan phase with mapped options and default output path', async () => {
-    const context = createMockContext({ mockConfig, cwd: 'C:\\project' });
+    const context = createMockContext({ mockConfig, cwd: PROJECT_CWD });
     await yolo(
       {
         prompt: '  build feature  ',
-        input: ['.\\docs\\spec.md'],
+        input: ['./docs/spec.md'],
         verbose: true,
       },
       context,
@@ -262,7 +266,7 @@ describe('yolo command', () => {
     expect(planModule.plan).toHaveBeenCalledWith(
       {
         prompt: 'build feature',
-        input: ['C:\\project\\docs\\spec.md'],
+        input: [join(PROJECT_CWD, 'docs', 'spec.md')],
         output: expect.stringMatching(/^docs\/plan-\d{8}-\d{6}\.md$/),
         verbose: true,
       },
@@ -292,11 +296,11 @@ describe('yolo command', () => {
   });
 
   it('executes task phase with mapped options and logs phase messages', async () => {
-    const context = createMockContext({ mockConfig, cwd: 'C:\\project' });
+    const context = createMockContext({ mockConfig, cwd: PROJECT_CWD });
     await yolo(
       {
         prompt: 'build feature',
-        output: '.\\docs\\custom-plan.md',
+        output: './docs/custom-plan.md',
         verbose: true,
       },
       context,
@@ -305,7 +309,7 @@ describe('yolo command', () => {
 
     expect(taskModule.task).toHaveBeenCalledWith(
       {
-        plan: 'C:\\project\\docs\\custom-plan.md',
+        plan: join(PROJECT_CWD, 'docs', 'custom-plan.md'),
         verbose: true,
       },
       context,
@@ -441,13 +445,13 @@ describe('yolo command', () => {
   });
 
   it('calls plan with undefined prompt when input-only mode is used', async () => {
-    const context = createMockContext({ mockConfig, cwd: 'C:\\project' });
-    await yolo({ input: ['.\\docs\\spec.md'] }, context, mockConfig);
+    const context = createMockContext({ mockConfig, cwd: PROJECT_CWD });
+    await yolo({ input: ['./docs/spec.md'] }, context, mockConfig);
 
     expect(planModule.plan).toHaveBeenCalledWith(
       expect.objectContaining({
         prompt: undefined,
-        input: ['C:\\project\\docs\\spec.md'],
+        input: [join(PROJECT_CWD, 'docs', 'spec.md')],
       }),
       context,
       mockConfig
@@ -612,7 +616,7 @@ describe('yolo command', () => {
   });
 
   it('halts pipeline when plan fails due to missing input file', async () => {
-    const context = createMockContext({ mockConfig, cwd: 'C:\\project' });
+    const context = createMockContext({ mockConfig, cwd: PROJECT_CWD });
     vi.spyOn(planModule, 'plan').mockResolvedValueOnce({
       success: false,
       exitCode: 1,
@@ -620,7 +624,7 @@ describe('yolo command', () => {
     });
 
     const result = await yolo(
-      { input: ['.\\docs\\missing.md'] },
+      { input: ['./docs/missing.md'] },
       context,
       mockConfig
     );
