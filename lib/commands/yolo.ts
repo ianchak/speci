@@ -115,15 +115,12 @@ export async function yolo(
   registerCleanup(lockCleanup);
   installSignalHandlers();
 
-  let lockHeld = false;
-
   try {
     try {
       await acquireLock(loadedConfig, context.process, 'yolo', {
         state: 'yolo:pipeline',
         iteration: 0,
       });
-      lockHeld = true;
     } catch (error) {
       if (!(error instanceof Error) || error.name !== 'ERR-STA-01') {
         throw error;
@@ -142,7 +139,6 @@ export async function yolo(
         state: 'yolo:pipeline',
         iteration: 0,
       });
-      lockHeld = true;
     }
 
     context.logger.info('━'.repeat(60));
@@ -160,8 +156,6 @@ export async function yolo(
       loadedConfig
     );
     if (!planResult.success) {
-      await releaseLock(loadedConfig);
-      lockHeld = false;
       return planResult;
     }
     context.logger.success('Plan generation complete');
@@ -177,8 +171,6 @@ export async function yolo(
       loadedConfig
     );
     if (!taskResult.success) {
-      await releaseLock(loadedConfig);
-      lockHeld = false;
       return taskResult;
     }
     context.logger.success('Task generation complete');
@@ -194,18 +186,19 @@ export async function yolo(
       loadedConfig
     );
     if (!runResult.success) {
-      await releaseLock(loadedConfig);
-      lockHeld = false;
       return runResult;
     }
     context.logger.success('Implementation complete');
 
-    return runResult;
+    return { success: true, exitCode: 0 };
   } catch (error) {
     return handleCommandError(error, 'Yolo', context.logger);
   } finally {
-    if (lockHeld) {
+    try {
       await releaseLock(loadedConfig);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      context.logger.warn(`Failed to release lock file: ${message}`);
     }
     unregisterCleanup(lockCleanup);
     removeSignalHandlers();

@@ -6,6 +6,7 @@ import { createError } from '../lib/errors.js';
 import * as planModule from '../lib/commands/plan.js';
 import * as runModule from '../lib/commands/run.js';
 import * as taskModule from '../lib/commands/task.js';
+import * as errorHandlerModule from '../lib/utils/error-handler.js';
 import * as lockModule from '../lib/utils/lock.js';
 import * as preflightModule from '../lib/utils/preflight.js';
 import * as signalsModule from '../lib/utils/signals.js';
@@ -241,6 +242,11 @@ describe('yolo command', () => {
     expect(lockModule.releaseLock).toHaveBeenCalledWith(mockConfig);
     expect(signalsModule.unregisterCleanup).toHaveBeenCalledTimes(1);
     expect(signalsModule.removeSignalHandlers).toHaveBeenCalledTimes(1);
+    const releaseOrder = vi.mocked(lockModule.releaseLock).mock
+      .invocationCallOrder[0];
+    const removeHandlersOrder = vi.mocked(signalsModule.removeSignalHandlers)
+      .mock.invocationCallOrder[0];
+    expect(releaseOrder).toBeLessThan(removeHandlersOrder);
   });
 
   it('executes plan phase with mapped options and default output path', async () => {
@@ -375,5 +381,47 @@ describe('yolo command', () => {
       error: 'run failed exactly',
     });
     expect(lockModule.releaseLock).toHaveBeenCalled();
+  });
+
+  it('releases lock on uncaught exception and calls handleCommandError', async () => {
+    const context = createMockContext({ mockConfig, cwd: 'C:\\project' });
+    const uncaughtError = new Error('runtime boom');
+    vi.spyOn(planModule, 'plan').mockRejectedValueOnce(uncaughtError);
+    const handleCommandErrorSpy = vi
+      .spyOn(errorHandlerModule, 'handleCommandError')
+      .mockReturnValue({
+        success: false,
+        exitCode: 1,
+        error: 'runtime boom',
+      });
+
+    const result = await yolo({ prompt: 'test' }, context, mockConfig);
+
+    expect(handleCommandErrorSpy).toHaveBeenCalledWith(
+      uncaughtError,
+      'Yolo',
+      context.logger
+    );
+    expect(lockModule.releaseLock).toHaveBeenCalledWith(mockConfig);
+    expect(result).toEqual({
+      success: false,
+      exitCode: 1,
+      error: 'runtime boom',
+    });
+  });
+
+  it('logs warning and continues cleanup when lock release fails', async () => {
+    const context = createMockContext({ mockConfig, cwd: 'C:\\project' });
+    vi.spyOn(lockModule, 'releaseLock').mockRejectedValueOnce(
+      new Error('release failed')
+    );
+
+    const result = await yolo({ prompt: 'test' }, context, mockConfig);
+
+    expect(result).toEqual({ success: true, exitCode: 0 });
+    expect(context.logger.warn).toHaveBeenCalledWith(
+      'Failed to release lock file: release failed'
+    );
+    expect(signalsModule.removeSignalHandlers).toHaveBeenCalledTimes(1);
   });
 });
