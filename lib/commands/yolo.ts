@@ -4,6 +4,8 @@ import type { SpeciConfig } from '@/config.js';
 import { createError, formatError } from '@/errors.js';
 import type { CommandContext, CommandResult } from '@/interfaces.js';
 import { plan } from '@/commands/plan.js';
+import { task } from '@/commands/task.js';
+import { run } from '@/commands/run.js';
 import { handleCommandError } from '@/utils/error-handler.js';
 import { acquireLock, getLockInfo, releaseLock } from '@/utils/lock.js';
 import { preflight } from '@/utils/preflight.js';
@@ -145,11 +147,12 @@ export async function yolo(
 
     context.logger.info('━'.repeat(60));
     context.logger.info('Phase 1/3: Generating implementation plan...');
+    const planOutputPath = options.output ?? 'docs/plan.md';
     const planResult = await plan(
       {
         prompt: normalizedPrompt,
         input: options.input,
-        output: options.output ?? 'docs/plan.md',
+        output: planOutputPath,
         agent: options.agent,
         verbose: options.verbose,
       },
@@ -163,7 +166,41 @@ export async function yolo(
     }
     context.logger.success('Plan generation complete');
 
-    return { success: true, exitCode: 0 };
+    context.logger.info('Phase 2/3: Generating task list...');
+    const taskResult = await task(
+      {
+        plan: planOutputPath,
+        agent: options.agent,
+        verbose: options.verbose,
+      },
+      context,
+      loadedConfig
+    );
+    if (!taskResult.success) {
+      await releaseLock(loadedConfig);
+      lockHeld = false;
+      return taskResult;
+    }
+    context.logger.success('Task generation complete');
+
+    context.logger.info('Phase 3/3: Running implementation loop...');
+    const runResult = await run(
+      {
+        yes: true,
+        force: false,
+        verbose: options.verbose,
+      },
+      context,
+      loadedConfig
+    );
+    if (!runResult.success) {
+      await releaseLock(loadedConfig);
+      lockHeld = false;
+      return runResult;
+    }
+    context.logger.success('Implementation complete');
+
+    return runResult;
   } catch (error) {
     return handleCommandError(error, 'Yolo', context.logger);
   } finally {

@@ -4,6 +4,8 @@ import { yolo } from '../lib/commands/yolo.js';
 import type { SpeciConfig } from '../lib/config.js';
 import { createError } from '../lib/errors.js';
 import * as planModule from '../lib/commands/plan.js';
+import * as runModule from '../lib/commands/run.js';
+import * as taskModule from '../lib/commands/task.js';
 import * as lockModule from '../lib/utils/lock.js';
 import * as preflightModule from '../lib/utils/preflight.js';
 import * as signalsModule from '../lib/utils/signals.js';
@@ -64,6 +66,14 @@ describe('yolo command', () => {
       success: true,
       exitCode: 0,
     });
+    vi.spyOn(taskModule, 'task').mockResolvedValue({
+      success: true,
+      exitCode: 0,
+    });
+    vi.spyOn(runModule, 'run').mockResolvedValue({
+      success: true,
+      exitCode: 0,
+    });
   });
 
   afterEach(() => {
@@ -115,6 +125,8 @@ describe('yolo command', () => {
     });
     expect(lockModule.acquireLock).not.toHaveBeenCalled();
     expect(planModule.plan).not.toHaveBeenCalled();
+    expect(taskModule.task).not.toHaveBeenCalled();
+    expect(runModule.run).not.toHaveBeenCalled();
   });
 
   it('rejects path traversal in input paths before loading config', async () => {
@@ -271,6 +283,96 @@ describe('yolo command', () => {
       success: false,
       exitCode: 1,
       error: 'plan failed exactly',
+    });
+    expect(taskModule.task).not.toHaveBeenCalled();
+    expect(runModule.run).not.toHaveBeenCalled();
+    expect(lockModule.releaseLock).toHaveBeenCalled();
+  });
+
+  it('executes task phase with mapped options and logs phase messages', async () => {
+    const context = createMockContext({ mockConfig, cwd: 'C:\\project' });
+    await yolo(
+      {
+        prompt: 'build feature',
+        output: '.\\docs\\custom-plan.md',
+        agent: '.\\.github\\agents\\custom.agent.md',
+        verbose: true,
+      },
+      context,
+      mockConfig
+    );
+
+    expect(taskModule.task).toHaveBeenCalledWith(
+      {
+        plan: 'C:\\project\\docs\\custom-plan.md',
+        agent: 'C:\\project\\.github\\agents\\custom.agent.md',
+        verbose: true,
+      },
+      context,
+      mockConfig
+    );
+    expect(context.logger.info).toHaveBeenCalledWith(
+      'Phase 2/3: Generating task list...'
+    );
+    expect(context.logger.success).toHaveBeenCalledWith(
+      'Task generation complete'
+    );
+  });
+
+  it('returns original task error and releases lock when task phase fails', async () => {
+    const context = createMockContext({ mockConfig, cwd: 'C:\\project' });
+    vi.spyOn(taskModule, 'task').mockResolvedValueOnce({
+      success: false,
+      exitCode: 1,
+      error: 'task failed exactly',
+    });
+
+    const result = await yolo({ prompt: 'test' }, context, mockConfig);
+
+    expect(result).toEqual({
+      success: false,
+      exitCode: 1,
+      error: 'task failed exactly',
+    });
+    expect(runModule.run).not.toHaveBeenCalled();
+    expect(lockModule.releaseLock).toHaveBeenCalled();
+  });
+
+  it('calls run with yes true and forwards verbose flag', async () => {
+    const context = createMockContext({ mockConfig, cwd: 'C:\\project' });
+    await yolo({ prompt: 'test', verbose: true }, context, mockConfig);
+
+    expect(runModule.run).toHaveBeenCalledWith(
+      {
+        yes: true,
+        force: false,
+        verbose: true,
+      },
+      context,
+      mockConfig
+    );
+    expect(context.logger.info).toHaveBeenCalledWith(
+      'Phase 3/3: Running implementation loop...'
+    );
+    expect(context.logger.success).toHaveBeenCalledWith(
+      'Implementation complete'
+    );
+  });
+
+  it('returns original run error and releases lock when run phase fails', async () => {
+    const context = createMockContext({ mockConfig, cwd: 'C:\\project' });
+    vi.spyOn(runModule, 'run').mockResolvedValueOnce({
+      success: false,
+      exitCode: 2,
+      error: 'run failed exactly',
+    });
+
+    const result = await yolo({ prompt: 'test' }, context, mockConfig);
+
+    expect(result).toEqual({
+      success: false,
+      exitCode: 2,
+      error: 'run failed exactly',
     });
     expect(lockModule.releaseLock).toHaveBeenCalled();
   });
