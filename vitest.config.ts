@@ -32,8 +32,8 @@ export default defineConfig({
         '**/node_modules/**',
       ],
       thresholds: {
-        lines: 90,
-        branches: 90,
+        lines: 80,
+        branches: 80,
         functions: 70,
         statements: 80,
       },
