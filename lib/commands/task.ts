@@ -12,6 +12,7 @@ import { createProductionContext } from '@/adapters/context-factory.js';
 import { initializeCommand } from '@/utils/command-helpers.js';
 import { handleCommandError } from '@/utils/error-handler.js';
 import { executeCopilotCommand } from '@/utils/copilot-helper.js';
+import { cleanFiles } from '@/commands/clean.js';
 import { PathValidator } from '@/validation/index.js';
 import type { CommandContext, CommandResult } from '@/interfaces.js';
 import type { SpeciConfig } from '@/config.js';
@@ -26,6 +27,8 @@ export interface TaskOptions {
   agent?: string;
   /** Show detailed output */
   verbose?: boolean;
+  /** Clean task files and progress before generating */
+  clean?: boolean;
 }
 
 /**
@@ -91,6 +94,19 @@ export async function task(
     const validationError = validatePlanFile(planPath, context);
     if (validationError) {
       return validationError;
+    }
+
+    if (options.clean) {
+      if (options.verbose) {
+        context.logger.setVerbose(true);
+      }
+      const loadedCfg = config ?? (await context.configLoader.load());
+      const cleanResult = cleanFiles(loadedCfg, context);
+      if (!cleanResult.success) {
+        return cleanResult;
+      }
+      config = loadedCfg;
+      context.logger.raw('');
     }
 
     // Initialize command (config + preflight + agent validation)

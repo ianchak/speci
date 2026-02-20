@@ -9,8 +9,24 @@ import {
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { task } from '../lib/commands/task.js';
+import { createMockContext } from '../lib/adapters/test-context.js';
 import * as copilotModule from '../lib/copilot.js';
-import { resetConfigCache } from '../lib/config.js';
+import * as cleanModule from '../lib/commands/clean.js';
+import { resetConfigCache, type SpeciConfig } from '../lib/config.js';
+import * as commandHelpers from '../lib/utils/command-helpers.js';
+import * as copilotHelper from '../lib/utils/copilot-helper.js';
+
+type TaskTestConfig = SpeciConfig & {
+  agents: {
+    plan: string | null;
+    task: string | null;
+    refactor: string | null;
+    impl: string | null;
+    review: string | null;
+    fix: string | null;
+    tidy: string | null;
+  };
+};
 
 // Mock preflight to skip agent template check (tested in preflight.test.ts)
 vi.mock('../lib/utils/preflight.js', async (importOriginal) => {
@@ -27,6 +43,7 @@ describe('task command', () => {
   let originalCwd: string;
   let originalEnv: NodeJS.ProcessEnv;
   let originalExit: typeof process.exit;
+  let testConfig: TaskTestConfig;
 
   beforeEach(() => {
     // Reset config cache before each test to avoid stale config
@@ -48,7 +65,7 @@ describe('task command', () => {
     process.chdir(testDir);
 
     // Create minimal config file
-    const config = {
+    testConfig = {
       version: '1.0.0',
       paths: {
         progress: 'docs/PROGRESS.md',
@@ -68,13 +85,13 @@ describe('task command', () => {
       copilot: {
         permissions: 'allow-all' as const,
         models: {
-          plan: null,
-          task: null,
-          refactor: null,
-          impl: null,
-          review: null,
-          fix: null,
-          tidy: null,
+          plan: 'claude-opus-4.6',
+          task: 'claude-sonnet-4.5',
+          refactor: 'claude-sonnet-4.5',
+          impl: 'gpt-5.3-codex',
+          review: 'claude-sonnet-4.5',
+          fix: 'claude-sonnet-4.5',
+          tidy: 'gpt-5.2',
         },
         extraFlags: [],
       },
@@ -86,7 +103,7 @@ describe('task command', () => {
         maxIterations: 100,
       },
     };
-    writeFileSync('speci.config.json', JSON.stringify(config, null, 2));
+    writeFileSync('speci.config.json', JSON.stringify(testConfig, null, 2));
 
     // Create .git directory to satisfy git check
     mkdirSync('.git', { recursive: true });
@@ -312,6 +329,89 @@ describe('task command', () => {
 
       // If we got to spawn, preflight checks passed
       expect(spawnSpy).toHaveBeenCalled();
+    });
+  });
+
+  describe('clean option wiring', () => {
+    it('calls cleanFiles before initialization when --clean is set', async () => {
+      const cleanSpy = vi
+        .spyOn(cleanModule, 'cleanFiles')
+        .mockReturnValue({ success: true, exitCode: 0 });
+      const initializeSpy = vi
+        .spyOn(commandHelpers, 'initializeCommand')
+        .mockResolvedValue({
+          config: testConfig,
+          agentName: 'speci-task',
+          agentPath: join(testDir, '.github/agents/speci-task.agent.md'),
+        });
+      vi.spyOn(copilotHelper, 'executeCopilotCommand').mockResolvedValue({
+        success: true,
+        exitCode: 0,
+      });
+
+      const context = createMockContext({
+        cwd: testDir,
+        mockConfig: testConfig,
+      });
+      const setVerboseSpy = vi.spyOn(context.logger, 'setVerbose');
+
+      const result = await task(
+        { plan: 'plan.md', clean: true, verbose: true },
+        context
+      );
+
+      expect(result).toEqual({ success: true, exitCode: 0 });
+      expect(cleanSpy).toHaveBeenCalledTimes(1);
+      expect(setVerboseSpy).toHaveBeenCalledWith(true);
+      expect(setVerboseSpy.mock.invocationCallOrder[0]).toBeLessThan(
+        cleanSpy.mock.invocationCallOrder[0]
+      );
+      expect(initializeSpy).toHaveBeenCalledWith(
+        expect.objectContaining({ config: testConfig })
+      );
+      expect(context.configLoader.load).toHaveBeenCalledTimes(1);
+      expect(context.logger.raw).toHaveBeenCalledWith('');
+    });
+
+    it('returns clean result and skips initialization when clean fails', async () => {
+      const initializeSpy = vi.spyOn(commandHelpers, 'initializeCommand');
+      vi.spyOn(cleanModule, 'cleanFiles').mockReturnValue({
+        success: false,
+        exitCode: 1,
+        error: 'clean failed',
+      });
+
+      const context = createMockContext({
+        cwd: testDir,
+        mockConfig: testConfig,
+      });
+      const result = await task({ plan: 'plan.md', clean: true }, context);
+
+      expect(result).toEqual({
+        success: false,
+        exitCode: 1,
+        error: 'clean failed',
+      });
+      expect(initializeSpy).not.toHaveBeenCalled();
+    });
+
+    it('does not call cleanFiles when --clean is not set', async () => {
+      const cleanSpy = vi.spyOn(cleanModule, 'cleanFiles');
+      vi.spyOn(commandHelpers, 'initializeCommand').mockResolvedValue({
+        config: testConfig,
+        agentName: 'speci-task',
+        agentPath: join(testDir, '.github/agents/speci-task.agent.md'),
+      });
+      vi.spyOn(copilotHelper, 'executeCopilotCommand').mockResolvedValue({
+        success: true,
+        exitCode: 0,
+      });
+
+      const context = createMockContext({ cwd: testDir });
+      const result = await task({ plan: 'plan.md' }, context, testConfig);
+
+      expect(result).toEqual({ success: true, exitCode: 0 });
+      expect(cleanSpy).not.toHaveBeenCalled();
     });
   });
 });
