@@ -3,6 +3,11 @@
   "version": "0.8.2",
   "type": "module",
   "description": "CLI tool for orchestrating Copilot-driven development workflows",
+  "license": "MIT",
+  "author": {
+    "name": "ianchak",
+    "url": "https://github.com/ianchak"
+  },
   "repository": {
     "type": "git",
     "url": "https://github.com/ianchak/speci"
