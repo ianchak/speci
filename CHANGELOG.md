@@ -1,5 +1,11 @@
 # speci
 
+## 0.8.2
+
+### Patch Changes
+
+- [`b251188`](https://github.com/ianchak/speci/commit/b251188a98be10b107d6cec21ee5ce5b414b8907) Thanks [@ianchak](https://github.com/ianchak)! - fix(plan): embed --output path in prompt instead of passing as a CLI flag to Copilot
+
 ## 0.8.1
 
 ### Patch Changes
