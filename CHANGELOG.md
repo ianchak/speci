@@ -1,5 +1,11 @@
 # speci
 
+## 0.8.1
+
+### Patch Changes
+
+- [`5245d03`](https://github.com/ianchak/speci/commit/5245d037bce572b4cfe498a3f29dff7522fc3cfc) Thanks [@ianchak](https://github.com/ianchak)! - fix(yolo): remove erroneous `requireProgress` preflight check
+
 ## 0.8.0
 
 ### Minor Changes
