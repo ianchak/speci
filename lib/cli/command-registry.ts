@@ -153,6 +153,7 @@ Examples:
       .description('Generate tasks from implementation plan')
       .option('-p, --plan <path>', 'Path to plan file')
       .option('-v, --verbose', 'Show detailed output')
+      .option('-c, --clean', 'Clean task files and progress before generating')
       .addHelpText(
         'after',
         `
