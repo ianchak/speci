@@ -551,6 +551,12 @@ describe('Run Command', () => {
 
       await run({ yes: true, force: true });
 
+      // releaseLock must be called before acquireLock to hand off the existing lock
+      const releaseOrder = vi.mocked(lock.releaseLock).mock
+        .invocationCallOrder[0];
+      const acquireOrder = vi.mocked(lock.acquireLock).mock
+        .invocationCallOrder[0];
+      expect(releaseOrder).toBeLessThan(acquireOrder);
       expect(lock.acquireLock).toHaveBeenCalled();
     });
   });

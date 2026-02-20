@@ -199,7 +199,8 @@ export async function yolo(
     const runResult = await run(
       {
         yes: true,
-        force: false,
+        // force:true so run releases the yolo-held lock and acquires its own
+        force: true,
         verbose: options.verbose,
       },
       context,

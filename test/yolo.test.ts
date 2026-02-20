@@ -351,7 +351,7 @@ describe('yolo command', () => {
     expect(runModule.run).toHaveBeenCalledWith(
       {
         yes: true,
-        force: false,
+        force: true,
         verbose: true,
       },
       context,
@@ -475,7 +475,7 @@ describe('yolo command', () => {
     );
   });
 
-  it('keeps run force disabled even when yolo force flag is enabled', async () => {
+  it('passes force:true to run so it can take over the yolo-held lock', async () => {
     const context = createMockContext({ mockConfig, cwd: 'C:\\project' });
     vi.spyOn(lockModule, 'acquireLock')
       .mockRejectedValueOnce(createError('ERR-STA-01'))
@@ -484,7 +484,7 @@ describe('yolo command', () => {
     await yolo({ prompt: 'test', force: true }, context, mockConfig);
 
     expect(runModule.run).toHaveBeenCalledWith(
-      expect.objectContaining({ force: false }),
+      expect.objectContaining({ force: true }),
       context,
       mockConfig
     );

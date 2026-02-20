@@ -82,7 +82,8 @@ describe('Yolo Integration', () => {
       project.config
     );
     expect(conflict.success).toBe(false);
-    expect(conflict.error).toContain('ERR-STA-01');
+    expect(conflict.error).toContain('already running');
+    expect(conflict.error).toContain('--force');
 
     await acquireLock(project.config, context.process, 'run');
     const forced = await yolo(
@@ -309,7 +310,8 @@ describe('Yolo Integration', () => {
     );
 
     expect(secondRun.success).toBe(false);
-    expect(secondRun.error).toContain('ERR-STA-01');
+    expect(secondRun.error).toContain('already running');
+    expect(secondRun.error).toContain('--force');
 
     releaseFirstExecution();
     const firstResult = await firstRun;

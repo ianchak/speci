@@ -87,6 +87,9 @@ export async function run(
         return { success: true, exitCode: 0 };
       }
     }
+    // Release the existing lock before re-acquiring (handles both force=true
+    // and the case where the user confirmed via promptForce).
+    await releaseLock(loadedConfig);
   }
 
   // 4. Dry run check and pre-run confirmation
