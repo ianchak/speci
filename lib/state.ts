@@ -8,14 +8,31 @@
  * multiple state functions are called in quick succession.
  */
 
-import { readFile } from 'node:fs/promises';
+import { readFile, writeFile } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import type { SpeciConfig, TaskStats, CurrentTask } from '@/types.js';
 import { STATE } from '@/types.js';
+import { log } from '@/utils/logger.js';
 
 // Re-export types for backward compatibility
 export { STATE } from '@/types.js';
 export type { TaskStats, CurrentTask } from '@/types.js';
+
+/**
+ * Minimal gate failure info needed to populate the For Fix Agent section.
+ *
+ * Intentionally narrow — avoids coupling state module to the full GateResult
+ * discriminated union from the gate module.
+ */
+export interface GateFailureInfo {
+  results: ReadonlyArray<{
+    command: string;
+    isSuccess: boolean;
+    exitCode: number;
+    error: string;
+  }>;
+  error: string;
+}
 
 /**
  * Cache entry for state file content
@@ -359,4 +376,120 @@ export async function getCurrentTask(
   }
 
   return undefined;
+}
+
+/** Maximum characters for the Primary Error field in the For Fix Agent table */
+const MAX_ERROR_LENGTH = 500;
+
+/**
+ * Truncate a string to a maximum length, appending ellipsis if truncated.
+ * Trims whitespace and normalises newlines to spaces for table compatibility.
+ *
+ * @param text - Raw error text (may contain newlines)
+ * @param maxLength - Maximum character count
+ * @returns Truncated, single-line string
+ */
+function truncateError(text: string, maxLength: number): string {
+  // Collapse newlines/carriage-returns to spaces for markdown table compatibility
+  const oneLine = text.replace(/[\r\n]+/g, ' ').trim();
+  if (oneLine.length <= maxLength) {
+    return oneLine;
+  }
+  return `${oneLine.slice(0, maxLength)}…`;
+}
+
+/**
+ * Write gate failure notes into the `### For Fix Agent` section of PROGRESS.md.
+ *
+ * Populates the structured table so the fix agent has immediate context about
+ * which gate commands failed, the primary error, and a root-cause hint.
+ *
+ * If the section is not found in the file the function logs a warning and
+ * returns without error (never crashes the orchestration loop).
+ *
+ * @param config - Speci configuration (used for paths and to look up the current task)
+ * @param gateFailure - Gate failure information with per-command results
+ *
+ * @example
+ * ```typescript
+ * if (!gateResult.isSuccess) {
+ *   await writeFailureNotes(config, gateResult);
+ *   // then dispatch fix agent…
+ * }
+ * ```
+ */
+export async function writeFailureNotes(
+  config: SpeciConfig,
+  gateFailure: GateFailureInfo
+): Promise<void> {
+  const progressPath = config.paths.progress;
+
+  if (!existsSync(progressPath)) {
+    log.warn('PROGRESS.md not found — skipping failure notes');
+    return;
+  }
+
+  const content = await readFile(progressPath, 'utf8');
+
+  // Locate the ### For Fix Agent section
+  const sectionHeading = '### For Fix Agent';
+  const sectionIndex = content.indexOf(sectionHeading);
+  if (sectionIndex === -1) {
+    log.warn(
+      '"### For Fix Agent" section not found in PROGRESS.md — skipping failure notes'
+    );
+    return;
+  }
+
+  // Determine current task (may be undefined)
+  const currentTask = await getCurrentTask(config, { forceRefresh: true });
+  const taskValue = currentTask
+    ? `${currentTask.id} — ${currentTask.title}`
+    : '—';
+
+  // Collect failed commands
+  const failed = gateFailure.results.filter((r) => !r.isSuccess);
+  const failedGateValue =
+    failed.length > 0 ? failed.map((r) => r.command).join(', ') : '—';
+
+  // Primary error: first failure's stderr, truncated for readability
+  const firstFailed = failed[0];
+  const primaryErrorValue = firstFailed
+    ? truncateError(firstFailed.error || gateFailure.error, MAX_ERROR_LENGTH)
+    : '—';
+
+  // Root cause hint: command + exit code for the first failure
+  const rootCauseValue = firstFailed
+    ? `\`${firstFailed.command}\` exited with code ${String(firstFailed.exitCode)}`
+    : '—';
+
+  // Build the replacement table
+  const newTable = [
+    sectionHeading,
+    '',
+    '| Field           | Value |',
+    '| --------------- | ----- |',
+    `| Task            | ${taskValue} |`,
+    `| Failed Gate     | ${failedGateValue} |`,
+    `| Primary Error   | ${primaryErrorValue} |`,
+    `| Root Cause Hint | ${rootCauseValue} |`,
+  ].join('\n');
+
+  // Find the end of the existing table (next heading, horizontal rule, or EOF)
+  const afterHeading = sectionIndex + sectionHeading.length;
+  const rest = content.slice(afterHeading);
+  // Match the next markdown heading (## or ###) or horizontal rule (---) that
+  // isn't part of the table separator row.
+  const nextSectionMatch = rest.match(/\n(?=#{2,3}\s|---\s*$(?!\|))/m);
+  const endOffset = nextSectionMatch
+    ? afterHeading + (nextSectionMatch.index ?? rest.length)
+    : content.length;
+
+  const updated =
+    content.slice(0, sectionIndex) + newTable + content.slice(endOffset);
+
+  await writeFile(progressPath, updated, 'utf8');
+
+  // Invalidate the read cache so subsequent state reads see the new content
+  resetStateCache();
 }

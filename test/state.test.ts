@@ -9,7 +9,10 @@ import {
   getCurrentTask,
   hasStatePattern,
   resetStateCache,
+  writeFailureNotes,
+  type GateFailureInfo,
 } from '../lib/state.js';
+import { readFileSync } from 'node:fs';
 import { type SpeciConfig } from '../lib/config.js';
 
 describe('state', () => {
@@ -1176,6 +1179,320 @@ This is just text with no task table.
       expect(stats.inReview).toBe(0);
       expect(stats.blocked).toBe(0);
       expect(current).toBeUndefined();
+    });
+  });
+
+  describe('writeFailureNotes', () => {
+    /** Helper to create a PROGRESS.md with the standard Agent Handoff section */
+    function writeProgressWithHandoff(extraContent = ''): void {
+      const content = `# Progress
+
+## Tasks
+
+| Task ID  | Title              | Status      | Review Status | Priority | Complexity | Dependencies | Assigned To | Attempts |
+| -------- | ------------------ | ----------- | ------------- | -------- | ---------- | ------------ | ----------- | -------- |
+| TASK_004 | CLI Integration    | IN PROGRESS | —             | HIGH     | S (≤2h)    | TASK_003     |             |          |
+
+---
+
+## Agent Handoff
+
+### For Reviewer
+
+| Field             | Value |
+| ----------------- | ----- |
+| Task              | —     |
+
+### For Fix Agent
+
+| Field           | Value |
+| --------------- | ----- |
+| Task            | —     |
+| Failed Gate     | —     |
+| Primary Error   | —     |
+| Root Cause Hint | —     |
+
+---
+${extraContent}`;
+      writeFileSync(mockConfig.paths.progress, content);
+    }
+
+    function makeGateFailure(
+      overrides: Partial<GateFailureInfo> = {}
+    ): GateFailureInfo {
+      return {
+        results: [
+          {
+            command: 'npm run lint',
+            isSuccess: false,
+            exitCode: 1,
+            error: 'Lint failed: unexpected token',
+          },
+        ],
+        error: 'Lint failed: unexpected token',
+        ...overrides,
+      };
+    }
+
+    it('should populate the For Fix Agent table with failure info', async () => {
+      writeProgressWithHandoff();
+      const failure = makeGateFailure();
+
+      await writeFailureNotes(mockConfig, failure);
+
+      const content = readFileSync(mockConfig.paths.progress, 'utf8');
+      expect(content).toContain(
+        '| Task            | TASK_004 — CLI Integration |'
+      );
+      expect(content).toContain('| Failed Gate     | npm run lint |');
+      expect(content).toContain(
+        '| Primary Error   | Lint failed: unexpected token |'
+      );
+      expect(content).toContain(
+        '| Root Cause Hint | `npm run lint` exited with code 1 |'
+      );
+    });
+
+    it('should list multiple failed commands comma-separated', async () => {
+      writeProgressWithHandoff();
+      const failure = makeGateFailure({
+        results: [
+          {
+            command: 'npm run lint',
+            isSuccess: false,
+            exitCode: 1,
+            error: 'Lint error',
+          },
+          {
+            command: 'npm test',
+            isSuccess: false,
+            exitCode: 2,
+            error: 'Test error',
+          },
+        ],
+      });
+
+      await writeFailureNotes(mockConfig, failure);
+
+      const content = readFileSync(mockConfig.paths.progress, 'utf8');
+      expect(content).toContain('| Failed Gate     | npm run lint, npm test |');
+    });
+
+    it('should use first failure for primary error', async () => {
+      writeProgressWithHandoff();
+      const failure = makeGateFailure({
+        results: [
+          {
+            command: 'npm run lint',
+            isSuccess: false,
+            exitCode: 1,
+            error: 'First error',
+          },
+          {
+            command: 'npm test',
+            isSuccess: false,
+            exitCode: 2,
+            error: 'Second error',
+          },
+        ],
+        error: 'First error',
+      });
+
+      await writeFailureNotes(mockConfig, failure);
+
+      const content = readFileSync(mockConfig.paths.progress, 'utf8');
+      expect(content).toContain('| Primary Error   | First error |');
+      expect(content).toContain(
+        '| Root Cause Hint | `npm run lint` exited with code 1 |'
+      );
+    });
+
+    it('should truncate long error messages', async () => {
+      writeProgressWithHandoff();
+      const longError = 'x'.repeat(600);
+      const failure = makeGateFailure({
+        results: [
+          {
+            command: 'npm test',
+            isSuccess: false,
+            exitCode: 1,
+            error: longError,
+          },
+        ],
+        error: longError,
+      });
+
+      await writeFailureNotes(mockConfig, failure);
+
+      const content = readFileSync(mockConfig.paths.progress, 'utf8');
+      // 500 chars + ellipsis
+      const primaryMatch = content.match(/\| Primary Error\s+\| (.+?) \|/);
+      expect(primaryMatch).not.toBeNull();
+      expect(primaryMatch![1].length).toBeLessThanOrEqual(502); // 500 + '…'
+    });
+
+    it('should collapse multiline errors to single line', async () => {
+      writeProgressWithHandoff();
+      const failure = makeGateFailure({
+        results: [
+          {
+            command: 'npm test',
+            isSuccess: false,
+            exitCode: 1,
+            error: 'line1\nline2\nline3',
+          },
+        ],
+        error: 'line1\nline2\nline3',
+      });
+
+      await writeFailureNotes(mockConfig, failure);
+
+      const content = readFileSync(mockConfig.paths.progress, 'utf8');
+      expect(content).toContain('| Primary Error   | line1 line2 line3 |');
+    });
+
+    it('should use em-dash for task when no active task exists', async () => {
+      // Write PROGRESS.md with all tasks COMPLETE (no active task)
+      const content = `# Progress
+
+## Tasks
+
+| Task ID  | Title           | Status   | Review Status | Priority | Complexity | Dependencies | Assigned To | Attempts |
+| -------- | --------------- | -------- | ------------- | -------- | ---------- | ------------ | ----------- | -------- |
+| TASK_001 | Completed Task  | COMPLETE | PASSED        | HIGH     | S (≤2h)    | None         |             | 1        |
+
+---
+
+## Agent Handoff
+
+### For Fix Agent
+
+| Field           | Value |
+| --------------- | ----- |
+| Task            | —     |
+| Failed Gate     | —     |
+| Primary Error   | —     |
+| Root Cause Hint | —     |
+
+---
+`;
+      writeFileSync(mockConfig.paths.progress, content);
+
+      await writeFailureNotes(mockConfig, makeGateFailure());
+
+      const result = readFileSync(mockConfig.paths.progress, 'utf8');
+      expect(result).toContain('| Task            | — |');
+    });
+
+    it('should not crash when For Fix Agent section is missing', async () => {
+      const content = `# Progress\n\n## Tasks\n\nNo handoff section here.\n`;
+      writeFileSync(mockConfig.paths.progress, content);
+
+      // Should not throw
+      await writeFailureNotes(mockConfig, makeGateFailure());
+
+      // File should be unchanged
+      const result = readFileSync(mockConfig.paths.progress, 'utf8');
+      expect(result).toBe(content);
+    });
+
+    it('should not crash when PROGRESS.md does not exist', async () => {
+      // Don't create the file — should return gracefully
+      await expect(
+        writeFailureNotes(mockConfig, makeGateFailure())
+      ).resolves.toBeUndefined();
+    });
+
+    it('should overwrite previous failure notes on successive calls', async () => {
+      writeProgressWithHandoff();
+
+      // First call
+      await writeFailureNotes(
+        mockConfig,
+        makeGateFailure({
+          results: [
+            {
+              command: 'npm run lint',
+              isSuccess: false,
+              exitCode: 1,
+              error: 'First lint error',
+            },
+          ],
+          error: 'First lint error',
+        })
+      );
+
+      // Second call (simulating retry)
+      await writeFailureNotes(
+        mockConfig,
+        makeGateFailure({
+          results: [
+            {
+              command: 'npm test',
+              isSuccess: false,
+              exitCode: 2,
+              error: 'Test failure now',
+            },
+          ],
+          error: 'Test failure now',
+        })
+      );
+
+      const content = readFileSync(mockConfig.paths.progress, 'utf8');
+      // Should contain ONLY the latest failure info
+      expect(content).toContain('| Failed Gate     | npm test |');
+      expect(content).toContain('| Primary Error   | Test failure now |');
+      expect(content).not.toContain('First lint error');
+    });
+
+    it('should preserve content after the For Fix Agent section', async () => {
+      writeProgressWithHandoff('\n## Extra Section\n\nSome content here.\n');
+
+      await writeFailureNotes(mockConfig, makeGateFailure());
+
+      const content = readFileSync(mockConfig.paths.progress, 'utf8');
+      expect(content).toContain('## Extra Section');
+      expect(content).toContain('Some content here.');
+    });
+
+    it('should filter out passing commands from Failed Gate', async () => {
+      writeProgressWithHandoff();
+      const failure = makeGateFailure({
+        results: [
+          {
+            command: 'npm run lint',
+            isSuccess: true,
+            exitCode: 0,
+            error: '',
+          },
+          {
+            command: 'npm test',
+            isSuccess: false,
+            exitCode: 1,
+            error: 'Test error',
+          },
+        ],
+        error: 'Test error',
+      });
+
+      await writeFailureNotes(mockConfig, failure);
+
+      const content = readFileSync(mockConfig.paths.progress, 'utf8');
+      expect(content).toContain('| Failed Gate     | npm test |');
+      expect(content).not.toContain('npm run lint');
+    });
+
+    it('should invalidate the state cache after writing', async () => {
+      writeProgressWithHandoff();
+
+      // Prime the cache
+      await getState(mockConfig);
+
+      await writeFailureNotes(mockConfig, makeGateFailure());
+
+      // Should be able to read fresh state without forceRefresh
+      const stateAfter = await getState(mockConfig);
+      expect(stateAfter).toBe(STATE.WORK_LEFT);
     });
   });
 });

@@ -65,6 +65,7 @@ describe('Run Command', () => {
     vi.spyOn(lock, 'isLocked').mockResolvedValue(false);
     vi.spyOn(lock, 'acquireLock').mockResolvedValue(undefined);
     vi.spyOn(lock, 'releaseLock').mockResolvedValue(undefined);
+    vi.spyOn(state, 'writeFailureNotes').mockResolvedValue(undefined);
   });
 
   afterEach(() => {
@@ -345,6 +346,129 @@ describe('Run Command', () => {
 
       // 1 impl agent + 2 fix agents (maxFixAttempts = 2)
       expect(copilot.runAgent).toHaveBeenCalledTimes(3);
+    });
+  });
+
+  describe('Failure Notes', () => {
+    it('should write failure notes before dispatching fix agent', async () => {
+      vi.spyOn(state, 'getState')
+        .mockResolvedValueOnce(STATE.WORK_LEFT)
+        .mockResolvedValueOnce(STATE.DONE);
+      vi.spyOn(copilot, 'runAgent')
+        .mockResolvedValueOnce({ isSuccess: true, exitCode: 0 }) // impl
+        .mockResolvedValueOnce({ isSuccess: true, exitCode: 0 }); // fix
+      const failedGateResult = {
+        isSuccess: false as const,
+        results: [
+          {
+            command: 'npm run lint',
+            isSuccess: false,
+            exitCode: 1,
+            output: '',
+            error: 'Lint failed',
+            duration: 100,
+          },
+        ],
+        error: 'Lint failed',
+        totalDuration: 100,
+      };
+      vi.spyOn(gate, 'runGate')
+        .mockResolvedValueOnce(failedGateResult)
+        .mockResolvedValueOnce({
+          isSuccess: true,
+          results: [],
+          totalDuration: 0,
+        });
+
+      await run({ yes: true });
+
+      expect(state.writeFailureNotes).toHaveBeenCalledWith(
+        mockConfig,
+        failedGateResult
+      );
+    });
+
+    it('should not write failure notes when gates pass', async () => {
+      vi.spyOn(state, 'getState')
+        .mockResolvedValueOnce(STATE.WORK_LEFT)
+        .mockResolvedValueOnce(STATE.DONE);
+      vi.spyOn(copilot, 'runAgent').mockResolvedValue({
+        isSuccess: true,
+        exitCode: 0,
+      });
+      vi.spyOn(gate, 'runGate').mockResolvedValue({
+        isSuccess: true,
+        results: [],
+        totalDuration: 0,
+      });
+
+      await run({ yes: true });
+
+      expect(state.writeFailureNotes).not.toHaveBeenCalled();
+    });
+
+    it('should update failure notes with latest retry result', async () => {
+      const configWith2Attempts = {
+        ...mockConfig,
+        gate: { ...mockConfig.gate, maxFixAttempts: 2 },
+      };
+      vi.spyOn(config, 'loadConfig').mockResolvedValue(configWith2Attempts);
+      vi.spyOn(state, 'getState')
+        .mockResolvedValueOnce(STATE.WORK_LEFT)
+        .mockResolvedValueOnce(STATE.DONE);
+      vi.spyOn(copilot, 'runAgent').mockResolvedValue({
+        isSuccess: true,
+        exitCode: 0,
+      });
+      const initialFailure = {
+        isSuccess: false as const,
+        results: [
+          {
+            command: 'npm run lint',
+            isSuccess: false,
+            exitCode: 1,
+            output: '',
+            error: 'Lint error',
+            duration: 50,
+          },
+        ],
+        error: 'Lint error',
+        totalDuration: 50,
+      };
+      const retryFailure = {
+        isSuccess: false as const,
+        results: [
+          {
+            command: 'npm test',
+            isSuccess: false,
+            exitCode: 2,
+            output: '',
+            error: 'Test error',
+            duration: 200,
+          },
+        ],
+        error: 'Test error',
+        totalDuration: 200,
+      };
+      vi.spyOn(gate, 'runGate')
+        .mockResolvedValueOnce(initialFailure) // initial gate
+        .mockResolvedValueOnce(retryFailure) // retry 1
+        .mockResolvedValueOnce(retryFailure); // retry 2
+
+      await run({ yes: true });
+
+      // First call with initial failure, subsequent calls with retry failure
+      expect(state.writeFailureNotes).toHaveBeenCalledTimes(3);
+      expect(state.writeFailureNotes).toHaveBeenNthCalledWith(
+        1,
+        configWith2Attempts,
+        initialFailure
+      );
+      expect(state.writeFailureNotes).toHaveBeenNthCalledWith(
+        2,
+        configWith2Attempts,
+        retryFailure
+      );
     });
   });
 

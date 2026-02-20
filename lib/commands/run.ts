@@ -11,7 +11,7 @@ import { join } from 'node:path';
 import { createInterface } from 'node:readline';
 import { Writable } from 'node:stream';
 import type { SpeciConfig } from '@/config.js';
-import { getState, STATE } from '@/state.js';
+import { getState, STATE, writeFailureNotes } from '@/state.js';
 import {
   acquireLock,
   releaseLock,
@@ -251,7 +251,10 @@ async function handleWorkLeft(
     return;
   }
 
-  // 3. Handle gate failure with fix attempts
+  // 3. Write failure notes so the fix agent knows what broke
+  await writeFailureNotes(config, gateResult);
+
+  // 4. Handle gate failure with fix attempts
   let fixAttempt = 0;
   while (!gateResult.isSuccess && fixAttempt < config.gate.maxFixAttempts) {
     fixAttempt++;
@@ -289,6 +292,9 @@ async function handleWorkLeft(
       context.logger.success('Gates passed after fix!');
       return;
     }
+
+    // Update failure notes with the latest failure before next fix attempt
+    await writeFailureNotes(config, retryResult);
   }
 
   if (!gateResult.isSuccess) {
