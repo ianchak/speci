@@ -1,6 +1,6 @@
 {
   "name": "speci",
-  "version": "0.8.5",
+  "version": "0.9.0",
   "type": "module",
   "description": "CLI tool for orchestrating Copilot-driven development workflows",
   "license": "MIT",

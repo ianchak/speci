@@ -1,5 +1,11 @@
 # speci
 
+## 0.9.0
+
+### Minor Changes
+
+- [`b855edb`](https://github.com/ianchak/speci/commit/b855edbaa77e34b5b3990fee725b833efeffb2ec) Thanks [@ianchak](https://github.com/ianchak)! - feat(clean): add `speci clean` command and `--clean` flag to `speci task` to reset task files and PROGRESS.md
+
 ## 0.8.5
 
 ### Patch Changes
