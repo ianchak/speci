@@ -87,8 +87,8 @@ graph TD
 | -------- | -------------------------------- | ----------------------------------------- | ----------- | ------------- | -------- | ---------- | ------------ | ----------- | -------- |
 | TASK_010 | Status Command Integration       | TASK_010_status_command_integration.md    | NOT STARTED | —             | MEDIUM   | S (≤2h)    | TASK_005     |             |          |
 | TASK_011 | Progress Indicators and Polish   | TASK_011_progress_indicators_and_polish.md | NOT STARTED | —            | MEDIUM   | S (≤2h)    | TASK_009     |             |          |
-| TASK_012 | Unit Tests                       | TASK_012_unit_tests.md                    | IN REVIEW   |               | HIGH     | M (≤4h)    | TASK_009     | SA-20260220-010 | 1        |
-| TASK_013 | Integration Tests                | TASK_013_integration_tests.md             | NOT STARTED | —             | HIGH     | L (≤8h)    | TASK_012     |             |          |
+| TASK_012 | Unit Tests                       | TASK_012_unit_tests.md                    | COMPLETE    | PASSED        | HIGH     | M (≤4h)    | TASK_009     | SA-20260220-010 | 1        |
+| TASK_013 | Integration Tests                | TASK_013_integration_tests.md             | IN REVIEW   |               | HIGH     | L (≤8h)    | TASK_012     | SA-20260220-011 | 1        |
 | MVT_M3   | Integration and Polish Test      | MVT_M3_integration_and_polish.md          | NOT STARTED | —             | —        | 30 min     | TASK_010-013 |             |          |
 
 ### Dependencies
@@ -140,13 +140,13 @@ TASK_012 → TASK_013 → MVT_M3
 
 ## Subagent Tracking
 
-Last Subagent ID: SA-20260220-010
+Last Subagent ID: SA-20260220-011
 
 ---
 
 ## Review Tracking
 
-Last Review ID: RA-20260220-009
+Last Review ID: RA-20260220-010
 
 ---
 
@@ -156,13 +156,13 @@ Last Review ID: RA-20260220-009
 
 | Field             | Value |
 | ----------------- | ----- |
-| Task              | TASK_012 |
-| Impl Agent        | SA-20260220-010 |
-| Files Changed     | `vitest.config.ts` |
-| Tests Added       | `test/yolo.test.ts` (22 new tests) |
+| Task              | TASK_013 |
+| Impl Agent        | SA-20260220-011 |
+| Files Changed     | `lib/commands/status.ts` |
+| Tests Added       | `test/integration/yolo.integration.test.ts` (13 new tests), `test/helpers/integration-helpers.ts` (helper support) |
 | Rework?           | No |
-| Focus Areas       | Yolo lock lifecycle, path traversal checks, and per-phase option/error propagation in `test/yolo.test.ts` |
-| Known Limitations | Coverage threshold config is set to lines/branches; coverage enforcement still depends on running coverage mode |
+| Focus Areas       | Concurrent lock race handling, PROGRESS validation scenarios, and status lock-command rendering |
+| Known Limitations | Signal test verifies expected exit code mapping (130/143) via integration-level simulation |
 | Gate Results      | format:✅ lint:✅ typecheck:✅ test:✅ |
 
 ### For Fix Agent

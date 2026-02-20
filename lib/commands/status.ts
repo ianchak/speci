@@ -47,6 +47,7 @@ interface StatusData {
     pid: number | null;
     startTime: string | null;
     elapsed: string | null;
+    command?: string;
   };
   currentTask: CurrentTask | null;
   lastActivity?: string;
@@ -136,6 +137,7 @@ async function gatherStatusData(config: SpeciConfig): Promise<StatusData> {
       pid: lockInfo.pid,
       startTime: lockInfo.started ? formatTimestamp(lockInfo.started) : null,
       elapsed: lockInfo.elapsed,
+      command: lockInfo.command,
     },
     currentTask: currentTask ?? null,
   };
@@ -450,9 +452,11 @@ function buildContentLines(data: StatusData): string[] {
 
   // Lock status and current task
   if (data.lock.isLocked && data.lock.pid && data.lock.startTime) {
+    const commandLabel =
+      data.lock.command === 'yolo' ? 'Yolo pipeline' : 'Speci run';
     lines.push(
       colorize(
-        `${getGlyph('bullet')} Speci run is active (PID: ${data.lock.pid})`,
+        `${getGlyph('bullet')} ${commandLabel} is active (PID: ${data.lock.pid})`,
         'sky400'
       )
     );
@@ -510,9 +514,11 @@ function renderStatusContent(data: StatusData): void {
 
   // Lock status and current task
   if (data.lock.isLocked && data.lock.pid && data.lock.startTime) {
+    const commandLabel =
+      data.lock.command === 'yolo' ? 'Yolo pipeline' : 'Speci run';
     console.log(
       colorize(
-        `${getGlyph('bullet')} Speci run is active (PID: ${data.lock.pid})`,
+        `${getGlyph('bullet')} ${commandLabel} is active (PID: ${data.lock.pid})`,
         'sky400'
       )
     );
