@@ -147,6 +147,14 @@ export async function plan(
       promptParts.push(options.prompt);
     }
 
+    // If output file specified, instruct Copilot to write to that file via prompt
+    if (options.output) {
+      const resolvedOutput = resolve(options.output);
+      promptParts.push(
+        `\nWhen you are done, write your complete plan to the file: ${resolvedOutput}`
+      );
+    }
+
     const fullPrompt = promptParts.join('\n');
 
     displayCommandInfo(
@@ -171,11 +179,6 @@ export async function plan(
       shouldAllowAll: loadedConfig.copilot.permissions === 'allow-all',
       command: 'plan',
     });
-
-    // Add output flag if specified
-    if (options.output) {
-      args.push('--output', options.output);
-    }
 
     // Execute copilot command with standard pattern
     return await executeCopilotCommand(context, args);

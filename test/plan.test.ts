@@ -263,17 +263,20 @@ describe('plan command', () => {
       expect(buildResult).toContain('gpt-4');
     });
 
-    it('should include output flag when provided', async () => {
-      const spawnSpy = vi
-        .spyOn(mockContext.copilotRunner, 'spawn')
-        .mockResolvedValue(0);
+    it('should include output path in prompt when --output provided', async () => {
+      const buildArgsSpy = vi.spyOn(mockContext.copilotRunner, 'buildArgs');
+      vi.spyOn(mockContext.copilotRunner, 'spawn').mockResolvedValue(0);
 
       await plan({ output: 'plan.md', prompt: 'test plan' }, mockContext);
 
-      expect(spawnSpy).toHaveBeenCalled();
-      const args = spawnSpy.mock.calls[0][0];
-      expect(args).toContain('--output');
-      expect(args).toContain('plan.md');
+      expect(buildArgsSpy).toHaveBeenCalled();
+      const passedOptions = buildArgsSpy.mock.calls[0][1] as {
+        prompt?: string;
+      };
+      expect(passedOptions.prompt).toContain('plan.md');
+      expect(passedOptions.prompt).toContain(
+        'write your complete plan to the file'
+      );
     });
   });
 
