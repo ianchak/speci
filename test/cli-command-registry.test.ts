@@ -109,6 +109,7 @@ describe('CommandRegistry', () => {
       expect(commands).toContain('run');
       expect(commands).toContain('yolo');
       expect(commands).toContain('status');
+      expect(commands).toContain('clean');
     });
 
     it('should register yolo command with expected options and help text', async () => {
@@ -290,6 +291,66 @@ describe('CommandRegistry', () => {
 
       const suggestions = findSimilarCommands('runn', ['run', 'init', 'plan']);
       expect(suggestions).toContain('run');
+    });
+  });
+
+  describe('M3 integration', () => {
+    it('registers clean command with alias c', async () => {
+      const { CommandRegistry } =
+        await import('../lib/cli/command-registry.js');
+
+      const registry = new CommandRegistry(mockContext, mockConfig);
+      const cleanCmd = registry
+        .getProgram()
+        .commands.find((cmd: Command) => cmd.name() === 'clean');
+
+      expect(cleanCmd).toBeDefined();
+      expect(cleanCmd?.aliases()).toContain('c');
+    });
+
+    it('registers --clean option on task command', async () => {
+      const { CommandRegistry } =
+        await import('../lib/cli/command-registry.js');
+
+      const registry = new CommandRegistry(mockContext, mockConfig);
+      const taskCmd = registry
+        .getProgram()
+        .commands.find((cmd: Command) => cmd.name() === 'task');
+      const optionNames = taskCmd?.options.map(
+        (opt: { long?: string }) => opt.long
+      );
+
+      expect(taskCmd).toBeDefined();
+      expect(optionNames).toContain('--clean');
+    });
+
+    it('includes clean in available unknown command suggestions list', async () => {
+      const { AVAILABLE_COMMANDS } =
+        await import('../lib/cli/command-registry.js');
+
+      expect(AVAILABLE_COMMANDS).toContain('clean');
+    });
+
+    it('includes canonical clean help examples', async () => {
+      const { CommandRegistry } =
+        await import('../lib/cli/command-registry.js');
+
+      const registry = new CommandRegistry(mockContext, mockConfig);
+      const cleanCmd = registry
+        .getProgram()
+        .commands.find((cmd: Command) => cmd.name() === 'clean');
+
+      let helpText = '';
+      cleanCmd?.configureOutput({
+        writeOut: (str) => {
+          helpText += str;
+        },
+      });
+      cleanCmd?.outputHelp();
+
+      expect(helpText).toContain('speci clean');
+      expect(helpText).toContain('speci c');
+      expect(helpText).toContain('speci task --clean -p plan.md');
     });
   });
 

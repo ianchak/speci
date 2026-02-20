@@ -22,6 +22,17 @@ import { PreflightError } from '../utils/preflight.js';
 import type { CommandContext } from '../interfaces.js';
 import type { SpeciConfig } from '../types.js';
 
+export const AVAILABLE_COMMANDS = [
+  'init',
+  'plan',
+  'task',
+  'refactor',
+  'run',
+  'yolo',
+  'status',
+  'clean',
+] as const;
+
 /**
  * CommandRegistry manages CLI command registration and execution
  */
@@ -339,20 +350,11 @@ Examples:
    * Register handler for unknown commands
    */
   private registerUnknownCommandHandler(): void {
-    const availableCommands = [
-      'init',
-      'plan',
-      'task',
-      'refactor',
-      'run',
-      'yolo',
-      'status',
-      'clean',
-    ];
-
     this.program.on('command:*', async (operands) => {
       const unknownCmd = operands[0];
-      const suggestions = findSimilarCommands(unknownCmd, availableCommands);
+      const suggestions = findSimilarCommands(unknownCmd, [
+        ...AVAILABLE_COMMANDS,
+      ]);
 
       log.error(`Unknown command '${unknownCmd}'`);
 
@@ -361,7 +363,7 @@ Examples:
       }
 
       log.info('Available commands:');
-      availableCommands.forEach((cmd) => log.muted(`  ${cmd}`));
+      AVAILABLE_COMMANDS.forEach((cmd) => log.muted(`  ${cmd}`));
 
       await exitWithCleanup(2);
     });

@@ -135,20 +135,21 @@ describe('task command', () => {
 
   describe('required options', () => {
     it('should exit with error when --plan flag is missing', async () => {
-      const result = await task({});
+      const context = createMockContext({ cwd: testDir });
+      const result = await task({}, context);
       expect(result.success).toBe(false);
       expect(result.exitCode).toBe(1);
     });
 
     it('should display usage message when --plan is missing', async () => {
-      const logErrorSpy = vi
-        .spyOn(console, 'error')
-        .mockImplementation(() => {});
+      const context = createMockContext({ cwd: testDir });
 
-      await task({});
+      await task({}, context);
 
-      expect(logErrorSpy).toHaveBeenCalled();
-      const errorCalls = logErrorSpy.mock.calls.map((call) => call.join(' '));
+      expect(context.logger.error).toHaveBeenCalled();
+      const errorCalls = vi
+        .mocked(context.logger.error)
+        .mock.calls.map(([msg]) => msg);
       const hasUsageMessage = errorCalls.some(
         (msg) =>
           msg.includes('Missing required input') || msg.includes('--plan')
@@ -159,23 +160,24 @@ describe('task command', () => {
 
   describe('plan file validation', () => {
     it('should exit with error when plan file does not exist', async () => {
-      const result = await task({ plan: 'nonexistent.md' });
+      const context = createMockContext({ cwd: testDir });
+      const result = await task({ plan: 'nonexistent.md' }, context);
       expect(result.success).toBe(false);
       expect(result.exitCode).toBe(1);
     });
 
     it('should display error message for nonexistent plan file', async () => {
-      const logErrorSpy = vi
-        .spyOn(console, 'error')
-        .mockImplementation(() => {});
+      const context = createMockContext({ cwd: testDir });
 
-      await task({ plan: 'nonexistent.md' });
+      await task({ plan: 'nonexistent.md' }, context);
 
-      expect(logErrorSpy).toHaveBeenCalled();
-      const errorCalls = logErrorSpy.mock.calls.map((call) => call.join(' '));
+      expect(context.logger.error).toHaveBeenCalled();
+      const errorCalls = vi
+        .mocked(context.logger.error)
+        .mock.calls.map(([msg]) => msg);
       const hasFileNotFoundMessage = errorCalls.some(
         (msg) =>
-          msg.includes('Plan file not found') || msg.includes('nonexistent.md')
+          msg.includes('Path not found') || msg.includes('nonexistent.md')
       );
       expect(hasFileNotFoundMessage).toBe(true);
     });
@@ -334,9 +336,14 @@ describe('task command', () => {
 
   describe('clean option wiring', () => {
     it('calls cleanFiles before initialization when --clean is set', async () => {
+      const callOrder: string[] = [];
+
       const cleanSpy = vi
         .spyOn(cleanModule, 'cleanFiles')
-        .mockReturnValue({ success: true, exitCode: 0 });
+        .mockImplementation(() => {
+          callOrder.push('cleanFiles');
+          return { success: true, exitCode: 0 };
+        });
       const initializeSpy = vi
         .spyOn(commandHelpers, 'initializeCommand')
         .mockResolvedValue({
@@ -353,7 +360,12 @@ describe('task command', () => {
         cwd: testDir,
         mockConfig: testConfig,
       });
-      const setVerboseSpy = vi.spyOn(context.logger, 'setVerbose');
+
+      const setVerboseSpy = vi
+        .spyOn(context.logger, 'setVerbose')
+        .mockImplementation(() => {
+          callOrder.push('setVerbose');
+        });
 
       const result = await task(
         { plan: 'plan.md', clean: true, verbose: true },
@@ -363,8 +375,9 @@ describe('task command', () => {
       expect(result).toEqual({ success: true, exitCode: 0 });
       expect(cleanSpy).toHaveBeenCalledTimes(1);
       expect(setVerboseSpy).toHaveBeenCalledWith(true);
-      expect(setVerboseSpy.mock.invocationCallOrder[0]).toBeLessThan(
-        cleanSpy.mock.invocationCallOrder[0]
+      // Verify setVerbose was called before cleanFiles using explicit call order
+      expect(callOrder.indexOf('setVerbose')).toBeLessThan(
+        callOrder.indexOf('cleanFiles')
       );
       expect(initializeSpy).toHaveBeenCalledWith(
         expect.objectContaining({ config: testConfig })
