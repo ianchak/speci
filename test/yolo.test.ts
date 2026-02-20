@@ -95,7 +95,7 @@ describe('yolo command', () => {
       {
         requireCopilot: true,
         requireConfig: true,
-        requireProgress: true,
+        requireProgress: false,
       },
       context.process
     );
@@ -112,7 +112,7 @@ describe('yolo command', () => {
       {
         requireCopilot: true,
         requireConfig: true,
-        requireProgress: true,
+        requireProgress: false,
       },
       context.process
     );

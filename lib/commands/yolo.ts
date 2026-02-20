@@ -111,7 +111,7 @@ export async function yolo(
     {
       requireCopilot: true,
       requireConfig: true,
-      requireProgress: true,
+      requireProgress: false,
     },
     context.process
   );
