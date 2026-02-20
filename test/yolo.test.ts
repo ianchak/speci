@@ -424,4 +424,295 @@ describe('yolo command', () => {
     );
     expect(signalsModule.removeSignalHandlers).toHaveBeenCalledTimes(1);
   });
+
+  it('does not inspect lock state separately before atomic acquisition', async () => {
+    const context = createMockContext({ mockConfig, cwd: 'C:\\project' });
+    await yolo({ prompt: 'test' }, context, mockConfig);
+
+    expect(lockModule.getLockInfo).not.toHaveBeenCalled();
+    expect(lockModule.acquireLock).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not release lock when preflight fails before lock lifecycle setup', async () => {
+    const context = createMockContext({ mockConfig, cwd: 'C:\\project' });
+    vi.spyOn(preflightModule, 'preflight').mockRejectedValueOnce(
+      createError('ERR-PRE-01')
+    );
+
+    await expect(
+      yolo({ prompt: 'test' }, context, mockConfig)
+    ).rejects.toThrowError('ERR-PRE-01');
+    expect(lockModule.releaseLock).not.toHaveBeenCalled();
+    expect(signalsModule.registerCleanup).not.toHaveBeenCalled();
+  });
+
+  it('calls plan with undefined prompt when input-only mode is used', async () => {
+    const context = createMockContext({ mockConfig, cwd: 'C:\\project' });
+    await yolo({ input: ['.\\docs\\spec.md'] }, context, mockConfig);
+
+    expect(planModule.plan).toHaveBeenCalledWith(
+      expect.objectContaining({
+        prompt: undefined,
+        input: ['C:\\project\\docs\\spec.md'],
+      }),
+      context,
+      mockConfig
+    );
+  });
+
+  it('passes default plan path to task phase when output is omitted', async () => {
+    const context = createMockContext({ mockConfig, cwd: 'C:\\project' });
+    await yolo({ prompt: 'test' }, context, mockConfig);
+
+    expect(taskModule.task).toHaveBeenCalledWith(
+      expect.objectContaining({ plan: 'docs/plan.md' }),
+      context,
+      mockConfig
+    );
+  });
+
+  it('keeps run force disabled even when yolo force flag is enabled', async () => {
+    const context = createMockContext({ mockConfig, cwd: 'C:\\project' });
+    vi.spyOn(lockModule, 'acquireLock')
+      .mockRejectedValueOnce(createError('ERR-STA-01'))
+      .mockResolvedValueOnce(undefined);
+
+    await yolo({ prompt: 'test', force: true }, context, mockConfig);
+
+    expect(runModule.run).toHaveBeenCalledWith(
+      expect.objectContaining({ force: false }),
+      context,
+      mockConfig
+    );
+  });
+
+  it('propagates ERR-PRE-04 config preflight failures', async () => {
+    const context = createMockContext({ mockConfig, cwd: 'C:\\project' });
+    vi.spyOn(preflightModule, 'preflight').mockRejectedValueOnce(
+      createError('ERR-PRE-04')
+    );
+
+    await expect(
+      yolo({ prompt: 'test' }, context, mockConfig)
+    ).rejects.toThrowError('ERR-PRE-04');
+  });
+
+  it('propagates ERR-PRE-05 progress preflight failures', async () => {
+    const context = createMockContext({ mockConfig, cwd: 'C:\\project' });
+    vi.spyOn(preflightModule, 'preflight').mockRejectedValueOnce(
+      createError('ERR-PRE-05')
+    );
+
+    await expect(
+      yolo({ prompt: 'test' }, context, mockConfig)
+    ).rejects.toThrowError('ERR-PRE-05');
+  });
+
+  it('returns error result when lock acquisition throws filesystem error', async () => {
+    const context = createMockContext({ mockConfig, cwd: 'C:\\project' });
+    vi.spyOn(lockModule, 'acquireLock').mockRejectedValueOnce(
+      createError('ERR-EXE-05')
+    );
+
+    const result = await yolo({ prompt: 'test' }, context, mockConfig);
+
+    expect(result.success).toBe(false);
+    expect(result.error).toContain('ERR-EXE-05');
+    expect(planModule.plan).not.toHaveBeenCalled();
+  });
+
+  it('returns original ENOSPC plan output error', async () => {
+    const context = createMockContext({ mockConfig, cwd: 'C:\\project' });
+    vi.spyOn(planModule, 'plan').mockResolvedValueOnce({
+      success: false,
+      exitCode: 1,
+      error: 'ENOSPC: no space left on device',
+    });
+
+    const result = await yolo({ prompt: 'test' }, context, mockConfig);
+    expect(result.error).toBe('ENOSPC: no space left on device');
+  });
+
+  it('returns original EACCES plan output error', async () => {
+    const context = createMockContext({ mockConfig, cwd: 'C:\\project' });
+    vi.spyOn(planModule, 'plan').mockResolvedValueOnce({
+      success: false,
+      exitCode: 1,
+      error: 'EACCES: permission denied',
+    });
+
+    const result = await yolo({ prompt: 'test' }, context, mockConfig);
+    expect(result.error).toBe('EACCES: permission denied');
+  });
+
+  it('returns plan-phase error for invalid custom agent path usage', async () => {
+    const context = createMockContext({ mockConfig, cwd: 'C:\\project' });
+    vi.spyOn(planModule, 'plan').mockResolvedValueOnce({
+      success: false,
+      exitCode: 1,
+      error: 'invalid agent file',
+    });
+
+    const result = await yolo(
+      { prompt: 'test', agent: '.\\agents\\missing.agent.md' },
+      context,
+      mockConfig
+    );
+    expect(result.error).toBe('invalid agent file');
+  });
+
+  it('rejects whitespace-only prompt strings', async () => {
+    const context = createMockContext({ mockConfig, cwd: 'C:\\project' });
+    const result = await yolo({ prompt: '  \n\t  ' }, context, mockConfig);
+
+    expect(result).toEqual({
+      success: false,
+      exitCode: 1,
+      error: 'Missing required input',
+    });
+    expect(planModule.plan).not.toHaveBeenCalled();
+  });
+
+  it('rejects path traversal in output paths before preflight', async () => {
+    const context = createMockContext({ mockConfig, cwd: 'C:\\project' });
+
+    await expect(
+      yolo(
+        { prompt: 'test', output: '..\\outside\\plan.md' },
+        context,
+        mockConfig
+      )
+    ).rejects.toThrow('ERR-INP-07');
+    expect(preflightModule.preflight).not.toHaveBeenCalled();
+  });
+
+  it('rejects path traversal in agent paths before preflight', async () => {
+    const context = createMockContext({ mockConfig, cwd: 'C:\\project' });
+
+    await expect(
+      yolo(
+        { prompt: 'test', agent: '..\\outside\\agent.md' },
+        context,
+        mockConfig
+      )
+    ).rejects.toThrow('ERR-INP-07');
+    expect(preflightModule.preflight).not.toHaveBeenCalled();
+  });
+
+  it('forwards custom agent to plan and task phases', async () => {
+    const context = createMockContext({ mockConfig, cwd: 'C:\\project' });
+    await yolo(
+      { prompt: 'test', agent: '.\\.github\\agents\\custom.agent.md' },
+      context,
+      mockConfig
+    );
+
+    expect(planModule.plan).toHaveBeenCalledWith(
+      expect.objectContaining({
+        agent: 'C:\\project\\.github\\agents\\custom.agent.md',
+      }),
+      context,
+      mockConfig
+    );
+    expect(taskModule.task).toHaveBeenCalledWith(
+      expect.objectContaining({
+        agent: 'C:\\project\\.github\\agents\\custom.agent.md',
+      }),
+      context,
+      mockConfig
+    );
+  });
+
+  it('forwards verbose flag consistently across all phases', async () => {
+    const context = createMockContext({ mockConfig, cwd: 'C:\\project' });
+    await yolo({ prompt: 'test', verbose: true }, context, mockConfig);
+
+    expect(planModule.plan).toHaveBeenCalledWith(
+      expect.objectContaining({ verbose: true }),
+      context,
+      mockConfig
+    );
+    expect(taskModule.task).toHaveBeenCalledWith(
+      expect.objectContaining({ verbose: true }),
+      context,
+      mockConfig
+    );
+    expect(runModule.run).toHaveBeenCalledWith(
+      expect.objectContaining({ verbose: true }),
+      context,
+      mockConfig
+    );
+  });
+
+  it('halts pipeline when plan fails due to missing input file', async () => {
+    const context = createMockContext({ mockConfig, cwd: 'C:\\project' });
+    vi.spyOn(planModule, 'plan').mockResolvedValueOnce({
+      success: false,
+      exitCode: 1,
+      error: 'input file not found',
+    });
+
+    const result = await yolo(
+      { input: ['.\\docs\\missing.md'] },
+      context,
+      mockConfig
+    );
+    expect(result.error).toBe('input file not found');
+    expect(taskModule.task).not.toHaveBeenCalled();
+    expect(runModule.run).not.toHaveBeenCalled();
+  });
+
+  it('installs and removes signal handlers exactly once per execution', async () => {
+    const context = createMockContext({ mockConfig, cwd: 'C:\\project' });
+    await yolo({ prompt: 'test' }, context, mockConfig);
+
+    expect(signalsModule.installSignalHandlers).toHaveBeenCalledTimes(1);
+    expect(signalsModule.removeSignalHandlers).toHaveBeenCalledTimes(1);
+    expect(signalsModule.unregisterCleanup).toHaveBeenCalledTimes(1);
+  });
+
+  it('loads config once and reuses the same object across all phase calls', async () => {
+    const context = createMockContext({ mockConfig, cwd: 'C:\\project' });
+
+    await yolo({ prompt: 'test' }, context);
+
+    expect(context.configLoader.load).toHaveBeenCalledTimes(1);
+    expect(planModule.plan).toHaveBeenCalledWith(
+      expect.any(Object),
+      context,
+      mockConfig
+    );
+    expect(taskModule.task).toHaveBeenCalledWith(
+      expect.any(Object),
+      context,
+      mockConfig
+    );
+    expect(runModule.run).toHaveBeenCalledWith(
+      expect.any(Object),
+      context,
+      mockConfig
+    );
+  });
+
+  it('always passes yes true to run phase even with force enabled', async () => {
+    const context = createMockContext({ mockConfig, cwd: 'C:\\project' });
+    vi.spyOn(lockModule, 'acquireLock')
+      .mockRejectedValueOnce(createError('ERR-STA-01'))
+      .mockResolvedValueOnce(undefined);
+
+    await yolo({ prompt: 'test', force: true }, context, mockConfig);
+
+    expect(runModule.run).toHaveBeenCalledWith(
+      expect.objectContaining({ yes: true }),
+      context,
+      mockConfig
+    );
+  });
+
+  it('acquires lock only once on successful non-force path', async () => {
+    const context = createMockContext({ mockConfig, cwd: 'C:\\project' });
+    await yolo({ prompt: 'test' }, context, mockConfig);
+
+    expect(lockModule.acquireLock).toHaveBeenCalledTimes(1);
+  });
 });

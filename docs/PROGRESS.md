@@ -63,7 +63,7 @@ graph TD
 | TASK_006 | Plan Phase Execution         | TASK_006_plan_phase_execution.md    | COMPLETE    | PASSED        | HIGH     | M (≤4h)    | TASK_005     | SA-20260220-006 | 2        |
 | TASK_007 | Task Phase Execution         | TASK_007_task_phase_execution.md    | COMPLETE    | PASSED        | HIGH     | S (≤2h)    | TASK_006     | SA-20260220-007 | 1        |
 | TASK_008 | Run Phase Execution          | TASK_008_run_phase_execution.md     | COMPLETE    | PASSED        | HIGH     | S (≤2h)    | TASK_007     | SA-20260220-008 | 1        |
-| TASK_009 | Cleanup and Error Handling   | TASK_009_cleanup_and_error_handling.md | IN REVIEW   |             | HIGH     | M (≤4h)    | TASK_008     | SA-20260220-009 | 1        |
+| TASK_009 | Cleanup and Error Handling   | TASK_009_cleanup_and_error_handling.md | COMPLETE    | PASSED      | HIGH     | M (≤4h)    | TASK_008     | SA-20260220-009 | 1        |
 | MVT_M2   | Core Implementation Test     | MVT_M2_core_implementation.md       | NOT STARTED | —             | —        | 30 min     | TASK_005-009 |             |          |
 
 ### Dependencies
@@ -87,7 +87,7 @@ graph TD
 | -------- | -------------------------------- | ----------------------------------------- | ----------- | ------------- | -------- | ---------- | ------------ | ----------- | -------- |
 | TASK_010 | Status Command Integration       | TASK_010_status_command_integration.md    | NOT STARTED | —             | MEDIUM   | S (≤2h)    | TASK_005     |             |          |
 | TASK_011 | Progress Indicators and Polish   | TASK_011_progress_indicators_and_polish.md | NOT STARTED | —            | MEDIUM   | S (≤2h)    | TASK_009     |             |          |
-| TASK_012 | Unit Tests                       | TASK_012_unit_tests.md                    | NOT STARTED | —             | HIGH     | M (≤4h)    | TASK_009     |             |          |
+| TASK_012 | Unit Tests                       | TASK_012_unit_tests.md                    | IN REVIEW   |               | HIGH     | M (≤4h)    | TASK_009     | SA-20260220-010 | 1        |
 | TASK_013 | Integration Tests                | TASK_013_integration_tests.md             | NOT STARTED | —             | HIGH     | L (≤8h)    | TASK_012     |             |          |
 | MVT_M3   | Integration and Polish Test      | MVT_M3_integration_and_polish.md          | NOT STARTED | —             | —        | 30 min     | TASK_010-013 |             |          |
 
@@ -140,13 +140,13 @@ TASK_012 → TASK_013 → MVT_M3
 
 ## Subagent Tracking
 
-Last Subagent ID: SA-20260220-009
+Last Subagent ID: SA-20260220-010
 
 ---
 
 ## Review Tracking
 
-Last Review ID: RA-20260220-008
+Last Review ID: RA-20260220-009
 
 ---
 
@@ -156,13 +156,13 @@ Last Review ID: RA-20260220-008
 
 | Field             | Value |
 | ----------------- | ----- |
-| Task              | TASK_009 |
-| Impl Agent        | SA-20260220-009 |
-| Files Changed     | `lib/commands/yolo.ts` |
-| Tests Added       | `test/yolo.test.ts` (2 new tests) |
+| Task              | TASK_012 |
+| Impl Agent        | SA-20260220-010 |
+| Files Changed     | `vitest.config.ts` |
+| Tests Added       | `test/yolo.test.ts` (22 new tests) |
 | Rework?           | No |
-| Focus Areas       | finally-block cleanup ordering, releaseLock warning path, uncaught exception handling through handleCommandError |
-| Known Limitations | No new integration tests were added in this task run; existing integration coverage unchanged |
+| Focus Areas       | Yolo lock lifecycle, path traversal checks, and per-phase option/error propagation in `test/yolo.test.ts` |
+| Known Limitations | Coverage threshold config is set to lines/branches; coverage enforcement still depends on running coverage mode |
 | Gate Results      | format:✅ lint:✅ typecheck:✅ test:✅ |
 
 ### For Fix Agent
