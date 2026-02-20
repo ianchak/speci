@@ -13,7 +13,7 @@ import { createProductionContext } from '@/adapters/context-factory.js';
 import { initializeCommand } from '@/utils/command-helpers.js';
 import { handleCommandError } from '@/utils/error-handler.js';
 import { executeCopilotCommand } from '@/utils/copilot-helper.js';
-import { InputValidator } from '@/validation/input-validator.js';
+import { InputValidator } from '@/validation/index.js';
 import type { CommandContext, CommandResult } from '@/interfaces.js';
 import type { SpeciConfig } from '@/config.js';
 

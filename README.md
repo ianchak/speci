@@ -17,12 +17,13 @@ Speci operates as an autonomous loop that reads a PROGRESS.md file to determine 
 1. **Plan** your feature or change (generates a structured plan)
 2. **Task** breaks the plan into trackable tasks with a PROGRESS.md file
 3. **Run** enters the implementation loop:
-   - Tasks marked WORK_LEFT get an implementation agent
-   - Gate validation runs your lint, typecheck, and test commands
-   - If gates fail, a fix agent attempts repairs (up to a configurable limit)
-   - Tasks marked IN_REVIEW get a review agent
-   - Tasks marked BLOCKED get a tidy agent
-   - The loop continues until all tasks are DONE or limits are reached
+
+- Tasks marked WORK_LEFT get an implementation agent
+- Gate validation runs your lint, typecheck, and test commands
+- If gates fail, a fix agent attempts repairs (up to a configurable limit)
+- Tasks marked IN_REVIEW get a review agent
+- Tasks marked BLOCKED get a tidy agent
+- The loop continues until all tasks are DONE or limits are reached
 
 ### Workflow Diagram
 
@@ -112,6 +113,12 @@ npx speci task --plan docs/plan.md
 
 # Run the implementation loop
 npx speci run
+```
+
+Or run the entire plan → task → run pipeline in one command:
+
+```bash
+npx speci yolo -p "Add user authentication with JWT"
 ```
 
 ## Prerequisites
@@ -301,6 +308,36 @@ npx speci run --max-iterations 10
 
 # Skip confirmation and force past a stale lock
 npx speci run -y --force
+```
+
+### `speci yolo`
+
+Run the full `plan → task → run` pipeline in a single unattended command. Accepts the same options as `speci plan` and forwards them automatically through each phase. The run phase is started with `--yes` automatically, so no confirmation prompt is shown.
+
+```bash
+npx speci yolo -p "Build a REST API for user authentication"
+```
+
+**Options:**
+
+| Flag                     | Description                                  |
+| ------------------------ | -------------------------------------------- |
+| `-p, --prompt <text>`    | Initial prompt describing what to plan       |
+| `-i, --input <files...>` | Input files for context (design docs, specs) |
+| `-o, --output <path>`    | Save plan to a specific file                 |
+| `--force`                | Override an existing lock file               |
+
+Requires at least `--prompt` or `--input`. Only one `yolo` command can run at a time - a lock file prevents concurrent executions.
+
+```bash
+# Run full pipeline from a design doc
+npx speci yolo -i docs/design.md
+
+# Combine input files with a prompt
+npx speci yolo -i spec.md -p "Focus on the authentication module"
+
+# Override a stale lock
+npx speci yolo -p "Build feature" --force
 ```
 
 ## Configuration

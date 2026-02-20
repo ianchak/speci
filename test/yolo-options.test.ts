@@ -1,5 +1,4 @@
 import { describe, expect, it } from 'vitest';
-import type { YoloOptions as YoloOptionsFromIndex } from '../lib/commands/index.js';
 import type { YoloOptions } from '../lib/commands/yolo.js';
 
 describe('YoloOptions interface', () => {
@@ -8,7 +7,6 @@ describe('YoloOptions interface', () => {
       prompt: 'Build a feature',
       input: ['docs/spec.md', 'docs/design.md'],
       output: 'docs/plan.md',
-      agent: '.github/agents/speci-plan.agent.md',
       force: true,
       verbose: true,
     };
@@ -16,7 +14,6 @@ describe('YoloOptions interface', () => {
     expect(options.prompt).toBe('Build a feature');
     expect(options.input).toHaveLength(2);
     expect(options.output).toBe('docs/plan.md');
-    expect(options.agent).toContain('speci-plan');
     expect(options.force).toBe(true);
     expect(options.verbose).toBe(true);
   });
@@ -47,18 +44,12 @@ describe('YoloOptions interface', () => {
       prompt: undefined,
       input: undefined,
       output: undefined,
-      agent: undefined,
       force: undefined,
       verbose: undefined,
     };
 
     expect(defaults).toEqual({});
     expect(withUndefined.force).toBeUndefined();
-  });
-
-  it('is available through command index type export', () => {
-    const options: YoloOptionsFromIndex = { verbose: true };
-    expect(options.verbose).toBe(true);
   });
 
   it('rejects invalid null and array element types at compile time', () => {

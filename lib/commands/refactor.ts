@@ -12,7 +12,7 @@ import { createProductionContext } from '@/adapters/context-factory.js';
 import { initializeCommand } from '@/utils/command-helpers.js';
 import { handleCommandError } from '@/utils/error-handler.js';
 import { executeCopilotCommand } from '@/utils/copilot-helper.js';
-import { PathValidator } from '@/validation/path-validator.js';
+import { PathValidator } from '@/validation/index.js';
 import type { CommandContext, CommandResult } from '@/interfaces.js';
 import type { SpeciConfig } from '@/config.js';
 

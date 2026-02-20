@@ -1,7 +1,7 @@
 import { resolve } from 'node:path';
 import { createProductionContext } from '@/adapters/context-factory.js';
 import type { SpeciConfig } from '@/config.js';
-import { createError, formatError } from '@/errors.js';
+import { createError } from '@/errors.js';
 import type { CommandContext, CommandResult } from '@/interfaces.js';
 import { plan } from '@/commands/plan.js';
 import { task } from '@/commands/task.js';
@@ -15,7 +15,7 @@ import {
   removeSignalHandlers,
   unregisterCleanup,
 } from '@/utils/signals.js';
-import { PathValidator } from '@/validation/path-validator.js';
+import { PathValidator } from '@/validation/index.js';
 
 /**
  * Options accepted by yolo command.
@@ -26,10 +26,8 @@ export interface YoloOptions {
   prompt?: string;
   /** Input files to include as context (design docs, specs, etc.) */
   input?: string[];
-  /** Output file path for plan (defaults to docs/plan.md) */
+  /** Output file path for plan (defaults to docs/plan-YYYYMMDD-HHmmss.md) */
   output?: string;
-  /** Custom agent path override */
-  agent?: string;
   /** Override existing lock file */
   force?: boolean;
   /** Show detailed output */
@@ -47,24 +45,37 @@ function validateAndResolvePath(pathValue: string, cwd: string): string {
   return resolvedPath;
 }
 
+/**
+ * Generates a timestamped plan output path so concurrent or successive yolo runs
+ * never silently overwrite each other's plan files.
+ * Format: docs/plan-YYYYMMDD-HHmmss.md
+ */
+function generatePlanOutputPath(): string {
+  const ts = new Date()
+    .toISOString()
+    .replace(/[-:]/g, '')
+    .replace('T', '-')
+    .substring(0, 15);
+  return `docs/plan-${ts}.md`;
+}
+
 async function formatLockConflictError(config: SpeciConfig): Promise<string> {
   const lockInfo = await getLockInfo(config);
   const pid =
     typeof lockInfo.pid === 'number' && Number.isInteger(lockInfo.pid)
       ? lockInfo.pid
       : 'unknown';
-  const elapsed = lockInfo.elapsed ?? 'unknown';
-  return formatError('ERR-STA-01', JSON.stringify({ pid, elapsed }));
+  return `Another yolo command is already running (PID: ${pid}). Use --force to override.`;
 }
 
 /**
- * Yolo command skeleton: validates user paths before loading config, runs preflight checks, and returns a placeholder success response.
- * Security note: input/output/agent paths are normalized with path.resolve() and validated to remain inside the project root before any config or pipeline work runs.
+ * Executes the yolo command pipeline: plan → task → run.
+ * Security note: input/output paths are normalized with path.resolve() and validated to remain inside the project root before any config or pipeline work runs.
  *
- * @param options - Command options
+ * @param options - Command options (compatible with plan/task/run pipeline options)
  * @param context - Dependency injection context (defaults to production)
- * @param config - Pre-loaded configuration (optional, will load if not provided)
- * @returns Promise resolving to placeholder success result until pipeline phases are implemented
+ * @param config - Pre-loaded configuration (optional, falls back to context config loader)
+ * @returns Command execution result with phase-aware error messages
  */
 export async function yolo(
   options: YoloOptions,
@@ -81,10 +92,6 @@ export async function yolo(
 
   if (options.output) {
     options.output = validateAndResolvePath(options.output, projectRoot);
-  }
-
-  if (options.agent) {
-    options.agent = validateAndResolvePath(options.agent, projectRoot);
   }
 
   const loadedConfig = config ?? (await context.configLoader.load());
@@ -141,41 +148,54 @@ export async function yolo(
       });
     }
 
-    context.logger.info('━'.repeat(60));
+    const phaseSeparator = '━'.repeat(60);
+
+    context.logger.info(phaseSeparator);
     context.logger.info('Phase 1/3: Generating implementation plan...');
-    const planOutputPath = options.output ?? 'docs/plan.md';
+    const planStartTime = Date.now();
+    const planOutputPath = options.output ?? generatePlanOutputPath();
     const planResult = await plan(
       {
         prompt: normalizedPrompt,
         input: options.input,
         output: planOutputPath,
-        agent: options.agent,
         verbose: options.verbose,
       },
       context,
       loadedConfig
     );
     if (!planResult.success) {
-      return planResult;
+      return {
+        ...planResult,
+        error: `Yolo failed during plan phase: ${planResult.error ?? 'Unknown error'}`,
+      };
     }
+    context.logger.debug(`Phase completed in ${Date.now() - planStartTime}ms`);
     context.logger.success('Plan generation complete');
 
+    context.logger.info(phaseSeparator);
     context.logger.info('Phase 2/3: Generating task list...');
+    const taskStartTime = Date.now();
     const taskResult = await task(
       {
         plan: planOutputPath,
-        agent: options.agent,
         verbose: options.verbose,
       },
       context,
       loadedConfig
     );
     if (!taskResult.success) {
-      return taskResult;
+      return {
+        ...taskResult,
+        error: `Yolo failed during task phase: ${taskResult.error ?? 'Unknown error'}`,
+      };
     }
+    context.logger.debug(`Phase completed in ${Date.now() - taskStartTime}ms`);
     context.logger.success('Task generation complete');
 
+    context.logger.info(phaseSeparator);
     context.logger.info('Phase 3/3: Running implementation loop...');
+    const runStartTime = Date.now();
     const runResult = await run(
       {
         yes: true,
@@ -186,8 +206,12 @@ export async function yolo(
       loadedConfig
     );
     if (!runResult.success) {
-      return runResult;
+      return {
+        ...runResult,
+        error: `Yolo failed during run phase: ${runResult.error ?? 'Unknown error'}`,
+      };
     }
+    context.logger.debug(`Phase completed in ${Date.now() - runStartTime}ms`);
     context.logger.success('Implementation complete');
 
     return { success: true, exitCode: 0 };

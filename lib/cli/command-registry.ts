@@ -249,7 +249,6 @@ Examples:
         'Input files for context (design docs, specs)'
       )
       .option('-o, --output <path>', 'Output plan to file')
-      .option('-a, --agent <path>', 'Custom agent path override')
       .option('--force', 'Override existing lock')
       .option('-v, --verbose', 'Show detailed output')
       .addHelpText(
@@ -258,7 +257,6 @@ Examples:
 Examples:
   $ speci yolo -p "Build a REST API"              Run full pipeline from prompt
   $ speci yolo -i docs/design.md                  Run using design docs as context
-  $ speci yolo -i spec.md --agent .github/agents/speci-plan.agent.md
 `
       )
       .action(async (options) => {

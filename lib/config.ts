@@ -14,7 +14,7 @@ import { CONFIG_FILENAME, getAgentFilename } from '@/constants.js';
 import { createError } from '@/errors.js';
 import type { IProcess } from '@/interfaces.js';
 import type { SpeciConfig } from '@/types.js';
-import { ConfigValidator } from '@/validation/config-validator.js';
+import { ConfigValidator } from '@/validation/index.js';
 
 // Re-export SpeciConfig for backward compatibility
 export type { SpeciConfig } from '@/types.js';

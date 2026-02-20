@@ -224,7 +224,6 @@ describe('Yolo Integration', () => {
     expect(optionNames).toContain('--prompt');
     expect(optionNames).toContain('--input');
     expect(optionNames).toContain('--output');
-    expect(optionNames).toContain('--agent');
     expect(optionNames).toContain('--force');
     expect(optionNames).toContain('--verbose');
   });
@@ -263,7 +262,7 @@ describe('Yolo Integration', () => {
     expect(elapsed).toBeLessThan(5000);
   });
 
-  it('Test 12: blocks path traversal for input/output/agent paths', async () => {
+  it('Test 12: blocks path traversal for input/output paths', async () => {
     const context = createContext();
 
     await expect(
@@ -276,13 +275,6 @@ describe('Yolo Integration', () => {
     await expect(
       yolo(
         { prompt: 'Build feature X', output: '..\\outside\\plan.md' },
-        createContext(),
-        project.config
-      )
-    ).rejects.toThrow('ERR-INP-07');
-    await expect(
-      yolo(
-        { prompt: 'Build feature X', agent: '..\\outside\\agent.md' },
         createContext(),
         project.config
       )

@@ -17,7 +17,7 @@ import type { SpeciConfig } from '@/config.js';
 import { getAgentsTemplatePath, GITHUB_AGENTS_DIR } from '@/config.js';
 import { CONFIG_FILENAME } from '@/constants.js';
 import type { IProcess } from '@/interfaces.js';
-import { PathValidator } from '@/validation/path-validator.js';
+import { PathValidator } from '@/validation/index.js';
 
 /**
  * Options for customizing which preflight checks to run

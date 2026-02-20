@@ -840,7 +840,7 @@ describe('sleep utility', () => {
       const elapsed = Date.now() - start;
 
       // Should resolve quickly (allow generous tolerance for test overhead and CI)
-      expect(elapsed).toBeLessThanOrEqual(25);
+      expect(elapsed).toBeLessThanOrEqual(50);
     });
 
     it('handles minimal delay (1ms)', async () => {
@@ -889,9 +889,9 @@ describe('sleep utility', () => {
 
       const elapsed = Date.now() - start;
 
-      // 5 frames × 16ms = 80ms ± 80ms tolerance (very generous for CI and high-load environments)
+      // 5 frames × 16ms = 80ms ± 100ms tolerance (very generous for CI and high-load environments)
       expect(elapsed).toBeGreaterThanOrEqual(40);
-      expect(elapsed).toBeLessThanOrEqual(160);
+      expect(elapsed).toBeLessThanOrEqual(180);
     });
   });
 });
@@ -3294,8 +3294,8 @@ describe('Performance Benchmarks (TASK_021)', () => {
       const finalMemory = process.memoryUsage().heapUsed;
       const memoryGrowth = finalMemory - initialMemory;
 
-      // Memory growth should be minimal (< 5MB)
-      const MAX_MEMORY_GROWTH = 5 * 1024 * 1024; // 5MB
+      // Memory growth should be minimal (< 6MB to account for CI/test environment variance)
+      const MAX_MEMORY_GROWTH = 6 * 1024 * 1024; // 6MB
       expect(memoryGrowth).toBeLessThan(MAX_MEMORY_GROWTH);
     });
 

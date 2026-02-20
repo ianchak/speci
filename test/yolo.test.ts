@@ -140,21 +140,17 @@ describe('yolo command', () => {
     expect(context.configLoader.load).not.toHaveBeenCalled();
   });
 
-  it('normalizes valid input, output, and agent paths', async () => {
+  it('normalizes valid input and output paths', async () => {
     const context = createMockContext({ mockConfig, cwd: 'C:\\project' });
     const options = {
       input: ['./docs/spec.md'],
       output: './docs/plan.md',
-      agent: './.github/agents/speci-plan.agent.md',
     };
 
     await yolo(options, context, mockConfig);
 
     expect(options.input).toEqual(['C:\\project\\docs\\spec.md']);
     expect(options.output).toBe('C:\\project\\docs\\plan.md');
-    expect(options.agent).toBe(
-      'C:\\project\\.github\\agents\\speci-plan.agent.md'
-    );
   });
 
   it('propagates preflight errors', async () => {
@@ -214,8 +210,10 @@ describe('yolo command', () => {
 
     expect(result.success).toBe(false);
     expect(result.exitCode).toBe(1);
-    expect(result.error).toContain('[ERR-STA-01]');
-    expect(result.error).toContain('PID: unknown');
+    expect(result.error).toContain(
+      'Another yolo command is already running (PID: unknown).'
+    );
+    expect(result.error).toContain('Use --force to override.');
   });
 
   it('force-acquires lock after conflict when --force is enabled', async () => {
@@ -255,7 +253,6 @@ describe('yolo command', () => {
       {
         prompt: '  build feature  ',
         input: ['.\\docs\\spec.md'],
-        agent: '.\\.github\\agents\\custom.agent.md',
         verbose: true,
       },
       context,
@@ -266,8 +263,7 @@ describe('yolo command', () => {
       {
         prompt: 'build feature',
         input: ['C:\\project\\docs\\spec.md'],
-        output: 'docs/plan.md',
-        agent: 'C:\\project\\.github\\agents\\custom.agent.md',
+        output: expect.stringMatching(/^docs\/plan-\d{8}-\d{6}\.md$/),
         verbose: true,
       },
       context,
@@ -288,7 +284,7 @@ describe('yolo command', () => {
     expect(result).toEqual({
       success: false,
       exitCode: 1,
-      error: 'plan failed exactly',
+      error: 'Yolo failed during plan phase: plan failed exactly',
     });
     expect(taskModule.task).not.toHaveBeenCalled();
     expect(runModule.run).not.toHaveBeenCalled();
@@ -301,7 +297,6 @@ describe('yolo command', () => {
       {
         prompt: 'build feature',
         output: '.\\docs\\custom-plan.md',
-        agent: '.\\.github\\agents\\custom.agent.md',
         verbose: true,
       },
       context,
@@ -311,7 +306,6 @@ describe('yolo command', () => {
     expect(taskModule.task).toHaveBeenCalledWith(
       {
         plan: 'C:\\project\\docs\\custom-plan.md',
-        agent: 'C:\\project\\.github\\agents\\custom.agent.md',
         verbose: true,
       },
       context,
@@ -338,7 +332,7 @@ describe('yolo command', () => {
     expect(result).toEqual({
       success: false,
       exitCode: 1,
-      error: 'task failed exactly',
+      error: 'Yolo failed during task phase: task failed exactly',
     });
     expect(runModule.run).not.toHaveBeenCalled();
     expect(lockModule.releaseLock).toHaveBeenCalled();
@@ -378,7 +372,7 @@ describe('yolo command', () => {
     expect(result).toEqual({
       success: false,
       exitCode: 2,
-      error: 'run failed exactly',
+      error: 'Yolo failed during run phase: run failed exactly',
     });
     expect(lockModule.releaseLock).toHaveBeenCalled();
   });
@@ -465,7 +459,9 @@ describe('yolo command', () => {
     await yolo({ prompt: 'test' }, context, mockConfig);
 
     expect(taskModule.task).toHaveBeenCalledWith(
-      expect.objectContaining({ plan: 'docs/plan.md' }),
+      expect.objectContaining({
+        plan: expect.stringMatching(/^docs\/plan-\d{8}-\d{6}\.md$/),
+      }),
       context,
       mockConfig
     );
@@ -530,7 +526,9 @@ describe('yolo command', () => {
     });
 
     const result = await yolo({ prompt: 'test' }, context, mockConfig);
-    expect(result.error).toBe('ENOSPC: no space left on device');
+    expect(result.error).toBe(
+      'Yolo failed during plan phase: ENOSPC: no space left on device'
+    );
   });
 
   it('returns original EACCES plan output error', async () => {
@@ -542,7 +540,9 @@ describe('yolo command', () => {
     });
 
     const result = await yolo({ prompt: 'test' }, context, mockConfig);
-    expect(result.error).toBe('EACCES: permission denied');
+    expect(result.error).toBe(
+      'Yolo failed during plan phase: EACCES: permission denied'
+    );
   });
 
   it('returns plan-phase error for invalid custom agent path usage', async () => {
@@ -553,12 +553,10 @@ describe('yolo command', () => {
       error: 'invalid agent file',
     });
 
-    const result = await yolo(
-      { prompt: 'test', agent: '.\\agents\\missing.agent.md' },
-      context,
-      mockConfig
+    const result = await yolo({ prompt: 'test' }, context, mockConfig);
+    expect(result.error).toBe(
+      'Yolo failed during plan phase: invalid agent file'
     );
-    expect(result.error).toBe('invalid agent file');
   });
 
   it('rejects whitespace-only prompt strings', async () => {
@@ -571,56 +569,6 @@ describe('yolo command', () => {
       error: 'Missing required input',
     });
     expect(planModule.plan).not.toHaveBeenCalled();
-  });
-
-  it('rejects path traversal in output paths before preflight', async () => {
-    const context = createMockContext({ mockConfig, cwd: 'C:\\project' });
-
-    await expect(
-      yolo(
-        { prompt: 'test', output: '..\\outside\\plan.md' },
-        context,
-        mockConfig
-      )
-    ).rejects.toThrow('ERR-INP-07');
-    expect(preflightModule.preflight).not.toHaveBeenCalled();
-  });
-
-  it('rejects path traversal in agent paths before preflight', async () => {
-    const context = createMockContext({ mockConfig, cwd: 'C:\\project' });
-
-    await expect(
-      yolo(
-        { prompt: 'test', agent: '..\\outside\\agent.md' },
-        context,
-        mockConfig
-      )
-    ).rejects.toThrow('ERR-INP-07');
-    expect(preflightModule.preflight).not.toHaveBeenCalled();
-  });
-
-  it('forwards custom agent to plan and task phases', async () => {
-    const context = createMockContext({ mockConfig, cwd: 'C:\\project' });
-    await yolo(
-      { prompt: 'test', agent: '.\\.github\\agents\\custom.agent.md' },
-      context,
-      mockConfig
-    );
-
-    expect(planModule.plan).toHaveBeenCalledWith(
-      expect.objectContaining({
-        agent: 'C:\\project\\.github\\agents\\custom.agent.md',
-      }),
-      context,
-      mockConfig
-    );
-    expect(taskModule.task).toHaveBeenCalledWith(
-      expect.objectContaining({
-        agent: 'C:\\project\\.github\\agents\\custom.agent.md',
-      }),
-      context,
-      mockConfig
-    );
   });
 
   it('forwards verbose flag consistently across all phases', async () => {
@@ -644,6 +592,25 @@ describe('yolo command', () => {
     );
   });
 
+  it('logs separators and elapsed time for each pipeline phase', async () => {
+    const context = createMockContext({ mockConfig, cwd: 'C:\\project' });
+    await yolo({ prompt: 'test' }, context, mockConfig);
+
+    const separator = '━'.repeat(60);
+    const separatorCalls = vi
+      .mocked(context.logger.info)
+      .mock.calls.filter(([message]) => message === separator);
+    expect(separatorCalls).toHaveLength(3);
+
+    const debugCalls = vi
+      .mocked(context.logger.debug)
+      .mock.calls.map(([message]) => message);
+    expect(debugCalls).toHaveLength(3);
+    for (const message of debugCalls) {
+      expect(message).toMatch(/^Phase completed in \d+ms$/);
+    }
+  });
+
   it('halts pipeline when plan fails due to missing input file', async () => {
     const context = createMockContext({ mockConfig, cwd: 'C:\\project' });
     vi.spyOn(planModule, 'plan').mockResolvedValueOnce({
@@ -657,7 +624,9 @@ describe('yolo command', () => {
       context,
       mockConfig
     );
-    expect(result.error).toBe('input file not found');
+    expect(result.error).toBe(
+      'Yolo failed during plan phase: input file not found'
+    );
     expect(taskModule.task).not.toHaveBeenCalled();
     expect(runModule.run).not.toHaveBeenCalled();
   });

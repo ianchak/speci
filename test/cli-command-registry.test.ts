@@ -128,7 +128,6 @@ describe('CommandRegistry', () => {
       expect(optionNames).toContain('--prompt');
       expect(optionNames).toContain('--input');
       expect(optionNames).toContain('--output');
-      expect(optionNames).toContain('--agent');
       expect(optionNames).toContain('--force');
       expect(optionNames).toContain('--verbose');
       expect(yoloCmd?.description()).toContain('plan -> task -> run');
