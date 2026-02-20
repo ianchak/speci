@@ -27,7 +27,7 @@
 
 | Milestone | Name                         | Tasks   | MVT    | Complete | Total | Status      |
 | --------- | ---------------------------- | ------- | ------ | -------- | ----- | ----------- |
-| M1        | Foundation                   | 001-004 | MVT_M1 | 3        | 5     | IN PROGRESS |
+| M1        | Foundation                   | 001-004 | MVT_M1 | 4        | 5     | IN PROGRESS |
 | M2        | Core Implementation          | 005-009 | MVT_M2 | 0        | 6     | NOT STARTED |
 | M3        | Integration and Polish       | 010-013 | MVT_M3 | 0        | 5     | NOT STARTED |
 
@@ -40,7 +40,7 @@
 | TASK_001 | YoloOptions Interface           | TASK_001_yolo_options_interface.md     | COMPLETE    | PASSED        | HIGH     | S (≤2h)    | None         | SA-20260220-001 | 1        |
 | TASK_002 | Yolo Command Skeleton           | TASK_002_yolo_command_skeleton.md      | COMPLETE    | PASSED        | HIGH     | S (≤2h)    | TASK_001     | SA-20260220-002 | 1        |
 | TASK_003 | Command Registry Registration   | TASK_003_command_registry_registration.md | COMPLETE    | PASSED      | HIGH     | S (≤2h)    | TASK_002     | SA-20260220-003 | 1        |
-| TASK_004 | CLI Integration Verification    | TASK_004_cli_integration_verification.md | NOT STARTED | —           | MEDIUM   | S (≤2h)    | TASK_003     |             |          |
+| TASK_004 | CLI Integration Verification    | TASK_004_cli_integration_verification.md | COMPLETE    | PASSED      | MEDIUM   | S (≤2h)    | TASK_003     | SA-20260220-012 | 1        |
 | MVT_M1   | Foundation Manual Test          | MVT_M1_foundation.md                   | NOT STARTED | —             | —        | 15 min     | TASK_001-004 |             |          |
 
 ### Dependencies
@@ -85,10 +85,10 @@ graph TD
 
 | Task ID  | Title                            | File                                      | Status      | Review Status | Priority | Complexity | Dependencies | Assigned To | Attempts |
 | -------- | -------------------------------- | ----------------------------------------- | ----------- | ------------- | -------- | ---------- | ------------ | ----------- | -------- |
-| TASK_010 | Status Command Integration       | TASK_010_status_command_integration.md    | NOT STARTED | —             | MEDIUM   | S (≤2h)    | TASK_005     |             |          |
+| TASK_010 | Status Command Integration       | TASK_010_status_command_integration.md    | IN REVIEW   | —             | MEDIUM   | S (≤2h)    | TASK_005     | SA-20260220-013 | 1        |
 | TASK_011 | Progress Indicators and Polish   | TASK_011_progress_indicators_and_polish.md | NOT STARTED | —            | MEDIUM   | S (≤2h)    | TASK_009     |             |          |
 | TASK_012 | Unit Tests                       | TASK_012_unit_tests.md                    | COMPLETE    | PASSED        | HIGH     | M (≤4h)    | TASK_009     | SA-20260220-010 | 1        |
-| TASK_013 | Integration Tests                | TASK_013_integration_tests.md             | IN REVIEW   |               | HIGH     | L (≤8h)    | TASK_012     | SA-20260220-011 | 1        |
+| TASK_013 | Integration Tests                | TASK_013_integration_tests.md             | COMPLETE    | PASSED        | HIGH     | L (≤8h)    | TASK_012     | SA-20260220-011 | 1        |
 | MVT_M3   | Integration and Polish Test      | MVT_M3_integration_and_polish.md          | NOT STARTED | —             | —        | 30 min     | TASK_010-013 |             |          |
 
 ### Dependencies
@@ -140,13 +140,13 @@ TASK_012 → TASK_013 → MVT_M3
 
 ## Subagent Tracking
 
-Last Subagent ID: SA-20260220-011
+Last Subagent ID: SA-20260220-013
 
 ---
 
 ## Review Tracking
 
-Last Review ID: RA-20260220-010
+Last Review ID: RA-20260220-012
 
 ---
 
@@ -156,13 +156,13 @@ Last Review ID: RA-20260220-010
 
 | Field             | Value |
 | ----------------- | ----- |
-| Task              | TASK_013 |
-| Impl Agent        | SA-20260220-011 |
-| Files Changed     | `lib/commands/status.ts` |
-| Tests Added       | `test/integration/yolo.integration.test.ts` (13 new tests), `test/helpers/integration-helpers.ts` (helper support) |
+| Task              | TASK_010 |
+| Impl Agent        | SA-20260220-013 |
+| Files Changed     | None |
+| Tests Added       | `test/status.test.ts` (4 new tests) |
 | Rework?           | No |
-| Focus Areas       | Concurrent lock race handling, PROGRESS validation scenarios, and status lock-command rendering |
-| Known Limitations | Signal test verifies expected exit code mapping (130/143) via integration-level simulation |
+| Focus Areas       | Yolo/non-yolo lock label rendering and lock command propagation in JSON status output |
+| Known Limitations | No source-code changes were required because TASK_010 logic was already present; this run adds verification coverage |
 | Gate Results      | format:✅ lint:✅ typecheck:✅ test:✅ |
 
 ### For Fix Agent

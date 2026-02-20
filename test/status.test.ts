@@ -372,6 +372,101 @@ This is some malformed content
       expect(jsonOutput.lock.startTime).toBeNull();
       expect(jsonOutput.lock.elapsed).toBeNull();
     });
+
+    it('should include lock command in JSON output', async () => {
+      const progressContent = `# Progress
+
+| Task ID  | Title  | Status   |
+| -------- | ------ | -------- |
+| TASK_001 | Task 1 | COMPLETE |
+`;
+      writeFileSync(TEST_PROGRESS, progressContent, 'utf8');
+      writeConfig();
+
+      const lockData = {
+        version: '1.0.0',
+        pid: process.pid,
+        started: new Date().toISOString(),
+        command: 'yolo',
+        metadata: {
+          state: 'yolo:pipeline',
+          iteration: 0,
+        },
+      };
+      writeFileSync(TEST_LOCK, JSON.stringify(lockData), 'utf8');
+
+      await status({ json: true } as StatusOptions, mockContext);
+
+      const jsonOutput = JSON.parse(consoleOutput[0]);
+      expect(jsonOutput.lock.command).toBe('yolo');
+    });
+
+    it('should display yolo pipeline label when yolo lock is active', async () => {
+      const progressContent = `# Progress
+
+| Task ID  | Title  | Status      |
+| -------- | ------ | ----------- |
+| TASK_001 | Task 1 | IN PROGRESS |
+`;
+      writeFileSync(TEST_PROGRESS, progressContent, 'utf8');
+      writeConfig();
+
+      const lockData = {
+        version: '1.0.0',
+        pid: process.pid,
+        started: new Date().toISOString(),
+        command: 'yolo',
+      };
+      writeFileSync(TEST_LOCK, JSON.stringify(lockData), 'utf8');
+
+      await status({ once: true } as StatusOptions, mockContext);
+
+      const output = consoleOutput.join('\n');
+      expect(output).toContain('Yolo pipeline is active');
+    });
+
+    it('should display speci run label for non-yolo lock command', async () => {
+      const progressContent = `# Progress
+
+| Task ID  | Title  | Status      |
+| -------- | ------ | ----------- |
+| TASK_001 | Task 1 | IN PROGRESS |
+`;
+      writeFileSync(TEST_PROGRESS, progressContent, 'utf8');
+      writeConfig();
+
+      const lockData = {
+        version: '1.0.0',
+        pid: process.pid,
+        started: new Date().toISOString(),
+        command: 'run',
+      };
+      writeFileSync(TEST_LOCK, JSON.stringify(lockData), 'utf8');
+
+      await status({ once: true } as StatusOptions, mockContext);
+
+      const output = consoleOutput.join('\n');
+      expect(output).toContain('Speci run is active');
+    });
+
+    it('should display speci run label when lock command is undefined', async () => {
+      const progressContent = `# Progress
+
+| Task ID  | Title  | Status      |
+| -------- | ------ | ----------- |
+| TASK_001 | Task 1 | IN PROGRESS |
+`;
+      writeFileSync(TEST_PROGRESS, progressContent, 'utf8');
+      writeConfig();
+
+      const lockContent = `Started: 2026-02-04 10:00:00\nPID: ${process.pid}`;
+      writeFileSync(TEST_LOCK, lockContent, 'utf8');
+
+      await status({ once: true } as StatusOptions, mockContext);
+
+      const output = consoleOutput.join('\n');
+      expect(output).toContain('Speci run is active');
+    });
   });
 
   describe('current task', () => {
