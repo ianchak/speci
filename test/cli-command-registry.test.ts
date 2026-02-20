@@ -107,7 +107,31 @@ describe('CommandRegistry', () => {
       expect(commands).toContain('task');
       expect(commands).toContain('refactor');
       expect(commands).toContain('run');
+      expect(commands).toContain('yolo');
       expect(commands).toContain('status');
+    });
+
+    it('should register yolo command with expected options and help text', async () => {
+      const { CommandRegistry } =
+        await import('../lib/cli/command-registry.js');
+
+      const registry = new CommandRegistry(mockContext, mockConfig);
+      const program = registry.getProgram();
+      const yoloCmd = program.commands.find(
+        (cmd: Command) => cmd.name() === 'yolo'
+      );
+
+      expect(yoloCmd).toBeDefined();
+      const optionNames = yoloCmd?.options.map(
+        (opt: { long?: string }) => opt.long
+      );
+      expect(optionNames).toContain('--prompt');
+      expect(optionNames).toContain('--input');
+      expect(optionNames).toContain('--output');
+      expect(optionNames).toContain('--agent');
+      expect(optionNames).toContain('--force');
+      expect(optionNames).toContain('--verbose');
+      expect(yoloCmd?.description()).toContain('plan -> task -> run');
     });
 
     it('should register command aliases', async () => {
@@ -206,6 +230,27 @@ describe('CommandRegistry', () => {
       expect(parseSpy).toHaveBeenCalled();
 
       vi.unmock('../lib/commands/status.js');
+    });
+
+    it('should execute yolo action with parsed options', async () => {
+      vi.resetModules();
+      const yoloMock = vi
+        .fn()
+        .mockResolvedValue({ success: true, exitCode: 0 });
+      vi.doMock('../lib/commands/yolo.js', () => ({ yolo: yoloMock }));
+
+      const { CommandRegistry } =
+        await import('../lib/cli/command-registry.js');
+
+      const registry = new CommandRegistry(mockContext, mockConfig);
+      await registry.execute(['yolo', '--prompt', 'Build API']);
+
+      expect(yoloMock).toHaveBeenCalledWith(
+        expect.objectContaining({ prompt: 'Build API' }),
+        mockContext,
+        mockConfig
+      );
+      vi.doUnmock('../lib/commands/yolo.js');
     });
 
     it('should handle empty arguments (show help)', async () => {

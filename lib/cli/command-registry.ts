@@ -12,6 +12,7 @@ import { plan } from '../commands/plan.js';
 import { task } from '../commands/task.js';
 import { refactor } from '../commands/refactor.js';
 import { run } from '../commands/run.js';
+import { yolo } from '../commands/yolo.js';
 import { status } from '../commands/status.js';
 import { findSimilarCommands } from '../utils/suggest.js';
 import { debug, log } from '../utils/logger.js';
@@ -69,6 +70,7 @@ export class CommandRegistry {
     this.registerTaskCommand();
     this.registerRefactorCommand();
     this.registerRunCommand();
+    this.registerYoloCommand();
     this.registerStatusCommand();
   }
 
@@ -235,6 +237,43 @@ Examples:
   }
 
   /**
+   * Register the yolo command
+   */
+  private registerYoloCommand(): void {
+    this.program
+      .command('yolo')
+      .description('Execute plan -> task -> run pipeline in unattended mode')
+      .option('-p, --prompt <text>', 'Initial prompt describing what to plan')
+      .option(
+        '-i, --input <files...>',
+        'Input files for context (design docs, specs)'
+      )
+      .option('-o, --output <path>', 'Output plan to file')
+      .option('-a, --agent <path>', 'Custom agent path override')
+      .option('--force', 'Override existing lock')
+      .option('-v, --verbose', 'Show detailed output')
+      .addHelpText(
+        'after',
+        `
+Examples:
+  $ speci yolo -p "Build a REST API"              Run full pipeline from prompt
+  $ speci yolo -i docs/design.md                  Run using design docs as context
+  $ speci yolo -i spec.md --agent .github/agents/speci-plan.agent.md
+`
+      )
+      .action(async (options) => {
+        try {
+          const result = await yolo(options, this.context, this.config);
+          if (!result.success) {
+            await exitWithCleanup(result.exitCode);
+          }
+        } catch (err) {
+          this.handlePreflightError(err);
+        }
+      });
+  }
+
+  /**
    * Register the status command
    */
   private registerStatusCommand(): void {
@@ -279,6 +318,7 @@ Examples:
       'task',
       'refactor',
       'run',
+      'yolo',
       'status',
     ];
 
