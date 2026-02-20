@@ -1,5 +1,11 @@
 # speci
 
+## 0.8.3
+
+### Patch Changes
+
+- [`e4bc74f`](https://github.com/ianchak/speci/commit/e4bc74f39c265c04a1e43ecaf14827c1dfb81b58) Thanks [@ianchak](https://github.com/ianchak)! - fix(yolo): align default plan output path and --output prompt with plan agent's implementation_plan naming convention
+
 ## 0.8.2
 
 ### Patch Changes
