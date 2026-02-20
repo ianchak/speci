@@ -3,6 +3,7 @@ import { createProductionContext } from '@/adapters/context-factory.js';
 import type { SpeciConfig } from '@/config.js';
 import { createError, formatError } from '@/errors.js';
 import type { CommandContext, CommandResult } from '@/interfaces.js';
+import { plan } from '@/commands/plan.js';
 import { handleCommandError } from '@/utils/error-handler.js';
 import { acquireLock, getLockInfo, releaseLock } from '@/utils/lock.js';
 import { preflight } from '@/utils/preflight.js';
@@ -23,7 +24,7 @@ export interface YoloOptions {
   prompt?: string;
   /** Input files to include as context (design docs, specs, etc.) */
   input?: string[];
-  /** Output file path for plan (defaults to config.paths.plan) */
+  /** Output file path for plan (defaults to docs/plan.md) */
   output?: string;
   /** Custom agent path override */
   agent?: string;
@@ -86,6 +87,16 @@ export async function yolo(
 
   const loadedConfig = config ?? (await context.configLoader.load());
 
+  const normalizedPrompt = options.prompt?.trim();
+  if (!normalizedPrompt && (!options.input || options.input.length === 0)) {
+    context.logger.error('Missing required input');
+    return {
+      success: false,
+      exitCode: 1,
+      error: 'Missing required input',
+    };
+  }
+
   await preflight(
     loadedConfig,
     {
@@ -131,6 +142,26 @@ export async function yolo(
       });
       lockHeld = true;
     }
+
+    context.logger.info('━'.repeat(60));
+    context.logger.info('Phase 1/3: Generating implementation plan...');
+    const planResult = await plan(
+      {
+        prompt: normalizedPrompt,
+        input: options.input,
+        output: options.output ?? 'docs/plan.md',
+        agent: options.agent,
+        verbose: options.verbose,
+      },
+      context,
+      loadedConfig
+    );
+    if (!planResult.success) {
+      await releaseLock(loadedConfig);
+      lockHeld = false;
+      return planResult;
+    }
+    context.logger.success('Plan generation complete');
 
     return { success: true, exitCode: 0 };
   } catch (error) {

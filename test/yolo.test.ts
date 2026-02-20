@@ -3,6 +3,7 @@ import { createMockContext } from '../lib/adapters/test-context.js';
 import { yolo } from '../lib/commands/yolo.js';
 import type { SpeciConfig } from '../lib/config.js';
 import { createError } from '../lib/errors.js';
+import * as planModule from '../lib/commands/plan.js';
 import * as lockModule from '../lib/utils/lock.js';
 import * as preflightModule from '../lib/utils/preflight.js';
 import * as signalsModule from '../lib/utils/signals.js';
@@ -59,6 +60,10 @@ describe('yolo command', () => {
     vi.spyOn(signalsModule, 'removeSignalHandlers').mockImplementation(
       () => {}
     );
+    vi.spyOn(planModule, 'plan').mockResolvedValue({
+      success: true,
+      exitCode: 0,
+    });
   });
 
   afterEach(() => {
@@ -67,7 +72,7 @@ describe('yolo command', () => {
 
   it('loads config when not provided and returns success', async () => {
     const context = createMockContext({ mockConfig, cwd: 'C:\\project' });
-    const result = await yolo({}, context);
+    const result = await yolo({ prompt: 'test' }, context);
 
     expect(context.configLoader.load).toHaveBeenCalledTimes(1);
     expect(preflightModule.preflight).toHaveBeenCalledWith(
@@ -84,7 +89,7 @@ describe('yolo command', () => {
 
   it('uses pre-loaded config without calling config loader', async () => {
     const context = createMockContext({ mockConfig, cwd: 'C:\\project' });
-    const result = await yolo({}, context, mockConfig);
+    const result = await yolo({ prompt: 'test' }, context, mockConfig);
 
     expect(context.configLoader.load).not.toHaveBeenCalled();
     expect(preflightModule.preflight).toHaveBeenCalledWith(
@@ -97,6 +102,19 @@ describe('yolo command', () => {
       context.process
     );
     expect(result).toEqual({ success: true, exitCode: 0 });
+  });
+
+  it('fails validation when neither prompt nor input is provided', async () => {
+    const context = createMockContext({ mockConfig, cwd: 'C:\\project' });
+    const result = await yolo({}, context, mockConfig);
+
+    expect(result).toEqual({
+      success: false,
+      exitCode: 1,
+      error: 'Missing required input',
+    });
+    expect(lockModule.acquireLock).not.toHaveBeenCalled();
+    expect(planModule.plan).not.toHaveBeenCalled();
   });
 
   it('rejects path traversal in input paths before loading config', async () => {
@@ -132,7 +150,7 @@ describe('yolo command', () => {
       new Error('preflight failed')
     );
 
-    await expect(yolo({}, context, mockConfig)).rejects.toThrow(
+    await expect(yolo({ prompt: 'test' }, context, mockConfig)).rejects.toThrow(
       'preflight failed'
     );
   });
@@ -211,5 +229,49 @@ describe('yolo command', () => {
     expect(lockModule.releaseLock).toHaveBeenCalledWith(mockConfig);
     expect(signalsModule.unregisterCleanup).toHaveBeenCalledTimes(1);
     expect(signalsModule.removeSignalHandlers).toHaveBeenCalledTimes(1);
+  });
+
+  it('executes plan phase with mapped options and default output path', async () => {
+    const context = createMockContext({ mockConfig, cwd: 'C:\\project' });
+    await yolo(
+      {
+        prompt: '  build feature  ',
+        input: ['.\\docs\\spec.md'],
+        agent: '.\\.github\\agents\\custom.agent.md',
+        verbose: true,
+      },
+      context,
+      mockConfig
+    );
+
+    expect(planModule.plan).toHaveBeenCalledWith(
+      {
+        prompt: 'build feature',
+        input: ['C:\\project\\docs\\spec.md'],
+        output: 'docs/plan.md',
+        agent: 'C:\\project\\.github\\agents\\custom.agent.md',
+        verbose: true,
+      },
+      context,
+      mockConfig
+    );
+  });
+
+  it('returns original plan error and releases lock when plan phase fails', async () => {
+    const context = createMockContext({ mockConfig, cwd: 'C:\\project' });
+    vi.spyOn(planModule, 'plan').mockResolvedValueOnce({
+      success: false,
+      exitCode: 1,
+      error: 'plan failed exactly',
+    });
+
+    const result = await yolo({ prompt: 'test' }, context, mockConfig);
+
+    expect(result).toEqual({
+      success: false,
+      exitCode: 1,
+      error: 'plan failed exactly',
+    });
+    expect(lockModule.releaseLock).toHaveBeenCalled();
   });
 });
