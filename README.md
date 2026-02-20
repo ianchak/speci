@@ -359,11 +359,11 @@ Created by `speci init`. Speci discovers this file by walking up from the curren
     "permissions": "allow-all",
     "models": {
       "plan": "claude-opus-4.6",
-      "task": "claude-sonnet-4.5",
-      "refactor": "claude-sonnet-4.5",
+      "task": "claude-sonnet-4.6",
+      "refactor": "claude-sonnet-4.6",
       "impl": "gpt-5.3-codex",
-      "review": "claude-sonnet-4.5",
-      "fix": "claude-sonnet-4.5",
+      "review": "claude-sonnet-4.6",
+      "fix": "claude-sonnet-4.6",
       "tidy": "gpt-5.2"
     },
     "extraFlags": []
