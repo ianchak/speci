@@ -13,7 +13,7 @@ import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { execSync } from 'node:child_process';
 import { log } from '@/utils/logger.js';
-import type { SpeciConfig } from '@/config.js';
+import type { SpeciConfig } from '@/types.js';
 import { getAgentsTemplatePath, GITHUB_AGENTS_DIR } from '@/config.js';
 import { CONFIG_FILENAME } from '@/constants.js';
 import type { IProcess } from '@/interfaces.js';

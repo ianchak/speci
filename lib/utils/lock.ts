@@ -15,7 +15,7 @@ import {
   mkdirSync,
 } from 'node:fs';
 import { dirname } from 'node:path';
-import type { SpeciConfig } from '@/config.js';
+import type { SpeciConfig } from '@/types.js';
 import { log } from '@/utils/logger.js';
 import { createError } from '@/errors.js';
 import type { IProcess } from '@/interfaces.js';

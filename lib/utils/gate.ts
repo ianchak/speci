@@ -6,7 +6,7 @@
  */
 
 import { spawn } from 'node:child_process';
-import type { SpeciConfig } from '@/config.js';
+import type { SpeciConfig } from '@/types.js';
 import { log } from '@/utils/logger.js';
 import { getGlyph } from '@/ui/glyphs.js';
 import { colorize } from '@/ui/colors.js';

@@ -5,7 +5,7 @@
  */
 
 import { loadConfig } from '@/config.js';
-import type { SpeciConfig } from '@/config.js';
+import type { SpeciConfig } from '@/types.js';
 import type { IConfigLoader, IProcess } from '@/interfaces.js';
 
 /**

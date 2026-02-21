@@ -18,6 +18,7 @@ This document describes the module boundaries, dependencies, and responsibilitie
 **Purpose**: Central location for shared interfaces and type definitions used across the codebase.
 
 **Exports**:
+
 - `STATE` enum - Orchestration state machine values
 - `SpeciConfig` - Configuration structure
 - `TaskStats` - Task statistics
@@ -39,6 +40,7 @@ import type { SpeciConfig } from '@/config.js';
 ```
 
 **Design Rules**:
+
 - NO runtime dependencies on other lib/ modules
 - Only type definitions and enums (minimal runtime code)
 - Interfaces should be stable and change infrequently
@@ -51,6 +53,7 @@ import type { SpeciConfig } from '@/config.js';
 **Purpose**: Define interface contracts for dependency injection (filesystem, process, logger, config, etc.).
 
 **Exports**:
+
 - `IFileSystem` - Filesystem operations abstraction
 - `IProcess` - Process and environment abstraction
 - `ILogger` - Logging interface
@@ -79,6 +82,7 @@ export async function runCommand(ctx: CommandContext): Promise<CommandResult> {
 **Purpose**: Load, validate, and merge configuration from `speci.config.json`.
 
 **Responsibilities**:
+
 - Find config file by walking up directory tree
 - Parse and validate JSON
 - Merge with defaults
@@ -86,6 +90,7 @@ export async function runCommand(ctx: CommandContext): Promise<CommandResult> {
 - Resolve agent and template paths
 
 **Exports**:
+
 - `SpeciConfig` type (re-exported from `@/types.js`)
 - `loadConfig()` - Main config loading function
 - `validateConfig()` - Config validation
@@ -93,6 +98,7 @@ export async function runCommand(ctx: CommandContext): Promise<CommandResult> {
 - Various template path helpers
 
 **Dependencies**:
+
 - `@/types.js` - For `SpeciConfig` type
 - `@/interfaces.js` - For `IProcess` interface
 - `@/utils/logger.js` - For logging
@@ -108,12 +114,14 @@ export async function runCommand(ctx: CommandContext): Promise<CommandResult> {
 **Purpose**: Read and parse `PROGRESS.md` to determine orchestration state.
 
 **Responsibilities**:
+
 - Detect current state (WORK_LEFT, IN_REVIEW, BLOCKED, DONE, NO_PROGRESS)
 - Parse task statistics (total, completed, remaining, etc.)
 - Extract current task information
 - Provide state-detection patterns
 
 **Exports**:
+
 - `STATE` enum (re-exported from `@/types.js`)
 - `TaskStats` interface (re-exported from `@/types.js`)
 - `CurrentTask` interface (re-exported from `@/types.js`)
@@ -122,6 +130,7 @@ export async function runCommand(ctx: CommandContext): Promise<CommandResult> {
 - `getCurrentTask()` - Current task extraction
 
 **Dependencies**:
+
 - `@/types.js` - For `STATE`, `TaskStats`, `CurrentTask`, `SpeciConfig`
 - `node:fs/promises`, `node:fs` - For file I/O
 
@@ -134,12 +143,14 @@ export async function runCommand(ctx: CommandContext): Promise<CommandResult> {
 **Purpose**: Invoke GitHub Copilot CLI with proper argument handling and retry logic.
 
 **Responsibilities**:
+
 - Build copilot CLI arguments from config
 - Execute copilot CLI via child_process.spawn
 - Implement retry logic with exponential backoff
 - Handle stdio and process lifecycle
 
 **Exports**:
+
 - `CommandName` type (re-exported from `@/types.js`)
 - `CopilotArgsOptions` interface (re-exported from `@/types.js`)
 - `AgentRunResult` type (re-exported from `@/types.js`)
@@ -147,6 +158,7 @@ export async function runCommand(ctx: CommandContext): Promise<CommandResult> {
 - `runAgent()` - Main agent execution function
 
 **Dependencies**:
+
 - `@/types.js` - For all types
 - `@/utils/logger.js` - For logging
 - `@/constants.js` - For agent filename helpers
@@ -163,12 +175,14 @@ All command modules follow the same pattern:
 **Location**: `lib/commands/*.ts`
 
 **Responsibilities**:
+
 - Accept `CommandContext` with injected dependencies
 - Execute command logic
 - Return `CommandResult`
 - Handle initialization via `initializeCommand()` helper
 
 **Standard Dependencies**:
+
 - `@/interfaces.js` - For `CommandContext`, `CommandResult`
 - `@/adapters/context-factory.js` - For production context creation
 - `@/utils/command-helpers.js` - For shared initialization
@@ -176,12 +190,15 @@ All command modules follow the same pattern:
 - Implementation-specific modules as needed
 
 **Commands**:
+
 - `init.ts` - Project initialization
 - `plan.ts` - Generate implementation plan
 - `task.ts` - Generate task breakdown
 - `refactor.ts` - Generate refactoring plan
 - `run.ts` - Orchestration loop
 - `status.ts` - Show current status
+- `yolo.ts` - Full automated pipeline (plan → task → run)
+- `clean.ts` - Remove generated files (tasks, progress)
 
 ---
 
@@ -192,6 +209,7 @@ All command modules follow the same pattern:
 **Purpose**: Reusable functionality across commands.
 
 **Key Modules**:
+
 - `command-helpers.ts` - Shared command initialization logic
 - `gate.ts` - Quality gate execution (lint, typecheck, test)
 - `lock.ts` - Lock file management
@@ -200,6 +218,7 @@ All command modules follow the same pattern:
 - `signals.ts` - Signal handling (SIGINT, SIGTERM)
 
 **Dependencies**: Vary by module, but all should:
+
 - Import types from `@/types.js` when possible
 - Accept injected dependencies (no direct global access)
 - Be testable in isolation
@@ -213,6 +232,7 @@ All command modules follow the same pattern:
 **Purpose**: Concrete implementations of DI interfaces.
 
 **Key Modules**:
+
 - `context-factory.ts` - Create production CommandContext
 - `node-config-loader.ts` - IConfigLoader implementation
 - `node-copilot-runner.ts` - ICopilotRunner implementation
@@ -222,6 +242,7 @@ All command modules follow the same pattern:
 - `test-context.ts` - Test context factory with mocks
 
 **Dependencies**:
+
 - `@/interfaces.js` - For interface definitions
 - `@/types.js` - For type definitions
 - Implementation-specific modules (config, copilot, logger, etc.)
@@ -276,18 +297,21 @@ All command modules follow the same pattern:
 ### ✅ DO:
 
 1. Import types from `@/types.js` for commonly shared types:
+
    ```typescript
    import type { SpeciConfig, STATE } from '@/types.js';
    ```
 
 2. Import interfaces from `@/interfaces.js` for DI contracts:
+
    ```typescript
    import type { CommandContext, ILogger } from '@/interfaces.js';
    ```
 
 3. Use dependency injection in commands:
+
    ```typescript
-   export async function myCommand(ctx: CommandContext): Promise<CommandResult>
+   export async function myCommand(ctx: CommandContext): Promise<CommandResult>;
    ```
 
 4. Import implementation functions directly when needed:
@@ -298,18 +322,21 @@ All command modules follow the same pattern:
 ### ❌ DON'T:
 
 1. Import types from implementation modules:
+
    ```typescript
    // ❌ Bad - creates unnecessary coupling
    import type { SpeciConfig } from '@/config.js';
    ```
 
 2. Import implementations in commands directly:
+
    ```typescript
    // ❌ Bad - bypasses dependency injection
    import { runAgent } from '@/copilot.js';
    ```
 
 3. Create circular dependencies:
+
    ```typescript
    // ❌ Bad - A imports B, B imports A
    ```
@@ -348,24 +375,6 @@ grep -r "^import.*from.*lib/" lib/ | wc -l
 
 # After refactoring (should be lower)
 ```
-
----
-
-## Future Improvements
-
-1. **Layered Architecture**: Consider organizing into layers (Commands → Services → Core → Utils)
-2. **Plugin System**: Allow custom commands/agents via plugin interface
-3. **Event Bus**: Decouple modules further with event-driven communication
-4. **Dependency Graph Enforcement**: Add lint rules to prevent invalid imports
-
----
-
-## Related Documentation
-
-- `TASK_018_reduce_cross_module_coupling.md` - Implementation task details
-- `TASK_005_dependency_injection_interfaces.md` - DI architecture
-- `REFACTORING_PLAN.md` - Overall refactoring strategy
-- `PROGRESS.md` - Implementation progress tracking
 
 ---
 

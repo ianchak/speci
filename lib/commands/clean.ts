@@ -1,6 +1,6 @@
 import { join, resolve, sep } from 'node:path';
 import { createProductionContext } from '@/adapters/context-factory.js';
-import type { SpeciConfig } from '@/config.js';
+import type { SpeciConfig } from '@/types.js';
 import { formatError } from '@/errors.js';
 import type { CommandContext, CommandResult } from '@/interfaces.js';
 import { handleCommandError } from '@/utils/error-handler.js';

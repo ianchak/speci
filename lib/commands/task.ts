@@ -15,7 +15,7 @@ import { executeCopilotCommand } from '@/utils/copilot-helper.js';
 import { cleanFiles } from '@/commands/clean.js';
 import { PathValidator } from '@/validation/index.js';
 import type { CommandContext, CommandResult } from '@/interfaces.js';
-import type { SpeciConfig } from '@/config.js';
+import type { SpeciConfig } from '@/types.js';
 
 /**
  * Options for the task command

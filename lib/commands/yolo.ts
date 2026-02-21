@@ -1,6 +1,6 @@
 import { resolve } from 'node:path';
 import { createProductionContext } from '@/adapters/context-factory.js';
-import type { SpeciConfig } from '@/config.js';
+import type { SpeciConfig } from '@/types.js';
 import { createError } from '@/errors.js';
 import type { CommandContext, CommandResult } from '@/interfaces.js';
 import { plan } from '@/commands/plan.js';

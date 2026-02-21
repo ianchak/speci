@@ -12,7 +12,7 @@ import { getAgentFilename } from '@/constants.js';
 import { createError } from '@/errors.js';
 import { createProductionContext } from '@/adapters/context-factory.js';
 import type { CommandContext } from '@/interfaces.js';
-import type { SpeciConfig } from '@/config.js';
+import type { SpeciConfig } from '@/types.js';
 
 /**
  * Agent name type - subset of commands that use agents

@@ -10,8 +10,9 @@ import { createWriteStream, type WriteStream } from 'node:fs';
 import { join } from 'node:path';
 import { createInterface } from 'node:readline';
 import { Writable } from 'node:stream';
-import type { SpeciConfig } from '@/config.js';
-import { getState, STATE, writeFailureNotes } from '@/state.js';
+import type { SpeciConfig } from '@/types.js';
+import { STATE } from '@/types.js';
+import { getState, writeFailureNotes } from '@/state.js';
 import {
   acquireLock,
   releaseLock,
@@ -20,9 +21,8 @@ import {
 } from '@/utils/lock.js';
 import { preflight } from '@/utils/preflight.js';
 import { runGate } from '@/utils/gate.js';
-import { runAgent } from '@/copilot.js';
 import { createError } from '@/errors.js';
-import { log, closeLogFile } from '@/utils/logger.js';
+import { closeLogFile } from '@/utils/logger.js';
 import { handleCommandError } from '@/utils/error-handler.js';
 import {
   installSignalHandlers,
@@ -95,13 +95,13 @@ export async function run(
   // 4. Dry run check and pre-run confirmation
   if (options.dryRun) {
     const initialState = await getState(loadedConfig);
-    displayDryRun(initialState, loadedConfig, maxIterations);
+    displayDryRun(initialState, loadedConfig, maxIterations, context);
     return { success: true, exitCode: 0 };
   }
 
   if (!options.yes) {
     const initialState = await getState(loadedConfig);
-    const shouldProceed = await confirmRun(initialState, loadedConfig);
+    const shouldProceed = await confirmRun(initialState, loadedConfig, context);
     if (!shouldProceed) {
       return { success: false, exitCode: 0, error: 'User cancelled' };
     }
@@ -238,7 +238,11 @@ async function handleWorkLeft(
   // 1. Run impl agent
   context.logger.infoPlain('Dispatching implementation agent...\n');
   logAgent(logFile, 'impl', 'START');
-  const implResult = await runAgent(config, 'impl', 'Implementation Agent');
+  const implResult = await context.copilotRunner.run(
+    config,
+    'impl',
+    'Implementation Agent'
+  );
   logAgent(logFile, 'impl', implResult.isSuccess ? 'SUCCESS' : 'FAILED');
 
   if (!implResult.isSuccess) {
@@ -274,7 +278,11 @@ async function handleWorkLeft(
     }
 
     logAgent(logFile, 'fix', 'START', fixAttempt);
-    const fixResult = await runAgent(config, 'fix', 'Fix Agent');
+    const fixResult = await context.copilotRunner.run(
+      config,
+      'fix',
+      'Fix Agent'
+    );
     logAgent(
       logFile,
       'fix',
@@ -324,7 +332,11 @@ async function handleInReview(
 ): Promise<void> {
   context.logger.infoPlain('Dispatching review agent...\n');
   logAgent(logFile, 'review', 'START');
-  const reviewResult = await runAgent(config, 'review', 'Review Agent');
+  const reviewResult = await context.copilotRunner.run(
+    config,
+    'review',
+    'Review Agent'
+  );
   logAgent(logFile, 'review', reviewResult.isSuccess ? 'SUCCESS' : 'FAILED');
 
   if (!reviewResult.isSuccess) {
@@ -348,7 +360,11 @@ async function handleBlocked(
 ): Promise<void> {
   context.logger.infoPlain('Dispatching tidy agent to unblock tasks...\n');
   logAgent(logFile, 'tidy', 'START');
-  const tidyResult = await runAgent(config, 'tidy', 'Tidy Agent');
+  const tidyResult = await context.copilotRunner.run(
+    config,
+    'tidy',
+    'Tidy Agent'
+  );
   logAgent(logFile, 'tidy', tidyResult.isSuccess ? 'SUCCESS' : 'FAILED');
 
   if (!tidyResult.isSuccess) {
@@ -380,15 +396,17 @@ async function promptForce(): Promise<boolean> {
  *
  * @param state - Current state
  * @param loadedConfig - Speci configuration
+ * @param context - Command context for logging
  */
 async function confirmRun(
   state: STATE,
-  _config: SpeciConfig
+  _config: SpeciConfig,
+  context: CommandContext
 ): Promise<boolean> {
-  log.infoPlain(`Current state: ${state}`);
+  context.logger.infoPlain(`Current state: ${state}`);
 
   const action = getActionForState(state);
-  log.infoPlain(`Action: ${action}`);
+  context.logger.infoPlain(`Action: ${action}`);
 
   const rl = createInterface({
     input: process.stdin,
@@ -399,7 +417,7 @@ async function confirmRun(
     rl.question('\nProceed with run? [Y/n] ', (answer) => {
       rl.close();
       if (answer.toLowerCase() === 'n' || answer.toLowerCase() === 'no') {
-        log.infoPlain('Run cancelled.');
+        context.logger.infoPlain('Run cancelled.');
         resolve(false);
       } else {
         resolve(true);
@@ -435,19 +453,21 @@ function getActionForState(state: STATE): string {
  * @param state - Current state
  * @param loadedConfig - Speci configuration
  * @param maxIterations - Maximum iterations
+ * @param context - Command context for logging
  */
 function displayDryRun(
   state: STATE,
   config: SpeciConfig,
-  maxIterations: number
+  maxIterations: number,
+  context: CommandContext
 ): void {
-  log.warnPlain('\n=== DRY RUN MODE ===\n');
-  log.muted(`Current state: ${state}`);
-  log.muted(`Action: ${getActionForState(state)}`);
-  log.muted(`Max iterations: ${maxIterations}`);
-  log.muted(`Gate commands: ${config.gate.commands.join(', ')}`);
-  log.muted(`Max fix attempts: ${config.gate.maxFixAttempts}`);
-  log.warnPlain('\nNo actions will be executed.');
+  context.logger.warnPlain('\n=== DRY RUN MODE ===\n');
+  context.logger.muted(`Current state: ${state}`);
+  context.logger.muted(`Action: ${getActionForState(state)}`);
+  context.logger.muted(`Max iterations: ${maxIterations}`);
+  context.logger.muted(`Gate commands: ${config.gate.commands.join(', ')}`);
+  context.logger.muted(`Max fix attempts: ${config.gate.maxFixAttempts}`);
+  context.logger.warnPlain('\nNo actions will be executed.');
 }
 
 /**

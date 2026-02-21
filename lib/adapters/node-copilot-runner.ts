@@ -11,7 +11,7 @@ import {
   type CopilotArgsOptions,
   type AgentRunResult,
 } from '@/copilot.js';
-import type { SpeciConfig } from '@/config.js';
+import type { SpeciConfig } from '@/types.js';
 import type { ICopilotRunner } from '@/interfaces.js';
 
 /**

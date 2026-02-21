@@ -14,7 +14,7 @@ import type {
   IConfigLoader,
   ICopilotRunner,
 } from '@/interfaces.js';
-import type { SpeciConfig } from '@/config.js';
+import type { SpeciConfig } from '@/types.js';
 
 /**
  * Create a mock filesystem for testing

@@ -5,7 +5,7 @@
  * Fullscreen live dashboard that refreshes every second until user quits.
  */
 
-import type { SpeciConfig } from '@/config.js';
+import type { SpeciConfig } from '@/types.js';
 import {
   getState,
   getTaskStats,

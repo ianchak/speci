@@ -14,7 +14,7 @@ import { handleCommandError } from '@/utils/error-handler.js';
 import { executeCopilotCommand } from '@/utils/copilot-helper.js';
 import { PathValidator } from '@/validation/index.js';
 import type { CommandContext, CommandResult } from '@/interfaces.js';
-import type { SpeciConfig } from '@/config.js';
+import type { SpeciConfig } from '@/types.js';
 
 /**
  * Options for the refactor command
