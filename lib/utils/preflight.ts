@@ -13,27 +13,14 @@ import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { execSync } from 'node:child_process';
 import { log } from '@/utils/logger.js';
-import type { SpeciConfig } from '@/types.js';
-import { getAgentsTemplatePath, GITHUB_AGENTS_DIR } from '@/config.js';
-import { CONFIG_FILENAME } from '@/constants.js';
+import type { SpeciConfig, PreflightOptions } from '@/types.js';
+import { getAgentsTemplatePath } from '@/config.js';
+import { CONFIG_FILENAME, GITHUB_AGENTS_DIR } from '@/constants.js';
 import type { IProcess } from '@/interfaces.js';
 import { PathValidator } from '@/validation/index.js';
 
-/**
- * Options for customizing which preflight checks to run
- */
-export interface PreflightOptions {
-  /** Check if Copilot CLI is installed (default: true) */
-  requireCopilot?: boolean;
-  /** Check if speci.config.json exists (default: true) */
-  requireConfig?: boolean;
-  /** Check if PROGRESS.md exists (default: false) */
-  requireProgress?: boolean;
-  /** Check if in git repository (default: true) */
-  requireGit?: boolean;
-  /** Check if agent files are present and up-to-date (default: true) */
-  requireAgents?: boolean;
-}
+// Re-export for backward compatibility
+export type { PreflightOptions } from '@/types.js';
 
 /**
  * Default preflight options

@@ -6,55 +6,15 @@
  */
 
 import { spawn } from 'node:child_process';
-import type { SpeciConfig } from '@/types.js';
+import type { SpeciConfig, GateCommandResult, GateResult } from '@/types.js';
 import { log } from '@/utils/logger.js';
 import { getGlyph } from '@/ui/glyphs.js';
 import { colorize } from '@/ui/colors.js';
 
+// Re-export types for backward compatibility
+export type { GateCommandResult, GateResult } from '@/types.js';
+
 const DEFAULT_TIMEOUT = 5 * 60 * 1000; // 5 minutes
-
-/**
- * Result from a single gate command execution
- *
- * Note: This interface keeps error as a string field (not optional) because
- * gate commands always return stderr output. On success, error will be empty string.
- */
-export interface GateCommandResult {
-  command: string;
-  isSuccess: boolean;
-  exitCode: number;
-  output: string;
-  error: string;
-  duration: number;
-}
-
-/**
- * Aggregate result from all gate commands
- *
- * This is a discriminated union type that uses the `isSuccess` property as the discriminator.
- * When `isSuccess` is `true`, all commands passed and there is no error.
- * When `isSuccess` is `false`, at least one command failed and `error` contains the first failure message.
- *
- * @example
- * ```typescript
- * const result = await runGate(config);
- * if (result.isSuccess) {
- *   // TypeScript knows error doesn't exist
- *   console.log('All gates passed!');
- * } else {
- *   // TypeScript knows error exists (no optional chaining needed)
- *   console.error(result.error);
- * }
- * ```
- */
-export type GateResult =
-  | { isSuccess: true; results: GateCommandResult[]; totalDuration: number }
-  | {
-      isSuccess: false;
-      results: GateCommandResult[];
-      error: string;
-      totalDuration: number;
-    };
 
 /**
  * Execute a single gate command

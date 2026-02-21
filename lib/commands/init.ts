@@ -10,10 +10,9 @@ import {
   getDefaults,
   getAgentsTemplatePath,
   getConfigTemplatePath,
-  GITHUB_AGENTS_DIR,
-  type SpeciConfig,
 } from '@/config.js';
-import { CONFIG_FILENAME } from '@/constants.js';
+import type { SpeciConfig } from '@/types.js';
+import { CONFIG_FILENAME, GITHUB_AGENTS_DIR } from '@/constants.js';
 import { createError } from '@/errors.js';
 import { createProductionContext } from '@/adapters/context-factory.js';
 import { handleCommandError } from '@/utils/error-handler.js';

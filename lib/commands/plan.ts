@@ -38,11 +38,13 @@ export interface PlanOptions {
  * @param agentPath - Path to agent being used
  * @param outputPath - Output path or 'stdout'
  * @param inputFiles - Array of input file paths
+ * @param context - Command context for output
  */
 function displayCommandInfo(
   agentPath: string,
   outputPath: string,
-  inputFiles?: string[]
+  inputFiles: string[] | undefined,
+  context: CommandContext
 ): void {
   const content = [
     colorize('Agent:', 'sky400') + ` ${agentPath}`,
@@ -53,10 +55,10 @@ function displayCommandInfo(
     content.push(colorize('Input:', 'sky400') + ` ${inputFiles.join(', ')}`);
   }
   // Raw output to preserve box formatting
-  console.log(
+  context.logger.raw(
     drawBox(content, { title: 'Plan Generation', borderColor: 'sky500' })
   );
-  console.log(); // Empty line for spacing
+  context.logger.raw(''); // Empty line for spacing
 }
 
 /**
@@ -162,17 +164,18 @@ export async function plan(
     displayCommandInfo(
       `${agentName}.agent.md`,
       options.output || 'stdout',
-      inputFiles
+      inputFiles,
+      context
     );
 
     // Display the initial prompt being sent
-    console.log(colorize('─'.repeat(60), 'dim'));
-    console.log(colorize('Initial prompt:', 'sky400'));
-    console.log();
-    console.log(fullPrompt);
-    console.log();
-    console.log(colorize('─'.repeat(60), 'dim'));
-    console.log();
+    context.logger.raw(colorize('─'.repeat(60), 'dim'));
+    context.logger.raw(colorize('Initial prompt:', 'sky400'));
+    context.logger.raw('');
+    context.logger.raw(fullPrompt);
+    context.logger.raw('');
+    context.logger.raw(colorize('─'.repeat(60), 'dim'));
+    context.logger.raw('');
 
     // Build Copilot args - one-shot mode with prompt
     const args = context.copilotRunner.buildArgs(loadedConfig, {

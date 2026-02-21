@@ -11,6 +11,11 @@ import { NodeProcess } from './node-process.js';
 import { NodeLogger } from './node-logger.js';
 import { NodeConfigLoader } from './node-config-loader.js';
 import { NodeCopilotRunner } from './node-copilot-runner.js';
+import { NodeStateReader } from './node-state-reader.js';
+import { NodeLockManager } from './node-lock-manager.js';
+import { NodeGateRunner } from './node-gate-runner.js';
+import { NodePreflight } from './node-preflight.js';
+import { NodeSignalManager } from './node-signal-manager.js';
 import type { CommandContext } from '@/interfaces.js';
 
 /**
@@ -27,5 +32,10 @@ export function createProductionContext(): CommandContext {
     logger: new NodeLogger(nodeProcess),
     configLoader: new NodeConfigLoader(nodeProcess),
     copilotRunner: new NodeCopilotRunner(),
+    stateReader: new NodeStateReader(),
+    lockManager: new NodeLockManager(),
+    gateRunner: new NodeGateRunner(),
+    preflight: new NodePreflight(),
+    signalManager: new NodeSignalManager(),
   };
 }

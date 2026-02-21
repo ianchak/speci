@@ -2,7 +2,7 @@
  * Config validator for configuration validation
  */
 
-import type { SpeciConfig } from '../types.js';
+import type { SpeciConfig } from '@/types.js';
 import type { ValidationResult, ValidationError } from './types.js';
 
 /**

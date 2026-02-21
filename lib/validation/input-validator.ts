@@ -4,7 +4,7 @@
 
 import { resolve } from 'node:path';
 import type { ValidationResult, ValidationError } from './types.js';
-import type { IFileSystem } from '../interfaces.js';
+import type { IFileSystem } from '@/interfaces.js';
 
 /**
  * InputValidator - Validates command input (prompts, files, required fields)

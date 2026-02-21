@@ -15,42 +15,13 @@ import {
   mkdirSync,
 } from 'node:fs';
 import { dirname } from 'node:path';
-import type { SpeciConfig } from '@/types.js';
+import type { SpeciConfig, LockFileData, LockInfo } from '@/types.js';
 import { log } from '@/utils/logger.js';
 import { createError } from '@/errors.js';
 import type { IProcess } from '@/interfaces.js';
 
-/**
- * Lock file data structure (JSON format)
- */
-export interface LockFileData {
-  version: string;
-  pid: number;
-  started: string; // ISO 8601 timestamp
-  command: string;
-  metadata?: {
-    iteration?: number;
-    taskId?: string;
-    state?: string;
-  };
-}
-
-/**
- * Lock information interface
- */
-export interface LockInfo {
-  isLocked: boolean;
-  started: Date | null;
-  pid: number | null;
-  elapsed: string | null;
-  command?: string;
-  isStale?: boolean;
-  metadata?: {
-    iteration?: number;
-    taskId?: string;
-    state?: string;
-  };
-}
+// Re-export types for backward compatibility
+export type { LockFileData, LockInfo } from '@/types.js';
 
 /**
  * Check if a process is running

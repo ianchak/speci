@@ -13,8 +13,15 @@ import type {
   ILogger,
   IConfigLoader,
   ICopilotRunner,
+  IStateReader,
+  ILockManager,
+  IGateRunner,
+  IPreflight,
+  ISignalManager,
 } from '@/interfaces.js';
 import type { SpeciConfig } from '@/types.js';
+import { STATE } from '@/types.js';
+import { DEFAULT_PATHS } from '@/constants.js';
 
 /**
  * Create a mock filesystem for testing
@@ -101,10 +108,10 @@ export function createMockConfigLoader(
   const defaultConfig: SpeciConfig = {
     version: '1.0.0',
     paths: {
-      progress: 'docs/PROGRESS.md',
-      tasks: 'docs/tasks',
-      logs: '.speci-logs',
-      lock: '.speci-lock',
+      progress: DEFAULT_PATHS.PROGRESS,
+      tasks: DEFAULT_PATHS.TASKS,
+      logs: DEFAULT_PATHS.LOGS,
+      lock: DEFAULT_PATHS.LOCK,
     },
     copilot: {
       permissions: 'allow-all',
@@ -147,6 +154,86 @@ export function createMockCopilotRunner(): ICopilotRunner {
 }
 
 /**
+ * Create a mock state reader for testing
+ *
+ * @returns Mock IStateReader with Vitest spy methods
+ */
+export function createMockStateReader(): IStateReader {
+  return {
+    getState: vi.fn(async () => STATE.NO_PROGRESS),
+    getTaskStats: vi.fn(async () => ({
+      total: 0,
+      completed: 0,
+      remaining: 0,
+      inReview: 0,
+      blocked: 0,
+    })),
+    getCurrentTask: vi.fn(async () => undefined),
+    writeFailureNotes: vi.fn(async () => {}),
+  };
+}
+
+/**
+ * Create a mock lock manager for testing
+ *
+ * @returns Mock ILockManager with Vitest spy methods
+ */
+export function createMockLockManager(): ILockManager {
+  return {
+    acquire: vi.fn(async () => {}),
+    release: vi.fn(async () => {}),
+    isLocked: vi.fn(async () => false),
+    getInfo: vi.fn(async () => ({
+      isLocked: false,
+      started: null,
+      pid: null,
+      elapsed: null,
+    })),
+  };
+}
+
+/**
+ * Create a mock gate runner for testing
+ *
+ * @returns Mock IGateRunner with Vitest spy methods
+ */
+export function createMockGateRunner(): IGateRunner {
+  return {
+    run: vi.fn(async () => ({
+      isSuccess: true as const,
+      results: [],
+      totalDuration: 0,
+    })),
+    canRetry: vi.fn(() => true),
+  };
+}
+
+/**
+ * Create a mock preflight checker for testing
+ *
+ * @returns Mock IPreflight with Vitest spy methods
+ */
+export function createMockPreflight(): IPreflight {
+  return {
+    run: vi.fn(async () => {}),
+  };
+}
+
+/**
+ * Create a mock signal manager for testing
+ *
+ * @returns Mock ISignalManager with Vitest spy methods
+ */
+export function createMockSignalManager(): ISignalManager {
+  return {
+    install: vi.fn(),
+    remove: vi.fn(),
+    registerCleanup: vi.fn(),
+    unregisterCleanup: vi.fn(),
+  };
+}
+
+/**
  * Options for creating a mock context
  */
 export interface MockContextOptions {
@@ -160,6 +247,16 @@ export interface MockContextOptions {
   configLoader?: IConfigLoader;
   /** Mock copilot runner to use */
   copilotRunner?: ICopilotRunner;
+  /** Mock state reader to use */
+  stateReader?: IStateReader;
+  /** Mock lock manager to use */
+  lockManager?: ILockManager;
+  /** Mock gate runner to use */
+  gateRunner?: IGateRunner;
+  /** Mock preflight checker to use */
+  preflight?: IPreflight;
+  /** Mock signal manager to use */
+  signalManager?: ISignalManager;
   /** Config to return from config loader */
   mockConfig?: Partial<SpeciConfig>;
   /** Current working directory for mock process */
@@ -187,5 +284,10 @@ export function createMockContext(
     configLoader:
       options.configLoader || createMockConfigLoader(options.mockConfig),
     copilotRunner: options.copilotRunner || createMockCopilotRunner(),
+    stateReader: options.stateReader || createMockStateReader(),
+    lockManager: options.lockManager || createMockLockManager(),
+    gateRunner: options.gateRunner || createMockGateRunner(),
+    preflight: options.preflight || createMockPreflight(),
+    signalManager: options.signalManager || createMockSignalManager(),
   };
 }

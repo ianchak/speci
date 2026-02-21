@@ -2,7 +2,7 @@
  * Error handling utilities for command error handling
  */
 
-import type { ILogger } from '../interfaces.js';
+import type { ILogger } from '@/interfaces.js';
 
 /**
  * Command execution result with error

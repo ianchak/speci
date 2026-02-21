@@ -3,6 +3,7 @@ import { Command } from 'commander';
 import type { EventEmitter } from 'node:events';
 import type { CommandContext } from '../lib/interfaces.js';
 import type { SpeciConfig } from '../lib/types.js';
+import { createMockContext } from '../lib/adapters/test-context.js';
 
 describe('CommandRegistry', () => {
   let mockContext: CommandContext;
@@ -10,42 +11,6 @@ describe('CommandRegistry', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-
-    // Create minimal mock context
-    mockContext = {
-      logger: {
-        info: vi.fn(),
-        infoPlain: vi.fn(),
-        warnPlain: vi.fn(),
-        errorPlain: vi.fn(),
-        successPlain: vi.fn(),
-        warn: vi.fn(),
-        error: vi.fn(),
-        success: vi.fn(),
-        debug: vi.fn(),
-        raw: vi.fn(),
-        setVerbose: vi.fn(),
-      },
-      configLoader: {
-        load: vi.fn(),
-      },
-      fileSystem: {
-        exists: vi.fn(),
-        read: vi.fn(),
-        write: vi.fn(),
-        mkdir: vi.fn(),
-        readdir: vi.fn(),
-      },
-      process: {
-        exit: vi.fn(),
-        cwd: vi.fn().mockReturnValue('/test/dir'),
-        env: {},
-        argv: ['node', 'speci'],
-        platform: 'linux',
-        stdout: { isTTY: true },
-        stderr: { isTTY: true },
-      },
-    } as unknown as CommandContext;
 
     // Create minimal mock config
     mockConfig = {
@@ -77,6 +42,17 @@ describe('CommandRegistry', () => {
         maxIterations: 10,
       },
     };
+
+    mockContext = createMockContext({
+      mockConfig: mockConfig,
+      cwd: '/test/dir',
+    });
+
+    // Override copilotRunner to match test expectations
+    vi.mocked(mockContext.copilotRunner.run).mockResolvedValue({
+      isSuccess: true,
+      exitCode: 0,
+    });
   });
 
   afterEach(() => {

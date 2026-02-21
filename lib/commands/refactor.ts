@@ -118,7 +118,7 @@ export async function refactor(
     });
 
     // Display command info
-    console.log(
+    context.logger.raw(
       infoBox('Refactor Analysis', {
         Scope: scopePath || 'Entire project',
         Agent: `${agentName}.agent.md`,
@@ -126,7 +126,7 @@ export async function refactor(
         Output: options.output || 'stdout',
       })
     );
-    console.log();
+    context.logger.raw('');
 
     // Build prompt with scope context if provided
     let prompt =

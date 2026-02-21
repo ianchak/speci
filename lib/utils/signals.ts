@@ -7,13 +7,11 @@
  */
 
 import { log } from '@/utils/logger.js';
+import { EXIT_CODE } from '@/constants.js';
+import type { CleanupFn } from '@/types.js';
 
-/**
- * Cleanup function type - sync or async
- */
-export interface CleanupFn {
-  (): Promise<void> | void;
-}
+// Re-export for backward compatibility
+export type { CleanupFn } from '@/types.js';
 
 /**
  * Internal state
@@ -140,21 +138,21 @@ function handleSigint(): void {
   if (signalReceived) {
     // Second Ctrl+C - force exit
     log.errorPlain('\nForce exiting...');
-    process.exit(130);
+    process.exit(EXIT_CODE.SIGINT);
   }
 
   signalReceived = true;
   log.infoPlain('\nInterrupted. Cleaning up...');
 
   runCleanup()
-    .then(() => process.exit(130))
+    .then(() => process.exit(EXIT_CODE.SIGINT))
     .catch((err) => {
       const errorMessage = err instanceof Error ? err.message : String(err);
       log.error(`Cleanup failed during signal handler: ${errorMessage}`);
       if (err instanceof Error && err.stack) {
         log.error(`Stack trace: ${err.stack}`);
       }
-      process.exit(130);
+      process.exit(EXIT_CODE.SIGINT);
     });
 }
 
@@ -167,14 +165,14 @@ function handleSigterm(): void {
   log.infoPlain('\nReceived SIGTERM. Shutting down gracefully...');
 
   runCleanup()
-    .then(() => process.exit(143))
+    .then(() => process.exit(EXIT_CODE.SIGTERM))
     .catch((err) => {
       const errorMessage = err instanceof Error ? err.message : String(err);
       log.error(`Cleanup failed during signal handler: ${errorMessage}`);
       if (err instanceof Error && err.stack) {
         log.error(`Stack trace: ${err.stack}`);
       }
-      process.exit(143);
+      process.exit(EXIT_CODE.SIGTERM);
     });
 }
 

@@ -7,14 +7,6 @@ import { plan } from '@/commands/plan.js';
 import { task } from '@/commands/task.js';
 import { run } from '@/commands/run.js';
 import { handleCommandError } from '@/utils/error-handler.js';
-import { acquireLock, getLockInfo, releaseLock } from '@/utils/lock.js';
-import { preflight } from '@/utils/preflight.js';
-import {
-  installSignalHandlers,
-  registerCleanup,
-  removeSignalHandlers,
-  unregisterCleanup,
-} from '@/utils/signals.js';
 import { PathValidator } from '@/validation/index.js';
 
 /**
@@ -59,8 +51,11 @@ function generatePlanOutputPath(): string {
   return `docs/plan-${ts}_implementation_plan.md`;
 }
 
-async function formatLockConflictError(config: SpeciConfig): Promise<string> {
-  const lockInfo = await getLockInfo(config);
+async function formatLockConflictError(
+  config: SpeciConfig,
+  context: CommandContext
+): Promise<string> {
+  const lockInfo = await context.lockManager.getInfo(config);
   const pid =
     typeof lockInfo.pid === 'number' && Number.isInteger(lockInfo.pid)
       ? lockInfo.pid
@@ -106,7 +101,7 @@ export async function yolo(
     };
   }
 
-  await preflight(
+  await context.preflight.run(
     loadedConfig,
     {
       requireCopilot: true,
@@ -117,14 +112,14 @@ export async function yolo(
   );
 
   const lockCleanup = async () => {
-    await releaseLock(loadedConfig);
+    await context.lockManager.release(loadedConfig);
   };
-  registerCleanup(lockCleanup);
-  installSignalHandlers();
+  context.signalManager.registerCleanup(lockCleanup);
+  context.signalManager.install();
 
   try {
     try {
-      await acquireLock(loadedConfig, context.process, 'yolo', {
+      await context.lockManager.acquire(loadedConfig, context.process, 'yolo', {
         state: 'yolo:pipeline',
         iteration: 0,
       });
@@ -137,12 +132,12 @@ export async function yolo(
         return {
           success: false,
           exitCode: 1,
-          error: await formatLockConflictError(loadedConfig),
+          error: await formatLockConflictError(loadedConfig, context),
         };
       }
 
-      await releaseLock(loadedConfig);
-      await acquireLock(loadedConfig, context.process, 'yolo', {
+      await context.lockManager.release(loadedConfig);
+      await context.lockManager.acquire(loadedConfig, context.process, 'yolo', {
         state: 'yolo:pipeline',
         iteration: 0,
       });
@@ -220,13 +215,13 @@ export async function yolo(
     return handleCommandError(error, 'Yolo', context.logger);
   } finally {
     try {
-      await releaseLock(loadedConfig);
+      await context.lockManager.release(loadedConfig);
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       context.logger.warn(`Failed to release lock file: ${message}`);
     }
-    unregisterCleanup(lockCleanup);
-    removeSignalHandlers();
+    context.signalManager.unregisterCleanup(lockCleanup);
+    context.signalManager.remove();
   }
 }
 

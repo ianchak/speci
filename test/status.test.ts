@@ -16,7 +16,8 @@ import type { StatusOptions } from '../lib/commands/status.js';
 import { createMockContext } from '../lib/adapters/test-context.js';
 import type { CommandContext } from '../lib/interfaces.js';
 import type { SpeciConfig } from '../lib/config.js';
-import { resetStateCache } from '../lib/state.js';
+import { resetStateCache, getState, getTaskStats, getCurrentTask } from '../lib/state.js';
+import { getLockInfo } from '../lib/utils/lock.js';
 
 const TEST_DIR = join(process.cwd(), 'test', 'fixtures', 'status');
 const TEST_PROGRESS = join(TEST_DIR, 'PROGRESS.md');
@@ -103,6 +104,26 @@ beforeEach(() => {
       writeFile: vi.fn(async () => {}),
     },
   });
+
+  // Wire up logger.raw to capture output (replaces console.log spy for DI)
+  vi.mocked(mockContext.logger.raw).mockImplementation((...args: unknown[]) => {
+    consoleOutput.push(args.map(String).join(' '));
+  });
+
+  // Wire up stateReader and lockManager to delegate to real implementations
+  // These integration tests write real files to disk and expect real parsing
+  vi.mocked(mockContext.stateReader.getState).mockImplementation(
+    async (config) => getState(config)
+  );
+  vi.mocked(mockContext.stateReader.getTaskStats).mockImplementation(
+    async (config) => getTaskStats(config)
+  );
+  vi.mocked(mockContext.stateReader.getCurrentTask).mockImplementation(
+    async (config) => getCurrentTask(config)
+  );
+  vi.mocked(mockContext.lockManager.getInfo).mockImplementation(
+    async (config) => getLockInfo(config)
+  );
 });
 
 afterEach(() => {

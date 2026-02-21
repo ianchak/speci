@@ -78,4 +78,31 @@ export const EXIT_CODE = {
   SUCCESS: 0,
   /** Error during execution */
   ERROR: 1,
+  /** Interrupted by SIGINT (128 + 2) */
+  SIGINT: 130,
+  /** Terminated by SIGTERM (128 + 15) */
+  SIGTERM: 143,
 } as const;
+
+// ============================================================================
+// Default Paths
+// ============================================================================
+
+/**
+ * Default file and directory paths used by Speci
+ */
+export const DEFAULT_PATHS = {
+  /** Default PROGRESS.md location */
+  PROGRESS: 'docs/PROGRESS.md',
+  /** Default tasks directory */
+  TASKS: 'docs/tasks',
+  /** Default logs directory */
+  LOGS: '.speci-logs',
+  /** Default lock file path */
+  LOCK: '.speci-lock',
+} as const;
+
+/**
+ * GitHub agents directory path
+ */
+export const GITHUB_AGENTS_DIR = '.github/agents';

@@ -5,8 +5,8 @@
  * Extracted from bin/speci.ts to improve separation of concerns.
  */
 
-import { renderBanner } from '../ui/banner.js';
-import { animateBanner, shouldAnimate } from '../ui/banner-animation/index.js';
+import { renderBanner } from '@/ui/banner.js';
+import { animateBanner, shouldAnimate } from '@/ui/banner-animation/index.js';
 
 /**
  * Display the static (non-animated) banner

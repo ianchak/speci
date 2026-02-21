@@ -6,21 +6,21 @@
  */
 
 import { Command } from 'commander';
-import { VERSION } from '../ui/banner.js';
-import { init } from '../commands/init.js';
-import { plan } from '../commands/plan.js';
-import { task } from '../commands/task.js';
-import { refactor } from '../commands/refactor.js';
-import { run } from '../commands/run.js';
-import { yolo } from '../commands/yolo.js';
-import { status } from '../commands/status.js';
-import { clean } from '../commands/clean.js';
-import { findSimilarCommands } from '../utils/suggest.js';
-import { debug, log } from '../utils/logger.js';
-import { exitWithCleanup } from '../utils/exit.js';
-import { PreflightError } from '../utils/preflight.js';
-import type { CommandContext } from '../interfaces.js';
-import type { SpeciConfig } from '../types.js';
+import { VERSION } from '@/ui/banner.js';
+import { init } from '@/commands/init.js';
+import { plan } from '@/commands/plan.js';
+import { task } from '@/commands/task.js';
+import { refactor } from '@/commands/refactor.js';
+import { run } from '@/commands/run.js';
+import { yolo } from '@/commands/yolo.js';
+import { status } from '@/commands/status.js';
+import { clean } from '@/commands/clean.js';
+import { findSimilarCommands } from '@/utils/suggest.js';
+import { debug, log } from '@/utils/logger.js';
+import { exitWithCleanup } from '@/utils/exit.js';
+import { PreflightError } from '@/utils/preflight.js';
+import type { CommandContext } from '@/interfaces.js';
+import type { SpeciConfig } from '@/types.js';
 
 export const AVAILABLE_COMMANDS = [
   'init',

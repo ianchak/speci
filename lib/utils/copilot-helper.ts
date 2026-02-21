@@ -4,8 +4,7 @@
  * Centralized copilot invocation pattern used by plan, task, and refactor commands.
  */
 
-import type { CommandResult } from '../interfaces.js';
-import type { CommandContext } from '../interfaces.js';
+import type { CommandResult, CommandContext } from '@/interfaces.js';
 import {
   formatCopilotCommand,
   renderCopilotCommandBox,

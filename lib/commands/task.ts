@@ -119,14 +119,14 @@ export async function task(
     // Display command info
     const displayPlanPath =
       relative(context.process.cwd(), planPath) || planPath;
-    console.log(
+    context.logger.raw(
       infoBox('Task Generation', {
         Plan: displayPlanPath,
         Agent: `${agentName}.agent.md`,
         Mode: 'One-shot',
       })
     );
-    console.log();
+    context.logger.raw('');
 
     // Build Copilot args for one-shot mode with plan context
     const args = context.copilotRunner.buildArgs(loadedConfig, {

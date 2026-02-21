@@ -155,3 +155,135 @@ export interface CopilotArgsOptions {
 export type AgentRunResult =
   | { isSuccess: true; exitCode: 0 }
   | { isSuccess: false; exitCode: number; error: string };
+
+// ============================================================================
+// Gate Types
+// ============================================================================
+
+/**
+ * Result from a single gate command execution
+ *
+ * Note: This interface keeps error as a string field (not optional) because
+ * gate commands always return stderr output. On success, error will be empty string.
+ */
+export interface GateCommandResult {
+  command: string;
+  isSuccess: boolean;
+  exitCode: number;
+  output: string;
+  error: string;
+  duration: number;
+}
+
+/**
+ * Aggregate result from all gate commands
+ *
+ * Discriminated union using `isSuccess` as discriminator.
+ * When `isSuccess` is `true`, all commands passed and there is no error.
+ * When `isSuccess` is `false`, at least one command failed and `error` contains the first failure message.
+ */
+export type GateResult =
+  | { isSuccess: true; results: GateCommandResult[]; totalDuration: number }
+  | {
+      isSuccess: false;
+      results: GateCommandResult[];
+      error: string;
+      totalDuration: number;
+    };
+
+/**
+ * Minimal gate failure info needed to populate the For Fix Agent section.
+ *
+ * Intentionally narrow — avoids coupling state module to the full GateResult
+ * discriminated union from the gate module.
+ */
+export interface GateFailureInfo {
+  results: ReadonlyArray<{
+    command: string;
+    isSuccess: boolean;
+    exitCode: number;
+    error: string;
+  }>;
+  error: string;
+}
+
+// ============================================================================
+// Lock Types
+// ============================================================================
+
+/**
+ * Lock file data structure (JSON format)
+ */
+export interface LockFileData {
+  version: string;
+  pid: number;
+  started: string; // ISO 8601 timestamp
+  command: string;
+  metadata?: {
+    iteration?: number;
+    taskId?: string;
+    state?: string;
+  };
+}
+
+/**
+ * Lock information interface
+ */
+export interface LockInfo {
+  isLocked: boolean;
+  started: Date | null;
+  pid: number | null;
+  elapsed: string | null;
+  command?: string;
+  isStale?: boolean;
+  metadata?: {
+    iteration?: number;
+    taskId?: string;
+    state?: string;
+  };
+}
+
+// ============================================================================
+// Preflight Types
+// ============================================================================
+
+/**
+ * Options for customizing which preflight checks to run
+ */
+export interface PreflightOptions {
+  /** Check if Copilot CLI is installed (default: true) */
+  requireCopilot?: boolean;
+  /** Check if speci.config.json exists (default: true) */
+  requireConfig?: boolean;
+  /** Check if PROGRESS.md exists (default: false) */
+  requireProgress?: boolean;
+  /** Check if in git repository (default: true) */
+  requireGit?: boolean;
+  /** Check if agent files are present and up-to-date (default: true) */
+  requireAgents?: boolean;
+}
+
+// ============================================================================
+// State Types
+// ============================================================================
+
+/**
+ * Options for state functions
+ */
+export interface StateOptions {
+  /** Force cache bypass and read file */
+  forceRefresh?: boolean;
+  /** Cache TTL in milliseconds (default: 200ms) */
+  ttl?: number;
+}
+
+// ============================================================================
+// Signal Types
+// ============================================================================
+
+/**
+ * Cleanup function type — sync or async
+ */
+export interface CleanupFn {
+  (): Promise<void> | void;
+}

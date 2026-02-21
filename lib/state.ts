@@ -10,29 +10,18 @@
 
 import { readFile, writeFile } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
-import type { SpeciConfig, TaskStats, CurrentTask } from '@/types.js';
+import type {
+  SpeciConfig,
+  TaskStats,
+  CurrentTask,
+  GateFailureInfo,
+} from '@/types.js';
 import { STATE } from '@/types.js';
 import { log } from '@/utils/logger.js';
 
 // Re-export types for backward compatibility
 export { STATE } from '@/types.js';
-export type { TaskStats, CurrentTask } from '@/types.js';
-
-/**
- * Minimal gate failure info needed to populate the For Fix Agent section.
- *
- * Intentionally narrow — avoids coupling state module to the full GateResult
- * discriminated union from the gate module.
- */
-export interface GateFailureInfo {
-  results: ReadonlyArray<{
-    command: string;
-    isSuccess: boolean;
-    exitCode: number;
-    error: string;
-  }>;
-  error: string;
-}
+export type { TaskStats, CurrentTask, GateFailureInfo } from '@/types.js';
 
 /**
  * Cache entry for state file content
@@ -46,12 +35,8 @@ interface StateFileCache {
 /**
  * Options for state functions
  */
-export interface StateOptions {
-  /** Force cache bypass and read file */
-  forceRefresh?: boolean;
-  /** Cache TTL in milliseconds (default: 200ms) */
-  ttl?: number;
-}
+import type { StateOptions } from '@/types.js';
+export type { StateOptions } from '@/types.js';
 
 // Module-level cache for state file reads
 let stateFileCache: StateFileCache | null = null;

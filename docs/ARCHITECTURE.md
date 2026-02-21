@@ -26,6 +26,14 @@ This document describes the module boundaries, dependencies, and responsibilitie
 - `CommandName` - Valid command/agent names
 - `CopilotArgsOptions` - Copilot CLI argument options
 - `AgentRunResult` - Agent execution result (discriminated union)
+- `GateCommandResult` - Single gate command result
+- `GateResult` - Aggregate gate result (discriminated union)
+- `GateFailureInfo` - Narrow failure info for fix agent
+- `LockFileData` - Lock file JSON structure
+- `LockInfo` - Lock status information
+- `PreflightOptions` - Preflight check options
+- `StateOptions` - State function cache options
+- `CleanupFn` - Signal cleanup function type
 
 **Dependencies**: NONE (pure types module)
 
@@ -59,10 +67,15 @@ import type { SpeciConfig } from '@/config.js';
 - `ILogger` - Logging interface
 - `IConfigLoader` - Configuration loading interface
 - `ICopilotRunner` - Copilot CLI execution interface
+- `IStateReader` - PROGRESS.md state parsing abstraction
+- `ILockManager` - Lock file operations abstraction
+- `IGateRunner` - Quality gate execution abstraction
+- `IPreflight` - Pre-execution validation abstraction
+- `ISignalManager` - Signal handling abstraction
 - `CommandContext` - Dependency injection context for commands
 - `CommandResult` - Standard command result shape
 
-**Dependencies**: `@/types.js` (for `SpeciConfig`, `AgentRunResult`, `CopilotArgsOptions`)
+**Dependencies**: `@/types.js` (for `SpeciConfig`, `AgentRunResult`, `CopilotArgsOptions`, `STATE`, `TaskStats`, `CurrentTask`, `GateResult`, `GateFailureInfo`, `LockInfo`, `PreflightOptions`, `StateOptions`, `CleanupFn`)
 
 **Usage**: All commands receive a `CommandContext` with injected dependencies.
 
@@ -239,6 +252,11 @@ All command modules follow the same pattern:
 - `node-filesystem.ts` - IFileSystem implementation
 - `node-logger.ts` - ILogger implementation
 - `node-process.ts` - IProcess implementation
+- `node-state-reader.ts` - IStateReader implementation
+- `node-lock-manager.ts` - ILockManager implementation
+- `node-gate-runner.ts` - IGateRunner implementation
+- `node-preflight.ts` - IPreflight implementation
+- `node-signal-manager.ts` - ISignalManager implementation
 - `test-context.ts` - Test context factory with mocks
 
 **Dependencies**:
@@ -272,7 +290,8 @@ All command modules follow the same pattern:
          │                                           │
 ┌────────┴───────────────────────────────────────────┴─────────┐
 │                     lib/interfaces.ts                        │
-│         (DI interfaces: IConfigLoader, ICopilotRunner)       │
+│   (DI: IConfigLoader, ICopilotRunner, IStateReader,          │
+│    ILockManager, IGateRunner, IPreflight, ISignalManager)    │
 └────────────────────────────────▲─────────────────────────────┘
                                  │
                                  │ implement
@@ -349,34 +368,4 @@ All command modules follow the same pattern:
 
 ---
 
-## Verification Tools
-
-### Check for Circular Dependencies
-
-```bash
-npx madge --circular --extensions ts lib/
-```
-
-Should output: `✔ No circular dependency found!`
-
-### Visualize Dependency Graph
-
-```bash
-npx madge --image graph.png lib/
-```
-
-Generates a visual dependency diagram.
-
-### Count Import Edges
-
-```bash
-# Before refactoring
-grep -r "^import.*from.*lib/" lib/ | wc -l
-
-# After refactoring (should be lower)
-```
-
----
-
-_Last Updated: 2026-02-08_
-_Related Task: TASK_018_
+_Last Updated: 2026-02-21_

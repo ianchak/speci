@@ -5,14 +5,7 @@
  * Fullscreen live dashboard that refreshes every second until user quits.
  */
 
-import type { SpeciConfig } from '@/types.js';
-import {
-  getState,
-  getTaskStats,
-  getCurrentTask,
-  type CurrentTask,
-} from '@/state.js';
-import { getLockInfo } from '@/utils/lock.js';
+import type { SpeciConfig, CurrentTask } from '@/types.js';
 import { BANNER_ART, VERSION } from '@/ui/banner.js';
 import { colorize } from '@/ui/colors.js';
 import { getGlyph } from '@/ui/glyphs.js';
@@ -74,16 +67,17 @@ export async function status(
     // JSON mode: single output and exit
     if (options.json) {
       const loadedConfig = config ?? (await context.configLoader.load());
-      const statusData = await gatherStatusData(loadedConfig);
-      console.log(JSON.stringify(statusData, null, 2));
+      const statusData = await gatherStatusData(loadedConfig, context);
+      context.logger.raw(JSON.stringify(statusData, null, 2));
       return { success: true, exitCode: 0 };
     }
 
     // Once mode or non-TTY: single render and exit
     if (options.once || !context.process.stdout.isTTY) {
       const loadedConfig = config ?? (await context.configLoader.load());
-      const statusData = await gatherStatusData(loadedConfig);
-      renderStaticStatus(statusData, options.verbose);
+      const statusData = await gatherStatusData(loadedConfig, context);
+      const output: OutputFn = (msg?: string) => context.logger.raw(msg ?? '');
+      renderStaticStatus(statusData, options.verbose, output);
       return { success: true, exitCode: 0 };
     }
 
@@ -113,14 +107,18 @@ export async function status(
 /**
  * Gather status data from all sources
  * @param config - Loaded configuration
+ * @param context - Command context for DI access
  * @returns Status data object
  */
-async function gatherStatusData(config: SpeciConfig): Promise<StatusData> {
+async function gatherStatusData(
+  config: SpeciConfig,
+  context: CommandContext
+): Promise<StatusData> {
   const [state, rawStats, lockInfo, currentTask] = await Promise.all([
-    getState(config),
-    getTaskStats(config),
-    getLockInfo(config),
-    getCurrentTask(config),
+    context.stateReader.getState(config),
+    context.stateReader.getTaskStats(config),
+    context.lockManager.getInfo(config),
+    context.stateReader.getCurrentTask(config),
   ]);
 
   return {
@@ -144,25 +142,35 @@ async function gatherStatusData(config: SpeciConfig): Promise<StatusData> {
 }
 
 /**
+ * Output function type for rendering
+ */
+type OutputFn = (message?: string) => void;
+
+/**
  * Render static status display (for once mode)
  * @param data - Status data to display
  * @param verbose - Show timing info
+ * @param output - Output function (defaults to console.log)
  */
-function renderStaticStatus(data: StatusData, verbose?: boolean): void {
+function renderStaticStatus(
+  data: StatusData,
+  verbose?: boolean,
+  output: OutputFn = console.log
+): void {
   const startTime = Date.now();
 
   // Simple banner
   for (const line of BANNER_ART) {
-    console.log(colorize(line, 'sky400'));
+    output(colorize(line, 'sky400'));
   }
-  console.log(colorize(`  v${VERSION}`, 'dim'));
-  console.log();
+  output(colorize(`  v${VERSION}`, 'dim'));
+  output();
 
-  renderStatusContent(data);
+  renderStatusContent(data, output);
 
   if (verbose) {
     const elapsed = Date.now() - startTime;
-    console.log(colorize(`Status command completed in ${elapsed}ms`, 'dim'));
+    output(colorize(`Status command completed in ${elapsed}ms`, 'dim'));
   }
 }
 
@@ -270,7 +278,7 @@ async function runLiveDashboard(
 
   // Initial render
   try {
-    const statusData = await gatherStatusData(config);
+    const statusData = await gatherStatusData(config, context);
     renderFullscreen(statusData, refreshCount, verbose, context);
   } catch (error) {
     handleExit();
@@ -293,7 +301,7 @@ async function runLiveDashboard(
 
       try {
         refreshCount++;
-        const statusData = await gatherStatusData(config);
+        const statusData = await gatherStatusData(config, context);
         renderFullscreen(statusData, refreshCount, verbose, context);
       } catch {
         // Silently continue on errors during refresh
@@ -483,24 +491,26 @@ function buildContentLines(data: StatusData): string[] {
 /**
  * Render status content (shared between static and fullscreen)
  * @param data - Status data
+ * @param output - Output function (defaults to console.log)
  */
-function renderStatusContent(data: StatusData): void {
+function renderStatusContent(
+  data: StatusData,
+  output: OutputFn = console.log
+): void {
   const stateColor = getStateColor(data.state);
   const stateIcon = getStateIcon(data.state);
 
-  console.log(
-    colorize(`${stateIcon} Current State: ${data.state}`, stateColor)
-  );
-  console.log();
+  output(colorize(`${stateIcon} Current State: ${data.state}`, stateColor));
+  output();
 
   // Stats
-  console.log(
+  output(
     `${getGlyph('success')} Completed:   ${data.stats.completed}/${data.stats.total}`
   );
-  console.log(`${getGlyph('arrow')} Pending:     ${data.stats.pending}`);
-  console.log(`${getGlyph('bullet')} In Review:   ${data.stats.inReview}`);
-  console.log(`${getGlyph('error')} Blocked:     ${data.stats.blocked}`);
-  console.log();
+  output(`${getGlyph('arrow')} Pending:     ${data.stats.pending}`);
+  output(`${getGlyph('bullet')} In Review:   ${data.stats.inReview}`);
+  output(`${getGlyph('error')} Blocked:     ${data.stats.blocked}`);
+  output();
 
   // Progress bar
   const progressLines = renderProgressBarLines(
@@ -508,35 +518,35 @@ function renderStatusContent(data: StatusData): void {
     data.stats.total
   );
   for (const line of progressLines) {
-    console.log(line);
+    output(line);
   }
-  console.log();
+  output();
 
   // Lock status and current task
   if (data.lock.isLocked && data.lock.pid && data.lock.startTime) {
     const commandLabel =
       data.lock.command === 'yolo' ? 'Yolo pipeline' : 'Speci run';
-    console.log(
+    output(
       colorize(
         `${getGlyph('bullet')} ${commandLabel} is active (PID: ${data.lock.pid})`,
         'sky400'
       )
     );
-    console.log(colorize(`  Started: ${data.lock.startTime}`, 'dim'));
+    output(colorize(`  Started: ${data.lock.startTime}`, 'dim'));
     if (data.lock.elapsed) {
-      console.log(colorize(`  Elapsed: ${data.lock.elapsed}`, 'dim'));
+      output(colorize(`  Elapsed: ${data.lock.elapsed}`, 'dim'));
     }
     // Show current task if active run and task in progress/review
     if (data.currentTask) {
-      console.log();
-      console.log(colorize(`${getGlyph('arrow')} Working on:`, 'sky400'));
-      console.log(
+      output();
+      output(colorize(`${getGlyph('arrow')} Working on:`, 'sky400'));
+      output(
         colorize(`  ${data.currentTask.id}: ${data.currentTask.title}`, 'white')
       );
-      console.log(colorize(`  Status: ${data.currentTask.status}`, 'dim'));
+      output(colorize(`  Status: ${data.currentTask.status}`, 'dim'));
     }
   }
-  console.log();
+  output();
 }
 
 /**

@@ -9,9 +9,6 @@ import * as planModule from '../lib/commands/plan.js';
 import * as runModule from '../lib/commands/run.js';
 import * as taskModule from '../lib/commands/task.js';
 import * as errorHandlerModule from '../lib/utils/error-handler.js';
-import * as lockModule from '../lib/utils/lock.js';
-import * as preflightModule from '../lib/utils/preflight.js';
-import * as signalsModule from '../lib/utils/signals.js';
 
 const PROJECT_CWD = join(tmpdir(), 'speci-test-project');
 
@@ -47,26 +44,6 @@ describe('yolo command', () => {
   };
 
   beforeEach(() => {
-    vi.spyOn(preflightModule, 'preflight').mockResolvedValue(undefined);
-    vi.spyOn(lockModule, 'acquireLock').mockResolvedValue(undefined);
-    vi.spyOn(lockModule, 'releaseLock').mockResolvedValue(undefined);
-    vi.spyOn(lockModule, 'getLockInfo').mockResolvedValue({
-      isLocked: true,
-      started: null,
-      pid: 12345,
-      elapsed: '00:01:00',
-      command: 'run',
-      isStale: false,
-      metadata: undefined,
-    });
-    vi.spyOn(signalsModule, 'registerCleanup').mockImplementation(() => {});
-    vi.spyOn(signalsModule, 'unregisterCleanup').mockImplementation(() => {});
-    vi.spyOn(signalsModule, 'installSignalHandlers').mockImplementation(
-      () => {}
-    );
-    vi.spyOn(signalsModule, 'removeSignalHandlers').mockImplementation(
-      () => {}
-    );
     vi.spyOn(planModule, 'plan').mockResolvedValue({
       success: true,
       exitCode: 0,
@@ -90,7 +67,7 @@ describe('yolo command', () => {
     const result = await yolo({ prompt: 'test' }, context);
 
     expect(context.configLoader.load).toHaveBeenCalledTimes(1);
-    expect(preflightModule.preflight).toHaveBeenCalledWith(
+    expect(context.preflight.run).toHaveBeenCalledWith(
       expect.any(Object),
       {
         requireCopilot: true,
@@ -107,7 +84,7 @@ describe('yolo command', () => {
     const result = await yolo({ prompt: 'test' }, context, mockConfig);
 
     expect(context.configLoader.load).not.toHaveBeenCalled();
-    expect(preflightModule.preflight).toHaveBeenCalledWith(
+    expect(context.preflight.run).toHaveBeenCalledWith(
       mockConfig,
       {
         requireCopilot: true,
@@ -128,7 +105,7 @@ describe('yolo command', () => {
       exitCode: 1,
       error: 'Missing required input',
     });
-    expect(lockModule.acquireLock).not.toHaveBeenCalled();
+    expect(context.lockManager.acquire).not.toHaveBeenCalled();
     expect(planModule.plan).not.toHaveBeenCalled();
     expect(taskModule.task).not.toHaveBeenCalled();
     expect(runModule.run).not.toHaveBeenCalled();
@@ -140,7 +117,7 @@ describe('yolo command', () => {
     await expect(
       yolo({ input: ['../outside.md'] }, context, mockConfig)
     ).rejects.toThrow('ERR-INP-07');
-    expect(preflightModule.preflight).not.toHaveBeenCalled();
+    expect(context.preflight.run).not.toHaveBeenCalled();
     expect(context.configLoader.load).not.toHaveBeenCalled();
   });
 
@@ -159,7 +136,7 @@ describe('yolo command', () => {
 
   it('propagates preflight errors', async () => {
     const context = createMockContext({ mockConfig, cwd: 'C:\\project' });
-    vi.spyOn(preflightModule, 'preflight').mockRejectedValueOnce(
+    vi.mocked(context.preflight.run).mockRejectedValueOnce(
       new Error('preflight failed')
     );
 
@@ -172,11 +149,11 @@ describe('yolo command', () => {
     const context = createMockContext({ mockConfig, cwd: 'C:\\project' });
     await yolo({ prompt: 'test' }, context, mockConfig);
 
-    const registerOrder = vi.mocked(signalsModule.registerCleanup).mock
+    const registerOrder = vi.mocked(context.signalManager.registerCleanup).mock
       .invocationCallOrder[0];
-    const signalOrder = vi.mocked(signalsModule.installSignalHandlers).mock
+    const signalOrder = vi.mocked(context.signalManager.install).mock
       .invocationCallOrder[0];
-    const lockOrder = vi.mocked(lockModule.acquireLock).mock
+    const lockOrder = vi.mocked(context.lockManager.acquire).mock
       .invocationCallOrder[0];
 
     expect(registerOrder).toBeLessThan(lockOrder);
@@ -187,7 +164,7 @@ describe('yolo command', () => {
     const context = createMockContext({ mockConfig, cwd: 'C:\\project' });
     await yolo({ prompt: 'test' }, context, mockConfig);
 
-    expect(lockModule.acquireLock).toHaveBeenCalledWith(
+    expect(context.lockManager.acquire).toHaveBeenCalledWith(
       mockConfig,
       context.process,
       'yolo',
@@ -197,10 +174,10 @@ describe('yolo command', () => {
 
   it('returns lock conflict error with sanitized pid when force is disabled', async () => {
     const context = createMockContext({ mockConfig, cwd: 'C:\\project' });
-    vi.spyOn(lockModule, 'acquireLock').mockRejectedValueOnce(
+    vi.mocked(context.lockManager.acquire).mockRejectedValueOnce(
       createError('ERR-STA-01')
     );
-    vi.spyOn(lockModule, 'getLockInfo').mockResolvedValue({
+    vi.mocked(context.lockManager.getInfo).mockResolvedValue({
       isLocked: true,
       started: null,
       pid: '1234<script>' as unknown as number,
@@ -222,7 +199,7 @@ describe('yolo command', () => {
 
   it('force-acquires lock after conflict when --force is enabled', async () => {
     const context = createMockContext({ mockConfig, cwd: 'C:\\project' });
-    vi.spyOn(lockModule, 'acquireLock')
+    vi.mocked(context.lockManager.acquire)
       .mockRejectedValueOnce(createError('ERR-STA-01'))
       .mockResolvedValueOnce(undefined);
 
@@ -233,20 +210,20 @@ describe('yolo command', () => {
     );
 
     expect(result).toEqual({ success: true, exitCode: 0 });
-    expect(lockModule.acquireLock).toHaveBeenCalledTimes(2);
-    expect(lockModule.releaseLock).toHaveBeenCalled();
+    expect(context.lockManager.acquire).toHaveBeenCalledTimes(2);
+    expect(context.lockManager.release).toHaveBeenCalled();
   });
 
   it('releases lock and removes signal handlers on completion', async () => {
     const context = createMockContext({ mockConfig, cwd: 'C:\\project' });
     await yolo({ prompt: 'test' }, context, mockConfig);
 
-    expect(lockModule.releaseLock).toHaveBeenCalledWith(mockConfig);
-    expect(signalsModule.unregisterCleanup).toHaveBeenCalledTimes(1);
-    expect(signalsModule.removeSignalHandlers).toHaveBeenCalledTimes(1);
-    const releaseOrder = vi.mocked(lockModule.releaseLock).mock
+    expect(context.lockManager.release).toHaveBeenCalledWith(mockConfig);
+    expect(context.signalManager.unregisterCleanup).toHaveBeenCalledTimes(1);
+    expect(context.signalManager.remove).toHaveBeenCalledTimes(1);
+    const releaseOrder = vi.mocked(context.lockManager.release).mock
       .invocationCallOrder[0];
-    const removeHandlersOrder = vi.mocked(signalsModule.removeSignalHandlers)
+    const removeHandlersOrder = vi.mocked(context.signalManager.remove)
       .mock.invocationCallOrder[0];
     expect(releaseOrder).toBeLessThan(removeHandlersOrder);
   });
@@ -294,7 +271,7 @@ describe('yolo command', () => {
     });
     expect(taskModule.task).not.toHaveBeenCalled();
     expect(runModule.run).not.toHaveBeenCalled();
-    expect(lockModule.releaseLock).toHaveBeenCalled();
+    expect(context.lockManager.release).toHaveBeenCalled();
   });
 
   it('executes task phase with mapped options and logs phase messages', async () => {
@@ -341,7 +318,7 @@ describe('yolo command', () => {
       error: 'Yolo failed during task phase: task failed exactly',
     });
     expect(runModule.run).not.toHaveBeenCalled();
-    expect(lockModule.releaseLock).toHaveBeenCalled();
+    expect(context.lockManager.release).toHaveBeenCalled();
   });
 
   it('calls run with yes true and forwards verbose flag', async () => {
@@ -380,7 +357,7 @@ describe('yolo command', () => {
       exitCode: 2,
       error: 'Yolo failed during run phase: run failed exactly',
     });
-    expect(lockModule.releaseLock).toHaveBeenCalled();
+    expect(context.lockManager.release).toHaveBeenCalled();
   });
 
   it('releases lock on uncaught exception and calls handleCommandError', async () => {
@@ -402,7 +379,7 @@ describe('yolo command', () => {
       'Yolo',
       context.logger
     );
-    expect(lockModule.releaseLock).toHaveBeenCalledWith(mockConfig);
+    expect(context.lockManager.release).toHaveBeenCalledWith(mockConfig);
     expect(result).toEqual({
       success: false,
       exitCode: 1,
@@ -412,7 +389,7 @@ describe('yolo command', () => {
 
   it('logs warning and continues cleanup when lock release fails', async () => {
     const context = createMockContext({ mockConfig, cwd: 'C:\\project' });
-    vi.spyOn(lockModule, 'releaseLock').mockRejectedValueOnce(
+    vi.mocked(context.lockManager.release).mockRejectedValueOnce(
       new Error('release failed')
     );
 
@@ -422,28 +399,28 @@ describe('yolo command', () => {
     expect(context.logger.warn).toHaveBeenCalledWith(
       'Failed to release lock file: release failed'
     );
-    expect(signalsModule.removeSignalHandlers).toHaveBeenCalledTimes(1);
+    expect(context.signalManager.remove).toHaveBeenCalledTimes(1);
   });
 
   it('does not inspect lock state separately before atomic acquisition', async () => {
     const context = createMockContext({ mockConfig, cwd: 'C:\\project' });
     await yolo({ prompt: 'test' }, context, mockConfig);
 
-    expect(lockModule.getLockInfo).not.toHaveBeenCalled();
-    expect(lockModule.acquireLock).toHaveBeenCalledTimes(1);
+    expect(context.lockManager.getInfo).not.toHaveBeenCalled();
+    expect(context.lockManager.acquire).toHaveBeenCalledTimes(1);
   });
 
   it('does not release lock when preflight fails before lock lifecycle setup', async () => {
     const context = createMockContext({ mockConfig, cwd: 'C:\\project' });
-    vi.spyOn(preflightModule, 'preflight').mockRejectedValueOnce(
+    vi.mocked(context.preflight.run).mockRejectedValueOnce(
       createError('ERR-PRE-01')
     );
 
     await expect(
       yolo({ prompt: 'test' }, context, mockConfig)
     ).rejects.toThrowError('ERR-PRE-01');
-    expect(lockModule.releaseLock).not.toHaveBeenCalled();
-    expect(signalsModule.registerCleanup).not.toHaveBeenCalled();
+    expect(context.lockManager.release).not.toHaveBeenCalled();
+    expect(context.signalManager.registerCleanup).not.toHaveBeenCalled();
   });
 
   it('calls plan with undefined prompt when input-only mode is used', async () => {
@@ -477,7 +454,7 @@ describe('yolo command', () => {
 
   it('passes force:true to run so it can take over the yolo-held lock', async () => {
     const context = createMockContext({ mockConfig, cwd: 'C:\\project' });
-    vi.spyOn(lockModule, 'acquireLock')
+    vi.mocked(context.lockManager.acquire)
       .mockRejectedValueOnce(createError('ERR-STA-01'))
       .mockResolvedValueOnce(undefined);
 
@@ -492,7 +469,7 @@ describe('yolo command', () => {
 
   it('propagates ERR-PRE-04 config preflight failures', async () => {
     const context = createMockContext({ mockConfig, cwd: 'C:\\project' });
-    vi.spyOn(preflightModule, 'preflight').mockRejectedValueOnce(
+    vi.mocked(context.preflight.run).mockRejectedValueOnce(
       createError('ERR-PRE-04')
     );
 
@@ -503,7 +480,7 @@ describe('yolo command', () => {
 
   it('propagates ERR-PRE-05 progress preflight failures', async () => {
     const context = createMockContext({ mockConfig, cwd: 'C:\\project' });
-    vi.spyOn(preflightModule, 'preflight').mockRejectedValueOnce(
+    vi.mocked(context.preflight.run).mockRejectedValueOnce(
       createError('ERR-PRE-05')
     );
 
@@ -514,7 +491,7 @@ describe('yolo command', () => {
 
   it('returns error result when lock acquisition throws filesystem error', async () => {
     const context = createMockContext({ mockConfig, cwd: 'C:\\project' });
-    vi.spyOn(lockModule, 'acquireLock').mockRejectedValueOnce(
+    vi.mocked(context.lockManager.acquire).mockRejectedValueOnce(
       createError('ERR-EXE-05')
     );
 
@@ -643,9 +620,9 @@ describe('yolo command', () => {
     const context = createMockContext({ mockConfig, cwd: 'C:\\project' });
     await yolo({ prompt: 'test' }, context, mockConfig);
 
-    expect(signalsModule.installSignalHandlers).toHaveBeenCalledTimes(1);
-    expect(signalsModule.removeSignalHandlers).toHaveBeenCalledTimes(1);
-    expect(signalsModule.unregisterCleanup).toHaveBeenCalledTimes(1);
+    expect(context.signalManager.install).toHaveBeenCalledTimes(1);
+    expect(context.signalManager.remove).toHaveBeenCalledTimes(1);
+    expect(context.signalManager.unregisterCleanup).toHaveBeenCalledTimes(1);
   });
 
   it('loads config once and reuses the same object across all phase calls', async () => {
@@ -673,7 +650,7 @@ describe('yolo command', () => {
 
   it('always passes yes true to run phase even with force enabled', async () => {
     const context = createMockContext({ mockConfig, cwd: 'C:\\project' });
-    vi.spyOn(lockModule, 'acquireLock')
+    vi.mocked(context.lockManager.acquire)
       .mockRejectedValueOnce(createError('ERR-STA-01'))
       .mockResolvedValueOnce(undefined);
 
@@ -690,6 +667,6 @@ describe('yolo command', () => {
     const context = createMockContext({ mockConfig, cwd: 'C:\\project' });
     await yolo({ prompt: 'test' }, context, mockConfig);
 
-    expect(lockModule.acquireLock).toHaveBeenCalledTimes(1);
+    expect(context.lockManager.acquire).toHaveBeenCalledTimes(1);
   });
 });

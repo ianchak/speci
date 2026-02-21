@@ -10,7 +10,12 @@ import { existsSync, readFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { log } from '@/utils/logger.js';
-import { CONFIG_FILENAME, getAgentFilename } from '@/constants.js';
+import {
+  CONFIG_FILENAME,
+  getAgentFilename,
+  DEFAULT_PATHS,
+  GITHUB_AGENTS_DIR as AGENTS_DIR,
+} from '@/constants.js';
 import { createError } from '@/errors.js';
 import type { IProcess } from '@/interfaces.js';
 import type { SpeciConfig } from '@/types.js';
@@ -87,10 +92,10 @@ export function getDefaults(): SpeciConfig {
   return {
     version: '1.0.0',
     paths: {
-      progress: 'docs/PROGRESS.md',
-      tasks: 'docs/tasks',
-      logs: '.speci-logs',
-      lock: '.speci-lock',
+      progress: DEFAULT_PATHS.PROGRESS,
+      tasks: DEFAULT_PATHS.TASKS,
+      logs: DEFAULT_PATHS.LOGS,
+      lock: DEFAULT_PATHS.LOCK,
     },
     copilot: {
       permissions: 'allow-all',
@@ -708,5 +713,6 @@ export function getSubagentsTemplatePath(): string {
 
 /**
  * GitHub Copilot agents directory path (relative to project root)
+ * @deprecated Import from '@/constants.js' instead
  */
-export const GITHUB_AGENTS_DIR = '.github/agents';
+export const GITHUB_AGENTS_DIR = AGENTS_DIR;

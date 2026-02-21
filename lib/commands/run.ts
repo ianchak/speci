@@ -12,23 +12,9 @@ import { createInterface } from 'node:readline';
 import { Writable } from 'node:stream';
 import type { SpeciConfig } from '@/types.js';
 import { STATE } from '@/types.js';
-import { getState, writeFailureNotes } from '@/state.js';
-import {
-  acquireLock,
-  releaseLock,
-  isLocked,
-  getLockInfo,
-} from '@/utils/lock.js';
-import { preflight } from '@/utils/preflight.js';
-import { runGate } from '@/utils/gate.js';
 import { createError } from '@/errors.js';
 import { closeLogFile } from '@/utils/logger.js';
 import { handleCommandError } from '@/utils/error-handler.js';
-import {
-  installSignalHandlers,
-  registerCleanup,
-  removeSignalHandlers,
-} from '@/utils/signals.js';
 import { createProductionContext } from '@/adapters/context-factory.js';
 import type { CommandContext, CommandResult } from '@/interfaces.js';
 import { renderIterationDisplay } from '@/ui/progress-bar.js';
@@ -64,7 +50,7 @@ export async function run(
     options.maxIterations ?? loadedConfig.loop.maxIterations;
 
   // 2. Run preflight checks
-  await preflight(
+  await context.preflight.run(
     loadedConfig,
     {
       requireCopilot: true,
@@ -76,8 +62,8 @@ export async function run(
   );
 
   // 3. Check existing lock
-  if (await isLocked(loadedConfig)) {
-    const lockInfo = await getLockInfo(loadedConfig);
+  if (await context.lockManager.isLocked(loadedConfig)) {
+    const lockInfo = await context.lockManager.getInfo(loadedConfig);
     if (!options.force) {
       context.logger.warn(
         `Speci is already running (PID: ${lockInfo?.pid ?? 'unknown'})`
@@ -89,18 +75,18 @@ export async function run(
     }
     // Release the existing lock before re-acquiring (handles both force=true
     // and the case where the user confirmed via promptForce).
-    await releaseLock(loadedConfig);
+    await context.lockManager.release(loadedConfig);
   }
 
   // 4. Dry run check and pre-run confirmation
   if (options.dryRun) {
-    const initialState = await getState(loadedConfig);
+    const initialState = await context.stateReader.getState(loadedConfig);
     displayDryRun(initialState, loadedConfig, maxIterations, context);
     return { success: true, exitCode: 0 };
   }
 
   if (!options.yes) {
-    const initialState = await getState(loadedConfig);
+    const initialState = await context.stateReader.getState(loadedConfig);
     const shouldProceed = await confirmRun(initialState, loadedConfig, context);
     if (!shouldProceed) {
       return { success: false, exitCode: 0, error: 'User cancelled' };
@@ -108,21 +94,21 @@ export async function run(
   }
 
   // 5. Acquire lock
-  await acquireLock(loadedConfig, context.process, 'run');
+  await context.lockManager.acquire(loadedConfig, context.process, 'run');
 
   // 6. Setup cleanup handlers (before creating log file)
-  installSignalHandlers();
+  context.signalManager.install();
 
   // Register cleanup functions
-  registerCleanup(async () => {
-    await releaseLock(loadedConfig);
+  context.signalManager.registerCleanup(async () => {
+    await context.lockManager.release(loadedConfig);
   });
 
   // 8. Initialize logging (after all early exits)
   const logFile = initializeLogFile(loadedConfig, context);
 
   // Register log file cleanup
-  registerCleanup(async () => {
+  context.signalManager.registerCleanup(async () => {
     try {
       await closeLogFile(logFile);
     } catch {
@@ -138,13 +124,13 @@ export async function run(
     return handleCommandError(error, 'Run', context.logger);
   } finally {
     // 10. Cleanup
-    await releaseLock(loadedConfig);
+    await context.lockManager.release(loadedConfig);
     try {
       await closeLogFile(logFile);
     } catch {
       // Log file may not be initialized if we exited early
     }
-    removeSignalHandlers();
+    context.signalManager.remove();
   }
 }
 
@@ -179,7 +165,7 @@ async function mainLoop(
     }
 
     // 1. Get current state
-    const state = await getState(config);
+    const state = await context.stateReader.getState(config);
     logState(logFile, state);
 
     // 2. Dispatch based on state
@@ -251,7 +237,7 @@ async function handleWorkLeft(
   }
 
   // 2. Run gates
-  const gateResult = await runGate(config);
+  const gateResult = await context.gateRunner.run(config);
   logGate(logFile, gateResult);
 
   if (gateResult.isSuccess) {
@@ -259,7 +245,7 @@ async function handleWorkLeft(
   }
 
   // 3. Write failure notes so the fix agent knows what broke
-  await writeFailureNotes(config, gateResult);
+  await context.stateReader.writeFailureNotes(config, gateResult);
 
   // 4. Handle gate failure with fix attempts
   let fixAttempt = 0;
@@ -296,7 +282,7 @@ async function handleWorkLeft(
     }
 
     // Re-run gates
-    const retryResult = await runGate(config);
+    const retryResult = await context.gateRunner.run(config);
     logGate(logFile, retryResult);
 
     if (retryResult.isSuccess) {
@@ -305,7 +291,7 @@ async function handleWorkLeft(
     }
 
     // Update failure notes with the latest failure before next fix attempt
-    await writeFailureNotes(config, retryResult);
+    await context.stateReader.writeFailureNotes(config, retryResult);
   }
 
   if (!gateResult.isSuccess) {
