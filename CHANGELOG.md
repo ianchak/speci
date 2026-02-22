@@ -1,5 +1,19 @@
 # speci
 
+## 0.10.0
+
+### Minor Changes
+
+- [`66c6f9a`](https://github.com/ianchak/speci/commit/66c6f9a89c2db89c304bc1adf1d7688e0fc46529) Thanks [@ianchak](https://github.com/ianchak)! - feat(interfaces): add IStateReader, ILockManager, IGateRunner, IPreflight, and ISignalManager interfaces with Node adapter implementations
+
+### Patch Changes
+
+- [`6a6e173`](https://github.com/ianchak/speci/commit/6a6e173ac83977a0d932901b06081c6e43176f5a) Thanks [@ianchak](https://github.com/ianchak)! - chore(dx): add husky git hooks, gate convenience script, and remove madge dependency
+
+- [`66c6f9a`](https://github.com/ianchak/speci/commit/66c6f9a89c2db89c304bc1adf1d7688e0fc46529) Thanks [@ianchak](https://github.com/ianchak)! - refactor(types): update SpeciConfig imports to use `@/types.js` across all modules
+
+- [`4dad641`](https://github.com/ianchak/speci/commit/4dad6415c7f16f7100fa9a613a263a6dfb33330e) Thanks [@ianchak](https://github.com/ianchak)! - fix(agents): enforce gate-green invariant in task generation and implementation prompts
+
 ## 0.9.0
 
 ### Minor Changes
