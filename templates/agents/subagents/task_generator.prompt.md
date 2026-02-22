@@ -108,6 +108,16 @@ If the answer to any of these is "nothing yet" — this task MUST either include
 - [ ] Integration test: [case]
 - [ ] Manual verification: [what to check]
 
+## Gate Compliance
+
+> ALL quality gates (format, lint, typecheck, test) MUST pass after this task is implemented.
+> This section is MANDATORY. The task MUST be self-contained and gate-safe.
+
+- **Types/Interfaces**: [All types introduced here are consumed within this task, OR stubs are provided]
+- **Existing Tests**: [No existing tests break, OR specify which tests are updated and why]
+- **New Tests**: [All new tests pass with the code written in this task — no tests for future code]
+- **Imports/Exports**: [No dangling imports or forward references to unwritten modules]
+
 ## Milestone Contribution
 
 [How this contributes to MVT_MX verification]
@@ -122,6 +132,31 @@ If the answer to any of these is "nothing yet" — this task MUST either include
 ```
 
 ## Generation Rules
+
+### Gate-Green Invariant (CRITICAL)
+
+Every generated task MUST be implementable such that **all quality gates pass after it is completed**. The gates are: `format`, `lint`, `typecheck`, `test`.
+
+**Requirements:**
+
+- Each task is a **vertical slice**: types + implementation + tests for one feature, all passing gates
+- If a task introduces a type/interface, it MUST also include the implementation (or a no-op stub) that satisfies the type contract — no forward references to code in later tasks
+- If a task modifies shared code (types, configs, interfaces), it MUST update ALL existing consumers and tests that would break
+- Tests defined in a task must pass with the code written in that same task — NEVER plan tests that require a future task's implementation
+- No unused imports, variables, or exports — lint will fail
+- No barrel exports (`index.ts`) that re-export modules from later tasks — typecheck will fail on missing modules
+- If splitting a feature across tasks: earlier tasks include stubs/no-ops that pass all gates; later tasks replace stubs with real logic
+
+**Anti-patterns (NEVER generate these):**
+
+| Anti-pattern                                                              | Why it fails                                                                         | Correct approach                                                                       |
+| ------------------------------------------------------------------------- | ------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------- |
+| Task A: define types → Task B: implement them                             | Task A fails typecheck (imported but unused) or tests (reference unimplemented code) | Single task: types + implementation + tests                                            |
+| Task A: write tests → Task B: write code                                  | Task A's tests all fail                                                              | Tests and code in same task                                                            |
+| Task A: add config field → Task B: add reader                             | Task A breaks typecheck if field is referenced but reader missing                    | Include field + reader in one task, or add field only when reader is ready             |
+| Task A: create index.ts exporting B, C → Tasks B, C: create those modules | Task A breaks on missing modules                                                     | Index file created/updated in last task of the group, or each task adds its own export |
+
+**The "Gate Compliance" section is MANDATORY in every task file.**
 
 ### Source of Truth
 

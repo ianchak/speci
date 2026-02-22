@@ -302,6 +302,16 @@ Source: docs/my_spec.md"
 
 | File | Action | Purpose |
 
+## Gate Compliance
+
+> ALL quality gates (format, lint, typecheck, test) MUST pass after this task is implemented.
+> Describe how this task remains self-contained and gate-safe.
+
+- **Types/Interfaces**: [All types introduced here are consumed within this task, OR stubs are provided]
+- **Existing Tests**: [No existing tests break, OR specify which tests are updated and why]
+- **New Tests**: [All new tests pass with the code written in this task — no tests for future code]
+- **Imports/Exports**: [No dangling imports or forward references to unwritten modules]
+
 ## Testing Strategy
 
 - [ ] Tests
@@ -386,6 +396,33 @@ Source: docs/my_spec.md"
 
 ## Key Rules
 
+### Gate-Green Invariant (CRITICAL)
+
+Every task MUST be designed so that **all quality gates pass after its implementation**. The gates are: `format`, `lint`, `typecheck`, `test`. This is non-negotiable.
+
+**What this means for task planning:**
+
+- A task must be **self-contained** — it cannot rely on a future task to make its code compile or its tests pass
+- If a task adds an interface/type, it must also add or stub its implementation — no forward references to unwritten code
+- If a task modifies shared code, it must update all existing consumers and tests that would break
+- Tests written in a task must all pass within that same task — do not plan tests that require a later task's code
+- If a task adds exports, the exports must resolve — no dangling re-exports of modules that don't exist yet
+- Unused imports, variables, or parameters introduced by a task must be avoided (lint will fail)
+- Each task's changes must type-check in isolation against the codebase state at that point
+
+**Anti-patterns to avoid in task planning:**
+
+- Task A defines types → Task B implements them (Task A will fail typecheck if types are imported but unused, or fail tests if tests reference unimplemented code)
+- Task A adds a config field → Task B adds the code that reads it (Task A breaks typecheck if the field is referenced but the reader doesn't exist)
+- Task A writes tests → Task B writes the implementation (Task A's tests will all fail)
+- Task A creates a barrel export (`index.ts`) referencing modules from Tasks B/C (Task A breaks on missing modules)
+
+**Correct patterns:**
+
+- Each task is a vertical slice: types + implementation + tests for one feature
+- If splitting is necessary, earlier tasks include stubs/no-ops that pass all gates, and later tasks replace stubs with real logic
+- Integration tasks come AFTER their dependencies are COMPLETE and passing
+
 ### Orchestrator (Coordinator Only)
 
 - **NEVER** write task content
@@ -426,5 +463,6 @@ Source: docs/my_spec.md"
 4. PROGRESS.md created with **ALL tasks marked as NOT STARTED**
 5. Final review ≥8/10
 6. GENERATION_STATE.md deleted
+7. **Gate-Green Invariant verified**: Every task is self-contained — implementing it in dependency order will leave all gates (format, lint, typecheck, test) passing after each step
 
 > **IMPORTANT**: "Completion" here means task GENERATION is complete, not task IMPLEMENTATION. The PROGRESS.md file should show all tasks as `NOT STARTED` because the actual implementation work hasn't begun yet. This file tracks what needs to be built, not what has been built.
