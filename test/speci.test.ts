@@ -94,10 +94,14 @@ describe('CLI Entry Point', () => {
         .description('Initialize Speci in current project');
       const planCmd = program
         .command('plan')
-        .description('Generate implementation plan interactively');
+        .description(
+          'Generate implementation plan from prompt and/or input files'
+        );
       const taskCmd = program
         .command('task')
-        .description('Generate tasks from implementation plan');
+        .description(
+          'Generate tasks and progress file from implementation plan'
+        );
       const refactorCmd = program
         .command('refactor')
         .description('Analyze codebase for refactoring opportunities');
@@ -316,8 +320,8 @@ Examples:
 
       const commands = {
         init: 'Initialize Speci in current project',
-        plan: 'Generate implementation plan interactively',
-        task: 'Generate tasks from implementation plan',
+        plan: 'Generate implementation plan from prompt and/or input files',
+        task: 'Generate tasks and progress file from implementation plan',
         refactor: 'Analyze codebase for refactoring opportunities',
         run: 'Execute the implementation loop',
         status:

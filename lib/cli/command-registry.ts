@@ -57,6 +57,8 @@ export class CommandRegistry {
     this.program
       .name('speci')
       .version(VERSION, '-V, --version', 'Display version number')
+      .helpOption('-h, --help', 'Display help for command')
+      .helpCommand('help [command]', 'Display help for command')
       .description('Speci CLI - AI-powered implementation loop orchestrator')
       .option('-v, --verbose', 'Enable verbose output')
       .option('--no-color', 'Disable colored output')
@@ -124,7 +126,9 @@ Examples:
     this.program
       .command('plan')
       .alias('p')
-      .description('Generate implementation plan interactively')
+      .description(
+        'Generate implementation plan from prompt and/or input files'
+      )
       .option('-p, --prompt <text>', 'Initial prompt describing what to plan')
       .option(
         '-i, --input <files...>',
@@ -161,7 +165,7 @@ Examples:
     this.program
       .command('task')
       .alias('t')
-      .description('Generate tasks from implementation plan')
+      .description('Generate tasks and progress file from implementation plan')
       .option('-p, --plan <path>', 'Path to plan file')
       .option('-v, --verbose', 'Show detailed output')
       .option('-c, --clean', 'Clean task files and progress before generating')
