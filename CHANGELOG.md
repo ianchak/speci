@@ -1,5 +1,11 @@
 # speci
 
+## 0.10.3
+
+### Patch Changes
+
+- [`a215734`](https://github.com/ianchak/speci/commit/a215734379632e2a244d7c3dcc89694829e7e476) Thanks [@ianchak](https://github.com/ianchak)! - refactor(ui): remove redundant Mode and Output fields from command info boxes
+
 ## 0.10.2
 
 ### Patch Changes
