@@ -6,7 +6,7 @@
  */
 
 import type { SpeciConfig, CurrentTask } from '@/types.js';
-import { BANNER_ART, VERSION } from '@/ui/banner.js';
+import { renderBanner } from '@/ui/banner.js';
 import { colorize } from '@/ui/colors.js';
 import { getGlyph } from '@/ui/glyphs.js';
 import { terminalState } from '@/ui/terminal.js';
@@ -159,11 +159,8 @@ function renderStaticStatus(
 ): void {
   const startTime = Date.now();
 
-  // Simple banner
-  for (const line of BANNER_ART) {
-    output(colorize(line, 'sky400'));
-  }
-  output(colorize(`  v${VERSION}`, 'dim'));
+  // Banner with gradient effect
+  output(renderBanner());
   output();
 
   renderStatusContent(data, output);
@@ -377,11 +374,8 @@ function renderFullscreen(
 function buildContentLines(data: StatusData): string[] {
   const lines: string[] = [];
 
-  // Banner
-  for (const line of BANNER_ART) {
-    lines.push(colorize(line, 'sky400'));
-  }
-  lines.push(colorize(`  v${VERSION}`, 'dim'));
+  // Banner with gradient effect
+  lines.push(...renderBanner().split('\n'));
   lines.push('');
 
   // State header
