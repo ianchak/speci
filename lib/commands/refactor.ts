@@ -122,8 +122,7 @@ export async function refactor(
       infoBox('Refactor Analysis', {
         Scope: scopePath || 'Entire project',
         Agent: `${agentName}.agent.md`,
-        Mode: 'One-shot',
-        Output: options.output || 'stdout',
+        ...(options.output ? { Output: options.output } : {}),
       })
     );
     context.logger.raw('');

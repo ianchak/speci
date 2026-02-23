@@ -123,7 +123,6 @@ export async function task(
       infoBox('Task Generation', {
         Plan: displayPlanPath,
         Agent: `${agentName}.agent.md`,
-        Mode: 'One-shot',
       })
     );
     context.logger.raw('');

@@ -46,11 +46,10 @@ function displayCommandInfo(
   inputFiles: string[] | undefined,
   context: CommandContext
 ): void {
-  const content = [
-    colorize('Agent:', 'sky400') + ` ${agentPath}`,
-    colorize('Mode:', 'sky400') + ' One-shot',
-    colorize('Output:', 'sky400') + ` ${outputPath}`,
-  ];
+  const content = [colorize('Agent:', 'sky400') + ` ${agentPath}`];
+  if (outputPath && outputPath !== 'stdout') {
+    content.push(colorize('Output:', 'sky400') + ` ${outputPath}`);
+  }
   if (inputFiles && inputFiles.length > 0) {
     content.push(colorize('Input:', 'sky400') + ` ${inputFiles.join(', ')}`);
   }
