@@ -1,5 +1,11 @@
 # speci
 
+## 0.10.2
+
+### Patch Changes
+
+- [`a2b90de`](https://github.com/ianchak/speci/commit/a2b90dee03edac90702a8d48e6d7561d4f25142e) Thanks [@ianchak](https://github.com/ianchak)! - fix(cli): capitalize help descriptions and replace deprecated addHelpCommand with helpCommand
+
 ## 0.10.1
 
 ### Patch Changes
