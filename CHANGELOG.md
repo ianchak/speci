@@ -1,5 +1,11 @@
 # speci
 
+## 0.10.1
+
+### Patch Changes
+
+- [`ef9ca0a`](https://github.com/ianchak/speci/commit/ef9ca0a4d3bd67c4cc91b8a08e463cccb3c2d51e) Thanks [@ianchak](https://github.com/ianchak)! - fix(status): use renderBanner with gradient effect instead of flat-colored BANNER_ART
+
 ## 0.10.0
 
 ### Minor Changes
