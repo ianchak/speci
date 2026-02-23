@@ -286,6 +286,7 @@ export async function checkAgentTemplates(
     log.warn(
       'Run `speci init --update-agents` to update agent files to latest versions'
     );
+    log.raw('');
   }
 }
 
