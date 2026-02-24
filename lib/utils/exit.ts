@@ -6,13 +6,8 @@
  * prevent resource leaks and hanging on exit.
  */
 
-import { runCleanup } from './signals.js';
+import { isRunningCleanup, runCleanup } from './signals.js';
 import { log } from './logger.js';
-
-/**
- * Internal state to track cleanup execution
- */
-let isCleaningUp = false;
 
 /**
  * Exit with cleanup execution
@@ -25,12 +20,10 @@ let isCleaningUp = false;
  * @returns Never returns (process terminates)
  */
 export async function exitWithCleanup(exitCode: number): Promise<never> {
-  if (isCleaningUp) {
+  if (isRunningCleanup()) {
     log.error('Cleanup already in progress, forcing exit');
     process.exit(exitCode);
   }
-
-  isCleaningUp = true;
   try {
     await runCleanup();
   } catch (error) {
@@ -52,14 +45,4 @@ export async function exitWithCleanup(exitCode: number): Promise<never> {
  */
 export function exitSync(exitCode: number): never {
   process.exit(exitCode);
-}
-
-/**
- * Reset exit state for testing
- *
- * Clears the isCleaningUp flag to allow tests to run cleanup multiple times.
- * Should only be used in test environments.
- */
-export function resetExitState(): void {
-  isCleaningUp = false;
 }

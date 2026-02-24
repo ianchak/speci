@@ -21,6 +21,13 @@ let isCleaningUp = false;
 let signalReceived = false;
 
 /**
+ * Returns true when cleanup is currently running.
+ */
+export function isRunningCleanup(): boolean {
+  return isCleaningUp;
+}
+
+/**
  * Register a cleanup function to be called on exit
  *
  * Cleanup functions are called in reverse registration order (LIFO).

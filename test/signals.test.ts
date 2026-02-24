@@ -10,6 +10,7 @@ import {
   unregisterCleanup,
   installSignalHandlers,
   removeSignalHandlers,
+  isRunningCleanup,
   runCleanup,
 } from '../lib/utils/signals.js';
 
@@ -103,6 +104,29 @@ describe('Signal Handling', () => {
       await runCleanup(); // Second call should be no-op
 
       expect(fn).toHaveBeenCalledTimes(1);
+    });
+
+    it('should report cleanup status through isRunningCleanup', async () => {
+      expect(isRunningCleanup()).toBe(false);
+
+      let resolveCleanup: (() => void) | undefined;
+      const waitForCleanup = new Promise<void>((resolve) => {
+        resolveCleanup = resolve;
+      });
+
+      registerCleanup(async () => {
+        await waitForCleanup;
+      });
+
+      const cleanupPromise = runCleanup();
+      await Promise.resolve();
+
+      expect(isRunningCleanup()).toBe(true);
+
+      resolveCleanup?.();
+      await cleanupPromise;
+
+      expect(isRunningCleanup()).toBe(false);
     });
 
     it('should clear registry after cleanup', async () => {
