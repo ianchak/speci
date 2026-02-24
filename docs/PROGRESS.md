@@ -247,10 +247,10 @@ graph TD
 | Task ID  | Title                                                        | File                                                       | Status      | Review Status | Priority | Complexity | Dependencies                             | Assigned To | Attempts |
 | -------- | ------------------------------------------------------------ | ---------------------------------------------------------- | ----------- | ------------- | -------- | ---------- | ---------------------------------------- | ----------- | -------- |
 | TASK_044 | Split `config.ts` (719 lines) into Focused Submodules        | TASK_044_split_config_ts_into_submodules.md                | COMPLETE    | PASSED        | Low      | L (4-8h)   | None (all previous phases complete)      | SA-20260224-043 | 1        |
-| TASK_045 | Split `interfaces.ts` (555 lines) into Domain-Focused Files  | TASK_045_split_interfaces_ts_into_domain_files.md          | IN REVIEW   |               | Low      | L (4-8h)   | TASK_044                                 | SA-20260224-044 | 1        |
-| TASK_046 | Organize `lib/utils/` into Subdirectories                    | TASK_046_organize_lib_utils_subdirectories.md              | NOT STARTED | —             | Low      | M (2-4h)   | TASK_044, TASK_045                       |             |          |
-| TASK_047 | Mirror `lib/` Structure in `test/`                           | TASK_047_mirror_lib_structure_in_test.md                   | NOT STARTED | —             | Low      | M (2-4h)   | TASK_044, TASK_045, TASK_046             |             |          |
-| TASK_048 | Consolidate Banner-Animation to 3 Files Instead of 5         | TASK_048_consolidate_banner_animation_files.md             | NOT STARTED | —             | Low      | M (2-4h)   | TASK_044, TASK_045                       |             |          |
+| TASK_045 | Split `interfaces.ts` (555 lines) into Domain-Focused Files  | TASK_045_split_interfaces_ts_into_domain_files.md          | COMPLETE    | PASSED        | Low      | L (4-8h)   | TASK_044                                 | SA-20260224-044 | 1        |
+| TASK_046 | Organize `lib/utils/` into Subdirectories                    | TASK_046_organize_lib_utils_subdirectories.md              | COMPLETE  | PASSED | Low      | M (2-4h)   | TASK_044, TASK_045                       | SA-20260224-045 | 1        |
+| TASK_047 | Mirror `lib/` Structure in `test/`                           | TASK_047_mirror_lib_structure_in_test.md                   | COMPLETE    | PASSED        | Low      | M (2-4h)   | TASK_044, TASK_045, TASK_046             | SA-20260224-046 | 1        |
+| TASK_048 | Consolidate Banner-Animation to 3 Files Instead of 5         | TASK_048_consolidate_banner_animation_files.md             | IN REVIEW   | —             | Low      | M (2-4h)   | TASK_044, TASK_045                       | SA-20260224-047 | 2        |
 | MVT_M4C  | Manual Verification: Module Organization                     | MVT_M4C_module_organization.md                             | NOT STARTED | —             | —        | 30 min     | TASK_044, TASK_045, TASK_046, TASK_047, TASK_048 | |  |
 
 ### Dependencies
@@ -312,13 +312,13 @@ TASK_001 → TASK_005 → TASK_010 → TASK_011/TASK_017 → TASK_023 → TASK_0
 
 ## Subagent Tracking
 
-Last Subagent ID: SA-20260224-044
+Last Subagent ID: SA-20260224-047
 
 ---
 
 ## Review Tracking
 
-Last Review ID: RA-20260224-044
+Last Review ID: RA-20260224-047
 
 ---
 
@@ -328,13 +328,13 @@ Last Review ID: RA-20260224-044
 
 | Field             | Value |
 | ----------------- | ----- |
-| Task              | TASK_045 |
-| Impl Agent        | SA-20260224-044 |
-| Files Changed     | `lib/interfaces.ts`, `lib/interfaces/infrastructure.ts`, `lib/interfaces/domain.ts`, `lib/interfaces/command.ts`, `lib/interfaces/index.ts` |
-| Tests Added       | None |
+| Task              | TASK_048 |
+| Impl Agent        | SA-20260224-047 |
+| Files Changed     | `lib/ui/banner-animation/runner.ts`, `lib/ui/banner-animation/index.ts`, `lib/ui/banner-animation/animate.ts` (deleted), `lib/ui/banner-animation/renderer.ts` (deleted), `lib/ui/banner-animation/terminal.ts` (deleted) |
+| Tests Added       | None (0 new tests); updated `test/ui/banner-animation-renderer.test.ts`, `test/ui/banner-animation-terminal.test.ts` imports |
 | Rework?           | No |
-| Focus Areas       | Verify backward-compatible re-export through `@/interfaces.js` and no circular imports from submodule/barrel boundaries |
-| Known Limitations | No importer migration performed (intentionally preserved via compatibility barrel) |
+| Focus Areas       | Consolidated export surface in `runner.ts` and barrel wiring in `index.ts`; verify direct test imports redirected to `runner.js` |
+| Known Limitations | No behavior changes beyond file/module consolidation; no new test cases added (mechanical merge) |
 | Gate Results      | format:✅ lint:✅ typecheck:✅ test:✅ |
 
 ### For Fix Agent
