@@ -11,7 +11,7 @@ import { drawBox } from '@/ui/box.js';
 import { colorize } from '@/ui/colors.js';
 import { createProductionContext } from '@/adapters/context-factory.js';
 import { initializeCommand } from '@/utils/command-helpers.js';
-import { handleCommandError } from '@/utils/error-handler.js';
+import { failResult, handleCommandError } from '@/utils/error-handler.js';
 import { executeCopilotCommand } from '@/utils/copilot-helper.js';
 import { InputValidator } from '@/validation/index.js';
 import type { CommandContext, CommandResult } from '@/interfaces.js';
@@ -90,11 +90,7 @@ export async function plan(
       context.logger.muted('  speci plan -p "Build a REST API for users"');
       context.logger.muted('  speci plan -i docs/design.md');
       context.logger.muted('  speci plan -i spec.md -p "Focus on auth"');
-      return {
-        success: false,
-        exitCode: 1,
-        error: 'Missing required input',
-      };
+      return failResult('Missing required input');
     }
 
     // Validate input using InputValidator
@@ -112,11 +108,7 @@ export async function plan(
       validationResult.error.suggestions?.forEach((s) =>
         context.logger.info(s)
       );
-      return {
-        success: false,
-        exitCode: 1,
-        error: validationResult.error.message,
-      };
+      return failResult(validationResult.error.message);
     }
 
     // Initialize command with shared helper (skip preflight as plan doesn't need it)
@@ -180,7 +172,7 @@ export async function plan(
     const args = context.copilotRunner.buildArgs(loadedConfig, {
       prompt: fullPrompt || undefined,
       agent: agentName,
-      shouldAllowAll: loadedConfig.copilot.permissions === 'allow-all',
+      allowAll: loadedConfig.copilot.permissions === 'allow-all',
       command: 'plan',
     });
 

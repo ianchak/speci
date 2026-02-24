@@ -107,8 +107,9 @@ export const ERROR_CODES: Record<string, ErrorDefinition> = {
   },
   'ERR-INP-09': {
     message: 'Invalid gate.maxFixAttempts value',
-    cause: 'maxFixAttempts must be at least 1',
-    solution: 'Set gate.maxFixAttempts to a positive integer in config',
+    cause: 'maxFixAttempts must be at least 0',
+    solution:
+      'Set gate.maxFixAttempts to a non-negative integer in config (0 disables fix attempts)',
   },
   'ERR-INP-10': {
     message: 'Invalid loop.maxIterations value',

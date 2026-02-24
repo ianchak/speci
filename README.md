@@ -429,11 +429,11 @@ Created by `speci init`. Speci discovers this file by walking up from the curren
 
 **gate** - Quality gate configuration. Gate commands run after each implementation step.
 
-| Field            | Default                 | Description                                           |
-| ---------------- | ----------------------- | ----------------------------------------------------- |
-| `commands`       | `["npm run lint", ...]` | Shell commands to run as quality gates                |
-| `maxFixAttempts` | `5`                     | Maximum automatic fix attempts after gate failures    |
-| `strategy`       | `sequential`            | `sequential` or `parallel` execution of gate commands |
+| Field            | Default                 | Description                                                       |
+| ---------------- | ----------------------- | ----------------------------------------------------------------- |
+| `commands`       | `["npm run lint", ...]` | Shell commands to run as quality gates                            |
+| `maxFixAttempts` | `5`                     | Maximum automatic fix attempts after gate failures (0 to disable) |
+| `strategy`       | `sequential`            | `sequential` or `parallel` execution of gate commands             |
 
 Parallel strategy can be 30-50% faster but requires that gate commands are independent (no shared resources like lock files or ports).
 
@@ -490,7 +490,7 @@ Speci uses structured error codes for diagnostics. Use `--verbose` to see full e
 | ERR-INP-06 | Config version is not compatible | Update to version 1.x or re-run `npx speci init`               |
 | ERR-INP-07 | Path escapes project directory   | Use paths within the project root, avoid `../` traversal       |
 | ERR-INP-08 | Invalid permissions value        | Use `allow-all`, `yolo`, `strict`, or `none`                   |
-| ERR-INP-09 | Invalid maxFixAttempts value     | Must be a positive integer                                     |
+| ERR-INP-09 | Invalid maxFixAttempts value     | Must be a non-negative integer (0 disables fix attempts)       |
 | ERR-INP-10 | Invalid maxIterations value      | Must be a positive integer                                     |
 | ERR-INP-11 | Subagent prompt not found        | Reinstall speci or provide a custom agent path                 |
 

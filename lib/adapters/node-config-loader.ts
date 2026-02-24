@@ -17,6 +17,6 @@ export class NodeConfigLoader implements IConfigLoader {
   constructor(private readonly process: IProcess) {}
 
   async load(): Promise<SpeciConfig> {
-    return loadConfig({ processParam: this.process });
+    return loadConfig({ proc: this.process });
   }
 }

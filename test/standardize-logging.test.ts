@@ -43,6 +43,7 @@ describe('TASK_015: Standardize Logging', () => {
       const libFiles = allLibFiles.filter(
         (f) =>
           f !== 'utils/logger.ts' &&
+          f !== 'utils/infrastructure/logger.ts' &&
           !f.startsWith('ui/banner-animation') && // All banner animation modules excluded (UI output)
           f !== 'cli/initialize.ts' && // Banner display is formatted UI output
           f !== 'commands/status.ts' && // Pure dashboard display
@@ -82,7 +83,10 @@ describe('TASK_015: Standardize Logging', () => {
       const allLibFiles = findTsFiles(libDir, libDir);
       // signals.ts and banner-animation modules may use console.error for critical scenarios
       const libFiles = allLibFiles.filter(
-        (f) => f !== 'utils/logger.ts' && !f.startsWith('ui/banner-animation')
+        (f) =>
+          f !== 'utils/logger.ts' &&
+          f !== 'utils/infrastructure/logger.ts' &&
+          !f.startsWith('ui/banner-animation')
       );
 
       const violations: string[] = [];
@@ -110,7 +114,9 @@ describe('TASK_015: Standardize Logging', () => {
     it('should not use console.warn in lib/ files (except logger.ts)', () => {
       const libDir = join(process.cwd(), 'lib');
       const allLibFiles = findTsFiles(libDir, libDir);
-      const libFiles = allLibFiles.filter((f) => f !== 'utils/logger.ts');
+      const libFiles = allLibFiles.filter(
+        (f) => f !== 'utils/logger.ts' && f !== 'utils/infrastructure/logger.ts'
+      );
 
       const violations: string[] = [];
 
@@ -139,10 +145,10 @@ describe('TASK_015: Standardize Logging', () => {
     it('should import log utility in files that need logging', () => {
       // Files that should have direct logger imports (not via DI context)
       const filesToCheck = [
-        'lib/config.ts',
+        'lib/config/loader.ts',
         'lib/copilot.ts',
-        'lib/utils/signals.ts',
-        'lib/utils/exit.ts',
+        'lib/utils/infrastructure/signals.ts',
+        'lib/utils/infrastructure/exit.ts',
       ];
 
       const missing: string[] = [];
@@ -154,7 +160,8 @@ describe('TASK_015: Standardize Logging', () => {
         const hasImport =
           content.includes("from '@/utils/logger") ||
           content.includes("from './logger.js'") ||
-          content.includes('from "../utils/logger.js"');
+          content.includes('from "../utils/logger.js"') ||
+          content.includes('from "../infrastructure/logger.js"');
         if (!hasImport) {
           missing.push(file);
         }
@@ -165,9 +172,9 @@ describe('TASK_015: Standardize Logging', () => {
   });
 
   describe('Structured Logging for Key Decisions', () => {
-    it('should log config resolution decisions in config.ts', () => {
+    it('should log config resolution decisions in config loader', () => {
       const content = readFileSync(
-        join(process.cwd(), 'lib/config.ts'),
+        join(process.cwd(), 'lib/config/loader.ts'),
         'utf8'
       );
 
@@ -199,12 +206,12 @@ describe('TASK_015: Standardize Logging', () => {
   describe('Signal Handler Logging', () => {
     it('should use log utility in signals.ts', () => {
       const content = readFileSync(
-        join(process.cwd(), 'lib/utils/signals.ts'),
+        join(process.cwd(), 'lib/utils/infrastructure/signals.ts'),
         'utf8'
       );
 
       // Should import log utility
-      expect(content).toContain("from '@/utils/logger");
+      expect(content).toContain("from './logger.js'");
 
       // Should use log methods
       expect(content).toMatch(/log\.(info|error)/);

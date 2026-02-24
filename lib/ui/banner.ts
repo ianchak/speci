@@ -30,14 +30,30 @@ function findPackageJson(startDir: string): string | null {
   return null;
 }
 
+const DEFAULT_VERSION = '0.0.0';
+
+function parsePackageVersion(path: string): string {
+  try {
+    const parsed: unknown = JSON.parse(readFileSync(path, 'utf-8'));
+    if (parsed && typeof parsed === 'object' && 'version' in parsed) {
+      const version = (parsed as Record<string, unknown>).version;
+      if (typeof version === 'string') {
+        return version;
+      }
+    }
+  } catch {
+    return DEFAULT_VERSION;
+  }
+
+  return DEFAULT_VERSION;
+}
+
 const moduleDir = dirname(fileURLToPath(import.meta.url));
 const pkgPath = findPackageJson(moduleDir);
-const pkg = pkgPath
-  ? (JSON.parse(readFileSync(pkgPath, 'utf-8')) as { version: string })
-  : { version: '0.0.0' };
+const version = pkgPath ? parsePackageVersion(pkgPath) : DEFAULT_VERSION;
 
 /** Package version from package.json */
-export const VERSION = pkg.version;
+export const VERSION = version;
 
 /**
  * ASCII art banner for SPECI CLI
@@ -169,10 +185,12 @@ export function renderBanner(options: BannerOptions = {}): string {
 
   // Add version if requested
   if (showVersion) {
-    const versionText = `v${pkg.version}`;
+    const versionText = `v${VERSION}`;
     const bannerWidth = BANNER_ART[0].length;
-    const padding = Math.floor((bannerWidth - versionText.length) / 2);
-    const centeredVersion = ' '.repeat(padding) + colorize(versionText, 'dim');
+    const leftPad = Math.floor((bannerWidth - versionText.length) / 2);
+    const rightPad = bannerWidth - leftPad - versionText.length;
+    const centeredVersion =
+      ' '.repeat(leftPad) + colorize(versionText, 'dim') + ' '.repeat(rightPad);
     output += '\n' + centeredVersion;
   }
 

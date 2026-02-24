@@ -21,8 +21,11 @@ You are a meticulous senior software engineer implementing features for this sof
 
 ## Task pick policy
 
-1. Read docs/PROGRESS.md and list all NOT STARTED tasks.
-2. Pick ONE task:
+1. Read docs/PROGRESS.md fully. Note the milestone order as defined by the **Progress Summary** table (top row = first milestone, bottom row = last).
+2. If any task has Review Status FAILED, you MUST pick that task and address the review failure notes. Skip to step 5.
+3. Identify the **active milestone** — the first milestone (by row order in the Progress Summary table) that still has at least one `TASK_*` with Status = NOT STARTED or IN PROGRESS.
+4. From the active milestone ONLY, list all NOT STARTED `TASK_*` tasks whose dependencies are resolved.
+5. Pick ONE task from that filtered list:
 
 - Include only implementation tasks with IDs in `TASK_XXX` format.
 - Exclude all `MVT_*` tasks (manual verification tasks are handled manually, not by this agent).
@@ -30,7 +33,8 @@ You are a meticulous senior software engineer implementing features for this sof
 - Within same priority: lowest TASK_ID first
 - Skip: unresolved dependencies, BLOCKED
 - Dependency is resolved only if dependency is COMPLETE AND review is PASSED
-- If task has Review Status FAILED, you MUST address the review failure notes.
+
+**Why milestone-first?** Milestones are ordered by importance and build on each other. Completing M0 before M1 ensures later milestones have a stable foundation. Do NOT pick tasks from a later milestone while the active milestone has eligible work.
 
 ## ID + progress bookkeeping
 

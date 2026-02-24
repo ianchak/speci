@@ -99,6 +99,35 @@ describe('Task Command Integration', () => {
     }
   });
 
+  it('should surface agent-not-found error when spawn rejects', async () => {
+    const originalCwd = process.cwd();
+    process.chdir(testProject.root);
+
+    try {
+      const fs = await import('node:fs/promises');
+      const planPath = join(testProject.root, 'test-plan.md');
+      await fs.writeFile(planPath, '# Test Plan\n\nDescription');
+
+      const context = createProductionContext();
+      const errorSpy = vi.spyOn(context.logger, 'error');
+      vi.spyOn(context.copilotRunner, 'spawn').mockRejectedValue(
+        new Error('ERR-INP-02: Agent not found')
+      );
+
+      const result = await taskCommand({ plan: 'test-plan.md' }, context);
+
+      expect(result.success).toBe(false);
+      if (!result.success && result.error) {
+        expect(result.error).toContain('ERR-INP-02');
+      }
+      expect(errorSpy).toHaveBeenCalledWith(
+        expect.stringContaining('ERR-INP-02')
+      );
+    } finally {
+      process.chdir(originalCwd);
+    }
+  });
+
   it('should work without PROGRESS.md existing', async () => {
     const originalCwd = process.cwd();
     process.chdir(testProject.root);

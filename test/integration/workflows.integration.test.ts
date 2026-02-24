@@ -11,7 +11,11 @@ import type { TestProject } from './setup.js';
 import initCommand from '@/commands/init.js';
 import planCommand from '@/commands/plan.js';
 import taskCommand from '@/commands/task.js';
+import { run } from '@/commands/run.js';
 import { createProductionContext } from '@/adapters/context-factory.js';
+import { createMockContext } from '@/adapters/test-context.js';
+import { STATE } from '@/types.js';
+import type { SpeciConfig, GateResult } from '@/types.js';
 
 describe('Workflow Integration', () => {
   let testProject: TestProject;
@@ -236,6 +240,76 @@ Last Review ID: RA-20260207-001
       } finally {
         process.chdir(originalCwd);
       }
+    });
+  });
+
+  describe('Run Command Sad Paths', () => {
+    it('should return failure when copilotRunner.run rejects', async () => {
+      const config = JSON.parse(
+        await readTestFile(testProject.configPath)
+      ) as SpeciConfig;
+      const context = createMockContext({
+        cwd: testProject.root,
+      });
+      vi.mocked(context.stateReader.getState).mockResolvedValue(
+        STATE.WORK_LEFT
+      );
+      vi.mocked(context.copilotRunner.run).mockRejectedValue(
+        new Error('copilot runner failed')
+      );
+
+      const result = await run(
+        { yes: true, maxIterations: 1 },
+        context,
+        config
+      );
+
+      expect(result.success).toBe(false);
+      if (!result.success && result.error) {
+        expect(result.error).toContain('copilot runner failed');
+      }
+    });
+
+    it('should return failure when gates fail at max fix attempts', async () => {
+      const config = JSON.parse(
+        await readTestFile(testProject.configPath)
+      ) as SpeciConfig;
+      const configWithSingleFix: SpeciConfig = {
+        ...config,
+        gate: { ...config.gate, maxFixAttempts: 1 },
+        loop: { ...config.loop, maxIterations: 1 },
+      };
+      const context = createMockContext({
+        cwd: testProject.root,
+      });
+      vi.mocked(context.stateReader.getState).mockResolvedValue(
+        STATE.WORK_LEFT
+      );
+      vi.mocked(context.copilotRunner.run).mockResolvedValue({
+        isSuccess: true,
+        exitCode: 0,
+      });
+      const failedGateResult: GateResult = {
+        isSuccess: false,
+        error: 'Gate failed',
+        totalDuration: 1,
+        results: [
+          {
+            command: 'npm test',
+            isSuccess: false,
+            exitCode: 1,
+            output: '',
+            error: 'Gate failed',
+            duration: 1,
+          },
+        ],
+      };
+      vi.mocked(context.gateRunner.run).mockResolvedValue(failedGateResult);
+
+      const result = await run({ yes: true }, context, configWithSingleFix);
+
+      expect(result.success).toBe(false);
+      expect(vi.mocked(context.gateRunner.run)).toHaveBeenCalledTimes(2);
     });
   });
 });

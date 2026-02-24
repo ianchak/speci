@@ -27,6 +27,7 @@ export const ASCII_GLYPHS = {
 } as const;
 
 export type GlyphName = keyof typeof GLYPHS;
+export type SingleGlyphName = Exclude<GlyphName, 'spinner'>;
 
 /**
  * Check if terminal supports Unicode characters
@@ -73,9 +74,17 @@ export function supportsUnicode(): boolean {
  * @param name - Glyph name (e.g., 'success', 'error')
  * @returns Unicode glyph or ASCII fallback
  */
-export function getGlyph(name: GlyphName): string | readonly string[] {
+export function getGlyph(name: SingleGlyphName): string {
   const glyphSet = supportsUnicode() ? GLYPHS : ASCII_GLYPHS;
   return glyphSet[name] ?? GLYPHS[name] ?? '?';
+}
+
+/**
+ * Get spinner frame set with automatic ASCII fallback
+ * @returns Array of spinner frames
+ */
+export function getSpinnerFrames(): readonly string[] {
+  return supportsUnicode() ? GLYPHS.spinner : ASCII_GLYPHS.spinner;
 }
 
 /**
@@ -84,7 +93,7 @@ export function getGlyph(name: GlyphName): string | readonly string[] {
  * @returns Spinner character for current frame
  */
 export function getSpinnerFrame(frameIndex: number): string {
-  const frames = getGlyph('spinner') as readonly string[];
+  const frames = getSpinnerFrames();
   const length = frames.length;
   const index = ((frameIndex % length) + length) % length;
   return frames[index];

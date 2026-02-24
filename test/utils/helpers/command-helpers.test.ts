@@ -1,0 +1,288 @@
+/**
+ * Tests for command-helpers module
+ */
+
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { join } from 'node:path';
+import {
+  normalizeAgentName,
+  validateAgentFile,
+  initializeCommand,
+} from '../../../lib/utils/command-helpers.js';
+import { createMockContext } from '../../../lib/adapters/test-context.js';
+import type { SpeciConfig } from '../../../lib/config.js';
+
+describe('command-helpers', () => {
+  describe('normalizeAgentName', () => {
+    it('should use default agent name', () => {
+      const result = normalizeAgentName('plan');
+      expect(result).toBe('speci-plan');
+    });
+
+    it('should work with all command names', () => {
+      expect(normalizeAgentName('plan')).toBe('speci-plan');
+      expect(normalizeAgentName('task')).toBe('speci-task');
+      expect(normalizeAgentName('refactor')).toBe('speci-refactor');
+      expect(normalizeAgentName('impl')).toBe('speci-impl');
+      expect(normalizeAgentName('review')).toBe('speci-review');
+      expect(normalizeAgentName('fix')).toBe('speci-fix');
+    });
+  });
+
+  describe('validateAgentFile', () => {
+    let mockContext: ReturnType<typeof createMockContext>;
+
+    beforeEach(() => {
+      mockContext = createMockContext();
+    });
+
+    it('should not throw when agent file exists', () => {
+      const agentPath = join(mockContext.process.cwd(), 'agent.md');
+      vi.spyOn(mockContext.fs, 'existsSync').mockReturnValue(true);
+
+      expect(() => validateAgentFile(agentPath, mockContext)).not.toThrow();
+    });
+
+    it('should throw when agent file does not exist', () => {
+      const agentPath = join(mockContext.process.cwd(), 'missing.md');
+      vi.spyOn(mockContext.fs, 'existsSync').mockReturnValue(false);
+
+      expect(() => validateAgentFile(agentPath, mockContext)).toThrow(
+        `Agent file not found: ${agentPath}`
+      );
+    });
+
+    it('should throw error with correct message format', () => {
+      const agentPath = '/path/to/agent.md';
+      vi.spyOn(mockContext.fs, 'existsSync').mockReturnValue(false);
+
+      expect(() => validateAgentFile(agentPath, mockContext)).toThrow(
+        'Agent file not found: /path/to/agent.md'
+      );
+    });
+
+    it('should handle absolute paths', () => {
+      const agentPath = '/absolute/path/to/agent.md';
+      vi.spyOn(mockContext.fs, 'existsSync').mockReturnValue(true);
+
+      expect(() => validateAgentFile(agentPath, mockContext)).not.toThrow();
+    });
+
+    it('should handle Windows paths', () => {
+      const agentPath = 'C:\\path\\to\\agent.md';
+      vi.spyOn(mockContext.fs, 'existsSync').mockReturnValue(true);
+
+      expect(() => validateAgentFile(agentPath, mockContext)).not.toThrow();
+    });
+
+    it('should handle relative paths', () => {
+      const agentPath = './relative/path/agent.md';
+      vi.spyOn(mockContext.fs, 'existsSync').mockReturnValue(true);
+
+      expect(() => validateAgentFile(agentPath, mockContext)).not.toThrow();
+    });
+  });
+
+  describe('initializeCommand', () => {
+    let mockContext: ReturnType<typeof createMockContext>;
+    let mockConfig: SpeciConfig;
+    let loadConfigSpy: ReturnType<typeof vi.fn>;
+    let preflightSpy: ReturnType<typeof vi.fn>;
+
+    beforeEach(() => {
+      mockContext = createMockContext();
+      mockConfig = {
+        version: '1.0.0',
+        paths: {
+          progress: 'docs/PROGRESS.md',
+          tasks: 'docs/tasks',
+          logs: '.speci/logs',
+          lock: '.speci-lock',
+        },
+        copilot: {
+          permissions: 'allow-all',
+          models: {
+            plan: 'claude-opus-4.6',
+            task: 'claude-sonnet-4.5',
+            refactor: 'claude-sonnet-4.5',
+            impl: 'gpt-5.3-codex',
+            review: 'claude-sonnet-4.5',
+            fix: 'claude-sonnet-4.5',
+            tidy: 'gpt-5.2',
+          },
+          extraFlags: [],
+        },
+        gate: {
+          commands: ['npm test'],
+          maxFixAttempts: 3,
+        },
+        loop: {
+          maxIterations: 10,
+        },
+      };
+
+      loadConfigSpy = vi
+        .spyOn(mockContext.configLoader, 'load')
+        .mockResolvedValue(mockConfig);
+      preflightSpy = vi
+        .spyOn(mockContext.preflight, 'run')
+        .mockResolvedValue(undefined);
+
+      // Mock agent file exists
+      vi.spyOn(mockContext.fs, 'existsSync').mockReturnValue(true);
+    });
+
+    afterEach(() => {
+      vi.restoreAllMocks();
+    });
+
+    it('should orchestrate full initialization sequence', async () => {
+      const result = await initializeCommand({
+        commandName: 'plan',
+        context: mockContext,
+      });
+
+      expect(loadConfigSpy).toHaveBeenCalledOnce();
+      expect(preflightSpy).toHaveBeenCalledWith(mockConfig, {
+        requireCopilot: true,
+        requireConfig: true,
+        requireProgress: false,
+        requireGit: false,
+      });
+      expect(result.config).toBe(mockConfig);
+      expect(result.agentName).toBe('speci-plan');
+      expect(result.agentPath).toContain('speci-plan.agent.md');
+    });
+
+    it('should run preflight during initialization', async () => {
+      await initializeCommand({
+        commandName: 'refactor',
+        context: mockContext,
+      });
+
+      expect(loadConfigSpy).toHaveBeenCalledOnce();
+      expect(preflightSpy).toHaveBeenCalledOnce();
+    });
+
+    it('should throw when agent file does not exist', async () => {
+      vi.spyOn(mockContext.fs, 'existsSync').mockReturnValue(false);
+
+      await expect(
+        initializeCommand({
+          commandName: 'plan',
+          context: mockContext,
+        })
+      ).rejects.toThrow('Agent file not found');
+    });
+
+    it('should pass through config loading errors', async () => {
+      loadConfigSpy.mockRejectedValue(new Error('Config file not found'));
+
+      await expect(
+        initializeCommand({
+          commandName: 'plan',
+          context: mockContext,
+        })
+      ).rejects.toThrow('Config file not found');
+    });
+
+    it('should pass through preflight errors', async () => {
+      preflightSpy.mockRejectedValue(new Error('Copilot CLI not found'));
+
+      await expect(
+        initializeCommand({
+          commandName: 'task',
+          context: mockContext,
+        })
+      ).rejects.toThrow('Copilot CLI not found');
+    });
+
+    it('should handle all command names correctly', async () => {
+      const commands = ['plan', 'task', 'refactor', 'impl', 'review', 'fix'];
+
+      for (const cmd of commands) {
+        const result = await initializeCommand({
+          commandName: cmd as
+            | 'plan'
+            | 'task'
+            | 'refactor'
+            | 'impl'
+            | 'review'
+            | 'fix',
+          context: mockContext,
+        });
+
+        expect(result.agentName).toBe(`speci-${cmd}`);
+        expect(result.agentPath).toContain(`speci-${cmd}.agent.md`);
+      }
+    });
+
+    it('should work with custom context', async () => {
+      const result = await initializeCommand({
+        commandName: 'plan',
+        context: mockContext,
+      });
+
+      expect(preflightSpy).toHaveBeenCalledOnce();
+      expect(loadConfigSpy).toHaveBeenCalledOnce();
+      expect(result.config).toBe(mockConfig);
+    });
+
+    it('should return correct agent path format', async () => {
+      const result = await initializeCommand({
+        commandName: 'plan',
+        context: mockContext,
+      });
+
+      expect(result.agentPath).toMatch(
+        /\.github[/\\]agents[/\\]speci-plan\.agent\.md$/
+      );
+    });
+
+    it('should use provided config instead of loading when config parameter is provided', async () => {
+      const providedConfig: SpeciConfig = {
+        ...mockConfig,
+        paths: { ...mockConfig.paths, progress: 'custom/PROGRESS.md' },
+      };
+
+      const result = await initializeCommand({
+        commandName: 'plan',
+        config: providedConfig,
+        context: mockContext,
+      });
+
+      // Should not call configLoader.load() when config is provided
+      expect(loadConfigSpy).not.toHaveBeenCalled();
+      expect(result.config).toBe(providedConfig);
+      expect(result.config.paths.progress).toBe('custom/PROGRESS.md');
+    });
+
+    it('should still load config when no config parameter provided', async () => {
+      const result = await initializeCommand({
+        commandName: 'plan',
+        context: mockContext,
+      });
+
+      // Should call configLoader.load() when no config provided
+      expect(loadConfigSpy).toHaveBeenCalledOnce();
+      expect(result.config).toBe(mockConfig);
+    });
+
+    it('should use provided config with all other options', async () => {
+      const providedConfig: SpeciConfig = {
+        ...mockConfig,
+        gate: { commands: ['npm run lint'], maxFixAttempts: 5 },
+      };
+
+      const result = await initializeCommand({
+        commandName: 'task',
+        config: providedConfig,
+        context: mockContext,
+      });
+
+      expect(loadConfigSpy).not.toHaveBeenCalled();
+      expect(result.config).toBe(providedConfig);
+      expect(result.agentName).toBe('speci-task');
+    });
+  });
+});

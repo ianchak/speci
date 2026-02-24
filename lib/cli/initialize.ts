@@ -7,12 +7,13 @@
 
 import { renderBanner } from '@/ui/banner.js';
 import { animateBanner, shouldAnimate } from '@/ui/banner-animation/index.js';
+import { log } from '@/utils/logger.js';
 
 /**
  * Display the static (non-animated) banner
  */
 export function displayStaticBanner(): void {
-  console.log('\n' + renderBanner({ showVersion: true }) + '\n');
+  log.raw('\n' + renderBanner({ showVersion: true }) + '\n');
 }
 
 /**
@@ -35,8 +36,8 @@ export function displayBanner(options?: {
   }
 
   if (shouldAnimate(options)) {
-    console.log();
-    return animateBanner().then(() => console.log());
+    log.raw('');
+    return animateBanner().then(() => log.raw(''));
   } else {
     displayStaticBanner();
   }

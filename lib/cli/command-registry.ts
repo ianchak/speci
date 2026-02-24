@@ -19,7 +19,7 @@ import { findSimilarCommands } from '@/utils/suggest.js';
 import { debug, log } from '@/utils/logger.js';
 import { exitWithCleanup } from '@/utils/exit.js';
 import { PreflightError } from '@/utils/preflight.js';
-import type { CommandContext } from '@/interfaces.js';
+import type { CommandContext, CommandResult } from '@/interfaces.js';
 import type { SpeciConfig } from '@/types.js';
 
 export const AVAILABLE_COMMANDS = [
@@ -90,6 +90,31 @@ export class CommandRegistry {
   }
 
   /**
+   * Build a command action with standardized result and preflight error handling.
+   */
+  private makeAction<T>(
+    commandFn: (
+      options: T,
+      context: CommandContext,
+      config: SpeciConfig
+    ) => Promise<CommandResult>
+  ): (options: T) => Promise<void> {
+    return async (options: T) => {
+      try {
+        const result = await commandFn(options, this.context, this.config);
+        if (!result.success) {
+          await exitWithCleanup(result.exitCode);
+        }
+      } catch (err) {
+        const handled = await this.handlePreflightError(err);
+        if (!handled) {
+          throw err;
+        }
+      }
+    };
+  }
+
+  /**
    * Register the init command
    */
   private registerInitCommand(): void {
@@ -107,16 +132,7 @@ Examples:
   $ speci init -u           Update agent files to latest version
 `
       )
-      .action(async (options) => {
-        try {
-          const result = await init(options, this.context, this.config);
-          if (!result.success) {
-            await exitWithCleanup(result.exitCode);
-          }
-        } catch (err) {
-          this.handlePreflightError(err);
-        }
-      });
+      .action(this.makeAction(init));
   }
 
   /**
@@ -146,16 +162,7 @@ Examples:
   $ speci plan -i design.md -o docs/plan.md       Save plan to specific file
 `
       )
-      .action(async (options) => {
-        try {
-          const result = await plan(options, this.context, this.config);
-          if (!result.success) {
-            await exitWithCleanup(result.exitCode);
-          }
-        } catch (err) {
-          this.handlePreflightError(err);
-        }
-      });
+      .action(this.makeAction(plan));
   }
 
   /**
@@ -177,16 +184,7 @@ Examples:
   $ speci t -p docs/plan.md            Short alias version
 `
       )
-      .action(async (options) => {
-        try {
-          const result = await task(options, this.context, this.config);
-          if (!result.success) {
-            await exitWithCleanup(result.exitCode);
-          }
-        } catch (err) {
-          this.handlePreflightError(err);
-        }
-      });
+      .action(this.makeAction(task));
   }
 
   /**
@@ -209,16 +207,7 @@ Examples:
   $ speci r -s "lib/**/*.ts"           Analyze TypeScript files only
 `
       )
-      .action(async (options) => {
-        try {
-          const result = await refactor(options, this.context, this.config);
-          if (!result.success) {
-            await exitWithCleanup(result.exitCode);
-          }
-        } catch (err) {
-          this.handlePreflightError(err);
-        }
-      });
+      .action(this.makeAction(refactor));
   }
 
   /**
@@ -242,16 +231,7 @@ Examples:
   $ speci run --dry-run                Preview actions without executing
 `
       )
-      .action(async (options) => {
-        try {
-          const result = await run(options, this.context, this.config);
-          if (!result.success) {
-            await exitWithCleanup(result.exitCode);
-          }
-        } catch (err) {
-          this.handlePreflightError(err);
-        }
-      });
+      .action(this.makeAction(run));
   }
 
   /**
@@ -277,16 +257,7 @@ Examples:
   $ speci yolo -i docs/design.md                  Run using design docs as context
 `
       )
-      .action(async (options) => {
-        try {
-          const result = await yolo(options, this.context, this.config);
-          if (!result.success) {
-            await exitWithCleanup(result.exitCode);
-          }
-        } catch (err) {
-          this.handlePreflightError(err);
-        }
-      });
+      .action(this.makeAction(yolo));
   }
 
   /**
@@ -312,16 +283,7 @@ Examples:
   $ speci status --verbose             Detailed status information
 `
       )
-      .action(async (options) => {
-        try {
-          const result = await status(options, this.context, this.config);
-          if (!result.success) {
-            await exitWithCleanup(result.exitCode);
-          }
-        } catch (err) {
-          this.handlePreflightError(err);
-        }
-      });
+      .action(this.makeAction(status));
   }
 
   /**
@@ -342,12 +304,7 @@ Examples:
   $ speci task --clean -p plan.md      Clean before generating tasks
 `
       )
-      .action(async (options) => {
-        const result = await clean(options, this.context, this.config);
-        if (!result.success) {
-          await exitWithCleanup(result.exitCode);
-        }
-      });
+      .action(this.makeAction(clean));
   }
 
   /**
@@ -374,9 +331,10 @@ Examples:
   }
 
   /**
-   * Handle preflight errors consistently across all commands
+   * Handle preflight errors consistently across all commands.
+   * Returns true if the error was handled, false otherwise.
    */
-  private handlePreflightError(err: unknown): void {
+  private async handlePreflightError(err: unknown): Promise<boolean> {
     if (err instanceof PreflightError) {
       log.error(`Preflight check failed: ${err.check}`);
       log.error(err.message);
@@ -384,9 +342,10 @@ Examples:
       for (const step of err.remediation) {
         log.muted(`  • ${step}`);
       }
-      exitWithCleanup(err.exitCode);
+      await exitWithCleanup(err.exitCode);
+      return true;
     }
-    throw err;
+    return false;
   }
 
   /**

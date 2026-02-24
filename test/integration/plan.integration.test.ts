@@ -95,6 +95,93 @@ describe('Plan Command Integration', () => {
     }
   });
 
+  it('should return failure when spawn rejects', async () => {
+    const originalCwd = process.cwd();
+    process.chdir(testProject.root);
+
+    try {
+      const fs = await import('node:fs/promises');
+      await fs.writeFile(join(testProject.root, 'test-feature.md'), '# Test');
+
+      const context = createProductionContext();
+      vi.spyOn(context.copilotRunner, 'spawn').mockRejectedValue(
+        new Error('spawn failed')
+      );
+
+      const result = await planCommand({ prompt: 'test-feature.md' }, context);
+
+      expect(result.success).toBe(false);
+      if (!result.success && result.error) {
+        expect(result.error).toContain('spawn failed');
+      }
+    } finally {
+      process.chdir(originalCwd);
+    }
+  });
+
+  it('should return failure when spawn exits with 1', async () => {
+    const originalCwd = process.cwd();
+    process.chdir(testProject.root);
+
+    try {
+      const fs = await import('node:fs/promises');
+      await fs.writeFile(join(testProject.root, 'test-feature.md'), '# Test');
+
+      const context = createProductionContext();
+      vi.spyOn(context.copilotRunner, 'spawn').mockResolvedValue(1);
+
+      const result = await planCommand({ prompt: 'test-feature.md' }, context);
+
+      expect(result.success).toBe(false);
+      expect(result.exitCode).toBe(1);
+    } finally {
+      process.chdir(originalCwd);
+    }
+  });
+
+  it('should return failure when spawn exits with 127', async () => {
+    const originalCwd = process.cwd();
+    process.chdir(testProject.root);
+
+    try {
+      const fs = await import('node:fs/promises');
+      await fs.writeFile(join(testProject.root, 'test-feature.md'), '# Test');
+
+      const context = createProductionContext();
+      vi.spyOn(context.copilotRunner, 'spawn').mockResolvedValue(127);
+
+      const result = await planCommand({ prompt: 'test-feature.md' }, context);
+
+      expect(result.success).toBe(false);
+      expect(result.exitCode).toBe(127);
+    } finally {
+      process.chdir(originalCwd);
+    }
+  });
+
+  it('should return meaningful error for missing prompt input file', async () => {
+    const originalCwd = process.cwd();
+    process.chdir(testProject.root);
+
+    try {
+      const context = createProductionContext();
+      const result = await planCommand(
+        {
+          prompt: 'Use the input file',
+          input: ['missing-context.md'],
+        },
+        context
+      );
+
+      expect(result.success).toBe(false);
+      if (!result.success && result.error) {
+        expect(result.error).toMatch(/not found|does not exist/i);
+      }
+    } finally {
+      process.chdir(originalCwd);
+    }
+  });
+
   it('should use custom agent path if specified', async () => {
     const originalCwd = process.cwd();
     process.chdir(testProject.root);

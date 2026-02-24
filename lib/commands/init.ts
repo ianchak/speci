@@ -15,7 +15,7 @@ import type { SpeciConfig } from '@/types.js';
 import { CONFIG_FILENAME, GITHUB_AGENTS_DIR } from '@/constants.js';
 import { createError } from '@/errors.js';
 import { createProductionContext } from '@/adapters/context-factory.js';
-import { handleCommandError } from '@/utils/error-handler.js';
+import { handleCommandError, toErrorMessage } from '@/utils/error-handler.js';
 import type { CommandContext, CommandResult } from '@/interfaces.js';
 
 /**
@@ -136,7 +136,7 @@ async function createDirectories(
           'ERR-EXE-05',
           JSON.stringify({
             path,
-            reason: error instanceof Error ? error.message : String(error),
+            reason: toErrorMessage(error),
           })
         );
       }
@@ -167,7 +167,7 @@ async function createFiles(
         'ERR-EXE-06',
         JSON.stringify({
           path: CONFIG_FILENAME,
-          reason: error instanceof Error ? error.message : String(error),
+          reason: toErrorMessage(error),
         })
       );
     }
@@ -256,7 +256,7 @@ async function copyAgentFiles(
     throw createError(
       'ERR-EXE-08',
       JSON.stringify({
-        reason: error instanceof Error ? error.message : String(error),
+        reason: toErrorMessage(error),
       })
     );
   }

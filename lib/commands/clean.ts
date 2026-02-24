@@ -3,7 +3,7 @@ import { createProductionContext } from '@/adapters/context-factory.js';
 import type { SpeciConfig } from '@/types.js';
 import { formatError } from '@/errors.js';
 import type { CommandContext, CommandResult } from '@/interfaces.js';
-import { handleCommandError } from '@/utils/error-handler.js';
+import { failResult, handleCommandError } from '@/utils/error-handler.js';
 
 export interface CleanOptions {
   verbose?: boolean;
@@ -27,12 +27,9 @@ export function cleanFiles(
       context.logger.warn(
         'Cannot clean while speci is running. Wait for the active run to complete or remove the lock file.'
       );
-      return {
-        success: false,
-        exitCode: 1,
-        error:
-          'Cannot clean while speci is running. Wait for the active run to complete or remove the lock file.',
-      };
+      return failResult(
+        'Cannot clean while speci is running. Wait for the active run to complete or remove the lock file.'
+      );
     }
 
     const cwd = context.process.cwd();
@@ -46,11 +43,9 @@ export function cleanFiles(
       !isWithinProject(resolvedTasksPath) ||
       !isWithinProject(resolvedProgressPath)
     ) {
-      return {
-        success: false,
-        exitCode: 1,
-        error: `Configured path resolves outside the project root: ${!isWithinProject(resolvedTasksPath) ? resolvedTasksPath : resolvedProgressPath}`,
-      };
+      return failResult(
+        `Configured path resolves outside the project root: ${!isWithinProject(resolvedTasksPath) ? resolvedTasksPath : resolvedProgressPath}`
+      );
     }
 
     const tasksExists = context.fs.existsSync(config.paths.tasks);
@@ -71,14 +66,12 @@ export function cleanFiles(
       try {
         entries = context.fs.readdirSync(config.paths.tasks);
       } catch {
-        return {
-          success: false,
-          exitCode: 1,
-          error: formatError(
+        return failResult(
+          formatError(
             'ERR-EXE-09',
             JSON.stringify({ path: config.paths.tasks })
-          ),
-        };
+          )
+        );
       }
 
       for (const entry of entries) {
@@ -112,23 +105,16 @@ export function cleanFiles(
     }
 
     if (errors.length > 0) {
-      return {
-        success: false,
-        exitCode: 1,
-        error: formatError(
-          'ERR-EXE-10',
-          JSON.stringify({ path: errors.join(', ') })
-        ),
-      };
+      return failResult(
+        formatError('ERR-EXE-10', JSON.stringify({ path: errors.join(', ') }))
+      );
     }
 
     return { success: true, exitCode: 0 };
   } catch {
-    return {
-      success: false,
-      exitCode: 1,
-      error: formatError('ERR-EXE-10', JSON.stringify({ path: 'unexpected' })),
-    };
+    return failResult(
+      formatError('ERR-EXE-10', JSON.stringify({ path: 'unexpected' }))
+    );
   }
 }
 

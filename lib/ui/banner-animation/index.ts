@@ -12,23 +12,18 @@
  * - Terminal dimensions
  *
  * Public API: animateBanner, AnimationOptions, shouldAnimate
- * Implementation: see animate.ts
- * Submodules: renderer.ts, effects.ts, terminal.ts
+ * Implementation: see runner.ts
+ * Submodules: runner.ts, effects.ts
  */
 
-// Public API — primary entry point
-export { animateBanner, type AnimationOptions } from './animate.js';
-
-// Terminal capability helpers
+// Public API + terminal + renderer internals (re-exported for tests and advanced consumers)
 export {
+  animateBanner,
+  type AnimationOptions,
   shouldAnimate,
   hasMinimumHeight,
   MIN_TERMINAL_HEIGHT,
   type AnimateOptions,
-} from './terminal.js';
-
-// Renderer internals (re-exported for tests and advanced consumers)
-export {
   runAnimationLoop,
   animateVersion,
   selectRandomEffect,
@@ -40,7 +35,7 @@ export {
   type AnimationEffect,
   type AnimationState,
   type CleanupFn,
-} from './renderer.js';
+} from './runner.js';
 
 // Effect frame renderers (re-exported for tests and advanced consumers)
 export {
