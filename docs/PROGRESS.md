@@ -159,9 +159,9 @@ graph TD
 | -------- | ------------------------------------------------------------------------- | ---------------------------------------------------------- | ----------- | ------------- | -------- | ---------- | -------------------------------------------------------------------------------------------------------------- | ----------- | -------- |
 | TASK_024 | Extract `makeAction` Factory in CommandRegistry                           | TASK_024_extract_make_action_factory.md                    | COMPLETE    | PASSED        | High     | M (2-4h)   | TASK_009                                                                                                       | SA-20260224-005 | 1        |
 | TASK_025 | Centralize Agent-Not-Found Handling Across All Commands                   | TASK_025_centralize_agent_not_found_handling.md            | COMPLETE    | PASSED        | High     | M (2-4h)   | None                                                                                                           | SA-20260224-006 | 1        |
-| TASK_026 | Extract `toErrorMessage()` and `failResult()` Utilities                   | TASK_026_extract_to_error_message_fail_result.md           | IN REVIEW   |               | High     | S (≤2h)    | TASK_025                                                                                                       | SA-20260224-007 | 1        |
+| TASK_026 | Extract `toErrorMessage()` and `failResult()` Utilities                   | TASK_026_extract_to_error_message_fail_result.md           | COMPLETE    | PASSED        | High     | S (≤2h)    | TASK_025                                                                                                       | SA-20260224-007 | 1        |
 | TASK_027 | Extract `walkUpToFind()` Helper in `preflight.ts`                         | TASK_027_extract_walk_up_to_find_preflight.md              | NOT STARTED | —             | Medium   | S (≤2h)    | None                                                                                                           |             |          |
-| TASK_028 | Extract `dispatchAgent()` and `runFixAttempts()` in `run.ts`              | TASK_028_extract_dispatch_agent_run_fix_attempts.md        | NOT STARTED | —             | High     | M (2-4h)   | None                                                                                                           |             |          |
+| TASK_028 | Extract `dispatchAgent()` and `runFixAttempts()` in `run.ts`              | TASK_028_extract_dispatch_agent_run_fix_attempts.md        | IN REVIEW   |               | High     | M (2-4h)   | None                                                                                                           | SA-20260224-008 | 1        |
 | TASK_029 | Decompose `yolo` Function into Helpers                                    | TASK_029_decompose_yolo_into_helpers.md                    | NOT STARTED | —             | Medium   | M (2-4h)   | None                                                                                                           |             |          |
 | TASK_030 | Decompose `runLiveDashboard` (129 Lines)                                  | TASK_030_decompose_run_live_dashboard.md                   | NOT STARTED | —             | High     | L (4-8h)   | TASK_002                                                                                                       |             |          |
 | TASK_031 | Decompose `buildContentLines` (110 Lines)                                 | TASK_031_decompose_build_content_lines.md                  | NOT STARTED | —             | High     | M (2-4h)   | TASK_002, TASK_030                                                                                             |             |          |
@@ -312,13 +312,13 @@ TASK_001 → TASK_005 → TASK_010 → TASK_011/TASK_017 → TASK_023 → TASK_0
 
 ## Subagent Tracking
 
-Last Subagent ID: SA-20260224-007
+Last Subagent ID: SA-20260224-008
 
 ---
 
 ## Review Tracking
 
-Last Review ID: RA-20260224-005
+Last Review ID: RA-20260224-006
 
 ---
 
@@ -328,13 +328,13 @@ Last Review ID: RA-20260224-005
 
 | Field             | Value |
 | ----------------- | ----- |
-| Task              | TASK_026 |
-| Impl Agent        | SA-20260224-007 |
-| Files Changed     | `lib/utils/error-handler.ts`, `lib/commands/run.ts`, `lib/commands/task.ts`, `lib/commands/plan.ts`, `lib/commands/refactor.ts`, `lib/commands/yolo.ts`, `lib/commands/init.ts`, `lib/commands/clean.ts`, `lib/commands/status.ts` |
-| Tests Added       | `test/error-handler.test.ts` (5 new tests) |
+| Task              | TASK_028 |
+| Impl Agent        | SA-20260224-008 |
+| Files Changed     | `lib/commands/run.ts` |
+| Tests Added       | `test/run.test.ts` (2 new tests) |
 | Rework?           | No |
-| Focus Areas       | Verify centralized helpers preserve existing error messages and exit codes across all command paths. |
-| Known Limitations | Non-command utility replacements remain out of scope for TASK_026. |
+| Focus Areas       | `dispatchAgent()` consolidation and `runFixAttempts()` control flow (`maxFixAttempts: 0`, fix-agent failure break, gate retry success path) |
+| Known Limitations | `LoopContext` signature refactor from P-08 remains out of scope for this task |
 | Gate Results      | format:✅ lint:✅ typecheck:✅ test:✅ |
 
 ### For Fix Agent

@@ -10,7 +10,7 @@ import { createWriteStream, type WriteStream } from 'node:fs';
 import { join } from 'node:path';
 import { createInterface } from 'node:readline';
 import { Writable } from 'node:stream';
-import type { SpeciConfig } from '@/types.js';
+import type { AgentRunResult, SpeciConfig } from '@/types.js';
 import { STATE } from '@/types.js';
 import { createError } from '@/errors.js';
 import { closeLogFile } from '@/utils/logger.js';
@@ -221,39 +221,85 @@ async function handleWorkLeft(
   _options: RunOptions,
   context: CommandContext
 ): Promise<void> {
-  // 1. Run impl agent
-  context.logger.infoPlain('Dispatching implementation agent...\n');
-  logAgent(logFile, 'impl', 'START');
-  const implResult = await context.copilotRunner.run(
-    config,
+  const implResult = await dispatchAgent(
     'impl',
-    'Implementation Agent'
+    'Implementation Agent',
+    'Dispatching implementation agent...',
+    config,
+    logFile,
+    context
   );
-  logAgent(logFile, 'impl', implResult.isSuccess ? 'SUCCESS' : 'FAILED');
-
   if (!implResult.isSuccess) {
-    context.logger.error(`Implementation agent failed: ${implResult.error}`);
     return;
   }
 
-  // 2. Run gates
   const gateResult = await context.gateRunner.run(config);
   logGate(logFile, gateResult);
-
   if (gateResult.isSuccess) {
     return;
   }
 
-  // 3. Write failure notes so the fix agent knows what broke
   await context.stateReader.writeFailureNotes(config, gateResult);
+  const gatesFixed = await runFixAttempts(config, logFile, context);
+  if (!gatesFixed) {
+    context.logger.error(
+      `Gates still failing after ${config.gate.maxFixAttempts} fix attempts.`
+    );
+  }
+}
 
-  // 4. Handle gate failure with fix attempts
-  let fixAttempt = 0;
-  while (!gateResult.isSuccess && fixAttempt < config.gate.maxFixAttempts) {
-    fixAttempt++;
+/**
+ * Run an agent and log dispatch lifecycle.
+ *
+ * @param agentKey - Agent key passed to copilot runner
+ * @param agentDisplayName - Human-readable agent name
+ * @param dispatchMsg - Message printed before dispatch
+ * @param config - Speci configuration
+ * @param logFile - Log file stream
+ * @param context - Command context for logging and execution
+ * @param attempt - Optional attempt number for log correlation
+ * @returns Agent execution result
+ */
+async function dispatchAgent(
+  agentKey: string,
+  agentDisplayName: string,
+  dispatchMsg: string,
+  config: SpeciConfig,
+  logFile: WriteStream,
+  context: CommandContext,
+  attempt?: number
+): Promise<AgentRunResult> {
+  context.logger.infoPlain(`${dispatchMsg}\n`);
+  logAgent(logFile, agentKey, 'START', attempt);
+  const result = await context.copilotRunner.run(
+    config,
+    agentKey,
+    agentDisplayName
+  );
+  logAgent(logFile, agentKey, result.isSuccess ? 'SUCCESS' : 'FAILED', attempt);
+  if (!result.isSuccess) {
+    context.logger.error(`${agentDisplayName} agent failed: ${result.error}`);
+  }
+  return result;
+}
+
+/**
+ * Execute fix attempts until gates pass or attempts are exhausted.
+ *
+ * @param config - Speci configuration
+ * @param logFile - Log file stream
+ * @param context - Command context for logging and execution
+ * @returns true when gates pass after a fix attempt; otherwise false
+ */
+async function runFixAttempts(
+  config: SpeciConfig,
+  logFile: WriteStream,
+  context: CommandContext
+): Promise<boolean> {
+  for (let attempt = 1; attempt <= config.gate.maxFixAttempts; attempt++) {
     context.logger.warn('Gate failed. Running fix agent...');
     const fixLines = renderIterationDisplay({
-      current: fixAttempt,
+      current: attempt,
       total: config.gate.maxFixAttempts,
       label: 'Fix Attempt',
       fillColor: 'warning',
@@ -263,43 +309,30 @@ async function handleWorkLeft(
       context.logger.infoPlain(line);
     }
 
-    logAgent(logFile, 'fix', 'START', fixAttempt);
-    const fixResult = await context.copilotRunner.run(
+    const fixResult = await dispatchAgent(
+      'fix',
+      'Fix Agent',
+      'Running fix agent...',
       config,
-      'fix',
-      'Fix Agent'
-    );
-    logAgent(
       logFile,
-      'fix',
-      fixResult.isSuccess ? 'SUCCESS' : 'FAILED',
-      fixAttempt
+      context,
+      attempt
     );
-
     if (!fixResult.isSuccess) {
-      context.logger.error(`Fix agent failed: ${fixResult.error}`);
       break;
     }
 
-    // Re-run gates
     const retryResult = await context.gateRunner.run(config);
     logGate(logFile, retryResult);
-
     if (retryResult.isSuccess) {
       context.logger.success('Gates passed after fix!');
-      return;
+      return true;
     }
 
-    // Update failure notes with the latest failure before next fix attempt
     await context.stateReader.writeFailureNotes(config, retryResult);
   }
 
-  if (!gateResult.isSuccess) {
-    context.logger.error(
-      `Gates still failing after ${config.gate.maxFixAttempts} fix attempts.`
-    );
-    // Continue to next iteration - state parser will re-evaluate
-  }
+  return false;
 }
 
 /**
@@ -316,18 +349,14 @@ async function handleInReview(
   _options: RunOptions,
   context: CommandContext
 ): Promise<void> {
-  context.logger.infoPlain('Dispatching review agent...\n');
-  logAgent(logFile, 'review', 'START');
-  const reviewResult = await context.copilotRunner.run(
-    config,
+  await dispatchAgent(
     'review',
-    'Review Agent'
+    'Review Agent',
+    'Dispatching review agent...',
+    config,
+    logFile,
+    context
   );
-  logAgent(logFile, 'review', reviewResult.isSuccess ? 'SUCCESS' : 'FAILED');
-
-  if (!reviewResult.isSuccess) {
-    context.logger.error(`Review agent failed: ${reviewResult.error}`);
-  }
 }
 
 /**
@@ -344,18 +373,14 @@ async function handleBlocked(
   _options: RunOptions,
   context: CommandContext
 ): Promise<void> {
-  context.logger.infoPlain('Dispatching tidy agent to unblock tasks...\n');
-  logAgent(logFile, 'tidy', 'START');
-  const tidyResult = await context.copilotRunner.run(
-    config,
+  await dispatchAgent(
     'tidy',
-    'Tidy Agent'
+    'Tidy Agent',
+    'Dispatching tidy agent to unblock tasks...',
+    config,
+    logFile,
+    context
   );
-  logAgent(logFile, 'tidy', tidyResult.isSuccess ? 'SUCCESS' : 'FAILED');
-
-  if (!tidyResult.isSuccess) {
-    context.logger.error(`Tidy agent failed: ${tidyResult.error}`);
-  }
 }
 
 /**

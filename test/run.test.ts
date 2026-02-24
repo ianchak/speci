@@ -348,6 +348,63 @@ describe('Run Command', () => {
       // 1 impl agent + 2 fix agents (maxFixAttempts = 2)
       expect(copilot.runAgent).toHaveBeenCalledTimes(3);
     });
+
+    it('should skip fix loop when maxFixAttempts is 0', async () => {
+      const configWithNoFixAttempts = {
+        ...mockConfig,
+        gate: { ...mockConfig.gate, maxFixAttempts: 0 },
+      };
+      vi.spyOn(config, 'loadConfig').mockResolvedValue(configWithNoFixAttempts);
+      vi.spyOn(state, 'getState')
+        .mockResolvedValueOnce(STATE.WORK_LEFT)
+        .mockResolvedValueOnce(STATE.DONE);
+      vi.spyOn(copilot, 'runAgent').mockResolvedValue({
+        isSuccess: true,
+        exitCode: 0,
+      });
+      vi.spyOn(gate, 'runGate').mockResolvedValue({
+        isSuccess: false,
+        results: [],
+        error: 'Gate failed',
+        totalDuration: 0,
+      });
+
+      await run({ yes: true });
+
+      expect(copilot.runAgent).toHaveBeenCalledTimes(1);
+      expect(gate.runGate).toHaveBeenCalledTimes(1);
+      expect(state.writeFailureNotes).toHaveBeenCalledTimes(1);
+    });
+
+    it('should stop fix attempts when fix agent fails', async () => {
+      const configWithTwoAttempts = {
+        ...mockConfig,
+        gate: { ...mockConfig.gate, maxFixAttempts: 2 },
+      };
+      vi.spyOn(config, 'loadConfig').mockResolvedValue(configWithTwoAttempts);
+      vi.spyOn(state, 'getState')
+        .mockResolvedValueOnce(STATE.WORK_LEFT)
+        .mockResolvedValueOnce(STATE.DONE);
+      vi.spyOn(copilot, 'runAgent')
+        .mockResolvedValueOnce({ isSuccess: true, exitCode: 0 })
+        .mockResolvedValueOnce({
+          isSuccess: false,
+          exitCode: 1,
+          error: 'Fix failed',
+        });
+      vi.spyOn(gate, 'runGate').mockResolvedValue({
+        isSuccess: false,
+        results: [],
+        error: 'Gate failed',
+        totalDuration: 0,
+      });
+
+      await run({ yes: true });
+
+      expect(copilot.runAgent).toHaveBeenCalledTimes(2);
+      expect(gate.runGate).toHaveBeenCalledTimes(1);
+      expect(state.writeFailureNotes).toHaveBeenCalledTimes(1);
+    });
   });
 
   describe('Failure Notes', () => {
