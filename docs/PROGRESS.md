@@ -45,7 +45,7 @@
 | TASK_001 | Hoist VALID_STATUSES/ACTIVE_STATUSES to Module-Level in state.ts | TASK_001_hoist_valid_active_statuses_state.md | COMPLETE    | PASSED        | Medium   | S (≤2h)    | None         | SA-20260224-015 | 1        |
 | TASK_002 | Hoist STATE_COLORS/STATE_ICONS to Module-Level in status.ts  | TASK_002_hoist_state_colors_icons_status.md      | COMPLETE    | PASSED        | Medium   | S (≤2h)    | None         | SA-20260224-022 | 1        |
 | TASK_003 | Cache getDefaults() in config.ts                             | TASK_003_cache_getdefaults_config.md             | COMPLETE    | PASSED        | Medium   | S (≤2h)    | None         | SA-20260224-022 | 1        |
-| TASK_004 | Cache matrixChars.length in renderer.ts Animation Loop       | TASK_004_cache_matrixchars_length_renderer.md    | IN REVIEW   |               | Medium   | S (≤2h)    | None         | SA-20260224-023 | 1        |
+| TASK_004 | Cache matrixChars.length in renderer.ts Animation Loop       | TASK_004_cache_matrixchars_length_renderer.md    | COMPLETE    | PASSED        | Medium   | S (≤2h)    | None         | SA-20260224-023 | 1        |
 | MVT_M0   | Manual Verification: Quick Wins                              | MVT_M0_quick_wins.md                             | NOT STARTED | —             | —        | 30 min     | TASK_001, TASK_002, TASK_003, TASK_004 | | |
 
 ### Dependencies
@@ -93,9 +93,9 @@ graph TD
 | -------- | ------------------------------------------- | ------------------------------------------------------------------ | ----------- | ------------- | -------- | ----------- | ------------ | ----------- | -------- |
 | TASK_011 | Standardize forceReload → forceRefresh      | TASK_011_standardize_force_reload_to_force_refresh.md              | COMPLETE    | PASSED        | High     | S (≤2h)     | TASK_010     | SA-20260224-018 | 1        |
 | TASK_012 | Rename i18n.ts → formatting.ts              | TASK_012_rename_i18n_to_formatting.md                              | COMPLETE    | PASSED        | High     | S (≤2h)     | TASK_010     | SA-20260224-019 | 1        |
-| TASK_013 | Rename normalizeAgentName → buildAgentName  | TASK_013_rename_normalize_agent_name_to_build_agent_name.md        | NOT STARTED | —             | Medium   | S (≤2h)     | TASK_010     |             |          |
-| TASK_014 | Rename willFailValidation → hasMissingRequiredArgs | TASK_014_rename_will_fail_validation_to_has_missing_required_args.md | NOT STARTED | —          | Medium   | S (≤2h)     | TASK_010     |             |          |
-| TASK_015 | Rename shouldAllowAll → allowAll            | TASK_015_rename_should_allow_all_to_allow_all.md                   | NOT STARTED | —             | Medium   | XS (< 1h)   | TASK_010     |             |          |
+| TASK_013 | Rename normalizeAgentName → buildAgentName  | TASK_013_rename_normalize_agent_name_to_build_agent_name.md        | COMPLETE    | PASSED        | Medium   | S (≤2h)     | TASK_010     | SA-20260224-024 | 1        |
+| TASK_014 | Rename willFailValidation → hasMissingRequiredArgs | TASK_014_rename_will_fail_validation_to_has_missing_required_args.md | COMPLETE    | PASSED        | Medium   | S (≤2h)     | TASK_010     | SA-20260224-025 | 1        |
+| TASK_015 | Rename shouldAllowAll → allowAll            | TASK_015_rename_should_allow_all_to_allow_all.md                   | IN REVIEW   |               | Medium   | XS (< 1h)   | TASK_010     | SA-20260224-026 | 1        |
 | TASK_016 | Standardize processParam → proc             | TASK_016_standardize_process_param_to_proc.md                      | NOT STARTED | —             | Medium   | S (≤2h)     | TASK_010     |             |          |
 | MVT_M2A  | Manual Verification: Naming Standardization | MVT_M2A_naming_standardization.md                                  | NOT STARTED | —             | —        | 30 min      | TASK_011, TASK_012, TASK_013, TASK_014, TASK_015, TASK_016 | | |
 
@@ -312,13 +312,13 @@ TASK_001 → TASK_005 → TASK_010 → TASK_011/TASK_017 → TASK_023 → TASK_0
 
 ## Subagent Tracking
 
-Last Subagent ID: SA-20260224-023
+Last Subagent ID: SA-20260224-026
 
 ---
 
 ## Review Tracking
 
-Last Review ID: RA-20260224-022
+Last Review ID: RA-20260224-025
 
 ---
 
@@ -328,25 +328,20 @@ Last Review ID: RA-20260224-022
 
 | Field             | Value |
 | ----------------- | ----- |
-| Task              | TASK_004 |
-| Impl Agent        | SA-20260224-023 |
-| Files Changed     | `lib/ui/banner-animation/renderer.ts` |
-| Tests Added       | `test/banner-animation-renderer.test.ts` (1 new test) |
+| Task              | TASK_015 |
+| Impl Agent        | SA-20260224-026 |
+| Files Changed     | `lib/types.ts`, `lib/commands/plan.ts`, `lib/commands/refactor.ts`, `lib/commands/task.ts` |
+| Tests Added       | None (updated `test/types.test.ts`, 0 new tests) |
 | Rework?           | No |
-| Focus Areas       | `animateVersion()` branch collapse safety and cached `matrixCharsLen` usage for all non-locked character positions |
-| Known Limitations | Out of scope: broader P-12 renderer/effects refactor (TASK_033) |
+| Focus Areas       | Mechanical rename coverage for `CopilotArgsOptions.allowAll` across all required call sites and fixture update |
+| Known Limitations | No behavioral changes; property remains unused by `buildCopilotArgs` (out of scope per task) |
 | Gate Results      | format:✅ lint:✅ typecheck:✅ test:✅ |
 
 ### For Fix Agent
 
 | Field           | Value |
 | --------------- | ----- |
-| Task            | - |
-| Task Goal       | - |
-| Review Agent    | - |
-| Failed Gate     | - |
-| Primary Error   | - |
-| Root Cause Hint | - |
-| Do NOT          | - |
-
-
+| Task            | TASK_013 — Rename normalizeAgentName → buildAgentName |
+| Failed Gate     | npm test |
+| Primary Error   | [90mstderr[2m | test/run.test.ts[2m > [22m[2mRun Command[2m > [22m[2mState Machine[2m > [22m[2mshould exit with error for NO_PROGRESS state [22m[39m✗ No PROGRESS.md found. Run `speci init` to initialize. [90mstderr[2m | test/run.test.ts[2m > [22m[2mRun Command[2m > [22m[2mState Machine[2m > [22m[2mshould exit with error for NO_PROGRESS state [22m[39m✗ Run command failed: [ERR-PRE-06] No PROGRESS.md found in run command   Cause: Run command requires PROGRESS.md to track … |
+| Root Cause Hint | `npm test` exited with code 1 |

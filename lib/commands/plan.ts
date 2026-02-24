@@ -172,7 +172,7 @@ export async function plan(
     const args = context.copilotRunner.buildArgs(loadedConfig, {
       prompt: fullPrompt || undefined,
       agent: agentName,
-      shouldAllowAll: loadedConfig.copilot.permissions === 'allow-all',
+      allowAll: loadedConfig.copilot.permissions === 'allow-all',
       command: 'plan',
     });
 

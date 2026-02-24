@@ -90,6 +90,16 @@ export interface TaskStats {
 }
 
 /**
+ * Canonical task status values from PROGRESS.md task tables.
+ */
+export type TaskStatus =
+  | 'NOT STARTED'
+  | 'IN PROGRESS'
+  | 'IN REVIEW'
+  | 'COMPLETE'
+  | 'BLOCKED';
+
+/**
  * Current task information
  *
  * Metadata about the currently active task (IN PROGRESS or IN REVIEW).
@@ -98,7 +108,7 @@ export interface TaskStats {
 export interface CurrentTask {
   id: string;
   title: string;
-  status: string;
+  status: TaskStatus;
 }
 
 /**
@@ -125,7 +135,7 @@ export type CommandName =
 export interface CopilotArgsOptions {
   prompt?: string;
   agent: string;
-  shouldAllowAll?: boolean;
+  allowAll?: boolean;
   command: CommandName;
   /** Directory for session share logs (--share flag). When set, Copilot writes session markdown here. */
   logsDir?: string;

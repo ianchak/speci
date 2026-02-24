@@ -10,6 +10,7 @@ import { STATE } from '@/types.js';
 import type {
   SpeciConfig,
   TaskStats,
+  TaskStatus,
   CurrentTask,
   AgentRunResult,
   CopilotArgsOptions,
@@ -78,7 +79,7 @@ describe('types module', () => {
       const task: CurrentTask = {
         id: 'TASK_001',
         title: 'Test Task',
-        status: 'IN_PROGRESS',
+        status: 'IN PROGRESS',
       };
 
       expect(task.id).toBe('TASK_001');
@@ -108,7 +109,7 @@ describe('types module', () => {
       const options: CopilotArgsOptions = {
         prompt: 'Test prompt',
         agent: 'test-agent',
-        shouldAllowAll: true,
+        allowAll: true,
         command: 'impl',
       };
 
@@ -199,6 +200,15 @@ describe('types module', () => {
 
       expect(isValidCommand('impl')).toBe(true);
       expect(isValidCommand('invalid')).toBe(false);
+    });
+
+    it('should reject invalid TaskStatus literals at compile time', () => {
+      const validStatus: TaskStatus = 'IN REVIEW';
+      expect(validStatus).toBe('IN REVIEW');
+
+      // @ts-expect-error invalid status must not be assignable to TaskStatus
+      const invalidStatus: TaskStatus = 'INVALID';
+      expect(invalidStatus).toBe('INVALID');
     });
   });
 
