@@ -4,8 +4,9 @@ import {
   ASCII_GLYPHS,
   supportsUnicode,
   getGlyph,
+  getSpinnerFrames,
   getSpinnerFrame,
-  type GlyphName,
+  type SingleGlyphName,
 } from '../lib/ui/glyphs.js';
 
 describe('glyphs', () => {
@@ -169,7 +170,7 @@ describe('glyphs', () => {
 
     it('should handle all glyph names', () => {
       process.env.LANG = 'en_US.UTF-8';
-      const glyphNames: GlyphName[] = [
+      const glyphNames: SingleGlyphName[] = [
         'success',
         'warning',
         'error',
@@ -177,7 +178,6 @@ describe('glyphs', () => {
         'nested',
         'arrow',
         'pointer',
-        'spinner',
       ];
 
       glyphNames.forEach((name) => {
@@ -187,15 +187,22 @@ describe('glyphs', () => {
       });
     });
 
-    it('should return spinner array for spinner glyph', () => {
+    it('should reject spinner for getGlyph at compile time', () => {
+      // @ts-expect-error spinner frames must be accessed via getSpinnerFrames/getSpinnerFrame
+      getGlyph('spinner');
+    });
+  });
+
+  describe('getSpinnerFrames', () => {
+    it('should return spinner array for Unicode mode', () => {
       process.env.LANG = 'en_US.UTF-8';
-      const spinner = getGlyph('spinner');
+      const spinner = getSpinnerFrames();
       expect(Array.isArray(spinner)).toBe(true);
       expect(spinner).toHaveLength(10);
     });
 
-    it('should return ASCII spinner when Unicode not supported', () => {
-      const spinner = getGlyph('spinner');
+    it('should return ASCII spinner when Unicode is not supported', () => {
+      const spinner = getSpinnerFrames();
       expect(Array.isArray(spinner)).toBe(true);
       expect(spinner).toEqual(['-', '\\', '|', '/']);
     });
@@ -233,7 +240,7 @@ describe('glyphs', () => {
     it('should handle negative frame indices', () => {
       process.env.LANG = 'en_US.UTF-8';
       // JavaScript modulo with negative numbers
-      const frames = getGlyph('spinner') as string[];
+      const frames = getSpinnerFrames();
       const index = -1;
       const frame = getSpinnerFrame(index);
       expect(frames).toContain(frame);

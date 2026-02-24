@@ -115,7 +115,7 @@ export function formatIterationLabel(options: ProgressBarOptions): string {
     separatorColor = 'gray',
   } = options;
 
-  const pointer = getGlyph('pointer') as string;
+  const pointer = getGlyph('pointer');
   const labelStr = colorize(`${pointer} ${label}`, labelColor);
   const counterStr =
     colorize(`${current}`, currentColor) +

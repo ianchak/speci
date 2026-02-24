@@ -559,13 +559,13 @@ function getStateColor(
  */
 function getStateIcon(state: string): string {
   const icons: Record<string, string> = {
-    DONE: getGlyph('success') as string,
-    WORK_LEFT: getGlyph('arrow') as string,
-    IN_REVIEW: getGlyph('bullet') as string,
-    BLOCKED: getGlyph('error') as string,
-    NO_PROGRESS: getGlyph('warning') as string,
+    DONE: getGlyph('success'),
+    WORK_LEFT: getGlyph('arrow'),
+    IN_REVIEW: getGlyph('bullet'),
+    BLOCKED: getGlyph('error'),
+    NO_PROGRESS: getGlyph('warning'),
   };
-  return icons[state] || (getGlyph('bullet') as string);
+  return icons[state] || getGlyph('bullet');
 }
 
 /**
