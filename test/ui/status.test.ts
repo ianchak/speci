@@ -668,8 +668,10 @@ This is some malformed content
       // Task name should appear in the output
       expect(output).toContain('TASK_017');
       // Each output line (stripped of ANSI) should fit within CONTENT_WIDTH
+      // eslint-disable-next-line no-control-regex
+      const ansiRegex = /\x1b\[[0-9;]*m/g;
       for (const line of consoleOutput) {
-        const stripped = line.replace(/\x1b\[[0-9;]*m/g, '');
+        const stripped = line.replace(ansiRegex, '');
         if (stripped.includes('TASK_017')) {
           expect(stripped.length).toBeLessThanOrEqual(CONTENT_WIDTH);
         }

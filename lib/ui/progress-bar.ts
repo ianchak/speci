@@ -169,7 +169,7 @@ export function renderIterationDisplay(options: ProgressBarOptions): string[] {
   const content = `  ${label}  ${bar}`;
 
   const contentWidth = visibleLength(content);
-  const actualBorderWidth = Math.max(borderWidth, contentWidth);
+  const actualBorderWidth = Math.max(borderWidth, contentWidth + 2);
   const border = renderBorder(actualBorderWidth, borderColor);
 
   return [border, content, border];
