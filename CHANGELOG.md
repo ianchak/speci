@@ -1,5 +1,21 @@
 # speci
 
+## 0.10.4
+
+### Patch Changes
+
+- [#2](https://github.com/ianchak/speci/pull/2) [`a341b17`](https://github.com/ianchak/speci/commit/a341b17c2f2f974618d4ed15a9d0673be10610fe) Thanks [@ianchak](https://github.com/ianchak)! - fix(banner): pad version line to banner width for correct centering in status dashboard
+
+- [#2](https://github.com/ianchak/speci/pull/2) [`fe0db71`](https://github.com/ianchak/speci/commit/fe0db7128bf917acf1237604cda1ac180ff805d3) Thanks [@ianchak](https://github.com/ianchak)! - perf(core): hoist module-level constants and cache computed values in state, config, status, and renderer (M0 TASK_001–004)
+
+- [#2](https://github.com/ianchak/speci/pull/2) [`fe0db71`](https://github.com/ianchak/speci/commit/fe0db7128bf917acf1237604cda1ac180ff805d3) Thanks [@ianchak](https://github.com/ianchak)! - fix(core): fix stateFileCache path keying, O(n²) stdout concat in gate, clean command try/catch, add global rejection handlers, and consolidate cleanup guard (M1 TASK_005–010)
+
+- [#2](https://github.com/ianchak/speci/pull/2) [`fe0db71`](https://github.com/ianchak/speci/commit/fe0db7128bf917acf1237604cda1ac180ff805d3) Thanks [@ianchak](https://github.com/ianchak)! - refactor(core): standardize naming conventions and strengthen type safety with literal unions, keyof error codes, JSON parse validation, and discriminated unions (M2A TASK_011–016, M2B TASK_017–023)
+
+- [#2](https://github.com/ianchak/speci/pull/2) [`fe0db71`](https://github.com/ianchak/speci/commit/fe0db7128bf917acf1237604cda1ac180ff805d3) Thanks [@ianchak](https://github.com/ianchak)! - refactor(core): extract shared helpers (makeAction, toErrorMessage, walkUpToFind, dispatchAgent), decompose yolo and dashboard, split lock parsers, and merge animation frames (M3 TASK_024–034)
+
+- [#2](https://github.com/ianchak/speci/pull/2) [`fe0db71`](https://github.com/ianchak/speci/commit/fe0db7128bf917acf1237604cda1ac180ff805d3) Thanks [@ianchak](https://github.com/ianchak)! - refactor(architecture): add adapter unit tests, injectable prompts, and signal reset; consolidate color detection and banner output; split config/interfaces into submodules; reorganize utils/ and mirror test structure (M4A–C TASK_035–048)
+
 ## 0.10.3
 
 ### Patch Changes
