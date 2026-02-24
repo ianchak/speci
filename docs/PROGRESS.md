@@ -43,9 +43,9 @@
 | Task ID  | Title                                                        | File                                             | Status      | Review Status | Priority | Complexity | Dependencies | Assigned To | Attempts |
 | -------- | ------------------------------------------------------------ | ------------------------------------------------ | ----------- | ------------- | -------- | ---------- | ------------ | ----------- | -------- |
 | TASK_001 | Hoist VALID_STATUSES/ACTIVE_STATUSES to Module-Level in state.ts | TASK_001_hoist_valid_active_statuses_state.md | COMPLETE    | PASSED        | Medium   | S (≤2h)    | None         | SA-20260224-015 | 1        |
-| TASK_002 | Hoist STATE_COLORS/STATE_ICONS to Module-Level in status.ts  | TASK_002_hoist_state_colors_icons_status.md      | NOT STARTED | —             | Medium   | S (≤2h)    | None         |             |          |
-| TASK_003 | Cache getDefaults() in config.ts                             | TASK_003_cache_getdefaults_config.md             | NOT STARTED | —             | Medium   | S (≤2h)    | None         |             |          |
-| TASK_004 | Cache matrixChars.length in renderer.ts Animation Loop       | TASK_004_cache_matrixchars_length_renderer.md    | NOT STARTED | —             | Medium   | S (≤2h)    | None         |             |          |
+| TASK_002 | Hoist STATE_COLORS/STATE_ICONS to Module-Level in status.ts  | TASK_002_hoist_state_colors_icons_status.md      | COMPLETE    | PASSED        | Medium   | S (≤2h)    | None         | SA-20260224-022 | 1        |
+| TASK_003 | Cache getDefaults() in config.ts                             | TASK_003_cache_getdefaults_config.md             | COMPLETE    | PASSED        | Medium   | S (≤2h)    | None         | SA-20260224-022 | 1        |
+| TASK_004 | Cache matrixChars.length in renderer.ts Animation Loop       | TASK_004_cache_matrixchars_length_renderer.md    | IN REVIEW   |               | Medium   | S (≤2h)    | None         | SA-20260224-023 | 1        |
 | MVT_M0   | Manual Verification: Quick Wins                              | MVT_M0_quick_wins.md                             | NOT STARTED | —             | —        | 30 min     | TASK_001, TASK_002, TASK_003, TASK_004 | | |
 
 ### Dependencies
@@ -123,8 +123,8 @@ graph TD
 
 | Task ID  | Title                                                             | File                                                  | Status      | Review Status | Priority | Complexity   | Dependencies                                                   | Assigned To | Attempts |
 | -------- | ----------------------------------------------------------------- | ----------------------------------------------------- | ----------- | ------------- | -------- | ------------ | -------------------------------------------------------------- | ----------- | -------- |
-| TASK_017 | Split getGlyph() to Eliminate Forced as string Casts             | TASK_017_split_get_glyph_eliminate_casts.md           | IN REVIEW   |               | High     | S (≤2h)      | TASK_010                                                       | SA-20260224-020 | 1        |
-| TASK_018 | Add TaskStatus Literal Union Type                                 | TASK_018_add_task_status_literal_union.md             | NOT STARTED | —             | High     | S (≤2h)      | TASK_010                                                       |             |          |
+| TASK_017 | Split getGlyph() to Eliminate Forced as string Casts             | TASK_017_split_get_glyph_eliminate_casts.md           | COMPLETE    | PASSED        | High     | S (≤2h)      | TASK_010                                                       | SA-20260224-020 | 1        |
+| TASK_018 | Add TaskStatus Literal Union Type                                 | TASK_018_add_task_status_literal_union.md             | COMPLETE    | PASSED        | High     | S (≤2h)      | TASK_010                                                       | SA-20260224-021 | 1        |
 | TASK_019 | Type ErrorCode as keyof typeof ERROR_CODES                        | TASK_019_type_error_code_as_keyof.md                  | NOT STARTED | —             | High     | M (2–4h)     | TASK_010                                                       |             |          |
 | TASK_020 | Validate JSON.parse() Results at Critical Call Sites              | TASK_020_validate_json_parse_results.md               | NOT STARTED | —             | High     | S (≤2h)      | TASK_010                                                       |             |          |
 | TASK_021 | Add parseEnvValue Discriminated Union Return Type                 | TASK_021_parse_env_value_discriminated_union.md       | NOT STARTED | —             | High     | S (≤2h)      | TASK_010                                                       |             |          |
@@ -312,13 +312,13 @@ TASK_001 → TASK_005 → TASK_010 → TASK_011/TASK_017 → TASK_023 → TASK_0
 
 ## Subagent Tracking
 
-Last Subagent ID: SA-20260224-020
+Last Subagent ID: SA-20260224-023
 
 ---
 
 ## Review Tracking
 
-Last Review ID: RA-20260224-018
+Last Review ID: RA-20260224-022
 
 ---
 
@@ -328,13 +328,13 @@ Last Review ID: RA-20260224-018
 
 | Field             | Value |
 | ----------------- | ----- |
-| Task              | TASK_017 |
-| Impl Agent        | SA-20260224-020 |
-| Files Changed     | `lib/ui/glyphs.ts`, `lib/commands/status.ts`, `lib/ui/progress-bar.ts` |
-| Tests Added       | `test/glyphs.test.ts` (3 new tests) |
+| Task              | TASK_004 |
+| Impl Agent        | SA-20260224-023 |
+| Files Changed     | `lib/ui/banner-animation/renderer.ts` |
+| Tests Added       | `test/banner-animation-renderer.test.ts` (1 new test) |
 | Rework?           | No |
-| Focus Areas       | Type narrowing boundary in `getGlyph`, spinner access migration to `getSpinnerFrames`, and cast removal in status/progress bar callers |
-| Known Limitations | `getStateIcon` and related state typing remain `string`-based; enum narrowing is tracked by later tasks |
+| Focus Areas       | `animateVersion()` branch collapse safety and cached `matrixCharsLen` usage for all non-locked character positions |
+| Known Limitations | Out of scope: broader P-12 renderer/effects refactor (TASK_033) |
 | Gate Results      | format:✅ lint:✅ typecheck:✅ test:✅ |
 
 ### For Fix Agent
@@ -348,4 +348,5 @@ Last Review ID: RA-20260224-018
 | Primary Error   | - |
 | Root Cause Hint | - |
 | Do NOT          | - |
+
 

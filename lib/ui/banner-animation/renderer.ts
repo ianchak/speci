@@ -206,6 +206,7 @@ export async function animateVersion(
   const centeredPrefix = ' '.repeat(padding);
 
   const matrixChars = '0123456789abcdef!@#$%^&*()+-=[]{}|;:,.<>?~';
+  const matrixCharsLen = matrixChars.length;
 
   let isFirstFrame = true;
 
@@ -219,13 +220,9 @@ export async function animateVersion(
     for (let i = 0; i < versionText.length; i++) {
       if (i < lockedCount) {
         displayText += versionText[i];
-      } else if (i === lockedCount && progress < 1.0) {
-        const randomChar =
-          matrixChars[Math.floor(Math.random() * matrixChars.length)];
-        displayText += randomChar;
       } else {
         const randomChar =
-          matrixChars[Math.floor(Math.random() * matrixChars.length)];
+          matrixChars[Math.floor(Math.random() * matrixCharsLen)];
         displayText += randomChar;
       }
     }

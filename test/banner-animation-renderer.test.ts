@@ -201,6 +201,25 @@ describe('Banner Animation Renderer Module', () => {
 
       vi.useRealTimers();
     });
+
+    it('should write final locked version string when progress completes', async () => {
+      const module = await import('@/ui/banner-animation/renderer.js');
+
+      const writeSpy = vi
+        .spyOn(process.stdout, 'write')
+        .mockImplementation(() => true);
+      vi.useFakeTimers();
+
+      const promise = module.animateVersion('1.0.0', 100);
+      await vi.advanceTimersByTimeAsync(150);
+      await promise;
+
+      const calls = writeSpy.mock.calls;
+      const lastWriteArg = calls[calls.length - 1]?.[0];
+      expect(String(lastWriteArg)).toContain('v1.0.0');
+
+      vi.useRealTimers();
+    });
   });
 
   describe('selectRandomEffect', () => {
