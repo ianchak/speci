@@ -12,6 +12,7 @@ import { getGlyph } from '@/ui/glyphs.js';
 import { terminalState } from '@/ui/terminal.js';
 import { createProductionContext } from '@/adapters/context-factory.js';
 import type { CommandContext, CommandResult } from '@/interfaces.js';
+import { failResult, toErrorMessage } from '@/utils/error-handler.js';
 
 /**
  * Status command options
@@ -85,22 +86,9 @@ export async function status(
     await runLiveDashboard(options.verbose, context);
     return { success: true, exitCode: 0 };
   } catch (error) {
-    if (error instanceof Error) {
-      context.logger.error(`Status command failed: ${error.message}`);
-      return {
-        success: false,
-        exitCode: 1,
-        error: error.message,
-      };
-    } else {
-      const errorMsg = String(error);
-      context.logger.error(`Status command failed: ${errorMsg}`);
-      return {
-        success: false,
-        exitCode: 1,
-        error: errorMsg,
-      };
-    }
+    const errorMsg = toErrorMessage(error);
+    context.logger.error(`Status command failed: ${errorMsg}`);
+    return failResult(errorMsg);
   }
 }
 

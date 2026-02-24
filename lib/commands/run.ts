@@ -14,7 +14,7 @@ import type { SpeciConfig } from '@/types.js';
 import { STATE } from '@/types.js';
 import { createError } from '@/errors.js';
 import { closeLogFile } from '@/utils/logger.js';
-import { handleCommandError } from '@/utils/error-handler.js';
+import { failResult, handleCommandError } from '@/utils/error-handler.js';
 import { createProductionContext } from '@/adapters/context-factory.js';
 import type { CommandContext, CommandResult } from '@/interfaces.js';
 import { renderIterationDisplay } from '@/ui/progress-bar.js';
@@ -89,7 +89,7 @@ export async function run(
     const initialState = await context.stateReader.getState(loadedConfig);
     const shouldProceed = await confirmRun(initialState, loadedConfig, context);
     if (!shouldProceed) {
-      return { success: false, exitCode: 0, error: 'User cancelled' };
+      return failResult('User cancelled', 0);
     }
   }
 

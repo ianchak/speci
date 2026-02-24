@@ -6,7 +6,11 @@ import type { CommandContext, CommandResult } from '@/interfaces.js';
 import { plan } from '@/commands/plan.js';
 import { task } from '@/commands/task.js';
 import { run } from '@/commands/run.js';
-import { handleCommandError } from '@/utils/error-handler.js';
+import {
+  failResult,
+  handleCommandError,
+  toErrorMessage,
+} from '@/utils/error-handler.js';
 import { PathValidator } from '@/validation/index.js';
 
 /**
@@ -94,11 +98,7 @@ export async function yolo(
   const normalizedPrompt = options.prompt?.trim();
   if (!normalizedPrompt && (!options.input || options.input.length === 0)) {
     context.logger.error('Missing required input');
-    return {
-      success: false,
-      exitCode: 1,
-      error: 'Missing required input',
-    };
+    return failResult('Missing required input');
   }
 
   await context.preflight.run(
@@ -129,11 +129,7 @@ export async function yolo(
       }
 
       if (!options.force) {
-        return {
-          success: false,
-          exitCode: 1,
-          error: await formatLockConflictError(loadedConfig, context),
-        };
+        return failResult(await formatLockConflictError(loadedConfig, context));
       }
 
       await context.lockManager.release(loadedConfig);
@@ -217,7 +213,7 @@ export async function yolo(
     try {
       await context.lockManager.release(loadedConfig);
     } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
+      const message = toErrorMessage(error);
       context.logger.warn(`Failed to release lock file: ${message}`);
     }
     context.signalManager.unregisterCleanup(lockCleanup);

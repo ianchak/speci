@@ -1,5 +1,9 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { handleCommandError } from '../lib/utils/error-handler.js';
+import {
+  failResult,
+  handleCommandError,
+  toErrorMessage,
+} from '../lib/utils/error-handler.js';
 import type { ILogger } from '../lib/interfaces.js';
 
 describe('error-handler', () => {
@@ -27,6 +31,40 @@ describe('error-handler', () => {
   });
 
   describe('handleCommandError', () => {
+    it('should handle ERR-INP-02 error with init guidance', () => {
+      const error = new Error(
+        '[ERR-INP-02] Agent file not found: /path/to/speci-task.agent.md'
+      );
+      const result = handleCommandError(error, 'Task', mockLogger);
+
+      expect(mockLogger.error).toHaveBeenCalledWith(error.message);
+      expect(mockLogger.info).toHaveBeenCalledWith(
+        'Run "speci init" to create agents'
+      );
+      expect(result).toEqual({
+        success: false,
+        exitCode: 1,
+        error: error.message,
+      });
+    });
+
+    it('should handle plain agent file not found errors with init guidance', () => {
+      const error = new Error(
+        'Agent file not found: /path/to/speci-plan.agent.md'
+      );
+      const result = handleCommandError(error, 'Plan', mockLogger);
+
+      expect(mockLogger.error).toHaveBeenCalledWith(error.message);
+      expect(mockLogger.info).toHaveBeenCalledWith(
+        'Run "speci init" to create agents'
+      );
+      expect(result).toEqual({
+        success: false,
+        exitCode: 1,
+        error: error.message,
+      });
+    });
+
     it('should log error message and return result for Error instance', () => {
       const error = new Error('Test error message');
       const result = handleCommandError(error, 'TestCommand', mockLogger);
@@ -138,6 +176,38 @@ describe('error-handler', () => {
         'EmptyMsg command failed: '
       );
       expect(result.error).toBe('');
+    });
+  });
+
+  describe('toErrorMessage', () => {
+    it('should return message for Error instances', () => {
+      expect(toErrorMessage(new Error('oops'))).toBe('oops');
+    });
+
+    it('should return string values as-is', () => {
+      expect(toErrorMessage('raw string')).toBe('raw string');
+    });
+
+    it('should convert non-string values to string', () => {
+      expect(toErrorMessage(42)).toBe('42');
+    });
+  });
+
+  describe('failResult', () => {
+    it('should create failure result with default exit code', () => {
+      expect(failResult('bad input')).toEqual({
+        success: false,
+        exitCode: 1,
+        error: 'bad input',
+      });
+    });
+
+    it('should create failure result with custom exit code', () => {
+      expect(failResult('bad input', 2)).toEqual({
+        success: false,
+        exitCode: 2,
+        error: 'bad input',
+      });
     });
   });
 });

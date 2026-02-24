@@ -2,7 +2,7 @@
  * Error handling utilities for command error handling
  */
 
-import type { ILogger } from '@/interfaces.js';
+import type { CommandResult, ILogger } from '@/interfaces.js';
 
 /**
  * Command execution result with error
@@ -11,6 +11,41 @@ export interface CommandErrorResult {
   success: false;
   exitCode: 1;
   error: string;
+}
+
+/**
+ * Extract a string message from an unknown caught error value.
+ *
+ * @param error - Unknown error value
+ * @returns Extracted message string
+ */
+export function toErrorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
+
+export function failResult(
+  error: string
+): CommandResult & { success: false; exitCode: 1; error: string };
+export function failResult(
+  error: string,
+  exitCode: number
+): CommandResult & { success: false; error: string };
+/**
+ * Build a consistent command failure result.
+ *
+ * @param error - Error message to return
+ * @param exitCode - Exit code for the failure (defaults to 1)
+ * @returns Standardized command failure result
+ */
+export function failResult(
+  error: string,
+  exitCode: number = 1
+): CommandResult & { success: false; error: string } {
+  return {
+    success: false,
+    exitCode,
+    error,
+  };
 }
 
 /**
@@ -26,12 +61,18 @@ export function handleCommandError(
   commandName: string,
   logger: ILogger
 ): CommandErrorResult {
-  const errorMsg = error instanceof Error ? error.message : String(error);
+  if (
+    error instanceof Error &&
+    (error.message.includes('ERR-INP-02') ||
+      error.message.includes('Agent file not found'))
+  ) {
+    logger.error(error.message);
+    logger.info('Run "speci init" to create agents');
+    return failResult(error.message);
+  }
+
+  const errorMsg = toErrorMessage(error);
   logger.error(`${commandName} command failed: ${errorMsg}`);
 
-  return {
-    success: false,
-    exitCode: 1,
-    error: errorMsg,
-  };
+  return failResult(errorMsg);
 }

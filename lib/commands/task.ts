@@ -10,7 +10,7 @@ import { relative, resolve } from 'node:path';
 import { infoBox } from '@/ui/box.js';
 import { createProductionContext } from '@/adapters/context-factory.js';
 import { initializeCommand } from '@/utils/command-helpers.js';
-import { handleCommandError } from '@/utils/error-handler.js';
+import { failResult, handleCommandError } from '@/utils/error-handler.js';
 import { executeCopilotCommand } from '@/utils/copilot-helper.js';
 import { cleanFiles } from '@/commands/clean.js';
 import { PathValidator } from '@/validation/index.js';
@@ -47,11 +47,7 @@ function validatePlanFile(
   if (!result.success) {
     context.logger.error(result.error.message);
     result.error.suggestions?.forEach((s) => context.logger.info(s));
-    return {
-      success: false,
-      exitCode: 1,
-      error: result.error.message,
-    };
+    return failResult(result.error.message);
   }
 
   return null;
@@ -82,11 +78,7 @@ export async function task(
       context.logger.info('Examples:');
       context.logger.muted('  speci task --plan docs/plan.md');
       context.logger.muted('  speci t -p docs/plan.md');
-      return {
-        success: false,
-        exitCode: 1,
-        error: 'Missing required input',
-      };
+      return failResult('Missing required input');
     }
 
     // Resolve and validate plan file (must come before initialization)
@@ -138,19 +130,6 @@ export async function task(
     // Execute copilot command with standard pattern
     return await executeCopilotCommand(context, args);
   } catch (error) {
-    // Special handling for agent file not found
-    if (
-      error instanceof Error &&
-      error.message.includes('Agent file not found')
-    ) {
-      context.logger.error(error.message);
-      context.logger.info('Run "speci init" to create agents');
-      return {
-        success: false,
-        exitCode: 1,
-        error: error.message,
-      };
-    }
     return handleCommandError(error, 'Task', context.logger);
   }
 }
