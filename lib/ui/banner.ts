@@ -171,8 +171,10 @@ export function renderBanner(options: BannerOptions = {}): string {
   if (showVersion) {
     const versionText = `v${pkg.version}`;
     const bannerWidth = BANNER_ART[0].length;
-    const padding = Math.floor((bannerWidth - versionText.length) / 2);
-    const centeredVersion = ' '.repeat(padding) + colorize(versionText, 'dim');
+    const leftPad = Math.floor((bannerWidth - versionText.length) / 2);
+    const rightPad = bannerWidth - leftPad - versionText.length;
+    const centeredVersion =
+      ' '.repeat(leftPad) + colorize(versionText, 'dim') + ' '.repeat(rightPad);
     output += '\n' + centeredVersion;
   }
 
