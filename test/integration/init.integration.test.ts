@@ -140,4 +140,41 @@ describe('Init Command Integration', () => {
       process.chdir(originalCwd);
     }
   });
+
+  it('should return failure in read-only directory without unhandled exception', async () => {
+    if (process.platform === 'win32') {
+      return;
+    }
+
+    const originalCwd = process.cwd();
+    process.chdir(testProject.root);
+
+    let madeReadOnly = false;
+
+    try {
+      const fs = await import('node:fs/promises');
+      await fs.rm(testProject.configPath, { force: true });
+
+      try {
+        await fs.chmod(testProject.root, 0o555);
+        madeReadOnly = true;
+      } catch {
+        return;
+      }
+
+      const context = createProductionContext();
+      const result = await initCommand({}, context);
+
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.error).toBeDefined();
+      }
+    } finally {
+      if (madeReadOnly) {
+        const fs = await import('node:fs/promises');
+        await fs.chmod(testProject.root, 0o755);
+      }
+      process.chdir(originalCwd);
+    }
+  });
 });

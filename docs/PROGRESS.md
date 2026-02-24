@@ -200,10 +200,10 @@ graph TD
 | -------- | ------------------------------------------------------------------ | -------------------------------------------------- | ----------- | ------------- | -------- | ---------- | ------------------------------ | ----------- | -------- |
 | TASK_035 | Add Unit Tests for 9 Untested Adapter Files                        | TASK_035_add_adapter_unit_tests.md                 | COMPLETE    | PASSED        | High     | L (4-8h)   | None                           | SA-20260224-010 | 1        |
 | TASK_036 | Export resetSignalState() from signals.ts for Test Isolation       | TASK_036_export_reset_signal_state.md              | COMPLETE    | PASSED        | High     | S (≤2h)    | TASK_007                       | SA-20260224-011 | 1        |
-| TASK_037 | Make Interactive Prompts Injectable in run.ts                      | TASK_037_make_prompts_injectable_run.md            | IN REVIEW   |               | High     | M (2-4h)   | None                           | SA-20260224-012 | 1        |
-| TASK_038 | Fix Integration Test Stability (chdir, Timing, Env Mutations)      | TASK_038_fix_integration_test_stability.md         | NOT STARTED | —             | High     | M (2-4h)   | None                           |             |          |
+| TASK_037 | Make Interactive Prompts Injectable in run.ts                      | TASK_037_make_prompts_injectable_run.md            | COMPLETE    | PASSED        | High     | M (2-4h)   | None                           | SA-20260224-012 | 1        |
+| TASK_038 | Fix Integration Test Stability (chdir, Timing, Env Mutations)      | TASK_038_fix_integration_test_stability.md         | COMPLETE    | PASSED        | High     | M (2-4h)   | None                           | SA-20260224-013 | 1        |
 | TASK_039 | Add Behavioral Smoke Tests to context-factory.test.ts              | TASK_039_add_context_factory_smoke_tests.md        | NOT STARTED | —             | Medium   | S (≤2h)    | TASK_035                       |             |          |
-| TASK_040 | Add Sad-Path Integration Tests (Spawn Failure Scenarios)           | TASK_040_add_sad_path_integration_tests.md         | NOT STARTED | —             | High     | M (2-4h)   | None                           |             |          |
+| TASK_040 | Add Sad-Path Integration Tests (Spawn Failure Scenarios)           | TASK_040_add_sad_path_integration_tests.md         | IN REVIEW   |               | High     | M (2-4h)   | None                           | SA-20260224-014 | 1        |
 | MVT_M4A  | Manual Verification: Test Coverage & Isolation                     | MVT_M4A_test_coverage.md                           | NOT STARTED | —             | —        | 30 min     | TASK_035, TASK_036, TASK_037, TASK_038, TASK_039, TASK_040 | | |
 
 ### Dependencies
@@ -312,13 +312,13 @@ TASK_001 → TASK_005 → TASK_010 → TASK_011/TASK_017 → TASK_023 → TASK_0
 
 ## Subagent Tracking
 
-Last Subagent ID: SA-20260224-012
+Last Subagent ID: SA-20260224-014
 
 ---
 
 ## Review Tracking
 
-Last Review ID: RA-20260224-010
+Last Review ID: RA-20260224-012
 
 ---
 
@@ -328,13 +328,13 @@ Last Review ID: RA-20260224-010
 
 | Field             | Value |
 | ----------------- | ----- |
-| Task              | TASK_037 |
-| Impl Agent        | SA-20260224-012 |
+| Task              | TASK_040 |
+| Impl Agent        | SA-20260224-014 |
 | Files Changed     | `lib/commands/run.ts` |
-| Tests Added       | `test/run.test.ts` (4 new tests) |
+| Tests Added       | `test/integration/plan.integration.test.ts` (4 new tests), `test/integration/task.integration.test.ts` (1 new test), `test/integration/workflows.integration.test.ts` (2 new tests), `test/integration/init.integration.test.ts` (1 new test) |
 | Rework?           | No |
-| Focus Areas       | Injected `prompt` flow in lock override and confirmation paths; readline fallback unchanged |
-| Known Limitations | Did not move `RunOptions` to shared types/interfaces (out of scope for this task) |
+| Focus Areas       | Spawn rejection/non-zero exit handling for plan/task, and run-command sad paths for copilot runner rejection and exhausted gate retries |
+| Known Limitations | Full integration suite has pre-existing failures unrelated to this task in current environment |
 | Gate Results      | format:✅ lint:✅ typecheck:✅ test:✅ |
 
 ### For Fix Agent

@@ -248,9 +248,9 @@ async function handleWorkLeft(
   await context.stateReader.writeFailureNotes(config, gateResult);
   const gatesFixed = await runFixAttempts(config, logFile, context);
   if (!gatesFixed) {
-    context.logger.error(
-      `Gates still failing after ${config.gate.maxFixAttempts} fix attempts.`
-    );
+    const message = `Gates still failing after ${config.gate.maxFixAttempts} fix attempts.`;
+    context.logger.error(message);
+    throw new Error(message);
   }
 }
 
