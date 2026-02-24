@@ -3,7 +3,7 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { status } from '../../lib/commands/status.js';
+import { status, wrapText, CONTENT_WIDTH } from '../../lib/commands/status.js';
 import {
   writeFileSync,
   unlinkSync,
@@ -646,6 +646,102 @@ This is some malformed content
       // Progress bar should be present (either filled █ or empty ░)
       expect(output.includes('█') || output.includes('░')).toBe(true);
     });
+  });
+
+  describe('task name wrapping', () => {
+    it('should wrap long task names to banner width', async () => {
+      const progressContent = `# Progress
+
+| Task ID  | Title                                                        | Status      |
+| -------- | ------------------------------------------------------------ | ----------- |
+| TASK_017 | Split getGlyph() to Eliminate Forced as string Casts in Code | IN PROGRESS |
+`;
+      writeFileSync(TEST_PROGRESS, progressContent, 'utf8');
+      writeConfig();
+
+      const lockContent = `Started: 2026-02-24 10:00:00\nPID: 12345`;
+      writeFileSync(TEST_LOCK, lockContent, 'utf8');
+
+      await status({ once: true } as StatusOptions, mockContext);
+
+      const output = consoleOutput.join('\n');
+      // Task name should appear in the output
+      expect(output).toContain('TASK_017');
+      // Each output line (stripped of ANSI) should fit within CONTENT_WIDTH
+      for (const line of consoleOutput) {
+        const stripped = line.replace(/\x1b\[[0-9;]*m/g, '');
+        if (stripped.includes('TASK_017')) {
+          expect(stripped.length).toBeLessThanOrEqual(CONTENT_WIDTH);
+        }
+      }
+    });
+
+    it('should not wrap short task names', async () => {
+      const progressContent = `# Progress
+
+| Task ID  | Title  | Status      |
+| -------- | ------ | ----------- |
+| TASK_001 | Setup  | IN PROGRESS |
+`;
+      writeFileSync(TEST_PROGRESS, progressContent, 'utf8');
+      writeConfig();
+
+      const lockContent = `Started: 2026-02-24 10:00:00\nPID: 12345`;
+      writeFileSync(TEST_LOCK, lockContent, 'utf8');
+
+      await status({ once: true } as StatusOptions, mockContext);
+
+      const output = consoleOutput.join('\n');
+      // Short task should appear on a single line
+      expect(output).toContain('TASK_001: Setup');
+    });
+  });
+});
+
+describe('wrapText', () => {
+  it('should return single-element array for short text', () => {
+    expect(wrapText('short text', 40)).toEqual(['short text']);
+  });
+
+  it('should wrap text exceeding maxWidth', () => {
+    const text =
+      '  TASK_017: Split getGlyph() to Eliminate Forced as string Casts';
+    const result = wrapText(text, 37, '  ');
+    expect(result.length).toBeGreaterThan(1);
+    for (const line of result) {
+      expect(line.length).toBeLessThanOrEqual(37);
+    }
+  });
+
+  it('should indent continuation lines', () => {
+    const text =
+      '  TASK_017: Split getGlyph() to Eliminate Forced as string Casts';
+    const result = wrapText(text, 37, '  ');
+    // First line has its own leading spaces
+    expect(result[0]).toMatch(/^\s\s/);
+    // Continuation lines should also start with indent
+    for (let i = 1; i < result.length; i++) {
+      expect(result[i]).toMatch(/^\s\s/);
+    }
+  });
+
+  it('should preserve full text content across wrapped lines', () => {
+    const text = 'one two three four five six seven eight';
+    const result = wrapText(text, 15, '');
+    const joined = result.join(' ');
+    expect(joined).toBe(text);
+  });
+
+  it('should handle text exactly at maxWidth', () => {
+    const text = 'x'.repeat(37);
+    expect(wrapText(text, 37)).toEqual([text]);
+  });
+
+  it('should handle single long word gracefully', () => {
+    const text = 'x'.repeat(50);
+    const result = wrapText(text, 37);
+    // Should still produce output (even if single word exceeds width)
+    expect(result.length).toBeGreaterThan(0);
   });
 });
 

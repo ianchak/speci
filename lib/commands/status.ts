@@ -6,7 +6,7 @@
  */
 
 import type { SpeciConfig, CurrentTask } from '@/types.js';
-import { renderBanner } from '@/ui/banner.js';
+import { BANNER_ART, renderBanner } from '@/ui/banner.js';
 import { colorize } from '@/ui/colors.js';
 import { getGlyph } from '@/ui/glyphs.js';
 import { terminalState } from '@/ui/terminal.js';
@@ -50,6 +50,11 @@ interface StatusData {
 
 /** Refresh interval in milliseconds */
 const REFRESH_INTERVAL = 1000;
+
+/** Maximum content width derived from banner art, used to constrain task name display
+ * @internal Exported for testing
+ */
+export const CONTENT_WIDTH = Math.max(...BANNER_ART.map((line) => line.length));
 
 /**
  * Status command handler
@@ -350,8 +355,9 @@ function renderFullscreen(
   );
   lines.push('\x1b[2K' + footerLeft + ' '.repeat(footerGap) + footerRight);
 
-  // Output all lines
-  context.process.stdout.write(lines.join('\n'));
+  // Output all lines; \x1b[J clears any stale content below the footer
+  // from previous renders where content occupied more rows
+  context.process.stdout.write(lines.join('\n') + '\x1b[J');
 }
 
 /**
@@ -458,9 +464,11 @@ function buildContentLines(data: StatusData): string[] {
     if (data.currentTask) {
       lines.push('');
       lines.push(colorize(`${getGlyph('arrow')} Working on:`, 'sky400'));
-      lines.push(
-        colorize(`  ${data.currentTask.id}: ${data.currentTask.title}`, 'white')
-      );
+      const taskText = `  ${data.currentTask.id}: ${data.currentTask.title}`;
+      const wrappedTaskLines = wrapText(taskText, CONTENT_WIDTH, '  ');
+      for (const taskLine of wrappedTaskLines) {
+        lines.push(colorize(taskLine, 'white'));
+      }
       lines.push(colorize(`  Status: ${data.currentTask.status}`, 'dim'));
     }
   } else {
@@ -522,9 +530,11 @@ function renderStatusContent(
     if (data.currentTask) {
       output();
       output(colorize(`${getGlyph('arrow')} Working on:`, 'sky400'));
-      output(
-        colorize(`  ${data.currentTask.id}: ${data.currentTask.title}`, 'white')
-      );
+      const taskText = `  ${data.currentTask.id}: ${data.currentTask.title}`;
+      const wrappedTaskLines = wrapText(taskText, CONTENT_WIDTH, '  ');
+      for (const taskLine of wrappedTaskLines) {
+        output(colorize(taskLine, 'white'));
+      }
       output(colorize(`  Status: ${data.currentTask.status}`, 'dim'));
     }
   }
@@ -623,6 +633,47 @@ function getTerminalSize(context: CommandContext): {
     rows: context.process.stdout.rows || 24,
     cols: context.process.stdout.columns || 80,
   };
+}
+
+/**
+ * Word-wrap text to fit within a maximum width
+ * @param text - Plain text to wrap
+ * @param maxWidth - Maximum characters per line
+ * @param indent - Indentation prefix for continuation lines
+ * @returns Array of wrapped lines, each fitting within maxWidth
+ * @internal Exported for testing
+ */
+export function wrapText(
+  text: string,
+  maxWidth: number,
+  indent: string = ''
+): string[] {
+  if (text.length <= maxWidth) return [text];
+
+  // Extract leading whitespace to preserve on first line
+  const leadingMatch = text.match(/^(\s*)/);
+  const leadingSpace = leadingMatch ? leadingMatch[1] : '';
+  const words = text.trim().split(/\s+/);
+  const lines: string[] = [];
+  let currentLine = leadingSpace;
+
+  for (const word of words) {
+    const isLineStart = currentLine === leadingSpace || currentLine === indent;
+    if (isLineStart) {
+      currentLine += word;
+    } else {
+      const testLine = currentLine + ' ' + word;
+      if (testLine.length > maxWidth) {
+        lines.push(currentLine);
+        currentLine = indent + word;
+      } else {
+        currentLine = testLine;
+      }
+    }
+  }
+
+  if (currentLine && currentLine !== indent) lines.push(currentLine);
+  return lines;
 }
 
 /**
