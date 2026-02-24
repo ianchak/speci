@@ -201,7 +201,8 @@ function findStatusInColumns(
   for (let i = 3; i < cols.length && i <= 5; i++) {
     const value = cols[i].trim().toUpperCase();
     if (validStatuses.has(value)) {
-      return value;
+      // Normalise legacy underscore forms to canonical TaskStatus values
+      return value === 'IN_REVIEW' ? 'IN REVIEW' : value;
     }
   }
   return undefined;
@@ -286,7 +287,7 @@ export async function getTaskStats(
       stats.completed++;
     } else if (status === 'BLOCKED') {
       stats.blocked++;
-    } else if (status === 'IN_REVIEW' || status === 'IN REVIEW') {
+    } else if (status === 'IN REVIEW') {
       stats.inReview++;
     } else if (status === 'NOT STARTED' || status === 'IN PROGRESS') {
       stats.remaining++;
