@@ -617,6 +617,67 @@ describe('Run Command', () => {
       expect(releaseOrder).toBeLessThan(acquireOrder);
       expect(lock.acquireLock).toHaveBeenCalled();
     });
+
+    it('should proceed when lock override prompt returns y', async () => {
+      const prompt = vi.fn().mockResolvedValue('y');
+      vi.spyOn(lock, 'isLocked').mockResolvedValue(true);
+      vi.spyOn(lock, 'getLockInfo').mockResolvedValue({
+        isLocked: true,
+        started: new Date(),
+        pid: 1234,
+        elapsed: '5 minutes',
+      });
+      vi.spyOn(state, 'getState').mockResolvedValue(STATE.DONE);
+
+      await run({ yes: true, prompt });
+
+      expect(prompt).toHaveBeenCalledWith(
+        'Override lock and continue anyway? [y/N] '
+      );
+      expect(lock.acquireLock).toHaveBeenCalled();
+    });
+
+    it('should abort when lock override prompt returns n', async () => {
+      const prompt = vi.fn().mockResolvedValue('n');
+      vi.spyOn(lock, 'isLocked').mockResolvedValue(true);
+      vi.spyOn(lock, 'getLockInfo').mockResolvedValue({
+        isLocked: true,
+        started: new Date(),
+        pid: 1234,
+        elapsed: '5 minutes',
+      });
+
+      const result = await run({ yes: true, prompt });
+
+      expect(prompt).toHaveBeenCalledWith(
+        'Override lock and continue anyway? [y/N] '
+      );
+      expect(result.success).toBe(true);
+      expect(result.exitCode).toBe(0);
+      expect(lock.acquireLock).not.toHaveBeenCalled();
+    });
+
+    it('should cancel run when confirmation prompt returns n', async () => {
+      const prompt = vi.fn().mockResolvedValue('n');
+      vi.spyOn(state, 'getState').mockResolvedValue(STATE.WORK_LEFT);
+
+      const result = await run({ yes: false, prompt });
+
+      expect(prompt).toHaveBeenCalledWith('\nProceed with run? [Y/n] ');
+      expect(result.success).toBe(false);
+      expect(result.exitCode).toBe(0);
+      expect(lock.acquireLock).not.toHaveBeenCalled();
+    });
+
+    it('should proceed when confirmation prompt returns y', async () => {
+      const prompt = vi.fn().mockResolvedValue('y');
+      vi.spyOn(state, 'getState').mockResolvedValue(STATE.DONE);
+
+      await run({ yes: false, prompt });
+
+      expect(prompt).toHaveBeenCalledWith('\nProceed with run? [Y/n] ');
+      expect(lock.acquireLock).toHaveBeenCalled();
+    });
   });
 
   describe('Lock Management', () => {

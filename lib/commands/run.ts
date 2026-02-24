@@ -28,6 +28,7 @@ export interface RunOptions {
   force?: boolean; // Override existing lock
   yes?: boolean; // Skip confirmation prompt
   verbose?: boolean; // Detailed output
+  prompt?: (question: string) => Promise<string>; // Injectable prompt for testing
 }
 
 /**
@@ -68,7 +69,7 @@ export async function run(
       context.logger.warn(
         `Speci is already running (PID: ${lockInfo?.pid ?? 'unknown'})`
       );
-      const proceed = await promptForce();
+      const proceed = await promptForce(options.prompt);
       if (!proceed) {
         return { success: true, exitCode: 0 };
       }
@@ -87,7 +88,12 @@ export async function run(
 
   if (!options.yes) {
     const initialState = await context.stateReader.getState(loadedConfig);
-    const shouldProceed = await confirmRun(initialState, loadedConfig, context);
+    const shouldProceed = await confirmRun(
+      initialState,
+      loadedConfig,
+      context,
+      options.prompt
+    );
     if (!shouldProceed) {
       return failResult('User cancelled', 0);
     }
@@ -388,7 +394,14 @@ async function handleBlocked(
  *
  * @returns true if user wants to proceed
  */
-async function promptForce(): Promise<boolean> {
+async function promptForce(
+  promptFn?: (question: string) => Promise<string>
+): Promise<boolean> {
+  if (promptFn) {
+    const answer = await promptFn('Override lock and continue anyway? [y/N] ');
+    return answer.toLowerCase() === 'y' || answer.toLowerCase() === 'yes';
+  }
+
   const rl = createInterface({
     input: process.stdin,
     output: process.stdout,
@@ -412,12 +425,22 @@ async function promptForce(): Promise<boolean> {
 async function confirmRun(
   state: STATE,
   _config: SpeciConfig,
-  context: CommandContext
+  context: CommandContext,
+  promptFn?: (question: string) => Promise<string>
 ): Promise<boolean> {
   context.logger.infoPlain(`Current state: ${state}`);
 
   const action = getActionForState(state);
   context.logger.infoPlain(`Action: ${action}`);
+
+  if (promptFn) {
+    const answer = await promptFn('\nProceed with run? [Y/n] ');
+    if (answer.toLowerCase() === 'n' || answer.toLowerCase() === 'no') {
+      context.logger.infoPlain('Run cancelled.');
+      return false;
+    }
+    return true;
+  }
 
   const rl = createInterface({
     input: process.stdin,

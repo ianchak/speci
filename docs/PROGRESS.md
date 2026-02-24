@@ -198,9 +198,9 @@ graph TD
 
 | Task ID  | Title                                                              | File                                               | Status      | Review Status | Priority | Complexity | Dependencies                   | Assigned To | Attempts |
 | -------- | ------------------------------------------------------------------ | -------------------------------------------------- | ----------- | ------------- | -------- | ---------- | ------------------------------ | ----------- | -------- |
-| TASK_035 | Add Unit Tests for 9 Untested Adapter Files                        | TASK_035_add_adapter_unit_tests.md                 | IN REVIEW   |               | High     | L (4-8h)   | None                           | SA-20260224-010 | 1        |
-| TASK_036 | Export resetSignalState() from signals.ts for Test Isolation       | TASK_036_export_reset_signal_state.md              | NOT STARTED | —             | High     | S (≤2h)    | TASK_007                       |             |          |
-| TASK_037 | Make Interactive Prompts Injectable in run.ts                      | TASK_037_make_prompts_injectable_run.md            | NOT STARTED | —             | High     | M (2-4h)   | None                           |             |          |
+| TASK_035 | Add Unit Tests for 9 Untested Adapter Files                        | TASK_035_add_adapter_unit_tests.md                 | COMPLETE    | PASSED        | High     | L (4-8h)   | None                           | SA-20260224-010 | 1        |
+| TASK_036 | Export resetSignalState() from signals.ts for Test Isolation       | TASK_036_export_reset_signal_state.md              | COMPLETE    | PASSED        | High     | S (≤2h)    | TASK_007                       | SA-20260224-011 | 1        |
+| TASK_037 | Make Interactive Prompts Injectable in run.ts                      | TASK_037_make_prompts_injectable_run.md            | IN REVIEW   |               | High     | M (2-4h)   | None                           | SA-20260224-012 | 1        |
 | TASK_038 | Fix Integration Test Stability (chdir, Timing, Env Mutations)      | TASK_038_fix_integration_test_stability.md         | NOT STARTED | —             | High     | M (2-4h)   | None                           |             |          |
 | TASK_039 | Add Behavioral Smoke Tests to context-factory.test.ts              | TASK_039_add_context_factory_smoke_tests.md        | NOT STARTED | —             | Medium   | S (≤2h)    | TASK_035                       |             |          |
 | TASK_040 | Add Sad-Path Integration Tests (Spawn Failure Scenarios)           | TASK_040_add_sad_path_integration_tests.md         | NOT STARTED | —             | High     | M (2-4h)   | None                           |             |          |
@@ -312,13 +312,13 @@ TASK_001 → TASK_005 → TASK_010 → TASK_011/TASK_017 → TASK_023 → TASK_0
 
 ## Subagent Tracking
 
-Last Subagent ID: SA-20260224-010
+Last Subagent ID: SA-20260224-012
 
 ---
 
 ## Review Tracking
 
-Last Review ID: RA-20260224-008
+Last Review ID: RA-20260224-010
 
 ---
 
@@ -328,13 +328,13 @@ Last Review ID: RA-20260224-008
 
 | Field             | Value |
 | ----------------- | ----- |
-| Task              | TASK_035 |
-| Impl Agent        | SA-20260224-010 |
-| Files Changed     | None (tests-only task; `docs/PROGRESS.md` updated for tracking) |
-| Tests Added       | `test/adapters/node-config-loader.test.ts` (1), `test/adapters/node-copilot-runner.test.ts` (3), `test/adapters/node-gate-runner.test.ts` (2), `test/adapters/node-lock-manager.test.ts` (5), `test/adapters/node-logger.test.ts` (13), `test/adapters/node-preflight.test.ts` (2), `test/adapters/node-process.test.ts` (8), `test/adapters/node-signal-manager.test.ts` (4), `test/adapters/node-state-reader.test.ts` (5) |
+| Task              | TASK_037 |
+| Impl Agent        | SA-20260224-012 |
+| Files Changed     | `lib/commands/run.ts` |
+| Tests Added       | `test/run.test.ts` (4 new tests) |
 | Rework?           | No |
-| Focus Areas       | Delegation coverage for all 9 adapter classes, optional-argument forwarding (config/lock/preflight/state), and `NodeProcess` global process passthrough behavior |
-| Known Limitations | No production code changes; this task validates existing adapter behavior only |
+| Focus Areas       | Injected `prompt` flow in lock override and confirmation paths; readline fallback unchanged |
+| Known Limitations | Did not move `RunOptions` to shared types/interfaces (out of scope for this task) |
 | Gate Results      | format:✅ lint:✅ typecheck:✅ test:✅ |
 
 ### For Fix Agent
