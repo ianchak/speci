@@ -1,4 +1,4 @@
-﻿# Speci Codebase Refactoring - Implementation Progress
+# Speci Codebase Refactoring - Implementation Progress
 
 ## Overview
 
@@ -227,8 +227,8 @@ graph TD
 | Task ID  | Title                                                              | File                                                        | Status      | Review Status | Priority | Complexity | Dependencies | Assigned To | Attempts |
 | -------- | ------------------------------------------------------------------ | ----------------------------------------------------------- | ----------- | ------------- | -------- | ---------- | ------------ | ----------- | -------- |
 | TASK_041 | Consolidate Color Detection to Single `supportsColor()`            | TASK_041_consolidate_color_detection_supportscolor.md       | COMPLETE    | PASSED        | Medium   | S (≤2h)    | None         | SA-20260224-040 | 1        |
-| TASK_042 | Route Banner/Animate Output Through `log.*` Instead of `console.*` | TASK_042_route_banner_animate_through_log.md                | IN REVIEW   |               | Medium   | S (≤2h)    | None         | SA-20260224-041 | 1        |
-| TASK_043 | Unify Preflight Code Path (Use DI in `initializeCommand`)          | TASK_043_unify_preflight_code_path_di.md                    | NOT STARTED | —             | Medium   | M (2-4h)   | None         |             |          |
+| TASK_042 | Route Banner/Animate Output Through `log.*` Instead of `console.*` | TASK_042_route_banner_animate_through_log.md                | COMPLETE    | PASSED        | Medium   | S (≤2h)    | None         | SA-20260224-041 | 1        |
+| TASK_043 | Unify Preflight Code Path (Use DI in `initializeCommand`)          | TASK_043_unify_preflight_code_path_di.md                    | COMPLETE    | PASSED        | Medium   | M (2-4h)   | None         | SA-20260224-042 | 1        |
 | MVT_M4B  | Manual Verification: Architecture                                  | MVT_M4B_architecture.md                                     | NOT STARTED | —             | —        | 30 min     | TASK_041, TASK_042, TASK_043  |             |          |
 
 ### Dependencies
@@ -246,8 +246,8 @@ graph TD
 
 | Task ID  | Title                                                        | File                                                       | Status      | Review Status | Priority | Complexity | Dependencies                             | Assigned To | Attempts |
 | -------- | ------------------------------------------------------------ | ---------------------------------------------------------- | ----------- | ------------- | -------- | ---------- | ---------------------------------------- | ----------- | -------- |
-| TASK_044 | Split `config.ts` (719 lines) into Focused Submodules        | TASK_044_split_config_ts_into_submodules.md                | NOT STARTED | —             | Low      | L (4-8h)   | None (all previous phases complete)      |             |          |
-| TASK_045 | Split `interfaces.ts` (555 lines) into Domain-Focused Files  | TASK_045_split_interfaces_ts_into_domain_files.md          | NOT STARTED | —             | Low      | L (4-8h)   | TASK_044                                 |             |          |
+| TASK_044 | Split `config.ts` (719 lines) into Focused Submodules        | TASK_044_split_config_ts_into_submodules.md                | COMPLETE    | PASSED        | Low      | L (4-8h)   | None (all previous phases complete)      | SA-20260224-043 | 1        |
+| TASK_045 | Split `interfaces.ts` (555 lines) into Domain-Focused Files  | TASK_045_split_interfaces_ts_into_domain_files.md          | IN REVIEW   |               | Low      | L (4-8h)   | TASK_044                                 | SA-20260224-044 | 1        |
 | TASK_046 | Organize `lib/utils/` into Subdirectories                    | TASK_046_organize_lib_utils_subdirectories.md              | NOT STARTED | —             | Low      | M (2-4h)   | TASK_044, TASK_045                       |             |          |
 | TASK_047 | Mirror `lib/` Structure in `test/`                           | TASK_047_mirror_lib_structure_in_test.md                   | NOT STARTED | —             | Low      | M (2-4h)   | TASK_044, TASK_045, TASK_046             |             |          |
 | TASK_048 | Consolidate Banner-Animation to 3 Files Instead of 5         | TASK_048_consolidate_banner_animation_files.md             | NOT STARTED | —             | Low      | M (2-4h)   | TASK_044, TASK_045                       |             |          |
@@ -312,13 +312,13 @@ TASK_001 → TASK_005 → TASK_010 → TASK_011/TASK_017 → TASK_023 → TASK_0
 
 ## Subagent Tracking
 
-Last Subagent ID: SA-20260224-041
+Last Subagent ID: SA-20260224-044
 
 ---
 
 ## Review Tracking
 
-Last Review ID: RA-20260224-041
+Last Review ID: RA-20260224-044
 
 ---
 
@@ -328,13 +328,13 @@ Last Review ID: RA-20260224-041
 
 | Field             | Value |
 | ----------------- | ----- |
-| Task              | TASK_042 |
-| Impl Agent        | SA-20260224-041 |
-| Files Changed     | `lib/cli/initialize.ts`, `lib/ui/banner-animation/animate.ts` |
-| Tests Added       | `test/cli-initialize.test.ts` (0 new tests, assertions/spies updated), `test/banner-animation.test.ts` (0 new tests, cleanup logging assertion updated) |
+| Task              | TASK_045 |
+| Impl Agent        | SA-20260224-044 |
+| Files Changed     | `lib/interfaces.ts`, `lib/interfaces/infrastructure.ts`, `lib/interfaces/domain.ts`, `lib/interfaces/command.ts`, `lib/interfaces/index.ts` |
+| Tests Added       | None |
 | Rework?           | No |
-| Focus Areas       | Verify `displayBanner()` uses `log.raw('')` before/after animation and fallback/cleanup paths in `animateBanner()` use `log.raw`/`log.error` with no direct `console.*` calls in modified modules |
-| Known Limitations | No broader `console.*` cleanup across unrelated modules; scope limited to TASK_042 files and impacted tests |
+| Focus Areas       | Verify backward-compatible re-export through `@/interfaces.js` and no circular imports from submodule/barrel boundaries |
+| Known Limitations | No importer migration performed (intentionally preserved via compatibility barrel) |
 | Gate Results      | format:✅ lint:✅ typecheck:✅ test:✅ |
 
 ### For Fix Agent
@@ -348,3 +348,4 @@ Last Review ID: RA-20260224-041
 | Primary Error   | - |
 | Root Cause Hint | - |
 | Do NOT          | - |
+
