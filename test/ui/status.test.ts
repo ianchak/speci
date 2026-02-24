@@ -533,7 +533,7 @@ This is some malformed content
       const jsonOutput = JSON.parse(consoleOutput[0]);
       expect(jsonOutput.currentTask).not.toBeUndefined();
       expect(jsonOutput.currentTask.id).toBe('TASK_002');
-      expect(jsonOutput.currentTask.status).toBe('IN_REVIEW');
+      expect(jsonOutput.currentTask.status).toBe('IN REVIEW');
     });
 
     it('should return null in JSON when no active task', async () => {
