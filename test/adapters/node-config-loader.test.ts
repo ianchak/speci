@@ -13,7 +13,7 @@ describe('NodeConfigLoader', () => {
     vi.clearAllMocks();
   });
 
-  it('delegates load to loadConfig with processParam', async () => {
+  it('delegates load to loadConfig with proc', async () => {
     const mockProcess = process as unknown as IProcess;
     const adapter = new NodeConfigLoader(mockProcess);
     const expectedConfig = {
@@ -24,7 +24,7 @@ describe('NodeConfigLoader', () => {
     const result = await adapter.load();
 
     expect(configModule.loadConfig).toHaveBeenCalledWith({
-      processParam: mockProcess,
+      proc: mockProcess,
     });
     expect(result).toBe(expectedConfig);
   });

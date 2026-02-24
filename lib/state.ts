@@ -14,6 +14,7 @@ import type {
   SpeciConfig,
   TaskStats,
   CurrentTask,
+  TaskStatus,
   GateFailureInfo,
 } from '@/types.js';
 import { STATE } from '@/types.js';
@@ -356,7 +357,7 @@ export async function getCurrentTask(
     if (!status) continue;
 
     if (ACTIVE_STATUSES.has(status)) {
-      return { id: taskId, title, status };
+      return { id: taskId, title, status: status as TaskStatus };
     }
   }
 

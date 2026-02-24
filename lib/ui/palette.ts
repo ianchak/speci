@@ -7,7 +7,6 @@
  * Respects NO_COLOR and FORCE_COLOR environment variables per terminal standards.
  */
 
-import { ENV } from '@/constants.js';
 import { createError } from '@/errors.js';
 
 /**
@@ -91,31 +90,3 @@ export const ANSI: ColorPalette = {
   // Reset code
   reset: '\x1b[0m',
 };
-
-/**
- * Determine if color output should be used
- *
- * Respects the following environment variables:
- * - NO_COLOR: When set (to any value), disables colors (takes precedence)
- * - FORCE_COLOR: When set (to any value), enables colors even in non-TTY
- *
- * Falls back to TTY detection if neither variable is set.
- *
- * @returns true if colors should be used, false otherwise
- *
- * @see https://no-color.org/
- */
-export function shouldUseColor(): boolean {
-  // NO_COLOR takes precedence (standard: https://no-color.org/)
-  if (process.env[ENV.NO_COLOR] !== undefined) {
-    return false;
-  }
-
-  // FORCE_COLOR enables colors regardless of TTY
-  if (process.env[ENV.FORCE_COLOR] !== undefined) {
-    return true;
-  }
-
-  // Default: check if stdout is a TTY
-  return process.stdout.isTTY ?? false;
-}

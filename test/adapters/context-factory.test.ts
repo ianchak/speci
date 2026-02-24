@@ -6,7 +6,21 @@
  */
 
 import { describe, it, expect } from 'vitest';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { createProductionContext } from '@/adapters/context-factory.js';
+
+const currentDir = dirname(fileURLToPath(import.meta.url));
+const missingPath = join(currentDir, '__speci_missing_path__');
+const KNOWN_PLATFORMS = [
+  'aix',
+  'darwin',
+  'freebsd',
+  'linux',
+  'openbsd',
+  'sunos',
+  'win32',
+] as const;
 
 describe('createProductionContext', () => {
   it('should create a context with all dependencies', () => {
@@ -30,6 +44,8 @@ describe('createProductionContext', () => {
     expect(context.fs.mkdirSync).toBeInstanceOf(Function);
     expect(context.fs.unlinkSync).toBeInstanceOf(Function);
     expect(context.fs.readdirSync).toBeInstanceOf(Function);
+    expect(context.fs.existsSync(currentDir)).toBe(true);
+    expect(context.fs.existsSync(missingPath)).toBe(false);
   });
 
   it('should provide a process adapter', () => {
@@ -43,6 +59,11 @@ describe('createProductionContext', () => {
     expect(context.process.platform).toBeTypeOf('string');
     expect(context.process.stdout).toBeDefined();
     expect(context.process.stdin).toBeDefined();
+    expect(typeof context.process.cwd()).toBe('string');
+    expect(context.process.cwd().length).toBeGreaterThan(0);
+    expect(Number.isInteger(context.process.pid)).toBe(true);
+    expect(context.process.pid).toBeGreaterThan(0);
+    expect(KNOWN_PLATFORMS).toContain(context.process.platform);
   });
 
   it('should provide a logger adapter', () => {
@@ -55,6 +76,7 @@ describe('createProductionContext', () => {
     expect(context.logger.success).toBeInstanceOf(Function);
     expect(context.logger.debug).toBeInstanceOf(Function);
     expect(context.logger.muted).toBeInstanceOf(Function);
+    expect(() => context.logger.info('smoke test')).not.toThrow();
   });
 
   it('should provide a config loader adapter', () => {
