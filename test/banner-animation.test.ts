@@ -8,6 +8,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import type { TerminalSnapshot } from '../lib/ui/terminal.js';
 import { VERSION } from '../lib/ui/banner.js';
+import * as logger from '../lib/utils/logger.js';
 
 /**
  * Create a mock terminal snapshot for testing
@@ -2113,8 +2114,8 @@ describe('animateBanner', () => {
       vi.spyOn(signalsModule, 'registerCleanup').mockImplementation(() => {});
       vi.spyOn(signalsModule, 'unregisterCleanup').mockImplementation(() => {});
 
-      const consoleErrorSpy = vi
-        .spyOn(console, 'error')
+      const logErrorSpy = vi
+        .spyOn(logger.log, 'error')
         .mockImplementation(() => {});
 
       // Should not throw even if cleanup fails
@@ -2123,12 +2124,9 @@ describe('animateBanner', () => {
       ).resolves.not.toThrow();
 
       // Should log cleanup error
-      expect(consoleErrorSpy).toHaveBeenCalledWith(
-        'Cleanup error:',
-        expect.any(Error)
-      );
+      expect(logErrorSpy).toHaveBeenCalledWith('Cleanup error: Restore failed');
 
-      consoleErrorSpy.mockRestore();
+      logErrorSpy.mockRestore();
     });
   });
 

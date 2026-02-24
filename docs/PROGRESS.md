@@ -1,4 +1,4 @@
-# Speci Codebase Refactoring - Implementation Progress
+﻿# Speci Codebase Refactoring - Implementation Progress
 
 ## Overview
 
@@ -160,14 +160,14 @@ graph TD
 | TASK_024 | Extract `makeAction` Factory in CommandRegistry                           | TASK_024_extract_make_action_factory.md                    | COMPLETE    | PASSED        | High     | M (2-4h)   | TASK_009                                                                                                       | SA-20260224-005 | 1        |
 | TASK_025 | Centralize Agent-Not-Found Handling Across All Commands                   | TASK_025_centralize_agent_not_found_handling.md            | COMPLETE    | PASSED        | High     | M (2-4h)   | None                                                                                                           | SA-20260224-006 | 1        |
 | TASK_026 | Extract `toErrorMessage()` and `failResult()` Utilities                   | TASK_026_extract_to_error_message_fail_result.md           | COMPLETE    | PASSED        | High     | S (≤2h)    | TASK_025                                                                                                       | SA-20260224-007 | 1        |
-| TASK_027 | Extract `walkUpToFind()` Helper in `preflight.ts`                         | TASK_027_extract_walk_up_to_find_preflight.md              | IN REVIEW   |               | Medium   | S (≤2h)    | None                                                                                                           | SA-20260224-036 | 1        |
+| TASK_027 | Extract `walkUpToFind()` Helper in `preflight.ts`                         | TASK_027_extract_walk_up_to_find_preflight.md              | COMPLETE    | PASSED        | Medium   | S (≤2h)    | None                                                                                                           | SA-20260224-036 | 1        |
 | TASK_028 | Extract `dispatchAgent()` and `runFixAttempts()` in `run.ts`              | TASK_028_extract_dispatch_agent_run_fix_attempts.md        | COMPLETE    | PASSED        | High     | M (2-4h)   | None                                                                                                           | SA-20260224-008 | 1        |
-| TASK_029 | Decompose `yolo` Function into Helpers                                    | TASK_029_decompose_yolo_into_helpers.md                    | NOT STARTED | —             | Medium   | M (2-4h)   | None                                                                                                           |             |          |
+| TASK_029 | Decompose `yolo` Function into Helpers                                    | TASK_029_decompose_yolo_into_helpers.md                    | COMPLETE    | PASSED        | Medium   | M (2-4h)   | None                                                                                                           | SA-20260224-037 | 1        |
 | TASK_030 | Decompose `runLiveDashboard` (129 Lines)                                  | TASK_030_decompose_run_live_dashboard.md                   | COMPLETE    | PASSED        | High     | L (4-8h)   | TASK_002                                                                                                       | SA-20260224-033 | 1        |
 | TASK_031 | Decompose `buildContentLines` (110 Lines)                                 | TASK_031_decompose_build_content_lines.md                  | COMPLETE    | PASSED        | High     | M (2-4h)   | TASK_002, TASK_030                                                                                             | SA-20260224-035 | 3        |
 | TASK_032 | Split `getLockInfo` into Format-Specific Parsers                          | TASK_032_split_get_lock_info_parsers.md                    | COMPLETE    | PASSED        | High     | M (2-4h)   | None                                                                                                           | SA-20260224-009 | 1        |
-| TASK_033 | Merge `renderWaveFrame` / `renderSweepFrame`                              | TASK_033_merge_render_wave_sweep_frame.md                  | NOT STARTED | —             | Medium   | M (2-4h)   | None                                                                                                           |             |          |
-| TASK_034 | Integration — Verify All M3 Extractions Are Wired and No Orphaned Code   | TASK_034_integration_verify_m3_extractions.md              | NOT STARTED | —             | Medium   | M (2-4h)   | TASK_024, TASK_025, TASK_026, TASK_027, TASK_028, TASK_029, TASK_030, TASK_031, TASK_032, TASK_033            |             |          |
+| TASK_033 | Merge `renderWaveFrame` / `renderSweepFrame`                              | TASK_033_merge_render_wave_sweep_frame.md                  | COMPLETE    | PASSED        | Medium   | M (2-4h)   | None                                                                                                           | SA-20260224-038 | 1        |
+| TASK_034 | Integration — Verify All M3 Extractions Are Wired and No Orphaned Code   | TASK_034_integration_verify_m3_extractions.md              | COMPLETE    | PASSED        | Medium   | M (2-4h)   | TASK_024, TASK_025, TASK_026, TASK_027, TASK_028, TASK_029, TASK_030, TASK_031, TASK_032, TASK_033            | SA-20260224-039 | 1        |
 | MVT_M3   | Manual Verification: Duplication & Complexity                             | MVT_M3_duplication_complexity.md                           | NOT STARTED | —             | —        | 30 min     | TASK_034                                                                                                       |             |          |
 
 ### Dependencies
@@ -202,7 +202,7 @@ graph TD
 | TASK_036 | Export resetSignalState() from signals.ts for Test Isolation       | TASK_036_export_reset_signal_state.md              | COMPLETE    | PASSED        | High     | S (≤2h)    | TASK_007                       | SA-20260224-011 | 1        |
 | TASK_037 | Make Interactive Prompts Injectable in run.ts                      | TASK_037_make_prompts_injectable_run.md            | COMPLETE    | PASSED        | High     | M (2-4h)   | None                           | SA-20260224-012 | 1        |
 | TASK_038 | Fix Integration Test Stability (chdir, Timing, Env Mutations)      | TASK_038_fix_integration_test_stability.md         | COMPLETE    | PASSED        | High     | M (2-4h)   | None                           | SA-20260224-013 | 1        |
-| TASK_039 | Add Behavioral Smoke Tests to context-factory.test.ts              | TASK_039_add_context_factory_smoke_tests.md        | NOT STARTED | —             | Medium   | S (≤2h)    | TASK_035                       |             |          |
+| TASK_039 | Add Behavioral Smoke Tests to context-factory.test.ts              | TASK_039_add_context_factory_smoke_tests.md        | COMPLETE  | PASSED        | Medium   | S (≤2h)    | TASK_035                       | SA-20260224-040 | 1        |
 | TASK_040 | Add Sad-Path Integration Tests (Spawn Failure Scenarios)           | TASK_040_add_sad_path_integration_tests.md         | COMPLETE    | PASSED        | High     | M (2-4h)   | None                           | SA-20260224-014 | 1        |
 | MVT_M4A  | Manual Verification: Test Coverage & Isolation                     | MVT_M4A_test_coverage.md                           | NOT STARTED | —             | —        | 30 min     | TASK_035, TASK_036, TASK_037, TASK_038, TASK_039, TASK_040 | | |
 
@@ -226,8 +226,8 @@ graph TD
 
 | Task ID  | Title                                                              | File                                                        | Status      | Review Status | Priority | Complexity | Dependencies | Assigned To | Attempts |
 | -------- | ------------------------------------------------------------------ | ----------------------------------------------------------- | ----------- | ------------- | -------- | ---------- | ------------ | ----------- | -------- |
-| TASK_041 | Consolidate Color Detection to Single `supportsColor()`            | TASK_041_consolidate_color_detection_supportscolor.md       | NOT STARTED | —             | Medium   | S (≤2h)    | None         |             |          |
-| TASK_042 | Route Banner/Animate Output Through `log.*` Instead of `console.*` | TASK_042_route_banner_animate_through_log.md                | NOT STARTED | —             | Medium   | S (≤2h)    | None         |             |          |
+| TASK_041 | Consolidate Color Detection to Single `supportsColor()`            | TASK_041_consolidate_color_detection_supportscolor.md       | COMPLETE    | PASSED        | Medium   | S (≤2h)    | None         | SA-20260224-040 | 1        |
+| TASK_042 | Route Banner/Animate Output Through `log.*` Instead of `console.*` | TASK_042_route_banner_animate_through_log.md                | IN REVIEW   |               | Medium   | S (≤2h)    | None         | SA-20260224-041 | 1        |
 | TASK_043 | Unify Preflight Code Path (Use DI in `initializeCommand`)          | TASK_043_unify_preflight_code_path_di.md                    | NOT STARTED | —             | Medium   | M (2-4h)   | None         |             |          |
 | MVT_M4B  | Manual Verification: Architecture                                  | MVT_M4B_architecture.md                                     | NOT STARTED | —             | —        | 30 min     | TASK_041, TASK_042, TASK_043  |             |          |
 
@@ -312,13 +312,13 @@ TASK_001 → TASK_005 → TASK_010 → TASK_011/TASK_017 → TASK_023 → TASK_0
 
 ## Subagent Tracking
 
-Last Subagent ID: SA-20260224-036
+Last Subagent ID: SA-20260224-041
 
 ---
 
 ## Review Tracking
 
-Last Review ID: RA-20260224-035
+Last Review ID: RA-20260224-041
 
 ---
 
@@ -328,13 +328,13 @@ Last Review ID: RA-20260224-035
 
 | Field             | Value |
 | ----------------- | ----- |
-| Task              | TASK_027 |
-| Impl Agent        | SA-20260224-036 |
-| Files Changed     | `lib/utils/preflight.ts` |
-| Tests Added       | `test/preflight.test.ts` (2 new tests) |
+| Task              | TASK_042 |
+| Impl Agent        | SA-20260224-041 |
+| Files Changed     | `lib/cli/initialize.ts`, `lib/ui/banner-animation/animate.ts` |
+| Tests Added       | `test/cli-initialize.test.ts` (0 new tests, assertions/spies updated), `test/banner-animation.test.ts` (0 new tests, cleanup logging assertion updated) |
 | Rework?           | No |
-| Focus Areas       | `walkUpToFind` root traversal behavior and its use in `checkConfigExists`/`checkGitRepository` |
-| Known Limitations | `walkUpToFind` remains module-private and filesystem DI remains deferred to TASK_043 |
+| Focus Areas       | Verify `displayBanner()` uses `log.raw('')` before/after animation and fallback/cleanup paths in `animateBanner()` use `log.raw`/`log.error` with no direct `console.*` calls in modified modules |
+| Known Limitations | No broader `console.*` cleanup across unrelated modules; scope limited to TASK_042 files and impacted tests |
 | Gate Results      | format:✅ lint:✅ typecheck:✅ test:✅ |
 
 ### For Fix Agent
@@ -348,7 +348,3 @@ Last Review ID: RA-20260224-035
 | Primary Error   | - |
 | Root Cause Hint | - |
 | Do NOT          | - |
-
-### Review Failure Notes
-
-No outstanding failure notes.

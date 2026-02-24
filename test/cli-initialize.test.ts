@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import * as banner from '../lib/ui/banner.js';
 import * as bannerAnimation from '../lib/ui/banner-animation/index.js';
+import * as logger from '../lib/utils/logger.js';
 
 describe('CLI Initialize', () => {
   beforeEach(() => {
@@ -14,7 +15,9 @@ describe('CLI Initialize', () => {
   describe('displayBanner()', () => {
     it('should display static banner when animation is not appropriate', async () => {
       const { displayBanner } = await import('../lib/cli/initialize.js');
-      const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+      const logRawSpy = vi
+        .spyOn(logger.log, 'raw')
+        .mockImplementation(() => {});
       vi.spyOn(bannerAnimation, 'shouldAnimate').mockReturnValue(false);
       vi.spyOn(banner, 'renderBanner').mockReturnValue('BANNER_TEXT');
 
@@ -25,16 +28,18 @@ describe('CLI Initialize', () => {
         color: true,
       });
       expect(banner.renderBanner).toHaveBeenCalledWith({ showVersion: true });
-      expect(consoleSpy).toHaveBeenCalledWith(
+      expect(logRawSpy).toHaveBeenCalledWith(
         expect.stringContaining('BANNER_TEXT')
       );
 
-      consoleSpy.mockRestore();
+      logRawSpy.mockRestore();
     });
 
     it('should animate banner when conditions are met', async () => {
       const { displayBanner } = await import('../lib/cli/initialize.js');
-      const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+      const logRawSpy = vi
+        .spyOn(logger.log, 'raw')
+        .mockImplementation(() => {});
       vi.spyOn(bannerAnimation, 'shouldAnimate').mockReturnValue(true);
       vi.spyOn(bannerAnimation, 'animateBanner').mockResolvedValue();
 
@@ -46,13 +51,17 @@ describe('CLI Initialize', () => {
         color: true,
       });
       expect(bannerAnimation.animateBanner).toHaveBeenCalled();
+      expect(logRawSpy).toHaveBeenNthCalledWith(1, '');
+      expect(logRawSpy).toHaveBeenNthCalledWith(2, '');
 
-      consoleSpy.mockRestore();
+      logRawSpy.mockRestore();
     });
 
     it('should default to no color when options not provided', async () => {
       const { displayBanner } = await import('../lib/cli/initialize.js');
-      const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+      const logRawSpy = vi
+        .spyOn(logger.log, 'raw')
+        .mockImplementation(() => {});
       vi.spyOn(bannerAnimation, 'shouldAnimate').mockReturnValue(false);
       vi.spyOn(banner, 'renderBanner').mockReturnValue('');
 
@@ -60,37 +69,41 @@ describe('CLI Initialize', () => {
 
       expect(bannerAnimation.shouldAnimate).toHaveBeenCalledWith(undefined);
 
-      consoleSpy.mockRestore();
+      logRawSpy.mockRestore();
     });
   });
 
   describe('displayStaticBanner()', () => {
     it('should render banner with version', async () => {
       const { displayStaticBanner } = await import('../lib/cli/initialize.js');
-      const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+      const logRawSpy = vi
+        .spyOn(logger.log, 'raw')
+        .mockImplementation(() => {});
       vi.spyOn(banner, 'renderBanner').mockReturnValue('TEST_BANNER');
 
       displayStaticBanner();
 
       expect(banner.renderBanner).toHaveBeenCalledWith({ showVersion: true });
-      expect(consoleSpy).toHaveBeenCalledWith(
+      expect(logRawSpy).toHaveBeenCalledWith(
         expect.stringContaining('TEST_BANNER')
       );
 
-      consoleSpy.mockRestore();
+      logRawSpy.mockRestore();
     });
 
     it('should add newlines around banner', async () => {
       const { displayStaticBanner } = await import('../lib/cli/initialize.js');
-      const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+      const logRawSpy = vi
+        .spyOn(logger.log, 'raw')
+        .mockImplementation(() => {});
       vi.spyOn(banner, 'renderBanner').mockReturnValue('BANNER');
 
       displayStaticBanner();
 
-      const calls = consoleSpy.mock.calls;
+      const calls = logRawSpy.mock.calls;
       expect(calls[0][0]).toMatch(/^\n.*\n$/);
 
-      consoleSpy.mockRestore();
+      logRawSpy.mockRestore();
     });
   });
 

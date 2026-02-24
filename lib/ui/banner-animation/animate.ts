@@ -8,6 +8,7 @@
  */
 
 import { terminalState } from '@/ui/terminal.js';
+import { log } from '@/utils/logger.js';
 import { registerCleanup, unregisterCleanup } from '@/utils/signals.js';
 import {
   clearGradientCache,
@@ -114,7 +115,8 @@ export async function animateBanner(options?: AnimationOptions): Promise<void> {
         cleanupRegistered = false;
       }
     } catch (error) {
-      console.error('Cleanup error:', error);
+      const message = error instanceof Error ? error.message : String(error);
+      log.error(`Cleanup error: ${message}`);
     }
   };
 
@@ -124,7 +126,7 @@ export async function animateBanner(options?: AnimationOptions): Promise<void> {
     try {
       terminalSnapshot = terminalState.capture();
     } catch {
-      console.log('\n' + renderBanner({ showVersion: true }) + '\n');
+      log.raw('\n' + renderBanner({ showVersion: true }) + '\n');
       return;
     }
 
@@ -150,7 +152,7 @@ export async function animateBanner(options?: AnimationOptions): Promise<void> {
       }
     } catch {
       process.stdout.write(ANSI_CURSOR_UP_6);
-      console.log('\n' + renderBanner({ showVersion: true }) + '\n');
+      log.raw('\n' + renderBanner({ showVersion: true }) + '\n');
     }
   } finally {
     cleanup();
