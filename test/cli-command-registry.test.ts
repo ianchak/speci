@@ -328,6 +328,65 @@ describe('CommandRegistry', () => {
       expect(helpText).toContain('speci c');
       expect(helpText).toContain('speci task --clean -p plan.md');
     });
+
+    it('handles PreflightError thrown by clean command action', async () => {
+      vi.resetModules();
+      const { PreflightError } = await import('../lib/utils/preflight.js');
+      const preflightError = new PreflightError(
+        'Configuration not found',
+        'No speci.config.json found',
+        ['Run `speci init`']
+      );
+      const cleanMock = vi.fn().mockRejectedValue(preflightError);
+      const exitWithCleanupMock = vi.fn(async () => undefined as never);
+      vi.doMock('@/commands/clean.js', () => ({ clean: cleanMock }));
+      vi.doMock('@/utils/exit.js', () => ({
+        exitWithCleanup: exitWithCleanupMock,
+      }));
+
+      const { CommandRegistry } =
+        await import('../lib/cli/command-registry.js');
+      const registry = new CommandRegistry(mockContext, mockConfig);
+      const handleSpy = vi.spyOn(
+        registry as unknown as { handlePreflightError: (err: unknown) => void },
+        'handlePreflightError'
+      );
+
+      await expect(registry.execute(['clean'])).rejects.toBe(preflightError);
+      expect(cleanMock).toHaveBeenCalledOnce();
+      expect(handleSpy).toHaveBeenCalledWith(preflightError);
+      expect(exitWithCleanupMock).toHaveBeenCalledWith(2);
+
+      vi.doUnmock('@/commands/clean.js');
+      vi.doUnmock('@/utils/exit.js');
+    });
+
+    it('rethrows non-Preflight errors thrown by clean command action', async () => {
+      vi.resetModules();
+      const genericError = new Error('clean failed');
+      const cleanMock = vi.fn().mockRejectedValue(genericError);
+      const exitWithCleanupMock = vi.fn(async () => undefined as never);
+      vi.doMock('@/commands/clean.js', () => ({ clean: cleanMock }));
+      vi.doMock('@/utils/exit.js', () => ({
+        exitWithCleanup: exitWithCleanupMock,
+      }));
+
+      const { CommandRegistry } =
+        await import('../lib/cli/command-registry.js');
+      const registry = new CommandRegistry(mockContext, mockConfig);
+      const handleSpy = vi.spyOn(
+        registry as unknown as { handlePreflightError: (err: unknown) => void },
+        'handlePreflightError'
+      );
+
+      await expect(registry.execute(['clean'])).rejects.toThrow('clean failed');
+      expect(cleanMock).toHaveBeenCalledOnce();
+      expect(handleSpy).toHaveBeenCalledWith(genericError);
+      expect(exitWithCleanupMock).not.toHaveBeenCalled();
+
+      vi.doUnmock('@/commands/clean.js');
+      vi.doUnmock('@/utils/exit.js');
+    });
   });
 
   describe('preAction hook', () => {

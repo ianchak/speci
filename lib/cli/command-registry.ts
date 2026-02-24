@@ -343,9 +343,13 @@ Examples:
 `
       )
       .action(async (options) => {
-        const result = await clean(options, this.context, this.config);
-        if (!result.success) {
-          await exitWithCleanup(result.exitCode);
+        try {
+          const result = await clean(options, this.context, this.config);
+          if (!result.success) {
+            await exitWithCleanup(result.exitCode);
+          }
+        } catch (err) {
+          this.handlePreflightError(err);
         }
       });
   }
