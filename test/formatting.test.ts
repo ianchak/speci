@@ -1,7 +1,11 @@
 import { describe, it, expect } from 'vitest';
-import { formatDate, ensureUtf8, formatElapsed } from '../lib/utils/i18n.js';
+import {
+  formatDate,
+  ensureUtf8,
+  formatElapsed,
+} from '../lib/utils/formatting.js';
 
-describe('i18n utilities', () => {
+describe('formatting utilities', () => {
   describe('formatDate', () => {
     it('should format date with default options', () => {
       const date = new Date('2026-02-04T14:30:00Z');

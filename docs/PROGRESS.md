@@ -69,7 +69,7 @@ graph TD
 | TASK_007 | Consolidate isCleaningUp Guard to Single Source              | TASK_007_consolidate_is_cleaning_up_guard.md            | COMPLETE    | PASSED        | High     | S (≤2h)    | None                                                   | SA-20260224-002 | 1        |
 | TASK_008 | Fix O(n²) stdout Concatenation in Gate Runner                | TASK_008_fix_on2_stdout_concatenation_gate.md           | COMPLETE    | PASSED        | High     | S (≤2h)    | None                                                   | SA-20260224-003 | 1        |
 | TASK_009 | Fix Clean Command Missing try/catch in Registry              | TASK_009_fix_clean_command_try_catch_registry.md        | COMPLETE    | PASSED        | High     | XS (<1h)   | None                                                   | SA-20260224-004 | 1        |
-| TASK_010 | Integration — Wire and Verify All M1 Changes                 | TASK_010_integration_wire_m1_changes.md                 | IN REVIEW   |               | High     | M (2-4h)   | TASK_005, TASK_006, TASK_007, TASK_008, TASK_009       | SA-20260224-017 | 1        |
+| TASK_010 | Integration — Wire and Verify All M1 Changes                 | TASK_010_integration_wire_m1_changes.md                 | COMPLETE    | PASSED        | High     | M (2-4h)   | TASK_005, TASK_006, TASK_007, TASK_008, TASK_009       | SA-20260224-017 | 1        |
 | MVT_M1   | Manual Verification: Critical Fixes                          | MVT_M1_critical_fixes.md                                | NOT STARTED | —             | —        | 30 min     | TASK_010                                               |             |          |
 
 ### Dependencies
@@ -91,8 +91,8 @@ graph TD
 
 | Task ID  | Title                                       | File                                                               | Status      | Review Status | Priority | Complexity  | Dependencies | Assigned To | Attempts |
 | -------- | ------------------------------------------- | ------------------------------------------------------------------ | ----------- | ------------- | -------- | ----------- | ------------ | ----------- | -------- |
-| TASK_011 | Standardize forceReload → forceRefresh      | TASK_011_standardize_force_reload_to_force_refresh.md              | NOT STARTED | —             | High     | S (≤2h)     | TASK_010     |             |          |
-| TASK_012 | Rename i18n.ts → formatting.ts              | TASK_012_rename_i18n_to_formatting.md                              | NOT STARTED | —             | High     | S (≤2h)     | TASK_010     |             |          |
+| TASK_011 | Standardize forceReload → forceRefresh      | TASK_011_standardize_force_reload_to_force_refresh.md              | COMPLETE    | PASSED        | High     | S (≤2h)     | TASK_010     | SA-20260224-018 | 1        |
+| TASK_012 | Rename i18n.ts → formatting.ts              | TASK_012_rename_i18n_to_formatting.md                              | IN REVIEW   |               | High     | S (≤2h)     | TASK_010     | SA-20260224-019 | 1        |
 | TASK_013 | Rename normalizeAgentName → buildAgentName  | TASK_013_rename_normalize_agent_name_to_build_agent_name.md        | NOT STARTED | —             | Medium   | S (≤2h)     | TASK_010     |             |          |
 | TASK_014 | Rename willFailValidation → hasMissingRequiredArgs | TASK_014_rename_will_fail_validation_to_has_missing_required_args.md | NOT STARTED | —          | Medium   | S (≤2h)     | TASK_010     |             |          |
 | TASK_015 | Rename shouldAllowAll → allowAll            | TASK_015_rename_should_allow_all_to_allow_all.md                   | NOT STARTED | —             | Medium   | XS (< 1h)   | TASK_010     |             |          |
@@ -312,13 +312,13 @@ TASK_001 → TASK_005 → TASK_010 → TASK_011/TASK_017 → TASK_023 → TASK_0
 
 ## Subagent Tracking
 
-Last Subagent ID: SA-20260224-017
+Last Subagent ID: SA-20260224-019
 
 ---
 
 ## Review Tracking
 
-Last Review ID: RA-20260224-015
+Last Review ID: RA-20260224-017
 
 ---
 
@@ -328,13 +328,13 @@ Last Review ID: RA-20260224-015
 
 | Field             | Value |
 | ----------------- | ----- |
-| Task              | TASK_010 |
-| Impl Agent        | SA-20260224-017 |
-| Files Changed     | `None (verification-only task)` |
-| Tests Added       | `None` (0 new tests) |
+| Task              | TASK_012 |
+| Impl Agent        | SA-20260224-019 |
+| Files Changed     | `lib/utils/formatting.ts` |
+| Tests Added       | `test/formatting.test.ts` (0 new tests; renamed from `test/i18n.test.ts`) |
 | Rework?           | No |
-| Focus Areas       | Acceptance criteria verification for TASK_005-009 integration wiring (`exit.ts`, `signals.ts`, `bin/speci.ts`, `gate.ts`, `command-registry.ts`, `state.ts`) |
-| Known Limitations | Manual SIGINT/kill -9/unhandled-rejection lock-cleanup verification not executed in this non-interactive run; `npm run test:integration` currently fails on existing unrelated integration tests |
+| Focus Areas       | File rename integrity, import path update, and removal of `i18n` references in `lib/` and `test/` |
+| Known Limitations | Did not consolidate `formatElapsed` duplication in `lib/utils/lock.ts` (out of scope for TASK_012) |
 | Gate Results      | format:✅ lint:✅ typecheck:✅ test:✅ |
 
 ### For Fix Agent
