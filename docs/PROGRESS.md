@@ -42,7 +42,7 @@
 
 | Task ID  | Title                                                        | File                                             | Status      | Review Status | Priority | Complexity | Dependencies | Assigned To | Attempts |
 | -------- | ------------------------------------------------------------ | ------------------------------------------------ | ----------- | ------------- | -------- | ---------- | ------------ | ----------- | -------- |
-| TASK_001 | Hoist VALID_STATUSES/ACTIVE_STATUSES to Module-Level in state.ts | TASK_001_hoist_valid_active_statuses_state.md | NOT STARTED | —             | Medium   | S (≤2h)    | None         |             |          |
+| TASK_001 | Hoist VALID_STATUSES/ACTIVE_STATUSES to Module-Level in state.ts | TASK_001_hoist_valid_active_statuses_state.md | COMPLETE    | PASSED        | Medium   | S (≤2h)    | None         | SA-20260224-015 | 1        |
 | TASK_002 | Hoist STATE_COLORS/STATE_ICONS to Module-Level in status.ts  | TASK_002_hoist_state_colors_icons_status.md      | NOT STARTED | —             | Medium   | S (≤2h)    | None         |             |          |
 | TASK_003 | Cache getDefaults() in config.ts                             | TASK_003_cache_getdefaults_config.md             | NOT STARTED | —             | Medium   | S (≤2h)    | None         |             |          |
 | TASK_004 | Cache matrixChars.length in renderer.ts Animation Loop       | TASK_004_cache_matrixchars_length_renderer.md    | NOT STARTED | —             | Medium   | S (≤2h)    | None         |             |          |
@@ -64,12 +64,12 @@ graph TD
 
 | Task ID  | Title                                                        | File                                                    | Status      | Review Status | Priority | Complexity | Dependencies                                           | Assigned To | Attempts |
 | -------- | ------------------------------------------------------------ | ------------------------------------------------------- | ----------- | ------------- | -------- | ---------- | ------------------------------------------------------ | ----------- | -------- |
-| TASK_005 | Fix stateFileCache Path Keying Bug                           | TASK_005_fix_statefile_cache_path_keying.md             | NOT STARTED | —             | High     | S (≤2h)    | TASK_001                                               |             |          |
+| TASK_005 | Fix stateFileCache Path Keying Bug                           | TASK_005_fix_statefile_cache_path_keying.md             | COMPLETE    | PASSED        | High     | S (≤2h)    | TASK_001                                               | SA-20260224-016 | 1        |
 | TASK_006 | Add Global unhandledRejection/uncaughtException Handlers     | TASK_006_add_global_unhandled_rejection_handlers.md     | COMPLETE    | PASSED        | High     | S (≤2h)    | None                                                   | SA-20260224-001 | 1        |
 | TASK_007 | Consolidate isCleaningUp Guard to Single Source              | TASK_007_consolidate_is_cleaning_up_guard.md            | COMPLETE    | PASSED        | High     | S (≤2h)    | None                                                   | SA-20260224-002 | 1        |
 | TASK_008 | Fix O(n²) stdout Concatenation in Gate Runner                | TASK_008_fix_on2_stdout_concatenation_gate.md           | COMPLETE    | PASSED        | High     | S (≤2h)    | None                                                   | SA-20260224-003 | 1        |
 | TASK_009 | Fix Clean Command Missing try/catch in Registry              | TASK_009_fix_clean_command_try_catch_registry.md        | COMPLETE    | PASSED        | High     | XS (<1h)   | None                                                   | SA-20260224-004 | 1        |
-| TASK_010 | Integration — Wire and Verify All M1 Changes                 | TASK_010_integration_wire_m1_changes.md                 | NOT STARTED | —             | High     | M (2-4h)   | TASK_005, TASK_006, TASK_007, TASK_008, TASK_009       |             |          |
+| TASK_010 | Integration — Wire and Verify All M1 Changes                 | TASK_010_integration_wire_m1_changes.md                 | IN REVIEW   |               | High     | M (2-4h)   | TASK_005, TASK_006, TASK_007, TASK_008, TASK_009       | SA-20260224-017 | 1        |
 | MVT_M1   | Manual Verification: Critical Fixes                          | MVT_M1_critical_fixes.md                                | NOT STARTED | —             | —        | 30 min     | TASK_010                                               |             |          |
 
 ### Dependencies
@@ -203,7 +203,7 @@ graph TD
 | TASK_037 | Make Interactive Prompts Injectable in run.ts                      | TASK_037_make_prompts_injectable_run.md            | COMPLETE    | PASSED        | High     | M (2-4h)   | None                           | SA-20260224-012 | 1        |
 | TASK_038 | Fix Integration Test Stability (chdir, Timing, Env Mutations)      | TASK_038_fix_integration_test_stability.md         | COMPLETE    | PASSED        | High     | M (2-4h)   | None                           | SA-20260224-013 | 1        |
 | TASK_039 | Add Behavioral Smoke Tests to context-factory.test.ts              | TASK_039_add_context_factory_smoke_tests.md        | NOT STARTED | —             | Medium   | S (≤2h)    | TASK_035                       |             |          |
-| TASK_040 | Add Sad-Path Integration Tests (Spawn Failure Scenarios)           | TASK_040_add_sad_path_integration_tests.md         | IN REVIEW   |               | High     | M (2-4h)   | None                           | SA-20260224-014 | 1        |
+| TASK_040 | Add Sad-Path Integration Tests (Spawn Failure Scenarios)           | TASK_040_add_sad_path_integration_tests.md         | COMPLETE    | PASSED        | High     | M (2-4h)   | None                           | SA-20260224-014 | 1        |
 | MVT_M4A  | Manual Verification: Test Coverage & Isolation                     | MVT_M4A_test_coverage.md                           | NOT STARTED | —             | —        | 30 min     | TASK_035, TASK_036, TASK_037, TASK_038, TASK_039, TASK_040 | | |
 
 ### Dependencies
@@ -312,13 +312,13 @@ TASK_001 → TASK_005 → TASK_010 → TASK_011/TASK_017 → TASK_023 → TASK_0
 
 ## Subagent Tracking
 
-Last Subagent ID: SA-20260224-014
+Last Subagent ID: SA-20260224-017
 
 ---
 
 ## Review Tracking
 
-Last Review ID: RA-20260224-012
+Last Review ID: RA-20260224-015
 
 ---
 
@@ -328,13 +328,13 @@ Last Review ID: RA-20260224-012
 
 | Field             | Value |
 | ----------------- | ----- |
-| Task              | TASK_040 |
-| Impl Agent        | SA-20260224-014 |
-| Files Changed     | `lib/commands/run.ts` |
-| Tests Added       | `test/integration/plan.integration.test.ts` (4 new tests), `test/integration/task.integration.test.ts` (1 new test), `test/integration/workflows.integration.test.ts` (2 new tests), `test/integration/init.integration.test.ts` (1 new test) |
+| Task              | TASK_010 |
+| Impl Agent        | SA-20260224-017 |
+| Files Changed     | `None (verification-only task)` |
+| Tests Added       | `None` (0 new tests) |
 | Rework?           | No |
-| Focus Areas       | Spawn rejection/non-zero exit handling for plan/task, and run-command sad paths for copilot runner rejection and exhausted gate retries |
-| Known Limitations | Full integration suite has pre-existing failures unrelated to this task in current environment |
+| Focus Areas       | Acceptance criteria verification for TASK_005-009 integration wiring (`exit.ts`, `signals.ts`, `bin/speci.ts`, `gate.ts`, `command-registry.ts`, `state.ts`) |
+| Known Limitations | Manual SIGINT/kill -9/unhandled-rejection lock-cleanup verification not executed in this non-interactive run; `npm run test:integration` currently fails on existing unrelated integration tests |
 | Gate Results      | format:✅ lint:✅ typecheck:✅ test:✅ |
 
 ### For Fix Agent
@@ -348,3 +348,4 @@ Last Review ID: RA-20260224-012
 | Primary Error   | - |
 | Root Cause Hint | - |
 | Do NOT          | - |
+
