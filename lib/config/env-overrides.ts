@@ -10,6 +10,8 @@ export interface EnvMapping {
   configPath: string[];
   type: 'string' | 'number' | 'boolean' | 'enum';
   enumValues?: string[];
+  /** Minimum allowed value for numeric types (default: 0) */
+  min?: number;
 }
 
 /**
@@ -36,11 +38,13 @@ export const ENV_MAPPINGS: EnvMapping[] = [
     envVar: 'SPECI_MAX_ITERATIONS',
     configPath: ['loop', 'maxIterations'],
     type: 'number',
+    min: 1,
   },
   {
     envVar: 'SPECI_MAX_FIX_ATTEMPTS',
     configPath: ['gate', 'maxFixAttempts'],
     type: 'number',
+    min: 0,
   },
 
   // Enum overrides
@@ -153,7 +157,8 @@ export function parseEnvValue(
 
     case 'number': {
       const num = parseInt(value, 10);
-      if (isNaN(num) || num < 0) {
+      const min = mapping.min ?? 0;
+      if (isNaN(num) || num < min) {
         return { valid: false };
       }
       return { valid: true, value: num };

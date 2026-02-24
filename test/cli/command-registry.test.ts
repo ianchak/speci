@@ -423,11 +423,13 @@ describe('CommandRegistry', () => {
         await import('../../lib/cli/command-registry.js');
       const registry = new CommandRegistry(mockContext, mockConfig);
       const handleSpy = vi.spyOn(
-        registry as unknown as { handlePreflightError: (err: unknown) => void },
+        registry as unknown as {
+          handlePreflightError: (err: unknown) => Promise<boolean>;
+        },
         'handlePreflightError'
       );
 
-      await expect(registry.execute(['clean'])).rejects.toBe(preflightError);
+      await registry.execute(['clean']);
       expect(cleanMock).toHaveBeenCalledOnce();
       expect(handleSpy).toHaveBeenCalledWith(preflightError);
       expect(exitWithCleanupMock).toHaveBeenCalledWith(2);
@@ -450,7 +452,9 @@ describe('CommandRegistry', () => {
         await import('../../lib/cli/command-registry.js');
       const registry = new CommandRegistry(mockContext, mockConfig);
       const handleSpy = vi.spyOn(
-        registry as unknown as { handlePreflightError: (err: unknown) => void },
+        registry as unknown as {
+          handlePreflightError: (err: unknown) => Promise<boolean>;
+        },
         'handlePreflightError'
       );
 

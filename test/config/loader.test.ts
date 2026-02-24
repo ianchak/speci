@@ -661,12 +661,12 @@ describe('config', () => {
 
   describe('edge cases', () => {
     it('should handle zero as valid numeric value', () => {
-      // Setting to 0 should be rejected as it's < 1
+      // SPECI_MAX_ITERATIONS=0 should be rejected (min: 1)
       process.env.SPECI_MAX_ITERATIONS = '0';
 
       const config = loadConfig();
 
-      // Should keep default due to validation (< 0 check)
+      // Should keep default since 0 < min(1) for maxIterations
       expect(config.loop.maxIterations).toBe(100);
     });
 

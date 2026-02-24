@@ -106,7 +106,10 @@ export class CommandRegistry {
           await exitWithCleanup(result.exitCode);
         }
       } catch (err) {
-        this.handlePreflightError(err);
+        const handled = await this.handlePreflightError(err);
+        if (!handled) {
+          throw err;
+        }
       }
     };
   }
@@ -328,9 +331,10 @@ Examples:
   }
 
   /**
-   * Handle preflight errors consistently across all commands
+   * Handle preflight errors consistently across all commands.
+   * Returns true if the error was handled, false otherwise.
    */
-  private handlePreflightError(err: unknown): void {
+  private async handlePreflightError(err: unknown): Promise<boolean> {
     if (err instanceof PreflightError) {
       log.error(`Preflight check failed: ${err.check}`);
       log.error(err.message);
@@ -338,9 +342,10 @@ Examples:
       for (const step of err.remediation) {
         log.muted(`  • ${step}`);
       }
-      exitWithCleanup(err.exitCode);
+      await exitWithCleanup(err.exitCode);
+      return true;
     }
-    throw err;
+    return false;
   }
 
   /**
