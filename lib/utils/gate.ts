@@ -30,8 +30,8 @@ export async function executeGateCommand(
   const startTime = Date.now();
 
   return new Promise((resolve) => {
-    let stdout = '';
-    let stderr = '';
+    const stdoutChunks: string[] = [];
+    const stderrChunks: string[] = [];
     let timedOut = false;
 
     const child = spawn(command, [], {
@@ -45,17 +45,19 @@ export async function executeGateCommand(
       child.kill('SIGTERM');
     }, timeout);
 
-    child.stdout?.on('data', (data) => {
-      stdout += data.toString();
+    child.stdout?.on('data', (data: Buffer | string) => {
+      stdoutChunks.push(String(data));
     });
 
-    child.stderr?.on('data', (data) => {
-      stderr += data.toString();
+    child.stderr?.on('data', (data: Buffer | string) => {
+      stderrChunks.push(String(data));
     });
 
     child.on('close', (code) => {
       clearTimeout(timer);
       const duration = Date.now() - startTime;
+      const stdout = stdoutChunks.join('');
+      const stderr = stderrChunks.join('');
 
       resolve({
         command,

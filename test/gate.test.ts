@@ -33,6 +33,25 @@ describe('Gate Runner', () => {
       expect(result.error).toContain('error message');
     });
 
+    it('should join multi-chunk stdout output', async () => {
+      const result = await executeGateCommand(
+        "node -e \"process.stdout.write('chunk1'); setTimeout(() => process.stdout.write('chunk2'), 10); setTimeout(() => process.stdout.write('chunk3'), 20); setTimeout(() => process.exit(0), 40);\""
+      );
+
+      expect(result.isSuccess).toBe(true);
+      expect(result.output).toContain('chunk1chunk2chunk3');
+    });
+
+    it('should join multi-chunk stderr output on failure', async () => {
+      const result = await executeGateCommand(
+        "node -e \"process.stderr.write('err1'); setTimeout(() => process.stderr.write('err2'), 10); setTimeout(() => process.exit(1), 30);\""
+      );
+
+      expect(result.isSuccess).toBe(false);
+      expect(result.exitCode).toBe(1);
+      expect(result.error).toContain('err1err2');
+    });
+
     it('should return correct exit code for failing command', async () => {
       const result = await executeGateCommand('node -e "process.exit(1)"');
 
