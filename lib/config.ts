@@ -26,6 +26,7 @@ export type { SpeciConfig } from '@/types.js';
 
 // Config cache for memoization (singleton pattern with lazy initialization)
 let cachedConfig: SpeciConfig | null = null;
+let cachedDefaults: SpeciConfig | null = null;
 
 // Get the directory of the compiled output
 const __filename = fileURLToPath(import.meta.url);
@@ -80,16 +81,34 @@ type AgentName =
  * ```
  */
 export function getDefaults(): SpeciConfig {
+  if (cachedDefaults) {
+    return cachedDefaults;
+  }
+
   const templatePath = join(resolveTemplatesDir(), CONFIG_FILENAME);
 
   if (existsSync(templatePath)) {
     const content = readFileSync(templatePath, 'utf-8');
-    return JSON.parse(content) as SpeciConfig;
+    const parsed: unknown = JSON.parse(content);
+    if (
+      !isPlainObject(parsed) ||
+      typeof parsed.version !== 'string' ||
+      !isPlainObject(parsed.paths) ||
+      !isPlainObject(parsed.copilot) ||
+      !isPlainObject(parsed.gate) ||
+      !isPlainObject(parsed.loop)
+    ) {
+      throw new Error(
+        'Bundled template speci.config.json has invalid structure'
+      );
+    }
+    cachedDefaults = parsed as unknown as SpeciConfig;
+    return cachedDefaults;
   }
 
   // Hardcoded fallback — only reached if the template is not bundled
   log.debug('Template file not found, using hardcoded defaults');
-  return {
+  cachedDefaults = {
     version: '1.0.0',
     paths: {
       progress: DEFAULT_PATHS.PROGRESS,
@@ -118,6 +137,7 @@ export function getDefaults(): SpeciConfig {
       maxIterations: 100,
     },
   };
+  return cachedDefaults;
 }
 
 /**
@@ -240,14 +260,11 @@ export function validateConfig(rawConfig: Partial<SpeciConfig>): SpeciConfig {
     const { error } = result;
 
     if (error.field === 'version') {
-      throw createError(
-        'ERR-INP-06',
-        JSON.stringify({ version: config.version })
-      );
+      throw createError('ERR-INP-06', { version: config.version });
     }
 
     if (error.field?.startsWith('paths.')) {
-      throw createError('ERR-INP-07', JSON.stringify({ path: error.message }));
+      throw createError('ERR-INP-07', { path: error.message });
     }
 
     if (error.field === 'copilot.permissions') {
@@ -263,7 +280,7 @@ export function validateConfig(rawConfig: Partial<SpeciConfig>): SpeciConfig {
     }
 
     // Fallback for unexpected validation errors
-    throw createError('ERR-INP-04', JSON.stringify(error));
+    throw createError('ERR-INP-04', { ...error });
   }
 
   return config;
@@ -525,8 +542,8 @@ function applyEnvOverrides(config: SpeciConfig, proc: IProcess): void {
  * for the process lifetime. Subsequent calls return the cached instance.
  *
  * @param options - Optional configuration options
- * @param options.forceReload - Force reload from disk, bypassing cache
- * @param options.processParam - Optional IProcess instance for testing (defaults to global process)
+ * @param options.forceRefresh - Force reload from disk, bypassing cache
+ * @param options.proc - Optional IProcess instance for testing (defaults to global process)
  * @returns Validated SpeciConfig object (frozen for immutability)
  * @throws {Error} ERR-INP-03 if config file is malformed JSON
  * @throws {Error} ERR-INP-04 if config fails schema validation
@@ -542,21 +559,21 @@ function applyEnvOverrides(config: SpeciConfig, proc: IProcess): void {
  * console.log(config === config2); // true
  *
  * // Force reload if needed (testing/development)
- * const config3 = loadConfig({ forceReload: true });
+ * const config3 = loadConfig({ forceRefresh: true });
  * ```
  */
 export function loadConfig(options?: {
-  forceReload?: boolean;
-  processParam?: IProcess;
+  forceRefresh?: boolean;
+  proc?: IProcess;
 }): SpeciConfig {
-  // Check cache unless forceReload requested
-  if (cachedConfig && !options?.forceReload) {
+  // Check cache unless forceRefresh requested
+  if (cachedConfig && !options?.forceRefresh) {
     log.debug('Config cache hit');
     return cachedConfig;
   }
 
   const startTime = performance.now();
-  const proc = options?.processParam || process;
+  const proc = options?.proc ?? process;
 
   // Find config file
   const configPath = findConfigFile(proc.cwd());
@@ -566,7 +583,11 @@ export function loadConfig(options?: {
   if (configPath) {
     try {
       const fileContent = readFileSync(configPath, 'utf-8');
-      rawConfig = JSON.parse(fileContent);
+      const parsedRaw: unknown = JSON.parse(fileContent);
+      if (!isPlainObject(parsedRaw)) {
+        throw createError('ERR-INP-03');
+      }
+      rawConfig = parsedRaw as Partial<SpeciConfig>;
       log.debug(`Loaded config from ${configPath}`);
     } catch (error) {
       if (error instanceof SyntaxError) {
@@ -611,7 +632,16 @@ export function loadConfig(options?: {
 export function resetConfigCache(): void {
   cachedConfig = null;
   cachedTemplatesDir = null;
+  resetDefaultsCache();
   log.debug('Config cache cleared');
+}
+
+/**
+ * Clears the cached default config template.
+ * This function should only be used in tests to reset state between test cases.
+ */
+export function resetDefaultsCache(): void {
+  cachedDefaults = null;
 }
 
 /**
@@ -642,7 +672,7 @@ export function getConfigIfLoaded(): SpeciConfig | null {
  * Agents must exist in .github/agents/ (created by `speci init`).
  *
  * @param agentName - Name of agent to resolve (e.g., 'impl', 'review')
- * @param processParam - Optional IProcess instance for testing (defaults to global process)
+ * @param proc - Optional IProcess instance for testing (defaults to global process)
  * @returns Absolute path to agent file in .github/agents/
  *
  * @example
@@ -653,9 +683,8 @@ export function getConfigIfLoaded(): SpeciConfig | null {
  */
 export function resolveAgentPath(
   agentName: AgentName,
-  processParam?: IProcess
+  proc: IProcess = process
 ): string {
-  const proc = processParam || process;
   const filename = `${getAgentFilename(agentName)}.agent.md`;
   const agentPath = join(proc.cwd(), GITHUB_AGENTS_DIR, filename);
 
@@ -678,10 +707,7 @@ export function resolveSubagentPath(subagentName: string): string {
   );
 
   if (!existsSync(bundledPath)) {
-    throw createError(
-      'ERR-INP-11',
-      JSON.stringify({ subagent: `${subagentName}.prompt.md` })
-    );
+    throw createError('ERR-INP-11', { subagent: `${subagentName}.prompt.md` });
   }
 
   return bundledPath;

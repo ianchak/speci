@@ -95,8 +95,8 @@ graph TD
 | TASK_012 | Rename i18n.ts → formatting.ts              | TASK_012_rename_i18n_to_formatting.md                              | COMPLETE    | PASSED        | High     | S (≤2h)     | TASK_010     | SA-20260224-019 | 1        |
 | TASK_013 | Rename normalizeAgentName → buildAgentName  | TASK_013_rename_normalize_agent_name_to_build_agent_name.md        | COMPLETE    | PASSED        | Medium   | S (≤2h)     | TASK_010     | SA-20260224-024 | 1        |
 | TASK_014 | Rename willFailValidation → hasMissingRequiredArgs | TASK_014_rename_will_fail_validation_to_has_missing_required_args.md | COMPLETE    | PASSED        | Medium   | S (≤2h)     | TASK_010     | SA-20260224-025 | 1        |
-| TASK_015 | Rename shouldAllowAll → allowAll            | TASK_015_rename_should_allow_all_to_allow_all.md                   | IN REVIEW   |               | Medium   | XS (< 1h)   | TASK_010     | SA-20260224-026 | 1        |
-| TASK_016 | Standardize processParam → proc             | TASK_016_standardize_process_param_to_proc.md                      | NOT STARTED | —             | Medium   | S (≤2h)     | TASK_010     |             |          |
+| TASK_015 | Rename shouldAllowAll → allowAll            | TASK_015_rename_should_allow_all_to_allow_all.md                   | COMPLETE    | PASSED        | Medium   | XS (< 1h)   | TASK_010     | SA-20260224-026 | 1        |
+| TASK_016 | Standardize processParam → proc             | TASK_016_standardize_process_param_to_proc.md                      | COMPLETE    | PASSED        | Medium   | S (≤2h)     | TASK_010     | SA-20260224-027 | 1        |
 | MVT_M2A  | Manual Verification: Naming Standardization | MVT_M2A_naming_standardization.md                                  | NOT STARTED | —             | —        | 30 min      | TASK_011, TASK_012, TASK_013, TASK_014, TASK_015, TASK_016 | | |
 
 ### Dependencies
@@ -125,8 +125,8 @@ graph TD
 | -------- | ----------------------------------------------------------------- | ----------------------------------------------------- | ----------- | ------------- | -------- | ------------ | -------------------------------------------------------------- | ----------- | -------- |
 | TASK_017 | Split getGlyph() to Eliminate Forced as string Casts             | TASK_017_split_get_glyph_eliminate_casts.md           | COMPLETE    | PASSED        | High     | S (≤2h)      | TASK_010                                                       | SA-20260224-020 | 1        |
 | TASK_018 | Add TaskStatus Literal Union Type                                 | TASK_018_add_task_status_literal_union.md             | COMPLETE    | PASSED        | High     | S (≤2h)      | TASK_010                                                       | SA-20260224-021 | 1        |
-| TASK_019 | Type ErrorCode as keyof typeof ERROR_CODES                        | TASK_019_type_error_code_as_keyof.md                  | NOT STARTED | —             | High     | M (2–4h)     | TASK_010                                                       |             |          |
-| TASK_020 | Validate JSON.parse() Results at Critical Call Sites              | TASK_020_validate_json_parse_results.md               | NOT STARTED | —             | High     | S (≤2h)      | TASK_010                                                       |             |          |
+| TASK_019 | Type ErrorCode as keyof typeof ERROR_CODES                        | TASK_019_type_error_code_as_keyof.md                  | COMPLETE    | PASSED        | High     | M (2–4h)     | TASK_010                                                       | SA-20260224-028 | 1        |
+| TASK_020 | Validate JSON.parse() Results at Critical Call Sites              | TASK_020_validate_json_parse_results.md               | IN REVIEW   |               | High     | S (≤2h)      | TASK_010                                                       | SA-20260224-029 | 1        |
 | TASK_021 | Add parseEnvValue Discriminated Union Return Type                 | TASK_021_parse_env_value_discriminated_union.md       | NOT STARTED | —             | High     | S (≤2h)      | TASK_010                                                       |             |          |
 | TASK_022 | Replace Inline Error Handling in status.ts with handleCommandError | TASK_022_replace_inline_error_handling_status.md     | NOT STARTED | —             | Medium   | XS (< 30min) | TASK_010                                                       |             |          |
 | TASK_023 | Integration — Verify All Type Safety Improvements                 | TASK_023_integration_verify_type_safety.md            | NOT STARTED | —             | High     | S (≤2h)      | TASK_017, TASK_018, TASK_019, TASK_020, TASK_021, TASK_022    |             |          |
@@ -312,13 +312,13 @@ TASK_001 → TASK_005 → TASK_010 → TASK_011/TASK_017 → TASK_023 → TASK_0
 
 ## Subagent Tracking
 
-Last Subagent ID: SA-20260224-026
+Last Subagent ID: SA-20260224-029
 
 ---
 
 ## Review Tracking
 
-Last Review ID: RA-20260224-025
+Last Review ID: RA-20260224-028
 
 ---
 
@@ -328,13 +328,13 @@ Last Review ID: RA-20260224-025
 
 | Field             | Value |
 | ----------------- | ----- |
-| Task              | TASK_015 |
-| Impl Agent        | SA-20260224-026 |
-| Files Changed     | `lib/types.ts`, `lib/commands/plan.ts`, `lib/commands/refactor.ts`, `lib/commands/task.ts` |
-| Tests Added       | None (updated `test/types.test.ts`, 0 new tests) |
+| Task              | TASK_020 |
+| Impl Agent        | SA-20260224-029 |
+| Files Changed     | `lib/config.ts`, `lib/ui/banner.ts` |
+| Tests Added       | `test/config.test.ts` (3 new tests), `test/banner.test.ts` (2 new tests) |
 | Rework?           | No |
-| Focus Areas       | Mechanical rename coverage for `CopilotArgsOptions.allowAll` across all required call sites and fixture update |
-| Known Limitations | No behavioral changes; property remains unused by `buildCopilotArgs` (out of scope per task) |
+| Focus Areas       | Runtime validation at JSON.parse boundaries in `getDefaults`, `loadConfig`, and banner version parsing fallback behavior |
+| Known Limitations | `getDefaults()` uses top-level shape checks only; deep schema validation remains in existing `ConfigValidator` flow |
 | Gate Results      | format:✅ lint:✅ typecheck:✅ test:✅ |
 
 ### For Fix Agent
@@ -345,3 +345,4 @@ Last Review ID: RA-20260224-025
 | Failed Gate     | npm test |
 | Primary Error   | [90mstderr[2m | test/run.test.ts[2m > [22m[2mRun Command[2m > [22m[2mState Machine[2m > [22m[2mshould exit with error for NO_PROGRESS state [22m[39m✗ No PROGRESS.md found. Run `speci init` to initialize. [90mstderr[2m | test/run.test.ts[2m > [22m[2mRun Command[2m > [22m[2mState Machine[2m > [22m[2mshould exit with error for NO_PROGRESS state [22m[39m✗ Run command failed: [ERR-PRE-06] No PROGRESS.md found in run command   Cause: Run command requires PROGRESS.md to track … |
 | Root Cause Hint | `npm test` exited with code 1 |
+

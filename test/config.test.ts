@@ -44,7 +44,18 @@ describe('config', () => {
 
     // Restore original state
     process.chdir(originalCwd);
-    process.env = originalEnv;
+    for (const key of Object.keys(process.env)) {
+      if (!(key in originalEnv)) {
+        delete process.env[key];
+      }
+    }
+    for (const [key, value] of Object.entries(originalEnv)) {
+      if (value === undefined) {
+        delete process.env[key];
+      } else {
+        process.env[key] = value;
+      }
+    }
 
     // Clean up test directory
     if (existsSync(testDir)) {
@@ -53,6 +64,36 @@ describe('config', () => {
   });
 
   describe('getDefaults', () => {
+    const templateConfig: SpeciConfig = {
+      version: '1.0.0',
+      paths: {
+        progress: 'docs/PROGRESS.md',
+        tasks: 'docs/tasks',
+        logs: '.speci-logs',
+        lock: '.speci-lock',
+      },
+      copilot: {
+        permissions: 'allow-all',
+        models: {
+          plan: 'claude-opus-4.6',
+          task: 'claude-sonnet-4.6',
+          refactor: 'claude-sonnet-4.6',
+          impl: 'gpt-5.3-codex',
+          review: 'claude-sonnet-4.6',
+          fix: 'claude-sonnet-4.6',
+          tidy: 'gpt-5.2',
+        },
+        extraFlags: [],
+      },
+      gate: {
+        commands: ['npm run lint', 'npm run typecheck', 'npm test'],
+        maxFixAttempts: 5,
+      },
+      loop: {
+        maxIterations: 100,
+      },
+    };
+
     it('should return default configuration with correct structure', () => {
       const defaults = getDefaults();
 
@@ -86,6 +127,126 @@ describe('config', () => {
       const defaults = getDefaults();
 
       expect(defaults.loop.maxIterations).toBe(100);
+    });
+
+    it('should read defaults from disk only once across repeated calls', async () => {
+      vi.resetModules();
+      const readFileSyncMock = vi.fn(() => JSON.stringify(templateConfig));
+      const existsSyncMock = vi.fn(() => true);
+      vi.doMock('node:fs', async () => {
+        const actual =
+          await vi.importActual<typeof import('node:fs')>('node:fs');
+        return {
+          ...actual,
+          existsSync: existsSyncMock,
+          readFileSync: readFileSyncMock,
+        };
+      });
+
+      try {
+        const freshConfig = await import('../lib/config.js');
+        freshConfig.resetConfigCache();
+
+        for (let index = 0; index < 100; index++) {
+          freshConfig.getDefaults();
+        }
+
+        expect(readFileSyncMock).toHaveBeenCalledTimes(1);
+      } finally {
+        vi.doUnmock('node:fs');
+        vi.resetModules();
+      }
+    });
+
+    it('should return the same object reference across repeated calls', () => {
+      const defaults1 = getDefaults();
+      const defaults2 = getDefaults();
+
+      expect(defaults1).toBe(defaults2);
+    });
+
+    it('should read defaults from disk again after resetDefaultsCache', async () => {
+      vi.resetModules();
+      const readFileSyncMock = vi.fn(() => JSON.stringify(templateConfig));
+      const existsSyncMock = vi.fn(() => true);
+      vi.doMock('node:fs', async () => {
+        const actual =
+          await vi.importActual<typeof import('node:fs')>('node:fs');
+        return {
+          ...actual,
+          existsSync: existsSyncMock,
+          readFileSync: readFileSyncMock,
+        };
+      });
+
+      try {
+        const freshConfig = await import('../lib/config.js');
+        freshConfig.resetConfigCache();
+
+        freshConfig.getDefaults();
+        freshConfig.resetDefaultsCache();
+        freshConfig.getDefaults();
+
+        expect(readFileSyncMock).toHaveBeenCalledTimes(2);
+      } finally {
+        vi.doUnmock('node:fs');
+        vi.resetModules();
+      }
+    });
+
+    it('should clear defaults cache when resetConfigCache is called', async () => {
+      vi.resetModules();
+      const readFileSyncMock = vi.fn(() => JSON.stringify(templateConfig));
+      const existsSyncMock = vi.fn(() => true);
+      vi.doMock('node:fs', async () => {
+        const actual =
+          await vi.importActual<typeof import('node:fs')>('node:fs');
+        return {
+          ...actual,
+          existsSync: existsSyncMock,
+          readFileSync: readFileSyncMock,
+        };
+      });
+
+      try {
+        const freshConfig = await import('../lib/config.js');
+        freshConfig.resetConfigCache();
+
+        freshConfig.getDefaults();
+        freshConfig.resetConfigCache();
+        freshConfig.getDefaults();
+
+        expect(readFileSyncMock).toHaveBeenCalledTimes(2);
+      } finally {
+        vi.doUnmock('node:fs');
+        vi.resetModules();
+      }
+    });
+
+    it('should throw if bundled template has invalid top-level structure', async () => {
+      vi.resetModules();
+      const existsSyncMock = vi.fn(() => true);
+      const readFileSyncMock = vi.fn(
+        () => '{"version":"1.0.0","copilot":{},"gate":{},"loop":{}}'
+      );
+      vi.doMock('node:fs', async () => {
+        const actual =
+          await vi.importActual<typeof import('node:fs')>('node:fs');
+        return {
+          ...actual,
+          existsSync: existsSyncMock,
+          readFileSync: readFileSyncMock,
+        };
+      });
+
+      try {
+        const freshConfig = await import('../lib/config.js');
+        freshConfig.resetConfigCache();
+        expect(() => freshConfig.getDefaults()).toThrow(/invalid structure/i);
+      } finally {
+        vi.doUnmock('node:fs');
+        vi.resetModules();
+      }
     });
   });
 
@@ -235,6 +396,18 @@ describe('config', () => {
       writeFileSync(join(testDir, 'speci.config.json'), '{ invalid json }');
 
       expect(() => loadConfig()).toThrow(/invalid JSON/i);
+    });
+
+    it('should throw malformed config error for JSON array content', () => {
+      writeFileSync(join(testDir, 'speci.config.json'), '[]');
+
+      expect(() => loadConfig()).toThrow(/ERR-INP-03|malformed/i);
+    });
+
+    it('should throw malformed config error for JSON null content', () => {
+      writeFileSync(join(testDir, 'speci.config.json'), 'null');
+
+      expect(() => loadConfig()).toThrow(/ERR-INP-03|malformed/i);
     });
 
     it('should apply environment variable overrides', () => {
@@ -821,10 +994,10 @@ describe('config', () => {
       });
     });
 
-    describe('forceReload option', () => {
-      it('should bypass cache when forceReload is true', () => {
+    describe('forceRefresh option', () => {
+      it('should bypass cache when forceRefresh is true', () => {
         const config1 = loadConfig();
-        const config2 = loadConfig({ forceReload: true });
+        const config2 = loadConfig({ forceRefresh: true });
 
         // Should be different object references
         expect(config1).not.toBe(config2);
@@ -832,7 +1005,7 @@ describe('config', () => {
         expect(config1).toEqual(config2);
       });
 
-      it('should reload with updated config file when forceReload is true', () => {
+      it('should reload with updated config file when forceRefresh is true', () => {
         writeFileSync(
           'speci.config.json',
           JSON.stringify({
@@ -854,11 +1027,11 @@ describe('config', () => {
         );
 
         // Force reload should pick up new file
-        const config2 = loadConfig({ forceReload: true });
+        const config2 = loadConfig({ forceRefresh: true });
         expect(config2.paths.progress).toBe('updated.md');
       });
 
-      it('should update cache with forceReload result', () => {
+      it('should update cache with forceRefresh result', () => {
         writeFileSync(
           'speci.config.json',
           JSON.stringify({
@@ -877,7 +1050,7 @@ describe('config', () => {
           })
         );
 
-        const config1 = loadConfig({ forceReload: true });
+        const config1 = loadConfig({ forceRefresh: true });
         const config2 = loadConfig();
 
         // Cache should be updated

@@ -2,7 +2,7 @@
  * ASCII Banner Tests
  */
 
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { BANNER_ART, renderBanner, VERSION } from '../lib/ui/banner.js';
 
 describe('banner module', () => {
@@ -210,6 +210,50 @@ describe('banner module', () => {
         // eslint-disable-next-line no-control-regex
         expect(result).not.toMatch(/\x1b\[/);
       });
+    });
+  });
+
+  describe('VERSION parsing safety', () => {
+    it('falls back to 0.0.0 when package.json has no version field', async () => {
+      vi.resetModules();
+      vi.doMock('node:fs', async () => {
+        const actual =
+          await vi.importActual<typeof import('node:fs')>('node:fs');
+        return {
+          ...actual,
+          existsSync: () => true,
+          readFileSync: () => '{}',
+        };
+      });
+
+      try {
+        const freshBanner = await import('../lib/ui/banner.js');
+        expect(freshBanner.VERSION).toBe('0.0.0');
+      } finally {
+        vi.doUnmock('node:fs');
+        vi.resetModules();
+      }
+    });
+
+    it('falls back to 0.0.0 when package.json version is not a string', async () => {
+      vi.resetModules();
+      vi.doMock('node:fs', async () => {
+        const actual =
+          await vi.importActual<typeof import('node:fs')>('node:fs');
+        return {
+          ...actual,
+          existsSync: () => true,
+          readFileSync: () => '{"version":42}',
+        };
+      });
+
+      try {
+        const freshBanner = await import('../lib/ui/banner.js');
+        expect(freshBanner.VERSION).toBe('0.0.0');
+      } finally {
+        vi.doUnmock('node:fs');
+        vi.resetModules();
+      }
     });
   });
 });
