@@ -106,11 +106,11 @@ export class ConfigValidator {
    */
   validateGate(): this {
     if (this.config.gate?.maxFixAttempts !== undefined) {
-      if (this.config.gate.maxFixAttempts < 1) {
+      if (this.config.gate.maxFixAttempts < 0) {
         this.errors.push({
           field: 'gate.maxFixAttempts',
-          message: `maxFixAttempts must be at least 1, got: ${this.config.gate.maxFixAttempts}`,
-          suggestions: ['Set to 1 or higher', 'Default is 3'],
+          message: `maxFixAttempts must be at least 0, got: ${this.config.gate.maxFixAttempts}`,
+          suggestions: ['Set to 0 to disable fix attempts', 'Default is 3'],
         });
       }
     }

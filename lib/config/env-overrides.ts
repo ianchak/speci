@@ -153,7 +153,7 @@ export function parseEnvValue(
 
     case 'number': {
       const num = parseInt(value, 10);
-      if (isNaN(num) || num <= 0) {
+      if (isNaN(num) || num < 0) {
         return { valid: false };
       }
       return { valid: true, value: num };

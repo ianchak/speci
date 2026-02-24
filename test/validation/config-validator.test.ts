@@ -198,17 +198,27 @@ describe('ConfigValidator', () => {
       }
     });
 
-    it('should reject maxFixAttempts < 1', () => {
+    it('should accept maxFixAttempts of 0 (disables fix attempts)', () => {
       const config = {
         ...validConfig,
         gate: { ...validConfig.gate, maxFixAttempts: 0 },
       };
       const result = new ConfigValidator(config).validateGate().validate();
 
+      expect(result.success).toBe(true);
+    });
+
+    it('should reject negative maxFixAttempts', () => {
+      const config = {
+        ...validConfig,
+        gate: { ...validConfig.gate, maxFixAttempts: -1 },
+      };
+      const result = new ConfigValidator(config).validateGate().validate();
+
       expect(result.success).toBe(false);
       if (!result.success) {
         expect(result.error.field).toBe('gate.maxFixAttempts');
-        expect(result.error.message).toContain('must be at least 1');
+        expect(result.error.message).toContain('must be at least 0');
       }
     });
 

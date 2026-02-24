@@ -94,6 +94,34 @@ describe('config with IProcess parameter', () => {
     expect(config.version).toBe('1.0.0');
   });
 
+  it('should allow SPECI_MAX_FIX_ATTEMPTS=0 to disable fix attempts', async () => {
+    const configPath = join(testDir, 'speci.config.json');
+    writeFileSync(
+      configPath,
+      JSON.stringify({
+        version: '1.0.0',
+        gate: { commands: ['npm test'], maxFixAttempts: 3 },
+      })
+    );
+
+    const mockProcess: IProcess = {
+      env: {
+        SPECI_MAX_FIX_ATTEMPTS: '0',
+      },
+      cwd: () => testDir,
+      exit: vi.fn() as never,
+      pid: 12345,
+      platform: 'linux',
+      stdout: {} as NodeJS.WriteStream,
+      stdin: {} as NodeJS.ReadStream,
+      on: vi.fn(),
+    };
+
+    const config = await loadConfig({ proc: mockProcess });
+
+    expect(config.gate.maxFixAttempts).toBe(0);
+  });
+
   it('should handle empty env gracefully', async () => {
     const configPath = join(testDir, 'speci.config.json');
     writeFileSync(configPath, JSON.stringify({ version: '1.0.0' }));
