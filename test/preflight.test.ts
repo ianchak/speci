@@ -131,6 +131,15 @@ describe('preflight', () => {
         ).toBe(true);
       }
     });
+
+    it('should succeed when config exists in grandparent directory', async () => {
+      const subDir = join(testDir, 'sub', 'nested');
+      mkdirSync(subDir, { recursive: true });
+      writeFileSync(join(testDir, 'speci.config.json'), '{}');
+      process.chdir(subDir);
+
+      await expect(checkConfigExists()).resolves.toBeUndefined();
+    });
   });
 
   describe('checkProgressExists', () => {
@@ -249,6 +258,15 @@ describe('preflight', () => {
           error.remediation.some((step) => step.includes('git init'))
         ).toBe(true);
       }
+    });
+
+    it('should succeed when git exists in grandparent directory', async () => {
+      const subDir = join(testDir, 'sub', 'nested');
+      mkdirSync(subDir, { recursive: true });
+      mkdirSync(join(testDir, '.git'));
+      process.chdir(subDir);
+
+      await expect(checkGitRepository()).resolves.toBeUndefined();
     });
   });
 

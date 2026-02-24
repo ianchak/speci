@@ -126,10 +126,10 @@ graph TD
 | TASK_017 | Split getGlyph() to Eliminate Forced as string Casts             | TASK_017_split_get_glyph_eliminate_casts.md           | COMPLETE    | PASSED        | High     | S (≤2h)      | TASK_010                                                       | SA-20260224-020 | 1        |
 | TASK_018 | Add TaskStatus Literal Union Type                                 | TASK_018_add_task_status_literal_union.md             | COMPLETE    | PASSED        | High     | S (≤2h)      | TASK_010                                                       | SA-20260224-021 | 1        |
 | TASK_019 | Type ErrorCode as keyof typeof ERROR_CODES                        | TASK_019_type_error_code_as_keyof.md                  | COMPLETE    | PASSED        | High     | M (2–4h)     | TASK_010                                                       | SA-20260224-028 | 1        |
-| TASK_020 | Validate JSON.parse() Results at Critical Call Sites              | TASK_020_validate_json_parse_results.md               | IN REVIEW   |               | High     | S (≤2h)      | TASK_010                                                       | SA-20260224-029 | 1        |
-| TASK_021 | Add parseEnvValue Discriminated Union Return Type                 | TASK_021_parse_env_value_discriminated_union.md       | NOT STARTED | —             | High     | S (≤2h)      | TASK_010                                                       |             |          |
-| TASK_022 | Replace Inline Error Handling in status.ts with handleCommandError | TASK_022_replace_inline_error_handling_status.md     | NOT STARTED | —             | Medium   | XS (< 30min) | TASK_010                                                       |             |          |
-| TASK_023 | Integration — Verify All Type Safety Improvements                 | TASK_023_integration_verify_type_safety.md            | NOT STARTED | —             | High     | S (≤2h)      | TASK_017, TASK_018, TASK_019, TASK_020, TASK_021, TASK_022    |             |          |
+| TASK_020 | Validate JSON.parse() Results at Critical Call Sites              | TASK_020_validate_json_parse_results.md               | COMPLETE    | PASSED        | High     | S (≤2h)      | TASK_010                                                       | SA-20260224-029 | 1        |
+| TASK_021 | Add parseEnvValue Discriminated Union Return Type                 | TASK_021_parse_env_value_discriminated_union.md       | COMPLETE    | PASSED        | High     | S (≤2h)      | TASK_010                                                       | SA-20260224-030 | 1        |
+| TASK_022 | Replace Inline Error Handling in status.ts with handleCommandError | TASK_022_replace_inline_error_handling_status.md     | COMPLETE    | PASSED        | Medium   | XS (< 30min) | TASK_010                                                       | SA-20260224-031 | 1        |
+| TASK_023 | Integration — Verify All Type Safety Improvements                 | TASK_023_integration_verify_type_safety.md            | COMPLETE    | PASSED        | High     | S (≤2h)      | TASK_017, TASK_018, TASK_019, TASK_020, TASK_021, TASK_022    | SA-20260224-032 | 1        |
 | MVT_M2B  | Manual Verification: Type Safety & Error Handling                 | MVT_M2B_type_safety_error_handling.md                 | NOT STARTED | —             | —        | 30 min       | TASK_023                                                       |             |          |
 
 ### Dependencies
@@ -160,11 +160,11 @@ graph TD
 | TASK_024 | Extract `makeAction` Factory in CommandRegistry                           | TASK_024_extract_make_action_factory.md                    | COMPLETE    | PASSED        | High     | M (2-4h)   | TASK_009                                                                                                       | SA-20260224-005 | 1        |
 | TASK_025 | Centralize Agent-Not-Found Handling Across All Commands                   | TASK_025_centralize_agent_not_found_handling.md            | COMPLETE    | PASSED        | High     | M (2-4h)   | None                                                                                                           | SA-20260224-006 | 1        |
 | TASK_026 | Extract `toErrorMessage()` and `failResult()` Utilities                   | TASK_026_extract_to_error_message_fail_result.md           | COMPLETE    | PASSED        | High     | S (≤2h)    | TASK_025                                                                                                       | SA-20260224-007 | 1        |
-| TASK_027 | Extract `walkUpToFind()` Helper in `preflight.ts`                         | TASK_027_extract_walk_up_to_find_preflight.md              | NOT STARTED | —             | Medium   | S (≤2h)    | None                                                                                                           |             |          |
+| TASK_027 | Extract `walkUpToFind()` Helper in `preflight.ts`                         | TASK_027_extract_walk_up_to_find_preflight.md              | IN REVIEW   |               | Medium   | S (≤2h)    | None                                                                                                           | SA-20260224-036 | 1        |
 | TASK_028 | Extract `dispatchAgent()` and `runFixAttempts()` in `run.ts`              | TASK_028_extract_dispatch_agent_run_fix_attempts.md        | COMPLETE    | PASSED        | High     | M (2-4h)   | None                                                                                                           | SA-20260224-008 | 1        |
 | TASK_029 | Decompose `yolo` Function into Helpers                                    | TASK_029_decompose_yolo_into_helpers.md                    | NOT STARTED | —             | Medium   | M (2-4h)   | None                                                                                                           |             |          |
-| TASK_030 | Decompose `runLiveDashboard` (129 Lines)                                  | TASK_030_decompose_run_live_dashboard.md                   | NOT STARTED | —             | High     | L (4-8h)   | TASK_002                                                                                                       |             |          |
-| TASK_031 | Decompose `buildContentLines` (110 Lines)                                 | TASK_031_decompose_build_content_lines.md                  | NOT STARTED | —             | High     | M (2-4h)   | TASK_002, TASK_030                                                                                             |             |          |
+| TASK_030 | Decompose `runLiveDashboard` (129 Lines)                                  | TASK_030_decompose_run_live_dashboard.md                   | COMPLETE    | PASSED        | High     | L (4-8h)   | TASK_002                                                                                                       | SA-20260224-033 | 1        |
+| TASK_031 | Decompose `buildContentLines` (110 Lines)                                 | TASK_031_decompose_build_content_lines.md                  | COMPLETE    | PASSED        | High     | M (2-4h)   | TASK_002, TASK_030                                                                                             | SA-20260224-035 | 3        |
 | TASK_032 | Split `getLockInfo` into Format-Specific Parsers                          | TASK_032_split_get_lock_info_parsers.md                    | COMPLETE    | PASSED        | High     | M (2-4h)   | None                                                                                                           | SA-20260224-009 | 1        |
 | TASK_033 | Merge `renderWaveFrame` / `renderSweepFrame`                              | TASK_033_merge_render_wave_sweep_frame.md                  | NOT STARTED | —             | Medium   | M (2-4h)   | None                                                                                                           |             |          |
 | TASK_034 | Integration — Verify All M3 Extractions Are Wired and No Orphaned Code   | TASK_034_integration_verify_m3_extractions.md              | NOT STARTED | —             | Medium   | M (2-4h)   | TASK_024, TASK_025, TASK_026, TASK_027, TASK_028, TASK_029, TASK_030, TASK_031, TASK_032, TASK_033            |             |          |
@@ -312,13 +312,13 @@ TASK_001 → TASK_005 → TASK_010 → TASK_011/TASK_017 → TASK_023 → TASK_0
 
 ## Subagent Tracking
 
-Last Subagent ID: SA-20260224-029
+Last Subagent ID: SA-20260224-036
 
 ---
 
 ## Review Tracking
 
-Last Review ID: RA-20260224-028
+Last Review ID: RA-20260224-035
 
 ---
 
@@ -328,21 +328,27 @@ Last Review ID: RA-20260224-028
 
 | Field             | Value |
 | ----------------- | ----- |
-| Task              | TASK_020 |
-| Impl Agent        | SA-20260224-029 |
-| Files Changed     | `lib/config.ts`, `lib/ui/banner.ts` |
-| Tests Added       | `test/config.test.ts` (3 new tests), `test/banner.test.ts` (2 new tests) |
+| Task              | TASK_027 |
+| Impl Agent        | SA-20260224-036 |
+| Files Changed     | `lib/utils/preflight.ts` |
+| Tests Added       | `test/preflight.test.ts` (2 new tests) |
 | Rework?           | No |
-| Focus Areas       | Runtime validation at JSON.parse boundaries in `getDefaults`, `loadConfig`, and banner version parsing fallback behavior |
-| Known Limitations | `getDefaults()` uses top-level shape checks only; deep schema validation remains in existing `ConfigValidator` flow |
+| Focus Areas       | `walkUpToFind` root traversal behavior and its use in `checkConfigExists`/`checkGitRepository` |
+| Known Limitations | `walkUpToFind` remains module-private and filesystem DI remains deferred to TASK_043 |
 | Gate Results      | format:✅ lint:✅ typecheck:✅ test:✅ |
 
 ### For Fix Agent
 
 | Field           | Value |
 | --------------- | ----- |
-| Task            | TASK_013 — Rename normalizeAgentName → buildAgentName |
-| Failed Gate     | npm test |
-| Primary Error   | [90mstderr[2m | test/run.test.ts[2m > [22m[2mRun Command[2m > [22m[2mState Machine[2m > [22m[2mshould exit with error for NO_PROGRESS state [22m[39m✗ No PROGRESS.md found. Run `speci init` to initialize. [90mstderr[2m | test/run.test.ts[2m > [22m[2mRun Command[2m > [22m[2mState Machine[2m > [22m[2mshould exit with error for NO_PROGRESS state [22m[39m✗ Run command failed: [ERR-PRE-06] No PROGRESS.md found in run command   Cause: Run command requires PROGRESS.md to track … |
-| Root Cause Hint | `npm test` exited with code 1 |
+| Task            | - |
+| Task Goal       | - |
+| Review Agent    | - |
+| Failed Gate     | - |
+| Primary Error   | - |
+| Root Cause Hint | - |
+| Do NOT          | - |
 
+### Review Failure Notes
+
+No outstanding failure notes.

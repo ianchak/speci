@@ -54,13 +54,12 @@ export class PreflightError extends Error {
 /**
  * Check if Copilot CLI is installed and available in PATH
  *
- * @param processParam - IProcess instance (defaults to global process)
+ * @param proc - IProcess instance (defaults to global process)
  * @throws {PreflightError} If copilot command is not found
  */
 export async function checkCopilotInstalled(
-  processParam?: IProcess
+  proc: IProcess = process
 ): Promise<void> {
-  const proc = processParam || process;
   const isWindows = proc.platform === 'win32';
   const command = isWindows ? 'where copilot' : 'which copilot';
 
@@ -81,39 +80,47 @@ export async function checkCopilotInstalled(
 }
 
 /**
+ * Walk up directory tree from startDir to find the first directory containing target.
+ *
+ * @param target - Entry to search for in each directory
+ * @param startDir - Directory to begin traversal from
+ * @returns Directory containing target, or null when root is reached
+ */
+function walkUpToFind(target: string, startDir: string): string | null {
+  let currentDir = startDir;
+
+  for (;;) {
+    if (existsSync(join(currentDir, target))) {
+      return currentDir;
+    }
+
+    const parentDir = dirname(currentDir);
+    if (parentDir === currentDir) {
+      return null;
+    }
+
+    currentDir = parentDir;
+  }
+}
+
+/**
  * Check if speci.config.json exists in current directory or any parent
  *
- * @param processParam - IProcess instance (defaults to global process)
+ * @param proc - IProcess instance (defaults to global process)
  * @throws {PreflightError} If config file is not found
  */
 export async function checkConfigExists(
-  processParam?: IProcess
+  proc: IProcess = process
 ): Promise<void> {
-  const proc = processParam || process;
-  let currentDir = proc.cwd();
-  let parentDir: string;
-
-  // Walk up directory tree
-
-  while (true) {
-    const configPath = join(currentDir, CONFIG_FILENAME);
-    if (existsSync(configPath)) {
-      return; // Found it
-    }
-
-    parentDir = dirname(currentDir);
-    if (parentDir === currentDir) {
-      // Reached root without finding config
-      throw new PreflightError(
-        'Configuration not found',
-        `No ${CONFIG_FILENAME} found in current directory or any parent.`,
-        [
-          'Run `speci init` to create a new configuration',
-          `Or create ${CONFIG_FILENAME} manually`,
-        ]
-      );
-    }
-    currentDir = parentDir;
+  if (walkUpToFind(CONFIG_FILENAME, proc.cwd()) === null) {
+    throw new PreflightError(
+      'Configuration not found',
+      `No ${CONFIG_FILENAME} found in current directory or any parent.`,
+      [
+        'Run `speci init` to create a new configuration',
+        `Or create ${CONFIG_FILENAME} manually`,
+      ]
+    );
   }
 }
 
@@ -143,37 +150,21 @@ export async function checkProgressExists(config: SpeciConfig): Promise<void> {
 /**
  * Check if current directory is within a git repository
  *
- * @param processParam - IProcess instance (defaults to global process)
+ * @param proc - IProcess instance (defaults to global process)
  * @throws {PreflightError} If not in a git repository
  */
 export async function checkGitRepository(
-  processParam?: IProcess
+  proc: IProcess = process
 ): Promise<void> {
-  const proc = processParam || process;
-  let currentDir = proc.cwd();
-  let parentDir: string;
-
-  // Walk up directory tree
-
-  while (true) {
-    const gitPath = join(currentDir, '.git');
-    if (existsSync(gitPath)) {
-      return; // Found it
-    }
-
-    parentDir = dirname(currentDir);
-    if (parentDir === currentDir) {
-      // Reached root without finding .git
-      throw new PreflightError(
-        'Git repository not found',
-        'Current directory is not within a git repository.',
-        [
-          'Initialize a git repository: git init',
-          'Or navigate to an existing git repository',
-        ]
-      );
-    }
-    currentDir = parentDir;
+  if (walkUpToFind('.git', proc.cwd()) === null) {
+    throw new PreflightError(
+      'Git repository not found',
+      'Current directory is not within a git repository.',
+      [
+        'Initialize a git repository: git init',
+        'Or navigate to an existing git repository',
+      ]
+    );
   }
 }
 
@@ -213,13 +204,12 @@ function listFilesRecursive(dir: string, baseDir: string): string[] {
  * Missing agents throw a PreflightError. Outdated agents log a warning
  * but do not block execution.
  *
- * @param processParam - IProcess instance (defaults to global process)
+ * @param proc - IProcess instance (defaults to global process)
  * @throws {PreflightError} If agent files directory or agent files are missing
  */
 export async function checkAgentTemplates(
-  processParam?: IProcess
+  proc: IProcess = process
 ): Promise<void> {
-  const proc = processParam || process;
   const projectAgentsDir = join(proc.cwd(), GITHUB_AGENTS_DIR);
 
   // Check if agents directory exists at all
@@ -298,15 +288,14 @@ export async function checkAgentTemplates(
  *
  * @param config - Speci configuration
  * @param options - Options to customize which checks run
- * @param processParam - IProcess instance (defaults to global process)
+ * @param proc - IProcess instance (defaults to global process)
  * @throws {PreflightError} If any check fails
  */
 export async function preflight(
   config: SpeciConfig,
   options: PreflightOptions = {},
-  processParam?: IProcess
+  proc: IProcess = process
 ): Promise<void> {
-  const proc = processParam || process;
   const opts = { ...DEFAULT_OPTIONS, ...options };
   const checks: Promise<void>[] = [];
 
