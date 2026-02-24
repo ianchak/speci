@@ -329,6 +329,80 @@ describe('CommandRegistry', () => {
       expect(helpText).toContain('speci task --clean -p plan.md');
     });
 
+    it('routes all registered command actions to their command functions', async () => {
+      vi.resetModules();
+      const initMock = vi
+        .fn()
+        .mockResolvedValue({ success: true, exitCode: 0 });
+      const planMock = vi
+        .fn()
+        .mockResolvedValue({ success: true, exitCode: 0 });
+      const taskMock = vi
+        .fn()
+        .mockResolvedValue({ success: true, exitCode: 0 });
+      const refactorMock = vi
+        .fn()
+        .mockResolvedValue({ success: true, exitCode: 0 });
+      const runMock = vi.fn().mockResolvedValue({ success: true, exitCode: 0 });
+      const yoloMock = vi
+        .fn()
+        .mockResolvedValue({ success: true, exitCode: 0 });
+      const statusMock = vi
+        .fn()
+        .mockResolvedValue({ success: true, exitCode: 0 });
+      const cleanMock = vi
+        .fn()
+        .mockResolvedValue({ success: true, exitCode: 0 });
+
+      vi.doMock('@/commands/init.js', () => ({ init: initMock }));
+      vi.doMock('@/commands/plan.js', () => ({ plan: planMock }));
+      vi.doMock('@/commands/task.js', () => ({ task: taskMock }));
+      vi.doMock('@/commands/refactor.js', () => ({ refactor: refactorMock }));
+      vi.doMock('@/commands/run.js', () => ({ run: runMock }));
+      vi.doMock('@/commands/yolo.js', () => ({ yolo: yoloMock }));
+      vi.doMock('@/commands/status.js', () => ({ status: statusMock }));
+      vi.doMock('@/commands/clean.js', () => ({ clean: cleanMock }));
+
+      const { CommandRegistry } =
+        await import('../lib/cli/command-registry.js');
+      const registry = new CommandRegistry(mockContext, mockConfig);
+
+      await registry.execute(['init']);
+      await registry.execute(['plan']);
+      await registry.execute(['task']);
+      await registry.execute(['refactor']);
+      await registry.execute(['run']);
+      await registry.execute(['yolo']);
+      await registry.execute(['status', '--once']);
+      await registry.execute(['clean']);
+
+      for (const commandMock of [
+        initMock,
+        planMock,
+        taskMock,
+        refactorMock,
+        runMock,
+        yoloMock,
+        statusMock,
+        cleanMock,
+      ]) {
+        expect(commandMock).toHaveBeenCalledWith(
+          expect.any(Object),
+          mockContext,
+          mockConfig
+        );
+      }
+
+      vi.doUnmock('@/commands/init.js');
+      vi.doUnmock('@/commands/plan.js');
+      vi.doUnmock('@/commands/task.js');
+      vi.doUnmock('@/commands/refactor.js');
+      vi.doUnmock('@/commands/run.js');
+      vi.doUnmock('@/commands/yolo.js');
+      vi.doUnmock('@/commands/status.js');
+      vi.doUnmock('@/commands/clean.js');
+    });
+
     it('handles PreflightError thrown by clean command action', async () => {
       vi.resetModules();
       const { PreflightError } = await import('../lib/utils/preflight.js');

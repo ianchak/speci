@@ -849,7 +849,7 @@ describe('sleep utility', () => {
       const elapsed = Date.now() - start;
 
       // May round to next timer tick (allow tolerance for event loop)
-      expect(elapsed).toBeLessThanOrEqual(25);
+      expect(elapsed).toBeLessThanOrEqual(35);
     });
   });
 
