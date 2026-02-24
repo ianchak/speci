@@ -161,11 +161,11 @@ graph TD
 | TASK_025 | Centralize Agent-Not-Found Handling Across All Commands                   | TASK_025_centralize_agent_not_found_handling.md            | COMPLETE    | PASSED        | High     | M (2-4h)   | None                                                                                                           | SA-20260224-006 | 1        |
 | TASK_026 | Extract `toErrorMessage()` and `failResult()` Utilities                   | TASK_026_extract_to_error_message_fail_result.md           | COMPLETE    | PASSED        | High     | S (≤2h)    | TASK_025                                                                                                       | SA-20260224-007 | 1        |
 | TASK_027 | Extract `walkUpToFind()` Helper in `preflight.ts`                         | TASK_027_extract_walk_up_to_find_preflight.md              | NOT STARTED | —             | Medium   | S (≤2h)    | None                                                                                                           |             |          |
-| TASK_028 | Extract `dispatchAgent()` and `runFixAttempts()` in `run.ts`              | TASK_028_extract_dispatch_agent_run_fix_attempts.md        | IN REVIEW   |               | High     | M (2-4h)   | None                                                                                                           | SA-20260224-008 | 1        |
+| TASK_028 | Extract `dispatchAgent()` and `runFixAttempts()` in `run.ts`              | TASK_028_extract_dispatch_agent_run_fix_attempts.md        | COMPLETE    | PASSED        | High     | M (2-4h)   | None                                                                                                           | SA-20260224-008 | 1        |
 | TASK_029 | Decompose `yolo` Function into Helpers                                    | TASK_029_decompose_yolo_into_helpers.md                    | NOT STARTED | —             | Medium   | M (2-4h)   | None                                                                                                           |             |          |
 | TASK_030 | Decompose `runLiveDashboard` (129 Lines)                                  | TASK_030_decompose_run_live_dashboard.md                   | NOT STARTED | —             | High     | L (4-8h)   | TASK_002                                                                                                       |             |          |
 | TASK_031 | Decompose `buildContentLines` (110 Lines)                                 | TASK_031_decompose_build_content_lines.md                  | NOT STARTED | —             | High     | M (2-4h)   | TASK_002, TASK_030                                                                                             |             |          |
-| TASK_032 | Split `getLockInfo` into Format-Specific Parsers                          | TASK_032_split_get_lock_info_parsers.md                    | NOT STARTED | —             | High     | M (2-4h)   | None                                                                                                           |             |          |
+| TASK_032 | Split `getLockInfo` into Format-Specific Parsers                          | TASK_032_split_get_lock_info_parsers.md                    | COMPLETE    | PASSED        | High     | M (2-4h)   | None                                                                                                           | SA-20260224-009 | 1        |
 | TASK_033 | Merge `renderWaveFrame` / `renderSweepFrame`                              | TASK_033_merge_render_wave_sweep_frame.md                  | NOT STARTED | —             | Medium   | M (2-4h)   | None                                                                                                           |             |          |
 | TASK_034 | Integration — Verify All M3 Extractions Are Wired and No Orphaned Code   | TASK_034_integration_verify_m3_extractions.md              | NOT STARTED | —             | Medium   | M (2-4h)   | TASK_024, TASK_025, TASK_026, TASK_027, TASK_028, TASK_029, TASK_030, TASK_031, TASK_032, TASK_033            |             |          |
 | MVT_M3   | Manual Verification: Duplication & Complexity                             | MVT_M3_duplication_complexity.md                           | NOT STARTED | —             | —        | 30 min     | TASK_034                                                                                                       |             |          |
@@ -198,7 +198,7 @@ graph TD
 
 | Task ID  | Title                                                              | File                                               | Status      | Review Status | Priority | Complexity | Dependencies                   | Assigned To | Attempts |
 | -------- | ------------------------------------------------------------------ | -------------------------------------------------- | ----------- | ------------- | -------- | ---------- | ------------------------------ | ----------- | -------- |
-| TASK_035 | Add Unit Tests for 9 Untested Adapter Files                        | TASK_035_add_adapter_unit_tests.md                 | NOT STARTED | —             | High     | L (4-8h)   | None                           |             |          |
+| TASK_035 | Add Unit Tests for 9 Untested Adapter Files                        | TASK_035_add_adapter_unit_tests.md                 | IN REVIEW   |               | High     | L (4-8h)   | None                           | SA-20260224-010 | 1        |
 | TASK_036 | Export resetSignalState() from signals.ts for Test Isolation       | TASK_036_export_reset_signal_state.md              | NOT STARTED | —             | High     | S (≤2h)    | TASK_007                       |             |          |
 | TASK_037 | Make Interactive Prompts Injectable in run.ts                      | TASK_037_make_prompts_injectable_run.md            | NOT STARTED | —             | High     | M (2-4h)   | None                           |             |          |
 | TASK_038 | Fix Integration Test Stability (chdir, Timing, Env Mutations)      | TASK_038_fix_integration_test_stability.md         | NOT STARTED | —             | High     | M (2-4h)   | None                           |             |          |
@@ -312,13 +312,13 @@ TASK_001 → TASK_005 → TASK_010 → TASK_011/TASK_017 → TASK_023 → TASK_0
 
 ## Subagent Tracking
 
-Last Subagent ID: SA-20260224-008
+Last Subagent ID: SA-20260224-010
 
 ---
 
 ## Review Tracking
 
-Last Review ID: RA-20260224-006
+Last Review ID: RA-20260224-008
 
 ---
 
@@ -328,13 +328,13 @@ Last Review ID: RA-20260224-006
 
 | Field             | Value |
 | ----------------- | ----- |
-| Task              | TASK_028 |
-| Impl Agent        | SA-20260224-008 |
-| Files Changed     | `lib/commands/run.ts` |
-| Tests Added       | `test/run.test.ts` (2 new tests) |
+| Task              | TASK_035 |
+| Impl Agent        | SA-20260224-010 |
+| Files Changed     | None (tests-only task; `docs/PROGRESS.md` updated for tracking) |
+| Tests Added       | `test/adapters/node-config-loader.test.ts` (1), `test/adapters/node-copilot-runner.test.ts` (3), `test/adapters/node-gate-runner.test.ts` (2), `test/adapters/node-lock-manager.test.ts` (5), `test/adapters/node-logger.test.ts` (13), `test/adapters/node-preflight.test.ts` (2), `test/adapters/node-process.test.ts` (8), `test/adapters/node-signal-manager.test.ts` (4), `test/adapters/node-state-reader.test.ts` (5) |
 | Rework?           | No |
-| Focus Areas       | `dispatchAgent()` consolidation and `runFixAttempts()` control flow (`maxFixAttempts: 0`, fix-agent failure break, gate retry success path) |
-| Known Limitations | `LoopContext` signature refactor from P-08 remains out of scope for this task |
+| Focus Areas       | Delegation coverage for all 9 adapter classes, optional-argument forwarding (config/lock/preflight/state), and `NodeProcess` global process passthrough behavior |
+| Known Limitations | No production code changes; this task validates existing adapter behavior only |
 | Gate Results      | format:✅ lint:✅ typecheck:✅ test:✅ |
 
 ### For Fix Agent
