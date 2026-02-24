@@ -1,5 +1,13 @@
 # speci
 
+## 0.10.5
+
+### Patch Changes
+
+- [`f4aebe6`](https://github.com/ianchak/speci/commit/f4aebe6d11cacf5c556a1c6967a0289185342a8d) Thanks [@ianchak](https://github.com/ianchak)! - fix(ui): add symmetric 2-char border overhang on both sides of progress bar content
+
+- [`5f585da`](https://github.com/ianchak/speci/commit/5f585da3c58b46b2f44affc1722d4dbd3fa8fcad) Thanks [@ianchak](https://github.com/ianchak)! - fix(status): wrap long task names to banner width and prevent footer duplication in narrow terminals
+
 ## 0.10.4
 
 ### Patch Changes
