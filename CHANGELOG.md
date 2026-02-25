@@ -1,5 +1,13 @@
 # speci
 
+## 0.11.0
+
+### Minor Changes
+
+- [#4](https://github.com/ianchak/speci/pull/4) [`951af1d`](https://github.com/ianchak/speci/commit/951af1df553a5767478a61066788bf70e8fbbc25) Thanks [@ianchak](https://github.com/ianchak)! - feat(run): display task progress box during confirmation and dry-run prompts
+
+- [#4](https://github.com/ianchak/speci/pull/4) [`6c5836d`](https://github.com/ianchak/speci/commit/6c5836dae28d0ad1bd460588f8a508b77eee55bc) Thanks [@ianchak](https://github.com/ianchak)! - feat(run): add --verify flag for human-in-the-loop milestone verification (MVT) pausing
+
 ## 0.10.5
 
 ### Patch Changes
