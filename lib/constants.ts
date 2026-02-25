@@ -74,6 +74,11 @@ export const MESSAGES = {
   MVT_NON_TTY_ABORT:
     'Human-in-the-loop mode requires an interactive terminal. Use --yes to auto-continue past warnings.',
   MVT_AUTO_CONTINUE: 'Auto-continuing past MVT warnings (--yes)',
+  // Sleep
+  SLEEP_COUNTDOWN: 'Putting machine to sleep in {seconds} seconds...',
+  SLEEP_SUCCESS: 'Sleep command dispatched successfully',
+  SLEEP_FAILED: 'Failed to put machine to sleep: {error}',
+  SLEEP_UNSUPPORTED: 'Sleep is not supported on platform: {platform}',
 } as const;
 
 // ============================================================================
