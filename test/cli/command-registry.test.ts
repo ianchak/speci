@@ -110,6 +110,42 @@ describe('CommandRegistry', () => {
       expect(yoloCmd?.description()).toContain('plan -> task -> run');
     });
 
+    it('UT-CLI01: should register --verify option on run command', async () => {
+      const { CommandRegistry } =
+        await import('../../lib/cli/command-registry.js');
+
+      const registry = new CommandRegistry(mockContext, mockConfig);
+      const program = registry.getProgram();
+      const runCmd = program.commands.find(
+        (cmd: Command) => cmd.name() === 'run'
+      );
+
+      expect(runCmd).toBeDefined();
+      const verifyOpt = runCmd?.options.find(
+        (opt: { long?: string; description?: string }) =>
+          opt.long === '--verify'
+      );
+      expect(verifyOpt).toBeDefined();
+      expect(verifyOpt?.description).toMatch(/MVT|verification/i);
+    });
+
+    it('UT-CLI02: should not register --verify option on yolo command', async () => {
+      const { CommandRegistry } =
+        await import('../../lib/cli/command-registry.js');
+
+      const registry = new CommandRegistry(mockContext, mockConfig);
+      const program = registry.getProgram();
+      const yoloCmd = program.commands.find(
+        (cmd: Command) => cmd.name() === 'yolo'
+      );
+
+      expect(yoloCmd).toBeDefined();
+      const verifyOpt = yoloCmd?.options.find(
+        (opt: { long?: string }) => opt.long === '--verify'
+      );
+      expect(verifyOpt).toBeUndefined();
+    });
+
     it('should register command aliases', async () => {
       const { CommandRegistry } =
         await import('../../lib/cli/command-registry.js');

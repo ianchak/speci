@@ -112,6 +112,19 @@ export interface CurrentTask {
 }
 
 /**
+ * Milestone-level task and MVT status information.
+ */
+export interface MilestoneInfo {
+  milestoneId: string;
+  milestoneName: string;
+  totalTasks: number;
+  completedTasks: number;
+  mvtId: string | null;
+  mvtStatus: TaskStatus | null;
+  mvtReady: boolean;
+}
+
+/**
  * Command names that can have per-command model configuration
  *
  * These match the agent types defined in the config and correspond to

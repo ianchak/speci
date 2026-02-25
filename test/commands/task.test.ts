@@ -128,7 +128,12 @@ describe('task command', () => {
     // Clean up test directory
     if (existsSync(testDir)) {
       try {
-        rmSync(testDir, { recursive: true, force: true, maxRetries: 3, retryDelay: 100 });
+        rmSync(testDir, {
+          recursive: true,
+          force: true,
+          maxRetries: 3,
+          retryDelay: 100,
+        });
       } catch {
         // Ignore cleanup errors on Windows (EBUSY)
       }
@@ -223,7 +228,12 @@ describe('task command', () => {
 
     it('should exit with error when agent file not found', async () => {
       // Remove the agent file so validateAgentFile fails before spawning copilot
-      const agentFile = join(testDir, '.github', 'agents', 'speci-task.agent.md');
+      const agentFile = join(
+        testDir,
+        '.github',
+        'agents',
+        'speci-task.agent.md'
+      );
       if (existsSync(agentFile)) {
         rmSync(agentFile);
       }

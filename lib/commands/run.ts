@@ -13,6 +13,7 @@ import { Writable } from 'node:stream';
 import type { AgentRunResult, SpeciConfig } from '@/types.js';
 import { STATE } from '@/types.js';
 import { createError } from '@/errors.js';
+import { MESSAGES } from '@/constants.js';
 import { closeLogFile } from '@/utils/logger.js';
 import { failResult, handleCommandError } from '@/utils/error-handler.js';
 import { createProductionContext } from '@/adapters/context-factory.js';
@@ -29,6 +30,8 @@ export interface RunOptions {
   force?: boolean; // Override existing lock
   yes?: boolean; // Skip confirmation prompt
   verbose?: boolean; // Detailed output
+  /** Enable human-in-the-loop mode — pause on MVT readiness */
+  verify?: boolean;
   prompt?: (question: string) => Promise<string>; // Injectable prompt for testing
 }
 
@@ -83,7 +86,13 @@ export async function run(
   // 4. Dry run check and pre-run confirmation
   if (options.dryRun) {
     const initialState = await context.stateReader.getState(loadedConfig);
-    await displayDryRun(initialState, loadedConfig, maxIterations, context);
+    await displayDryRun(
+      initialState,
+      loadedConfig,
+      maxIterations,
+      context,
+      options
+    );
     return { success: true, exitCode: 0 };
   }
 
@@ -93,10 +102,22 @@ export async function run(
       initialState,
       loadedConfig,
       context,
-      options.prompt
+      options.prompt,
+      options.verify
     );
     if (!shouldProceed) {
       return failResult('User cancelled', 0);
+    }
+  }
+
+  if (options.verify) {
+    const shouldProceed = await checkIncompleteMvts(
+      loadedConfig,
+      context,
+      options
+    );
+    if (!shouldProceed) {
+      return { success: true, exitCode: 0 };
     }
   }
 
@@ -174,6 +195,13 @@ async function mainLoop(
     // 1. Get current state
     const state = await context.stateReader.getState(config);
     logState(logFile, state);
+
+    if (options.verify) {
+      const shouldPause = await checkMvtPause(config, logFile, context);
+      if (shouldPause) {
+        return;
+      }
+    }
 
     // 2. Dispatch based on state
     switch (state) {
@@ -427,8 +455,12 @@ async function confirmRun(
   state: STATE,
   config: SpeciConfig,
   context: CommandContext,
-  promptFn?: (question: string) => Promise<string>
+  promptFn?: (question: string) => Promise<string>,
+  verify?: boolean
 ): Promise<boolean> {
+  if (verify) {
+    context.logger.infoPlain(MESSAGES.MVT_VERIFY_ENABLED);
+  }
   context.logger.infoPlain(`Current state: ${state}`);
 
   const action = getActionForState(state);
@@ -501,7 +533,8 @@ async function displayDryRun(
   state: STATE,
   config: SpeciConfig,
   maxIterations: number,
-  context: CommandContext
+  context: CommandContext,
+  options?: RunOptions
 ): Promise<void> {
   context.logger.warnPlain('\n=== DRY RUN MODE ===\n');
   context.logger.muted(`Current state: ${state}`);
@@ -518,6 +551,15 @@ async function displayDryRun(
   context.logger.muted(`Max iterations: ${maxIterations}`);
   context.logger.muted(`Gate commands: ${config.gate.commands.join(', ')}`);
   context.logger.muted(`Max fix attempts: ${config.gate.maxFixAttempts}`);
+  if (options?.verify) {
+    context.logger.muted(MESSAGES.MVT_VERIFY_ENABLED);
+    const milestones = await context.stateReader.getMilestonesMvtStatus(config);
+    for (const milestone of milestones) {
+      context.logger.muted(
+        `  ${milestone.milestoneId}: ${milestone.milestoneName} — ${milestone.mvtId ?? 'N/A'} [${milestone.mvtStatus ?? 'N/A'}] (ready: ${milestone.mvtReady})`
+      );
+    }
+  }
   context.logger.warnPlain('\nNo actions will be executed.');
 }
 
@@ -611,6 +653,125 @@ function logAgent(
   logFile.write(
     `[${timestamp}] AGENT ${agentName.toUpperCase()} ${event}${attemptStr}\n`
   );
+}
+
+/**
+ * Log milestone verification event to file.
+ *
+ * @param logFile - Log file stream
+ * @param event - Event type
+ * @param milestoneId - Milestone identifier
+ * @param mvtId - MVT identifier
+ */
+function logMvtEvent(
+  logFile: WriteStream,
+  event: string,
+  milestoneId: string,
+  mvtId: string
+): void {
+  const timestamp = new Date().toISOString();
+  logFile.write(
+    `[${timestamp}] MVT ${event} milestone=${milestoneId} mvt=${mvtId}\n`
+  );
+}
+
+/**
+ * Check for incomplete milestone verification tasks before acquiring lock.
+ *
+ * @param config - Speci configuration
+ * @param context - Command context
+ * @param options - Run command options
+ * @returns true when execution should proceed, false to exit cleanly
+ */
+async function checkIncompleteMvts(
+  config: SpeciConfig,
+  context: CommandContext,
+  options: RunOptions
+): Promise<boolean> {
+  const milestones = await context.stateReader.getMilestonesMvtStatus(config);
+  const incomplete = milestones.filter((milestone) => milestone.mvtReady);
+  if (incomplete.length === 0) {
+    return true;
+  }
+
+  context.logger.warn(MESSAGES.MVT_WARNING_HEADER);
+  for (const milestone of incomplete) {
+    context.logger.warn(
+      `  ${milestone.milestoneId}: ${milestone.milestoneName} - ${milestone.mvtId ?? 'N/A'} [${milestone.mvtStatus ?? 'N/A'}]`
+    );
+  }
+
+  if (options.yes) {
+    context.logger.info(MESSAGES.MVT_AUTO_CONTINUE);
+    return true;
+  }
+
+  if (!context.process.stdin.isTTY) {
+    context.logger.warn(MESSAGES.MVT_NON_TTY_ABORT);
+    return false;
+  }
+
+  if (options.prompt) {
+    const answer = await options.prompt('Continue anyway? [y/N] ');
+    if (answer.toLowerCase() === 'y' || answer.toLowerCase() === 'yes') {
+      return true;
+    }
+    context.logger.warn(MESSAGES.MVT_EXIT_CANCELLED);
+    return false;
+  }
+
+  const rl = createInterface({
+    input: context.process.stdin,
+    output: context.process.stdout,
+  });
+  const answer = await new Promise<string>((resolve) => {
+    rl.question('Continue anyway? [y/N] ', (response) => {
+      rl.close();
+      resolve(response);
+    });
+  });
+
+  if (answer.toLowerCase() === 'y' || answer.toLowerCase() === 'yes') {
+    return true;
+  }
+  context.logger.warn(MESSAGES.MVT_EXIT_CANCELLED);
+  return false;
+}
+
+/**
+ * Check whether main loop should pause for a ready milestone verification task.
+ *
+ * @param config - Speci configuration
+ * @param logFile - Log file stream
+ * @param context - Command context
+ * @returns true when loop should pause, false otherwise
+ */
+async function checkMvtPause(
+  config: SpeciConfig,
+  logFile: WriteStream,
+  context: CommandContext
+): Promise<boolean> {
+  const milestones = await context.stateReader.getMilestonesMvtStatus(config);
+  const readyMilestone = milestones.find((milestone) => milestone.mvtReady);
+  if (!readyMilestone || !readyMilestone.mvtId) {
+    return false;
+  }
+
+  logMvtEvent(
+    logFile,
+    'PAUSE',
+    readyMilestone.milestoneId,
+    readyMilestone.mvtId
+  );
+  context.logger.warn(MESSAGES.MVT_PAUSE);
+  context.logger.warn(
+    `  Milestone: ${readyMilestone.milestoneId} - ${readyMilestone.milestoneName}`
+  );
+  context.logger.warn(
+    `  MVT: ${readyMilestone.mvtId} [${readyMilestone.mvtStatus ?? 'N/A'}]`
+  );
+  context.logger.warn(MESSAGES.MVT_PAUSE_INSTRUCTION);
+  return true;
 }
 
 /**

@@ -64,6 +64,16 @@ export function getAgentFilename(agentName: string): string {
 export const MESSAGES = {
   /** Instruction to run speci init command */
   RUN_INIT: 'Run speci init to create configuration',
+  MVT_PAUSE: 'MVT verification required',
+  MVT_PAUSE_INSTRUCTION:
+    'Complete the MVT in PROGRESS.md, then re-run: speci run --verify',
+  MVT_WARNING_HEADER: 'Incomplete MVTs from completed milestones',
+  MVT_VERIFY_ENABLED: 'Human-in-the-loop mode (--verify) enabled',
+  MVT_EXIT_CANCELLED:
+    'Exiting. Complete the listed MVTs before re-running with --verify.',
+  MVT_NON_TTY_ABORT:
+    'Human-in-the-loop mode requires an interactive terminal. Use --yes to auto-continue past warnings.',
+  MVT_AUTO_CONTINUE: 'Auto-continuing past MVT warnings (--yes)',
 } as const;
 
 // ============================================================================

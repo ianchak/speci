@@ -84,6 +84,16 @@ describe('constants module', () => {
     it('should be a const object with string values', () => {
       expect(typeof MESSAGES.RUN_INIT).toBe('string');
     });
+
+    it('UT-C01: all MVT message constants are defined', () => {
+      expect(MESSAGES.MVT_PAUSE).toBeDefined();
+      expect(MESSAGES.MVT_PAUSE_INSTRUCTION).toBeDefined();
+      expect(MESSAGES.MVT_WARNING_HEADER).toBeDefined();
+      expect(MESSAGES.MVT_VERIFY_ENABLED).toBeDefined();
+      expect(MESSAGES.MVT_EXIT_CANCELLED).toBeDefined();
+      expect(MESSAGES.MVT_NON_TTY_ABORT).toBeDefined();
+      expect(MESSAGES.MVT_AUTO_CONTINUE).toBeDefined();
+    });
   });
 
   describe('EXIT_CODE', () => {

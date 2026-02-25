@@ -14,6 +14,7 @@ import type {
   SpeciConfig,
   TaskStats,
   CurrentTask,
+  MilestoneInfo,
   TaskStatus,
   GateFailureInfo,
 } from '@/types.js';
@@ -51,6 +52,8 @@ const PATTERNS = {
   IN_REVIEW: /TASK_\d+\s*\|.*IN.REVIEW/i,
   WORK_LEFT: /TASK_\d+\s*\|.*(NOT STARTED|IN PROGRESS)/i,
   TASK_ROW: /^\s*\|\s*TASK_\d+\s*\|/i,
+  MILESTONE_HEADER: /^##\s+Milestone:\s*M(\d+)\s*-\s*(.+)$/,
+  MVT_ROW: /^\s*\|\s*MVT_\w+\s*\|/i,
 } as const;
 
 // Priority order for state detection (highest to lowest)
@@ -363,6 +366,147 @@ export async function getCurrentTask(
   }
 
   return undefined;
+}
+
+/**
+ * Get milestone-level MVT status from PROGRESS.md
+ *
+ * Uses cached file content when called within TTL window (default 200ms).
+ * Cache is shared with getState(), getTaskStats(), and getCurrentTask().
+ *
+ * @param config - Speci configuration
+ * @param options - Cache options
+ * @returns Milestone status entries
+ */
+export async function getMilestonesMvtStatus(
+  config: SpeciConfig,
+  options?: StateOptions
+): Promise<MilestoneInfo[]> {
+  let lines: string[] | undefined;
+  try {
+    lines = await readStateFile(config.paths.progress, options);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    throw new Error(
+      `[ERR-STA-06] Failed to read PROGRESS.md for MVT detection: ${message}`,
+      { cause: error }
+    );
+  }
+
+  if (lines === undefined) {
+    return [];
+  }
+
+  const VALID_STATUSES = new Set([
+    'COMPLETE',
+    'COMPLETED',
+    'DONE',
+    'BLOCKED',
+    'IN_REVIEW',
+    'IN REVIEW',
+    'NOT STARTED',
+    'IN PROGRESS',
+  ]);
+
+  const result: MilestoneInfo[] = [];
+  let current: MilestoneInfo | null = null;
+
+  for (const line of lines) {
+    const milestoneMatch = PATTERNS.MILESTONE_HEADER.exec(line);
+    if (!milestoneMatch && /^\s*##\s*Milestone:/i.test(line)) {
+      log.debug(`[ERR-STA-04] Malformed milestone header, skipping: ${line}`);
+      current = null;
+      continue;
+    }
+    if (milestoneMatch) {
+      if (current !== null) {
+        result.push(current);
+      }
+
+      const milestoneNumber = milestoneMatch[1];
+      const milestoneName = milestoneMatch[2];
+
+      if (!milestoneNumber || !milestoneName) {
+        log.debug(`[ERR-STA-04] Malformed milestone header, skipping: ${line}`);
+        current = null;
+        continue;
+      }
+
+      current = {
+        milestoneId: `M${milestoneNumber}`,
+        milestoneName: milestoneName.trim(),
+        totalTasks: 0,
+        completedTasks: 0,
+        mvtId: null,
+        mvtStatus: null,
+        mvtReady: false,
+      };
+      continue;
+    }
+
+    if (current === null) {
+      continue;
+    }
+
+    if (PATTERNS.TASK_ROW.test(line)) {
+      const status = findStatusInColumns(line.split('|'), VALID_STATUSES);
+      if (!status) {
+        continue;
+      }
+
+      current.totalTasks++;
+      if (
+        status === 'COMPLETE' ||
+        status === 'COMPLETED' ||
+        status === 'DONE'
+      ) {
+        current.completedTasks++;
+      }
+      continue;
+    }
+
+    if (PATTERNS.MVT_ROW.test(line)) {
+      const cols = line.split('|');
+      const mvtId = cols[1]?.trim() || null;
+      const rawStatus = findStatusInColumns(cols, VALID_STATUSES);
+      if (!rawStatus) {
+        log.debug(
+          `[ERR-STA-05] Unexpected MVT status for ${mvtId ?? 'unknown'} — treating as null`
+        );
+      }
+
+      let mvtStatus: TaskStatus | null = null;
+      if (rawStatus === 'COMPLETED' || rawStatus === 'DONE') {
+        mvtStatus = 'COMPLETE';
+      } else if (rawStatus) {
+        mvtStatus = rawStatus as TaskStatus;
+      }
+
+      current.mvtId = mvtId;
+      current.mvtStatus = mvtStatus;
+    }
+  }
+
+  if (current !== null) {
+    result.push(current);
+  }
+
+  for (const entry of result) {
+    entry.mvtReady =
+      entry.completedTasks === entry.totalTasks &&
+      entry.totalTasks > 0 &&
+      entry.mvtId !== null &&
+      entry.mvtStatus !== null &&
+      entry.mvtStatus !== 'COMPLETE';
+  }
+
+  if (result.length === 0) {
+    log.debug('getMilestonesMvtStatus: No milestone sections found');
+  } else if (result.every((entry) => entry.mvtId === null)) {
+    log.debug('getMilestonesMvtStatus: No MVT rows found in any milestone');
+  }
+
+  return result;
 }
 
 /** Maximum characters for the Primary Error field in the For Fix Agent table */

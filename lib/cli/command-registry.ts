@@ -222,6 +222,10 @@ Examples:
       .option('--force', 'Override existing lock')
       .option('-y, --yes', 'Skip confirmation prompt')
       .option('-v, --verbose', 'Show detailed output')
+      .option(
+        '--verify',
+        'Pause on manual verification tasks (MVTs) at milestone boundaries'
+      )
       .addHelpText(
         'after',
         `

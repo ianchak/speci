@@ -139,6 +139,25 @@ export const ERROR_CODES: Record<string, ErrorDefinition> = {
     cause: 'PROGRESS.md contains invalid or conflicting state markers',
     solution: 'Check state markers (IN PROGRESS, IN REVIEW, COMPLETE, etc.)',
   },
+  'ERR-STA-04': {
+    message: 'Malformed milestone section in PROGRESS.md',
+    cause:
+      'Milestone header found but regex capture groups failed for: {{line}}',
+    solution:
+      'Verify PROGRESS.md milestone headers match format: ## Milestone: M[X] - [Name]',
+  },
+  'ERR-STA-05': {
+    message: 'Unexpected MVT status value: {{status}} for {{mvtId}}',
+    cause:
+      'MVT row contains a status value not in the recognized set (NOT STARTED, IN PROGRESS, IN REVIEW, COMPLETE, BLOCKED)',
+    solution: 'Check the MVT row in PROGRESS.md and correct the status value',
+  },
+  'ERR-STA-06': {
+    message: 'Failed to read PROGRESS.md for MVT detection',
+    cause: 'Filesystem I/O error during getMilestonesMvtStatus(): {{error}}',
+    solution:
+      'Check file permissions and that PROGRESS.md is not locked by another process',
+  },
 
   // Execution Errors (ERR-EXE-*)
   'ERR-EXE-01': {

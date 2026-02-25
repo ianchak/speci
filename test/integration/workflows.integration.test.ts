@@ -11,11 +11,12 @@ import type { TestProject } from './setup.js';
 import initCommand from '@/commands/init.js';
 import planCommand from '@/commands/plan.js';
 import taskCommand from '@/commands/task.js';
-import { run } from '@/commands/run.js';
+import { run, type RunOptions } from '@/commands/run.js';
 import { createProductionContext } from '@/adapters/context-factory.js';
 import { createMockContext } from '@/adapters/test-context.js';
+import { CommandRegistry } from '@/cli/command-registry.js';
 import { STATE } from '@/types.js';
-import type { SpeciConfig, GateResult } from '@/types.js';
+import type { SpeciConfig, GateResult, MilestoneInfo } from '@/types.js';
 
 describe('Workflow Integration', () => {
   let testProject: TestProject;
@@ -310,6 +311,328 @@ Last Review ID: RA-20260207-001
 
       expect(result.success).toBe(false);
       expect(vi.mocked(context.gateRunner.run)).toHaveBeenCalledTimes(2);
+    });
+  });
+
+  describe('verify mode', () => {
+    let mockConfig: SpeciConfig;
+
+    beforeEach(async () => {
+      mockConfig = JSON.parse(
+        await readTestFile(testProject.configPath)
+      ) as SpeciConfig;
+    });
+
+    it('IT-01: verify mode pauses before agent dispatch when MVT is ready', async () => {
+      const context = createMockContext({ cwd: testProject.root });
+      const mvtReadyMilestone: MilestoneInfo = {
+        milestoneId: 'M1',
+        milestoneName: 'Foundation',
+        totalTasks: 2,
+        completedTasks: 2,
+        mvtId: 'MVT_M1',
+        mvtStatus: 'NOT STARTED',
+        mvtReady: true,
+      };
+      vi.mocked(context.stateReader.getMilestonesMvtStatus)
+        .mockResolvedValueOnce([])
+        .mockResolvedValue([mvtReadyMilestone]);
+      vi.mocked(context.stateReader.getState).mockResolvedValue(
+        STATE.WORK_LEFT
+      );
+
+      const result = await run(
+        { verify: true, yes: true, maxIterations: 1 },
+        context,
+        mockConfig
+      );
+
+      expect(result.success).toBe(true);
+      expect(result.exitCode).toBe(0);
+      const warnCalls = vi
+        .mocked(context.logger.warn)
+        .mock.calls.flatMap((c) => c);
+      expect(
+        warnCalls.some((m) => typeof m === 'string' && m.includes('MVT'))
+      ).toBe(true);
+      expect(vi.mocked(context.lockManager.release)).toHaveBeenCalled();
+      expect(vi.mocked(context.copilotRunner.run)).not.toHaveBeenCalled();
+    });
+
+    it('IT-02: startup warning with prompt y continues and dispatches impl agent', async () => {
+      const context = createMockContext({ cwd: testProject.root });
+      context.process.stdin.isTTY = true;
+      const mvtReadyMilestone: MilestoneInfo = {
+        milestoneId: 'M1',
+        milestoneName: 'Foundation',
+        totalTasks: 2,
+        completedTasks: 2,
+        mvtId: 'MVT_M1',
+        mvtStatus: 'NOT STARTED',
+        mvtReady: true,
+      };
+      vi.mocked(context.stateReader.getMilestonesMvtStatus)
+        .mockResolvedValueOnce([mvtReadyMilestone])
+        .mockResolvedValue([]);
+      vi.mocked(context.stateReader.getState)
+        .mockResolvedValueOnce(STATE.WORK_LEFT) // confirmRun pre-check
+        .mockResolvedValueOnce(STATE.WORK_LEFT) // mainLoop iteration 1
+        .mockResolvedValue(STATE.DONE); // iteration 2 → done
+      vi.mocked(context.copilotRunner.run).mockResolvedValue({
+        isSuccess: true,
+        exitCode: 0,
+      });
+
+      const result = await run(
+        { verify: true, prompt: async () => 'y', maxIterations: 2 },
+        context,
+        mockConfig
+      );
+
+      const warnCalls = vi
+        .mocked(context.logger.warn)
+        .mock.calls.flatMap((c) => c);
+      expect(
+        warnCalls.some((m) => typeof m === 'string' && m.includes('MVT'))
+      ).toBe(true);
+      expect(vi.mocked(context.copilotRunner.run)).toHaveBeenCalled();
+      expect(result.success).toBe(true);
+      expect(result.exitCode).toBe(0);
+    });
+
+    it('IT-03: createProductionContext wires getMilestonesMvtStatus as a function', () => {
+      const context = createProductionContext();
+      expect(typeof context.stateReader.getMilestonesMvtStatus).toBe(
+        'function'
+      );
+    });
+
+    it('IT-04: createMockContext wires getMilestonesMvtStatus as a Vitest mock returning []', async () => {
+      const context = createMockContext({ cwd: testProject.root });
+      expect(context.stateReader.getMilestonesMvtStatus).toBeDefined();
+      expect(
+        vi.isMockFunction(context.stateReader.getMilestonesMvtStatus)
+      ).toBe(true);
+      const result =
+        await context.stateReader.getMilestonesMvtStatus(mockConfig);
+      expect(result).toEqual([]);
+    });
+
+    it('IT-05: --verify CLI flag parses to RunOptions.verify === true', async () => {
+      const context = createMockContext({ cwd: testProject.root });
+      const runModule = await import('@/commands/run.js');
+      let capturedOptionsWithVerify: RunOptions = {};
+      let capturedOptionsWithoutVerify: RunOptions = {};
+      let callIndex = 0;
+      vi.spyOn(runModule, 'run').mockImplementation(async (opts) => {
+        const resolvedOptions = opts ?? {};
+        if (callIndex === 0) {
+          capturedOptionsWithVerify = resolvedOptions;
+        } else {
+          capturedOptionsWithoutVerify = resolvedOptions;
+        }
+        callIndex += 1;
+        return { success: true, exitCode: 0 };
+      });
+
+      const registry = new CommandRegistry(context, mockConfig);
+      await registry
+        .getProgram()
+        .parseAsync(['node', 'speci', 'run', '--verify']);
+      expect(capturedOptionsWithVerify.verify).toBe(true);
+
+      const registryWithoutVerify = new CommandRegistry(context, mockConfig);
+      await registryWithoutVerify
+        .getProgram()
+        .parseAsync(['node', 'speci', 'run']);
+      expect(capturedOptionsWithoutVerify.verify).toBeUndefined();
+    });
+
+    it('IT-06: startup warning abort (prompt n) prevents lock acquisition', async () => {
+      const context = createMockContext({ cwd: testProject.root });
+      context.process.stdin.isTTY = true;
+      const mvtReadyMilestone: MilestoneInfo = {
+        milestoneId: 'M1',
+        milestoneName: 'Foundation',
+        totalTasks: 2,
+        completedTasks: 2,
+        mvtId: 'MVT_M1',
+        mvtStatus: 'NOT STARTED',
+        mvtReady: true,
+      };
+      vi.mocked(context.stateReader.getMilestonesMvtStatus).mockResolvedValue([
+        mvtReadyMilestone,
+      ]);
+
+      // First prompt call: confirmRun ('y' to proceed past pre-run check)
+      // Second prompt call: checkIncompleteMvts ('n' to abort on startup warning)
+      let promptCallCount = 0;
+      const result = await run(
+        {
+          verify: true,
+          prompt: async () => {
+            promptCallCount++;
+            return promptCallCount === 1 ? 'y' : 'n';
+          },
+        },
+        context,
+        mockConfig
+      );
+
+      expect(result.success).toBe(true);
+      expect(result.exitCode).toBe(0);
+      expect(vi.mocked(context.lockManager.acquire)).not.toHaveBeenCalled();
+      expect(vi.mocked(context.copilotRunner.run)).not.toHaveBeenCalled();
+    });
+
+    it('IT-07: NodeStateReader.getMilestonesMvtStatus reads real PROGRESS.md from filesystem', async () => {
+      const fs = await import('node:fs/promises');
+      const progressContent = `# Project Progress
+
+## Milestone: M1 - Foundation
+
+| Task ID  | Title       | Status   | Review Status | Priority | Complexity | Dependencies | Assigned To | Attempts |
+| -------- | ----------- | -------- | ------------- | -------- | ---------- | ------------ | ----------- | -------- |
+| TASK_001 | Foundation  | COMPLETE | PASSED        | HIGH     | S (<=2h)   | None         | -           | 1        |
+| TASK_002 | State Layer | COMPLETE | PASSED        | HIGH     | L (4-8h)   | None         | -           | 1        |
+| MVT_M1   | Milestone 1 Verification | NOT STARTED | - | HIGH | S (<=2h) | None | - | 0 |
+`;
+      await fs.writeFile(testProject.progressPath, progressContent);
+
+      const { NodeStateReader } =
+        await import('@/adapters/node-state-reader.js');
+      const reader = new NodeStateReader();
+      const configWithProgressPath: SpeciConfig = {
+        ...mockConfig,
+        paths: {
+          ...mockConfig.paths,
+          progress: testProject.progressPath,
+        },
+      };
+      const result = await reader.getMilestonesMvtStatus(
+        configWithProgressPath
+      );
+
+      expect(result.length).toBeGreaterThanOrEqual(1);
+      const m1 = result.find((m) => m.mvtId === 'MVT_M1');
+      expect(m1).toBeDefined();
+      expect(m1?.mvtReady).toBe(true);
+    });
+
+    it('IT-08: --verify + --yes auto-continues past startup warning then pauses in loop', async () => {
+      const context = createMockContext({ cwd: testProject.root });
+      const mvtReadyMilestone: MilestoneInfo = {
+        milestoneId: 'M1',
+        milestoneName: 'Foundation',
+        totalTasks: 2,
+        completedTasks: 2,
+        mvtId: 'MVT_M1',
+        mvtStatus: 'NOT STARTED',
+        mvtReady: true,
+      };
+      vi.mocked(context.stateReader.getMilestonesMvtStatus)
+        .mockResolvedValueOnce([mvtReadyMilestone])
+        .mockResolvedValue([mvtReadyMilestone]);
+      vi.mocked(context.stateReader.getState).mockResolvedValue(
+        STATE.WORK_LEFT
+      );
+
+      const result = await run(
+        { verify: true, yes: true, maxIterations: 1 },
+        context,
+        mockConfig
+      );
+
+      expect(result.success).toBe(true);
+      expect(result.exitCode).toBe(0);
+      const allLogCalls = [
+        ...vi.mocked(context.logger.info).mock.calls.flatMap((c) => c),
+        ...vi.mocked(context.logger.warn).mock.calls.flatMap((c) => c),
+      ];
+      expect(
+        allLogCalls.some((m) => typeof m === 'string' && m.includes('MVT'))
+      ).toBe(true);
+      expect(vi.mocked(context.copilotRunner.run)).not.toHaveBeenCalled();
+    });
+
+    it('IT-09: --verify + --dry-run displays MVT status without executing', async () => {
+      const context = createMockContext({ cwd: testProject.root });
+      const mvtReadyMilestone: MilestoneInfo = {
+        milestoneId: 'M1',
+        milestoneName: 'Foundation',
+        totalTasks: 2,
+        completedTasks: 2,
+        mvtId: 'MVT_M1',
+        mvtStatus: 'NOT STARTED',
+        mvtReady: true,
+      };
+      vi.mocked(context.stateReader.getState).mockResolvedValue(
+        STATE.WORK_LEFT
+      );
+      vi.mocked(context.stateReader.getMilestonesMvtStatus).mockResolvedValue([
+        mvtReadyMilestone,
+      ]);
+
+      const result = await run(
+        { verify: true, dryRun: true },
+        context,
+        mockConfig
+      );
+
+      expect(result.success).toBe(true);
+      expect(result.exitCode).toBe(0);
+      const allLogCalls = [
+        ...vi.mocked(context.logger.muted).mock.calls.flatMap((c) => c),
+        ...vi.mocked(context.logger.info).mock.calls.flatMap((c) => c),
+        ...vi.mocked(context.logger.warn).mock.calls.flatMap((c) => c),
+      ];
+      expect(
+        allLogCalls.some(
+          (m) =>
+            typeof m === 'string' &&
+            (m.includes('MVT') ||
+              m.includes('verify') ||
+              m.includes('Human-in-the-loop'))
+        )
+      ).toBe(true);
+      expect(vi.mocked(context.lockManager.acquire)).not.toHaveBeenCalled();
+      expect(vi.mocked(context.copilotRunner.run)).not.toHaveBeenCalled();
+    });
+
+    it('IT-10: yolo programmatic run() call omits verify flag', async () => {
+      const context = createMockContext({ cwd: testProject.root });
+      const runModule = await import('@/commands/run.js');
+      let capturedRunOptions: RunOptions | undefined;
+      vi.spyOn(runModule, 'run').mockImplementation(async (opts) => {
+        capturedRunOptions = opts;
+        return { success: true, exitCode: 0 };
+      });
+
+      // Mock plan and task so yolo pipeline reaches the run() call
+      const planModule = await import('@/commands/plan.js');
+      const taskModule = await import('@/commands/task.js');
+      vi.spyOn(planModule, 'plan').mockResolvedValue({
+        success: true,
+        exitCode: 0,
+      });
+      vi.spyOn(taskModule, 'task').mockResolvedValue({
+        success: true,
+        exitCode: 0,
+      });
+
+      vi.mocked(context.copilotRunner.spawn).mockResolvedValue(0);
+
+      const { yolo } = await import('@/commands/yolo.js');
+      const result = await yolo(
+        { prompt: 'Build a test feature' },
+        context,
+        mockConfig
+      );
+
+      expect(result.success).toBe(true);
+      expect(capturedRunOptions).toBeDefined();
+      expect(capturedRunOptions?.verify).toBeUndefined();
+      expect(capturedRunOptions?.yes).toBe(true);
     });
   });
 });
