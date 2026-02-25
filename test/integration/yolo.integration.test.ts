@@ -5,19 +5,16 @@ import { createMockContext } from '@/adapters/test-context.js';
 import { createError } from '@/errors.js';
 import { yolo } from '@/commands/yolo.js';
 import { status } from '@/commands/status.js';
-import { acquireLock } from '@/utils/lock.js';
 import type { CommandContext } from '@/interfaces.js';
 import type { IntegrationProject } from '../helpers/integration-helpers.js';
 import {
   createYoloIntegrationProject,
   pathExists,
-  waitForPath,
   writeProgressFile,
 } from '../helpers/integration-helpers.js';
 import * as planModule from '@/commands/plan.js';
 import * as taskModule from '@/commands/task.js';
 import * as runModule from '@/commands/run.js';
-import * as preflightModule from '@/utils/preflight.js';
 
 describe('Yolo Integration', () => {
   let project: IntegrationProject;
@@ -31,7 +28,6 @@ describe('Yolo Integration', () => {
 
   beforeEach(async () => {
     project = await createYoloIntegrationProject();
-    vi.spyOn(preflightModule, 'preflight').mockResolvedValue(undefined);
     vi.spyOn(planModule, 'plan').mockResolvedValue({
       success: true,
       exitCode: 0,
@@ -74,7 +70,12 @@ describe('Yolo Integration', () => {
 
   it('Test 2: handles lock conflict and allows force override', async () => {
     const context = createContext();
-    await acquireLock(project.config, context.process, 'run');
+    const lockError = Object.assign(new Error('Lock conflict'), {
+      name: 'ERR-STA-01',
+    });
+    vi.mocked(context.lockManager.acquire)
+      .mockRejectedValueOnce(lockError)
+      .mockRejectedValueOnce(lockError);
 
     const conflict = await yolo(
       { prompt: 'Build feature X' },
@@ -85,7 +86,6 @@ describe('Yolo Integration', () => {
     expect(conflict.error).toContain('already running');
     expect(conflict.error).toContain('--force');
 
-    await acquireLock(project.config, context.process, 'run');
     const forced = await yolo(
       { prompt: 'Build feature X', force: true },
       context,
@@ -117,14 +117,19 @@ describe('Yolo Integration', () => {
 
   it('Test 5: integrates with status command and reports active yolo pipeline', async () => {
     const context = createContext();
-    await acquireLock(project.config, context.process, 'yolo', {
-      state: 'yolo:pipeline',
-      iteration: 0,
+    vi.mocked(context.lockManager.getInfo).mockResolvedValueOnce({
+      isLocked: true,
+      pid: process.pid,
+      started: new Date(),
+      elapsed: '0m 1s',
+      command: 'yolo',
     });
-    const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
 
     const result = await status({ once: true }, context, project.config);
-    const output = consoleSpy.mock.calls.flat().join('\n');
+    const output = vi
+      .mocked(context.logger.raw)
+      .mock.calls.map((c) => String(c[0] ?? ''))
+      .join('\n');
 
     expect(result).toEqual({ success: true, exitCode: 0 });
     expect(output).toContain('Yolo pipeline is active');
@@ -133,7 +138,7 @@ describe('Yolo Integration', () => {
   it('Test 6: handles missing, empty, and corrupted PROGRESS.md validation scenarios', async () => {
     const context = createContext();
 
-    vi.spyOn(preflightModule, 'preflight').mockRejectedValueOnce(
+    vi.mocked(context.preflight.run).mockRejectedValueOnce(
       createError('ERR-PRE-05')
     );
     await expect(
@@ -297,12 +302,19 @@ describe('Yolo Integration', () => {
       })
       .mockResolvedValue({ success: true, exitCode: 0 });
 
+    // Simulate lock conflict for second context
+    const lockError = Object.assign(new Error('Lock conflict'), {
+      name: 'ERR-STA-01',
+    });
+    vi.mocked(contextB.lockManager.acquire).mockRejectedValueOnce(lockError);
+
     const firstRun = yolo(
       { prompt: 'Build feature X' },
       contextA,
       project.config
     );
-    await waitForPath(project.lockFile, 2000);
+    // Allow first yolo to progress to plan phase
+    await new Promise((resolve) => setTimeout(resolve, 50));
     const secondRun = await yolo(
       { prompt: 'Build feature X' },
       contextB,

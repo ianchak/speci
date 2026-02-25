@@ -41,6 +41,8 @@ describe('Workflow Integration', () => {
         // Step 1: Init
         await fs.rm(testProject.configPath, { force: true });
         const context = createProductionContext();
+        // Mock preflight to skip environment checks in integration tests
+        vi.spyOn(context.preflight, 'run').mockResolvedValue(undefined);
         const initResult = await initCommand({}, context);
         expect(initResult.success).toBe(true);
         expect(fileExists(testProject.configPath)).toBe(true);

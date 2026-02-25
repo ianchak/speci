@@ -197,6 +197,7 @@ describe('Plan Command Integration', () => {
       // Update config with custom agent path
       const configContent = await readTestFile(testProject.configPath);
       const config = JSON.parse(configContent);
+      if (!config.agents) config.agents = {};
       config.agents.plan = 'custom-agents/plan.md';
       await fs.writeFile(
         testProject.configPath,

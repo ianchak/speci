@@ -44,7 +44,7 @@ describe('Init Command Integration', () => {
       const configContent = await readTestFile(testProject.configPath);
       const config = JSON.parse(configContent);
       expect(config.paths).toBeDefined();
-      expect(config.agents).toBeDefined();
+      expect(config.copilot).toBeDefined();
       expect(config.gate).toBeDefined();
     } finally {
       process.chdir(originalCwd);
