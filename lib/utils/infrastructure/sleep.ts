@@ -1,3 +1,10 @@
+/**
+ * Sleep Utility Module
+ *
+ * Provides OS-level sleep/suspend functionality with a countdown delay,
+ * cross-platform command detection, and injectable dependencies for
+ * testability. Supports Windows, macOS, and Linux suspend commands.
+ */
 import { execSync as nodeExecSync } from 'node:child_process';
 import { setTimeout as delay } from 'node:timers/promises';
 import { MESSAGES } from '@/constants.js';
@@ -16,7 +23,7 @@ const SLEEP_COMMANDS: Partial<Record<NodeJS.Platform, string>> = {
 };
 
 const defaultExecFn: ExecSyncFn = (command) => {
-  nodeExecSync(command, { stdio: 'ignore', env: {} });
+  nodeExecSync(command, { stdio: 'ignore', env: process.env });
 };
 
 /**
