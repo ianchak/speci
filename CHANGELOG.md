@@ -1,5 +1,11 @@
 # speci
 
+## 0.12.0
+
+### Minor Changes
+
+- [#6](https://github.com/ianchak/speci/pull/6) [`9726f92`](https://github.com/ianchak/speci/commit/9726f9228e55f3006d119b231f7d167a793bf319) Thanks [@ianchak](https://github.com/ianchak)! - feat(cli): add --sleep-after flag to put machine to sleep after command completes
+
 ## 0.11.0
 
 ### Minor Changes
