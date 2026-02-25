@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { join, resolve } from 'node:path';
 import { tmpdir } from 'node:os';
+import { PassThrough } from 'node:stream';
 import { clean, cleanFiles } from '../../lib/commands/clean.js';
 import { createMockContext } from '../../lib/adapters/test-context.js';
 import type { SpeciConfig } from '../../lib/config.js';
@@ -536,6 +537,41 @@ describe('clean() prompt', () => {
     expect(context.fs.rmSync).not.toHaveBeenCalled();
   });
 
+  it("cancels on 'n' response", async () => {
+    setExists([config.paths.tasks]);
+    vi.spyOn(context.fs, 'readdirSync').mockReturnValue(['TASK_001.md']);
+    const prompt = vi.fn().mockResolvedValue('n');
+
+    const result = await clean({ prompt }, context, config);
+
+    expect(result).toEqual({ success: true, exitCode: 0 });
+    expect(context.logger.info).toHaveBeenCalledWith('Clean cancelled.');
+    expect(context.fs.rmSync).not.toHaveBeenCalled();
+  });
+
+  it('cancels on empty input', async () => {
+    setExists([config.paths.tasks]);
+    vi.spyOn(context.fs, 'readdirSync').mockReturnValue(['TASK_001.md']);
+    const prompt = vi.fn().mockResolvedValue('');
+
+    const result = await clean({ prompt }, context, config);
+
+    expect(result).toEqual({ success: true, exitCode: 0 });
+    expect(context.logger.info).toHaveBeenCalledWith('Clean cancelled.');
+    expect(context.fs.rmSync).not.toHaveBeenCalled();
+  });
+
+  it('accepts uppercase Y', async () => {
+    setExists([config.paths.tasks]);
+    vi.spyOn(context.fs, 'readdirSync').mockReturnValue(['TASK_001.md']);
+    const prompt = vi.fn().mockResolvedValue('Y');
+
+    const result = await clean({ prompt }, context, config);
+
+    expect(result).toEqual({ success: true, exitCode: 0 });
+    expect(context.fs.rmSync).toHaveBeenCalledTimes(1);
+  });
+
   it('accepts yes case-insensitively', async () => {
     setExists([config.paths.tasks]);
     vi.spyOn(context.fs, 'readdirSync').mockReturnValue(['TASK_001.md']);
@@ -559,8 +595,37 @@ describe('clean() prompt', () => {
     expect(context.fs.rmSync).toHaveBeenCalledTimes(1);
   });
 
+  it('clean --yes --verbose works together', async () => {
+    setExists([config.paths.tasks]);
+    vi.spyOn(context.fs, 'readdirSync').mockReturnValue(['TASK_001.md']);
+    const prompt = vi.fn().mockResolvedValue('n');
+
+    const result = await clean(
+      { yes: true, verbose: true, prompt },
+      context,
+      config
+    );
+
+    expect(result).toEqual({ success: true, exitCode: 0 });
+    expect(context.logger.setVerbose).toHaveBeenCalledWith(true);
+    expect(prompt).not.toHaveBeenCalled();
+    expect(context.fs.rmSync).toHaveBeenCalledTimes(1);
+  });
+
   it('skips prompt when nothing to clean', async () => {
     vi.spyOn(context.fs, 'existsSync').mockReturnValue(false);
+    const prompt = vi.fn().mockResolvedValue('y');
+
+    const result = await clean({ prompt }, context, config);
+
+    expect(result).toEqual({ success: true, exitCode: 0 });
+    expect(prompt).not.toHaveBeenCalled();
+    expect(context.logger.info).toHaveBeenCalledWith('Nothing to clean.');
+  });
+
+  it('skips prompt when tasks dir is empty and no progress file', async () => {
+    setExists([config.paths.tasks]);
+    vi.spyOn(context.fs, 'readdirSync').mockReturnValue([]);
     const prompt = vi.fn().mockResolvedValue('y');
 
     const result = await clean({ prompt }, context, config);
@@ -582,6 +647,32 @@ describe('clean() prompt', () => {
       'Clean cancelled: non-interactive terminal. Use --yes to skip confirmation.'
     );
     expect(context.fs.rmSync).not.toHaveBeenCalled();
+  });
+
+  it('proceeds in non-interactive mode with --yes', async () => {
+    setExists([config.paths.tasks]);
+    vi.spyOn(context.fs, 'readdirSync').mockReturnValue(['TASK_001.md']);
+    Object.assign(context.process.stdin, { isTTY: false });
+
+    const result = await clean({ yes: true }, context, config);
+
+    expect(result).toEqual({ success: true, exitCode: 0 });
+    expect(context.fs.rmSync).toHaveBeenCalledWith(
+      join(config.paths.tasks, 'TASK_001.md'),
+      { recursive: true, force: true }
+    );
+  });
+
+  it('prompts when only progress file exists', async () => {
+    setExists([config.paths.progress]);
+    const prompt = vi.fn().mockResolvedValue('n');
+
+    const result = await clean({ prompt }, context, config);
+
+    expect(result).toEqual({ success: true, exitCode: 0 });
+    expect(context.logger.info).toHaveBeenCalledWith(config.paths.progress);
+    expect(prompt).toHaveBeenCalledWith('Delete 1 file(s)? [y/N] ');
+    expect(context.fs.unlinkSync).not.toHaveBeenCalled();
   });
 
   it('lists files before prompting', async () => {
@@ -606,6 +697,105 @@ describe('clean() prompt', () => {
       3,
       config.paths.progress
     );
+  });
+
+  it('shows file count in prompt', async () => {
+    setExists([config.paths.tasks, config.paths.progress]);
+    vi.spyOn(context.fs, 'readdirSync').mockReturnValue(['a.md', 'b.md']);
+    const prompt = vi.fn().mockResolvedValue('n');
+
+    await clean({ prompt }, context, config);
+
+    expect(prompt).toHaveBeenCalledWith('Delete 3 file(s)? [y/N] ');
+  });
+
+  it('shows correct count for single file', async () => {
+    setExists([config.paths.progress]);
+    const prompt = vi.fn().mockResolvedValue('n');
+
+    await clean({ prompt }, context, config);
+
+    expect(prompt).toHaveBeenCalledWith('Delete 1 file(s)? [y/N] ');
+  });
+
+  it('lists subdirectories in tasks dir', async () => {
+    setExists([config.paths.tasks]);
+    vi.spyOn(context.fs, 'readdirSync').mockReturnValue(['subdir']);
+    const prompt = vi.fn().mockResolvedValue('n');
+
+    await clean({ prompt }, context, config);
+
+    expect(context.logger.info).toHaveBeenCalledWith(
+      join(config.paths.tasks, 'subdir')
+    );
+  });
+
+  it('lists and deletes hidden files in tasks dir', async () => {
+    setExists([config.paths.tasks]);
+    vi.spyOn(context.fs, 'readdirSync').mockReturnValue([
+      '.gitkeep',
+      'TASK_001.md',
+    ]);
+    const prompt = vi.fn().mockResolvedValue('y');
+
+    const result = await clean({ prompt }, context, config);
+
+    expect(result).toEqual({ success: true, exitCode: 0 });
+    expect(context.logger.info).toHaveBeenCalledWith(
+      join(config.paths.tasks, '.gitkeep')
+    );
+    expect(context.logger.info).toHaveBeenCalledWith(
+      join(config.paths.tasks, 'TASK_001.md')
+    );
+    expect(context.fs.rmSync).toHaveBeenCalledWith(
+      join(config.paths.tasks, '.gitkeep'),
+      { recursive: true, force: true }
+    );
+    expect(context.fs.rmSync).toHaveBeenCalledWith(
+      join(config.paths.tasks, 'TASK_001.md'),
+      { recursive: true, force: true }
+    );
+  });
+
+  it('handles filenames with special characters', async () => {
+    setExists([config.paths.tasks]);
+    vi.spyOn(context.fs, 'readdirSync').mockReturnValue([
+      'TASK name.md',
+      'Δ-task.md',
+    ]);
+    const prompt = vi.fn().mockResolvedValue('y');
+
+    const result = await clean({ prompt }, context, config);
+
+    expect(result).toEqual({ success: true, exitCode: 0 });
+    expect(context.logger.info).toHaveBeenCalledWith(
+      join(config.paths.tasks, 'TASK name.md')
+    );
+    expect(context.logger.info).toHaveBeenCalledWith(
+      join(config.paths.tasks, 'Δ-task.md')
+    );
+    expect(context.fs.rmSync).toHaveBeenCalledWith(
+      join(config.paths.tasks, 'TASK name.md'),
+      { recursive: true, force: true }
+    );
+    expect(context.fs.rmSync).toHaveBeenCalledWith(
+      join(config.paths.tasks, 'Δ-task.md'),
+      { recursive: true, force: true }
+    );
+  });
+
+  it('lists 100+ files without truncation', async () => {
+    setExists([config.paths.tasks, config.paths.progress]);
+    const entries = Array.from({ length: 120 }, (_, i) => `TASK_${i + 1}.md`);
+    vi.spyOn(context.fs, 'readdirSync').mockReturnValue(entries);
+    const prompt = vi.fn().mockResolvedValue('n');
+
+    await clean({ prompt }, context, config);
+
+    expect(prompt).toHaveBeenCalledWith('Delete 121 file(s)? [y/N] ');
+    expect(
+      vi.mocked(context.logger.info).mock.calls.length
+    ).toBeGreaterThanOrEqual(121);
   });
 
   it('does not prompt when lock file exists', async () => {
@@ -648,6 +838,20 @@ describe('clean() prompt', () => {
     expect(context.fs.rmSync).not.toHaveBeenCalled();
   });
 
+  it('handles readline creation failure', async () => {
+    setExists([config.paths.tasks]);
+    vi.spyOn(context.fs, 'readdirSync').mockReturnValue(['TASK_001.md']);
+    const prompt = vi.fn(() => {
+      throw new Error('readline failed');
+    });
+
+    const result = await clean({ prompt }, context, config);
+
+    expect(result.success).toBe(false);
+    expect(result.error).toContain('readline failed');
+    expect(context.fs.rmSync).not.toHaveBeenCalled();
+  });
+
   it('returns failure when enumerate readdir throws', async () => {
     setExists([config.paths.tasks]);
     vi.spyOn(context.fs, 'readdirSync').mockImplementation(() => {
@@ -660,6 +864,18 @@ describe('clean() prompt', () => {
     expect(result.success).toBe(false);
     expect(result.error).toContain('readdir failed');
     expect(prompt).not.toHaveBeenCalled();
+  });
+
+  it('handles unexpected exception in wrapper', async () => {
+    vi.spyOn(context.fs, 'existsSync').mockImplementation(() => {
+      throw new TypeError('unexpected wrapper failure');
+    });
+
+    const result = await clean({}, context, config);
+
+    expect(result.success).toBe(false);
+    expect(result.exitCode).toBe(1);
+    expect(result.error).toContain('unexpected wrapper failure');
   });
 
   it('returns cleanFiles failure when lock appears after prompt', async () => {
@@ -686,6 +902,66 @@ describe('clean() prompt', () => {
     expect(result.success).toBe(false);
     expect(prompt).toHaveBeenCalledTimes(1);
     expect(context.fs.rmSync).not.toHaveBeenCalled();
+  });
+
+  it('reports failure when progress file deletion fails', async () => {
+    setExists([config.paths.tasks, config.paths.progress]);
+    vi.spyOn(context.fs, 'readdirSync').mockReturnValue(['TASK_001.md']);
+    vi.spyOn(context.fs, 'unlinkSync').mockImplementation(() => {
+      throw Object.assign(new Error('EPERM'), { code: 'EPERM' });
+    });
+
+    const result = await clean({ yes: true }, context, config);
+
+    expect(result.success).toBe(false);
+    expect(context.fs.rmSync).toHaveBeenCalledWith(
+      join(config.paths.tasks, 'TASK_001.md'),
+      { recursive: true, force: true }
+    );
+    expect(result.error).toContain(config.paths.progress);
+  });
+
+  it('removes symlinks without following them', async () => {
+    setExists([config.paths.tasks]);
+    vi.spyOn(context.fs, 'readdirSync').mockReturnValue(['link-to-external']);
+
+    const result = await clean({ yes: true }, context, config);
+
+    expect(result).toEqual({ success: true, exitCode: 0 });
+    expect(context.fs.rmSync).toHaveBeenCalledWith(
+      join(config.paths.tasks, 'link-to-external'),
+      { recursive: true, force: true }
+    );
+  });
+
+  it('works with empty options object', async () => {
+    setExists([config.paths.tasks]);
+    vi.spyOn(context.fs, 'readdirSync').mockReturnValue(['TASK_001.md']);
+    const input = new PassThrough();
+    const output = new PassThrough();
+    Object.assign(input, { isTTY: true });
+    Object.assign(context.process, {
+      stdin: input as unknown as NodeJS.ReadStream,
+      stdout: output as unknown as NodeJS.WriteStream,
+    });
+
+    const cleanPromise = clean({}, context, config);
+    input.write('n\n');
+    const result = await cleanPromise;
+
+    expect(result).toEqual({ success: true, exitCode: 0 });
+    expect(context.logger.info).toHaveBeenCalledWith('Clean cancelled.');
+  });
+
+  it('clean --yes with nothing to clean prints nothing to clean', async () => {
+    vi.spyOn(context.fs, 'existsSync').mockReturnValue(false);
+    const prompt = vi.fn().mockResolvedValue('y');
+
+    const result = await clean({ yes: true, prompt }, context, config);
+
+    expect(result).toEqual({ success: true, exitCode: 0 });
+    expect(prompt).not.toHaveBeenCalled();
+    expect(context.logger.info).toHaveBeenCalledWith('Nothing to clean.');
   });
 });
 
