@@ -11,6 +11,7 @@ import type {
   STATE,
   TaskStats,
   CurrentTask,
+  MilestoneInfo,
   GateFailureInfo,
   StateOptions,
 } from '@/types.js';
@@ -18,6 +19,7 @@ import {
   getState,
   getTaskStats,
   getCurrentTask,
+  getMilestonesMvtStatus,
   writeFailureNotes,
 } from '@/state.js';
 
@@ -48,5 +50,12 @@ export class NodeStateReader implements IStateReader {
     gateFailure: GateFailureInfo
   ): Promise<void> {
     return writeFailureNotes(config, gateFailure);
+  }
+
+  async getMilestonesMvtStatus(
+    config: SpeciConfig,
+    options?: StateOptions
+  ): Promise<MilestoneInfo[]> {
+    return getMilestonesMvtStatus(config, options);
   }
 }

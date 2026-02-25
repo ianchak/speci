@@ -3,6 +3,7 @@ import { NodeStateReader } from '@/adapters/node-state-reader.js';
 import type {
   CurrentTask,
   GateFailureInfo,
+  MilestoneInfo,
   SpeciConfig,
   StateOptions,
   TaskStats,
@@ -14,6 +15,7 @@ vi.mock('@/state.js', () => ({
   getState: vi.fn(),
   getTaskStats: vi.fn(),
   getCurrentTask: vi.fn(),
+  getMilestonesMvtStatus: vi.fn(),
   writeFailureNotes: vi.fn(),
 }));
 
@@ -94,6 +96,40 @@ describe('NodeStateReader', () => {
     expect(stateModule.writeFailureNotes).toHaveBeenCalledWith(
       config,
       gateFailure
+    );
+  });
+
+  it('UT-A01: delegates getMilestonesMvtStatus and forwards options', async () => {
+    const milestones: MilestoneInfo[] = [
+      {
+        milestoneId: 'M1',
+        milestoneName: 'Foundation',
+        totalTasks: 2,
+        completedTasks: 2,
+        mvtId: 'MVT_M1',
+        mvtStatus: 'NOT STARTED',
+        mvtReady: true,
+      },
+    ];
+    vi.mocked(stateModule.getMilestonesMvtStatus).mockResolvedValue(milestones);
+
+    const result = await adapter.getMilestonesMvtStatus(config, options);
+
+    expect(stateModule.getMilestonesMvtStatus).toHaveBeenCalledWith(
+      config,
+      options
+    );
+    expect(result).toBe(milestones);
+  });
+
+  it('UT-A02: delegates getMilestonesMvtStatus when options are omitted', async () => {
+    vi.mocked(stateModule.getMilestonesMvtStatus).mockResolvedValue([]);
+
+    await adapter.getMilestonesMvtStatus(config);
+
+    expect(stateModule.getMilestonesMvtStatus).toHaveBeenCalledWith(
+      config,
+      undefined
     );
   });
 });

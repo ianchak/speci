@@ -2,7 +2,7 @@
  * Tests for error catalog module (lib/errors.ts)
  *
  * Verifies error code definitions, formatting, and error creation
- * for all 17 error codes in the catalog.
+ * for all error codes in the catalog.
  */
 
 import { describe, it, expect } from 'vitest';
@@ -38,6 +38,9 @@ describe('Error Catalog', () => {
         'ERR-STA-01',
         'ERR-STA-02',
         'ERR-STA-03',
+        'ERR-STA-04',
+        'ERR-STA-05',
+        'ERR-STA-06',
         'ERR-EXE-01',
         'ERR-EXE-02',
         'ERR-EXE-03',
@@ -51,7 +54,7 @@ describe('Error Catalog', () => {
         'ERR-UI-01',
       ];
 
-      expect(Object.keys(ERROR_CODES)).toHaveLength(31);
+      expect(Object.keys(ERROR_CODES)).toHaveLength(34);
       for (const code of expectedCodes) {
         expect(ERROR_CODES).toHaveProperty(code);
       }
@@ -142,9 +145,9 @@ describe('Error Catalog', () => {
       expect(def?.message).toBe('Copilot execution failed');
     });
 
-    it('should return definition for each of the 31 error codes', () => {
+    it('should return definition for each of the 34 error codes', () => {
       const allCodes = Object.keys(ERROR_CODES);
-      expect(allCodes.length).toBe(31);
+      expect(allCodes.length).toBe(34);
       for (const code of allCodes) {
         const def = getErrorDefinition(code);
         expect(def, `${code} should have a definition`).toBeDefined();
@@ -224,6 +227,25 @@ describe('Error Catalog', () => {
       expect(
         lines.some((line) => line.includes('Context: Missing --plan argument'))
       ).toBe(true);
+    });
+
+    it('UT-E01: ERR-STA-04 exists and formats correctly', () => {
+      expect(formatError('ERR-STA-04')).toContain('Malformed milestone');
+    });
+
+    it('UT-E02: ERR-STA-05 formats with status interpolation', () => {
+      expect(
+        formatError(
+          'ERR-STA-05',
+          JSON.stringify({ status: 'SKIPPED', mvtId: 'MVT_M1' })
+        )
+      ).toContain('SKIPPED');
+    });
+
+    it('UT-E03: ERR-STA-06 formats with error interpolation', () => {
+      expect(
+        formatError('ERR-STA-06', JSON.stringify({ error: 'EACCES' }))
+      ).toContain('EACCES');
     });
   });
 

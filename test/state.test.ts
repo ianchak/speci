@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { mkdirSync, rmSync, writeFileSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
@@ -7,12 +7,14 @@ import {
   getState,
   getTaskStats,
   getCurrentTask,
+  getMilestonesMvtStatus,
   hasStatePattern,
   resetStateCache,
   writeFailureNotes,
   type GateFailureInfo,
 } from '../lib/state.js';
 import { readFileSync } from 'node:fs';
+import { log } from '../lib/utils/logger.js';
 import { type SpeciConfig } from '../lib/config.js';
 
 describe('state', () => {
@@ -67,6 +69,7 @@ describe('state', () => {
   afterEach(() => {
     // Reset cache after each test
     resetStateCache();
+    vi.restoreAllMocks();
 
     // Restore original state
     process.chdir(originalCwd);
@@ -345,6 +348,332 @@ Some random text
       expect(current?.id).toBe('TASK_002');
       expect(current?.title).toBe('Yolo Command Skeleton');
       expect(current?.status).toBe('IN PROGRESS');
+    });
+  });
+
+  describe('getMilestonesMvtStatus', () => {
+    const writeProgress = (content: string): void => {
+      writeFileSync(mockConfig.paths.progress, content);
+    };
+
+    it('UT-S01: returns [] when PROGRESS.md does not exist', async () => {
+      expect(await getMilestonesMvtStatus(mockConfig)).toEqual([]);
+    });
+
+    it('UT-S02: returns [] when file has no milestone headers', async () => {
+      const debugSpy = vi.spyOn(log, 'debug').mockImplementation(() => {});
+      writeProgress(
+        '# Progress\n| Task ID | Title | Status |\n| TASK_001 | T | NOT STARTED |\n'
+      );
+      expect(await getMilestonesMvtStatus(mockConfig)).toEqual([]);
+      expect(debugSpy).toHaveBeenCalledWith(
+        'getMilestonesMvtStatus: No milestone sections found'
+      );
+    });
+
+    it('UT-S03: parses single milestone with incomplete tasks', async () => {
+      writeProgress(`## Milestone: M1 - Foundation
+| TASK_001 | A | NOT STARTED |
+| TASK_002 | B | NOT STARTED |
+| TASK_003 | C | NOT STARTED |
+| MVT_M1 | Manual | NOT STARTED |`);
+      const result = await getMilestonesMvtStatus(mockConfig);
+      expect(result[0]).toMatchObject({
+        milestoneId: 'M1',
+        totalTasks: 3,
+        completedTasks: 0,
+        mvtId: 'MVT_M1',
+        mvtStatus: 'NOT STARTED',
+        mvtReady: false,
+      });
+    });
+
+    it('UT-S04: mvtReady true when all tasks complete and MVT not complete', async () => {
+      writeProgress(`## Milestone: M1 - Foundation
+| TASK_001 | A | COMPLETE |
+| TASK_002 | B | COMPLETE |
+| TASK_003 | C | COMPLETE |
+| MVT_M1 | Manual | NOT STARTED |`);
+      const [m1] = await getMilestonesMvtStatus(mockConfig);
+      expect(m1.completedTasks).toBe(3);
+      expect(m1.mvtReady).toBe(true);
+    });
+
+    it('UT-S05: mvtReady false when MVT is COMPLETE', async () => {
+      writeProgress(`## Milestone: M1 - Foundation
+| TASK_001 | A | COMPLETE |
+| TASK_002 | B | COMPLETE |
+| MVT_M1 | Manual | COMPLETE |`);
+      const [m1] = await getMilestonesMvtStatus(mockConfig);
+      expect(m1.mvtReady).toBe(false);
+    });
+
+    it('UT-S06: handles multiple milestones with mixed readiness', async () => {
+      writeProgress(`## Milestone: M1 - One
+| TASK_001 | A | COMPLETE |
+| MVT_M1 | Manual | COMPLETE |
+## Milestone: M2 - Two
+| TASK_002 | B | COMPLETE |
+| MVT_M2 | Manual | NOT STARTED |
+## Milestone: M3 - Three
+| TASK_003 | C | COMPLETE |
+| TASK_004 | D | NOT STARTED |
+| MVT_M3 | Manual | NOT STARTED |`);
+      const result = await getMilestonesMvtStatus(mockConfig);
+      expect(result.map((m) => m.mvtReady)).toEqual([false, true, false]);
+    });
+
+    it('UT-S07: handles milestone with no MVT row', async () => {
+      writeProgress(`## Milestone: M1 - Foundation
+| TASK_001 | A | COMPLETE |`);
+      const [m1] = await getMilestonesMvtStatus(mockConfig);
+      expect(m1.mvtId).toBeNull();
+      expect(m1.mvtStatus).toBeNull();
+      expect(m1.mvtReady).toBe(false);
+    });
+
+    it('UT-S08: treats BLOCKED MVT as ready when tasks complete', async () => {
+      writeProgress(`## Milestone: M1 - Foundation
+| TASK_001 | A | COMPLETE |
+| MVT_M1 | Manual | BLOCKED |`);
+      const [m1] = await getMilestonesMvtStatus(mockConfig);
+      expect(m1.mvtReady).toBe(true);
+    });
+
+    it('UT-S09: treats IN PROGRESS MVT as ready when tasks complete', async () => {
+      writeProgress(`## Milestone: M1 - Foundation
+| TASK_001 | A | COMPLETE |
+| MVT_M1 | Manual | IN PROGRESS |`);
+      const [m1] = await getMilestonesMvtStatus(mockConfig);
+      expect(m1.mvtReady).toBe(true);
+    });
+
+    it('UT-S10: ignores header/separator rows in milestone tables', async () => {
+      writeProgress(`## Milestone: M1 - Foundation
+| Task ID | Title | Status |
+| --- | --- | --- |
+| TASK_001 | A | COMPLETE |
+| MVT_M1 | Manual | NOT STARTED |`);
+      const [m1] = await getMilestonesMvtStatus(mockConfig);
+      expect(m1.totalTasks).toBe(1);
+    });
+
+    it('UT-S11: reuses readStateFile cache with getState then milestone parser', async () => {
+      writeProgress(`## Milestone: M1 - Foundation
+| TASK_001 | A | NOT STARTED |
+| MVT_M1 | Manual | NOT STARTED |`);
+      await getState(mockConfig);
+      writeProgress(`## Milestone: M1 - Updated
+| TASK_001 | A | COMPLETE |
+| MVT_M1 | Manual | COMPLETE |`);
+      const [m1] = await getMilestonesMvtStatus(mockConfig);
+      expect(m1.milestoneName).toBe('Foundation');
+      expect(m1.completedTasks).toBe(0);
+    });
+
+    it('UT-S12: forceRefresh triggers a fresh read', async () => {
+      writeProgress(`## Milestone: M1 - Foundation
+| TASK_001 | A | NOT STARTED |
+| MVT_M1 | Manual | NOT STARTED |`);
+      await getMilestonesMvtStatus(mockConfig);
+      writeProgress(`## Milestone: M1 - Updated
+| TASK_001 | A | COMPLETE |
+| MVT_M1 | Manual | COMPLETE |`);
+      const [m1] = await getMilestonesMvtStatus(mockConfig, {
+        forceRefresh: true,
+      });
+      expect(m1.milestoneName).toBe('Updated');
+      expect(m1.completedTasks).toBe(1);
+    });
+
+    it('UT-S13: parses 10-column table with File column', async () => {
+      writeProgress(`## Milestone: M1 - Foundation
+| Task ID | Title | File | Status | Review Status | Priority | Complexity | Dependencies | Assigned To | Attempts |
+| TASK_001 | A | a.md | COMPLETE | PASSED | HIGH | S | None | SA-1 | 1 |
+| MVT_M1 | Manual | mvt.md | NOT STARTED | — | — | — | TASK_001 | | |`);
+      const [m1] = await getMilestonesMvtStatus(mockConfig);
+      expect(m1.completedTasks).toBe(1);
+      expect(m1.mvtStatus).toBe('NOT STARTED');
+    });
+
+    it('UT-S14: zero-task milestone with only MVT is not ready', async () => {
+      writeProgress(`## Milestone: M1 - Foundation
+| MVT_M1 | Manual | NOT STARTED |`);
+      const [m1] = await getMilestonesMvtStatus(mockConfig);
+      expect(m1.totalTasks).toBe(0);
+      expect(m1.mvtReady).toBe(false);
+    });
+
+    it('UT-S15: blank MVT status becomes null', async () => {
+      writeProgress(`## Milestone: M1 - Foundation
+| TASK_001 | A | COMPLETE |
+| MVT_M1 | Manual | |`);
+      const [m1] = await getMilestonesMvtStatus(mockConfig);
+      expect(m1.mvtStatus).toBeNull();
+    });
+
+    it('UT-S16: unknown MVT status becomes null', async () => {
+      const debugSpy = vi.spyOn(log, 'debug').mockImplementation(() => {});
+      writeProgress(`## Milestone: M1 - Foundation
+| TASK_001 | A | COMPLETE |
+| MVT_M1 | Manual | SKIPPED |`);
+      const [m1] = await getMilestonesMvtStatus(mockConfig);
+      expect(m1.mvtStatus).toBeNull();
+      expect(debugSpy).toHaveBeenCalledWith(
+        expect.stringContaining('[ERR-STA-05]')
+      );
+    });
+
+    it('UT-S17: IN REVIEW MVT is considered ready when tasks complete', async () => {
+      writeProgress(`## Milestone: M1 - Foundation
+| TASK_001 | A | COMPLETE |
+| MVT_M1 | Manual | IN REVIEW |`);
+      const [m1] = await getMilestonesMvtStatus(mockConfig);
+      expect(m1.mvtReady).toBe(true);
+    });
+
+    it('UT-S18: last MVT row wins in same milestone', async () => {
+      writeProgress(`## Milestone: M1 - Foundation
+| TASK_001 | A | COMPLETE |
+| MVT_M1a | Manual | NOT STARTED |
+| MVT_M1b | Manual | COMPLETE |`);
+      const [m1] = await getMilestonesMvtStatus(mockConfig);
+      expect(m1.mvtId).toBe('MVT_M1b');
+      expect(m1.mvtStatus).toBe('COMPLETE');
+      expect(m1.mvtReady).toBe(false);
+    });
+
+    it('UT-S19: readiness is computed per milestone only', async () => {
+      writeProgress(`## Milestone: M1 - One
+| TASK_001 | A | COMPLETE |
+| TASK_002 | B | NOT STARTED |
+| MVT_M1 | Manual | NOT STARTED |
+## Milestone: M2 - Two
+| TASK_003 | C | COMPLETE |
+| TASK_004 | D | COMPLETE |
+| MVT_M2 | Manual | NOT STARTED |`);
+      const result = await getMilestonesMvtStatus(mockConfig);
+      expect(result[0].mvtReady).toBe(false);
+      expect(result[1].mvtReady).toBe(true);
+    });
+
+    it('UT-S20: parses 9-column table format', async () => {
+      writeProgress(`## Milestone: M1 - Foundation
+| Task ID | Title | Status | Review Status | Priority | Complexity | Dependencies | Assigned To | Attempts |
+| TASK_001 | A | COMPLETE | PASSED | HIGH | S | None | SA-1 | 1 |
+| MVT_M1 | Manual | NOT STARTED | — | — | — | TASK_001 | | |`);
+      const [m1] = await getMilestonesMvtStatus(mockConfig);
+      expect(m1.completedTasks).toBe(1);
+      expect(m1.mvtStatus).toBe('NOT STARTED');
+    });
+
+    it('UT-S21: parses milestone header with extra spaces', async () => {
+      writeProgress(`## Milestone:  M1  -  Foundation  
+| TASK_001 | A | COMPLETE |
+| MVT_M1 | Manual | NOT STARTED |`);
+      const [m1] = await getMilestonesMvtStatus(mockConfig);
+      expect(m1.milestoneId).toBe('M1');
+      expect(m1.milestoneName).toBe('Foundation');
+    });
+
+    it('UT-S22: ignores malformed header without space after ##', async () => {
+      writeProgress(`##Milestone: M1 - Foundation
+| TASK_001 | A | COMPLETE |
+| MVT_M1 | Manual | NOT STARTED |`);
+      expect(await getMilestonesMvtStatus(mockConfig)).toEqual([]);
+    });
+
+    it('UT-S23: supports non-standard MVT suffix', async () => {
+      writeProgress(`## Milestone: M1 - Foundation
+| TASK_001 | A | COMPLETE |
+| MVT_01 | Manual | NOT STARTED |`);
+      const [m1] = await getMilestonesMvtStatus(mockConfig);
+      expect(m1.mvtId).toBe('MVT_01');
+    });
+
+    it('UT-S24: supports lowercase mvt row', async () => {
+      writeProgress(`## Milestone: M1 - Foundation
+| TASK_001 | A | COMPLETE |
+| mvt_m1 | Manual | NOT STARTED |`);
+      const [m1] = await getMilestonesMvtStatus(mockConfig);
+      expect(m1.mvtId).toBe('mvt_m1');
+    });
+
+    it('UT-S25: ignores TASK rows before the first milestone header', async () => {
+      writeProgress(`| TASK_000 | A | COMPLETE |
+## Milestone: M1 - Foundation
+| TASK_001 | B | COMPLETE |
+| MVT_M1 | Manual | NOT STARTED |`);
+      const result = await getMilestonesMvtStatus(mockConfig);
+      expect(result).toHaveLength(1);
+      expect(result[0].totalTasks).toBe(1);
+    });
+
+    it('UT-S26: skips non-numeric milestone IDs', async () => {
+      const debugSpy = vi.spyOn(log, 'debug').mockImplementation(() => {});
+      writeProgress(`## Milestone: MA - Alpha
+| TASK_001 | A | COMPLETE |
+| MVT_M1 | Manual | NOT STARTED |`);
+      expect(await getMilestonesMvtStatus(mockConfig)).toEqual([]);
+      expect(debugSpy).toHaveBeenCalledWith(
+        expect.stringContaining('[ERR-STA-04]')
+      );
+    });
+
+    it('UT-S27: counts compact TASK rows that match TASK_ROW pattern', async () => {
+      writeProgress(`## Milestone: M1 - Foundation
+| TASK_001 | Tiny | COMPLETE |
+| MVT_M1 | Manual | NOT STARTED |`);
+      const [m1] = await getMilestonesMvtStatus(mockConfig);
+      expect(m1.totalTasks).toBe(1);
+    });
+
+    it('UT-S28: malformed header before valid header is skipped', async () => {
+      const debugSpy = vi.spyOn(log, 'debug').mockImplementation(() => {});
+      writeProgress(`## Milestone: - NoId
+| TASK_001 | A | COMPLETE |
+## Milestone: M1 - Valid
+| TASK_002 | B | COMPLETE |
+| MVT_M1 | Manual | NOT STARTED |`);
+      const result = await getMilestonesMvtStatus(mockConfig);
+      expect(result).toHaveLength(1);
+      expect(result[0].milestoneId).toBe('M1');
+      expect(debugSpy).toHaveBeenCalledWith(
+        expect.stringContaining('[ERR-STA-04]')
+      );
+    });
+
+    it('UT-S29: wraps read errors with ERR-STA-06', async () => {
+      const errorConfig: SpeciConfig = {
+        ...mockConfig,
+        paths: { ...mockConfig.paths, progress: testDir },
+      };
+      await expect(getMilestonesMvtStatus(errorConfig)).rejects.toThrow(
+        /\[ERR-STA-06\]/
+      );
+    });
+
+    it('UT-S30: logs empty milestone debug message when none found', async () => {
+      const debugSpy = vi.spyOn(log, 'debug').mockImplementation(() => {});
+      writeProgress('# Progress\nNo milestone headers here');
+      expect(await getMilestonesMvtStatus(mockConfig)).toEqual([]);
+      expect(debugSpy).toHaveBeenCalledWith(
+        'getMilestonesMvtStatus: No milestone sections found'
+      );
+    });
+
+    it('UT-S31: logs no-MVT debug when milestones exist without MVT rows', async () => {
+      const debugSpy = vi.spyOn(log, 'debug').mockImplementation(() => {});
+      writeProgress(`## Milestone: M1 - One
+| TASK_001 | A | COMPLETE |
+## Milestone: M2 - Two
+| TASK_002 | B | NOT STARTED |`);
+      const result = await getMilestonesMvtStatus(mockConfig);
+      expect(result.every((entry) => entry.mvtId === null)).toBe(true);
+      expect(result.every((entry) => entry.mvtReady === false)).toBe(true);
+      expect(debugSpy).toHaveBeenCalledWith(
+        'getMilestonesMvtStatus: No MVT rows found in any milestone'
+      );
     });
   });
 

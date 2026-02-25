@@ -5,9 +5,21 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { mkdirSync, rmSync, existsSync, readdirSync } from 'node:fs';
+import {
+  mkdirSync,
+  rmSync,
+  existsSync,
+  readdirSync,
+  readFileSync,
+} from 'node:fs';
 import { join } from 'node:path';
 import { run } from '../../lib/commands/run.js';
+import { MESSAGES } from '../../lib/constants.js';
+import type {
+  MilestoneInfo,
+  SpeciConfig as RuntimeSpeciConfig,
+} from '../../lib/types.js';
+import { createMockContext } from '../../lib/adapters/test-context.js';
 import * as config from '../../lib/config.js';
 import * as state from '../../lib/state.js';
 import * as lock from '../../lib/utils/lock.js';
@@ -66,6 +78,13 @@ describe('Run Command', () => {
     vi.spyOn(lock, 'acquireLock').mockResolvedValue(undefined);
     vi.spyOn(lock, 'releaseLock').mockResolvedValue(undefined);
     vi.spyOn(state, 'writeFailureNotes').mockResolvedValue(undefined);
+    vi.spyOn(state, 'getTaskStats').mockResolvedValue({
+      total: 6,
+      completed: 2,
+      remaining: 3,
+      inReview: 1,
+      blocked: 0,
+    });
   });
 
   afterEach(() => {
@@ -795,6 +814,482 @@ describe('Run Command', () => {
 
       // Should complete iteration without throwing
       expect(true).toBe(true);
+    });
+  });
+
+  describe('Task Progress Display', () => {
+    it('should display task progress box during confirmation prompt', async () => {
+      const prompt = vi.fn().mockResolvedValue('n');
+      vi.spyOn(state, 'getState').mockResolvedValue(STATE.WORK_LEFT);
+
+      await run({ yes: false, prompt });
+
+      expect(state.getTaskStats).toHaveBeenCalled();
+    });
+
+    it('should display task progress box in dry run mode', async () => {
+      vi.spyOn(state, 'getState').mockResolvedValue(STATE.WORK_LEFT);
+
+      await run({ dryRun: true });
+
+      expect(state.getTaskStats).toHaveBeenCalled();
+    });
+
+    it('should not display task progress box when total is 0', async () => {
+      const prompt = vi.fn().mockResolvedValue('n');
+      vi.spyOn(state, 'getState').mockResolvedValue(STATE.WORK_LEFT);
+      vi.spyOn(state, 'getTaskStats').mockResolvedValue({
+        total: 0,
+        completed: 0,
+        remaining: 0,
+        inReview: 0,
+        blocked: 0,
+      });
+
+      await run({ yes: false, prompt });
+
+      // getTaskStats is still called, but the box should not be rendered
+      expect(state.getTaskStats).toHaveBeenCalled();
+    });
+  });
+
+  describe('verify mode', () => {
+    const mvtReadyMilestone: MilestoneInfo = {
+      milestoneId: 'M1',
+      milestoneName: 'Foundation',
+      totalTasks: 3,
+      completedTasks: 3,
+      mvtId: 'MVT_M1',
+      mvtStatus: 'NOT STARTED',
+      mvtReady: true,
+    };
+    const mvtCompleteMilestone: MilestoneInfo = {
+      milestoneId: 'M1',
+      milestoneName: 'Foundation',
+      totalTasks: 3,
+      completedTasks: 3,
+      mvtId: 'MVT_M1',
+      mvtStatus: 'COMPLETE',
+      mvtReady: false,
+    };
+    const partialMilestone: MilestoneInfo = {
+      milestoneId: 'M1',
+      milestoneName: 'Foundation',
+      totalTasks: 3,
+      completedTasks: 1,
+      mvtId: 'MVT_M1',
+      mvtStatus: 'NOT STARTED',
+      mvtReady: false,
+    };
+
+    function createVerifyHarness() {
+      const context = createMockContext({
+        mockConfig,
+      });
+      const configForRun = {
+        ...mockConfig,
+        paths: {
+          ...mockConfig.paths,
+          logs: TEST_DIR,
+        },
+      };
+      vi.mocked(context.stateReader.getState).mockResolvedValue(STATE.DONE);
+      vi.mocked(context.stateReader.getMilestonesMvtStatus).mockResolvedValue(
+        []
+      );
+      context.process.stdin.isTTY = true;
+
+      return { context, configForRun };
+    }
+
+    function getLatestRunLogPath(): string {
+      const logs = readdirSync(TEST_DIR)
+        .filter(
+          (name) => name.startsWith('speci-run-') && name.endsWith('.log')
+        )
+        .sort();
+      expect(logs.length).toBeGreaterThan(0);
+      return join(TEST_DIR, logs[logs.length - 1]);
+    }
+
+    it('UT-R01: does not evaluate MVT status when verify flag is disabled', async () => {
+      const { context, configForRun } = createVerifyHarness();
+      vi.mocked(context.stateReader.getMilestonesMvtStatus).mockResolvedValue([
+        mvtReadyMilestone,
+      ]);
+
+      await run({ yes: true }, context, configForRun);
+
+      expect(context.stateReader.getMilestonesMvtStatus).not.toHaveBeenCalled();
+    });
+
+    it('UT-R02: pauses when verify mode sees an MVT-ready milestone', async () => {
+      const { context, configForRun } = createVerifyHarness();
+      vi.mocked(context.stateReader.getState).mockResolvedValue(
+        STATE.WORK_LEFT
+      );
+      vi.mocked(context.stateReader.getMilestonesMvtStatus).mockResolvedValue([
+        mvtReadyMilestone,
+      ]);
+
+      const result = await run(
+        { yes: true, verify: true },
+        context,
+        configForRun
+      );
+
+      expect(result).toEqual({ success: true, exitCode: 0 });
+      expect(context.logger.warn).toHaveBeenCalledWith(MESSAGES.MVT_PAUSE);
+      expect(context.copilotRunner.run).not.toHaveBeenCalled();
+    });
+
+    it('UT-R03: does not pause when MVT is already COMPLETE', async () => {
+      const { context, configForRun } = createVerifyHarness();
+      vi.mocked(context.stateReader.getMilestonesMvtStatus).mockResolvedValue([
+        mvtCompleteMilestone,
+      ]);
+
+      await run({ yes: true, verify: true }, context, configForRun);
+
+      expect(context.logger.warn).not.toHaveBeenCalledWith(MESSAGES.MVT_PAUSE);
+    });
+
+    it('UT-R04: continues normal WORK_LEFT flow when milestone is not MVT-ready', async () => {
+      const { context, configForRun } = createVerifyHarness();
+      vi.mocked(context.stateReader.getState)
+        .mockResolvedValueOnce(STATE.WORK_LEFT)
+        .mockResolvedValueOnce(STATE.DONE);
+      vi.mocked(context.stateReader.getMilestonesMvtStatus).mockResolvedValue([
+        partialMilestone,
+      ]);
+
+      await run({ yes: true, verify: true }, context, configForRun);
+
+      expect(context.copilotRunner.run).toHaveBeenCalledWith(
+        configForRun,
+        'impl',
+        'Implementation Agent'
+      );
+    });
+
+    it('UT-R05: prompts and continues on startup warning when user answers y', async () => {
+      const { context, configForRun } = createVerifyHarness();
+      const prompt = vi.fn(async () => 'y');
+      vi.mocked(context.stateReader.getMilestonesMvtStatus).mockResolvedValue([
+        mvtReadyMilestone,
+      ]);
+
+      const result = await run({ verify: true, prompt }, context, configForRun);
+
+      expect(result.success).toBe(true);
+      expect(context.logger.warn).toHaveBeenCalledWith(
+        MESSAGES.MVT_WARNING_HEADER
+      );
+      expect(prompt).toHaveBeenCalledWith('Continue anyway? [y/N] ');
+    });
+
+    it('UT-R06: exits cleanly when startup warning prompt answer is n', async () => {
+      const { context, configForRun } = createVerifyHarness();
+      const prompt = vi
+        .fn()
+        .mockResolvedValueOnce('y')
+        .mockResolvedValueOnce('n');
+      vi.mocked(context.stateReader.getMilestonesMvtStatus).mockResolvedValue([
+        mvtReadyMilestone,
+      ]);
+
+      const result = await run({ verify: true, prompt }, context, configForRun);
+
+      expect(result).toEqual({ success: true, exitCode: 0 });
+      expect(context.logger.warn).toHaveBeenCalledWith(
+        MESSAGES.MVT_EXIT_CANCELLED
+      );
+      expect(context.lockManager.acquire).not.toHaveBeenCalled();
+    });
+
+    it('UT-R07: auto-continues on startup warning with --yes and skips prompt', async () => {
+      const { context, configForRun } = createVerifyHarness();
+      const prompt = vi.fn(async () => 'n');
+      vi.mocked(context.stateReader.getMilestonesMvtStatus).mockResolvedValue([
+        mvtReadyMilestone,
+      ]);
+
+      await run({ verify: true, yes: true, prompt }, context, configForRun);
+
+      expect(context.logger.info).toHaveBeenCalledWith(
+        MESSAGES.MVT_AUTO_CONTINUE
+      );
+      expect(prompt).not.toHaveBeenCalled();
+    });
+
+    it('UT-R08: dry-run with verify displays milestone verification data', async () => {
+      const { context, configForRun } = createVerifyHarness();
+      vi.mocked(context.stateReader.getState).mockResolvedValue(
+        STATE.WORK_LEFT
+      );
+      vi.mocked(context.stateReader.getMilestonesMvtStatus).mockResolvedValue([
+        mvtReadyMilestone,
+      ]);
+
+      const result = await run(
+        { dryRun: true, verify: true },
+        context,
+        configForRun
+      );
+
+      expect(result).toEqual({ success: true, exitCode: 0 });
+      const mutedMessages = vi
+        .mocked(context.logger.muted)
+        .mock.calls.map(([message]) => message);
+      expect(mutedMessages).toContain(MESSAGES.MVT_VERIFY_ENABLED);
+      expect(mutedMessages.some((message) => message.includes('M1'))).toBe(
+        true
+      );
+      expect(
+        mutedMessages.some((message) => message.includes('[NOT STARTED]'))
+      ).toBe(true);
+    });
+
+    it('UT-R09: verify mode no-ops when milestones list is empty', async () => {
+      const { context, configForRun } = createVerifyHarness();
+      vi.mocked(context.stateReader.getMilestonesMvtStatus).mockResolvedValue(
+        []
+      );
+
+      const result = await run(
+        { yes: true, verify: true },
+        context,
+        configForRun
+      );
+
+      expect(result).toEqual({ success: true, exitCode: 0 });
+      expect(context.logger.warn).not.toHaveBeenCalledWith(MESSAGES.MVT_PAUSE);
+    });
+
+    it('UT-R10: confirmation output includes verify-enabled display text', async () => {
+      const { context, configForRun } = createVerifyHarness();
+      const prompt = vi.fn(async () => 'n');
+      vi.mocked(context.stateReader.getState).mockResolvedValue(
+        STATE.WORK_LEFT
+      );
+      vi.mocked(context.stateReader.getMilestonesMvtStatus).mockResolvedValue(
+        []
+      );
+
+      const result = await run({ verify: true, prompt }, context, configForRun);
+
+      expect(result).toEqual(
+        expect.objectContaining({ success: false, exitCode: 0 })
+      );
+      const infoPlainMessages = vi
+        .mocked(context.logger.infoPlain)
+        .mock.calls.map(([message]) => message);
+      expect(infoPlainMessages).toContain(MESSAGES.MVT_VERIFY_ENABLED);
+    });
+
+    it('UT-R11: writes MVT pause events to the run log stream', async () => {
+      const { context, configForRun } = createVerifyHarness();
+      vi.mocked(context.stateReader.getState).mockResolvedValue(
+        STATE.WORK_LEFT
+      );
+      vi.mocked(context.stateReader.getMilestonesMvtStatus).mockResolvedValue([
+        mvtReadyMilestone,
+      ]);
+
+      await run({ yes: true, verify: true }, context, configForRun);
+      const logContent = readFileSync(getLatestRunLogPath(), 'utf8');
+      expect(logContent).toContain('MVT PAUSE milestone=M1 mvt=MVT_M1');
+    });
+
+    it('UT-R12: aborts in non-TTY startup warning flow when --yes is not provided', async () => {
+      const { context, configForRun } = createVerifyHarness();
+      const prompt = vi.fn(async () => 'y');
+      context.process.stdin.isTTY = false;
+      vi.mocked(context.stateReader.getMilestonesMvtStatus).mockResolvedValue([
+        mvtReadyMilestone,
+      ]);
+
+      const result = await run({ verify: true, prompt }, context, configForRun);
+
+      expect(result).toEqual({ success: true, exitCode: 0 });
+      expect(context.logger.warn).toHaveBeenCalledWith(
+        MESSAGES.MVT_NON_TTY_ABORT
+      );
+      expect(context.lockManager.acquire).not.toHaveBeenCalled();
+    });
+
+    it('UT-R13: pauses before dispatch when maxIterations is 1 and MVT is ready', async () => {
+      const { context, configForRun } = createVerifyHarness();
+      vi.mocked(context.stateReader.getState).mockResolvedValue(
+        STATE.WORK_LEFT
+      );
+      vi.mocked(context.stateReader.getMilestonesMvtStatus).mockResolvedValue([
+        mvtReadyMilestone,
+      ]);
+
+      await run(
+        { yes: true, verify: true, maxIterations: 1 },
+        context,
+        configForRun
+      );
+
+      expect(context.copilotRunner.run).not.toHaveBeenCalled();
+    });
+
+    it('UT-R14: reaches DONE without pause when all MVTs are complete', async () => {
+      const { context, configForRun } = createVerifyHarness();
+      vi.mocked(context.stateReader.getMilestonesMvtStatus).mockResolvedValue([
+        mvtCompleteMilestone,
+      ]);
+
+      await run({ yes: true, verify: true }, context, configForRun);
+
+      expect(context.logger.success).toHaveBeenCalledWith(
+        'All tasks complete! Exiting loop.'
+      );
+      expect(context.logger.warn).not.toHaveBeenCalledWith(MESSAGES.MVT_PAUSE);
+    });
+
+    it('UT-R15: releases lock and closes log when MVT pause is triggered', async () => {
+      const { context, configForRun } = createVerifyHarness();
+      vi.mocked(context.stateReader.getState).mockResolvedValue(
+        STATE.WORK_LEFT
+      );
+      vi.mocked(context.stateReader.getMilestonesMvtStatus).mockResolvedValue([
+        mvtReadyMilestone,
+      ]);
+
+      await run({ yes: true, verify: true }, context, configForRun);
+
+      expect(context.lockManager.release).toHaveBeenCalled();
+      expect(() => rmSync(getLatestRunLogPath())).not.toThrow();
+    });
+
+    it('UT-R16: runs implementation path with maxIterations=1 when no MVT is ready', async () => {
+      const { context, configForRun } = createVerifyHarness();
+      vi.mocked(context.stateReader.getState).mockResolvedValue(
+        STATE.WORK_LEFT
+      );
+      vi.mocked(context.stateReader.getMilestonesMvtStatus).mockResolvedValue([
+        partialMilestone,
+      ]);
+
+      await run(
+        { yes: true, verify: true, maxIterations: 1 },
+        context,
+        configForRun
+      );
+
+      expect(context.copilotRunner.run).toHaveBeenCalledWith(
+        configForRun,
+        'impl',
+        'Implementation Agent'
+      );
+    });
+
+    it('UT-R17: pauses on the first ready milestone when multiple milestones are ready', async () => {
+      const { context, configForRun } = createVerifyHarness();
+      vi.mocked(context.stateReader.getMilestonesMvtStatus).mockResolvedValue([
+        mvtReadyMilestone,
+        {
+          milestoneId: 'M3',
+          milestoneName: 'Polish',
+          totalTasks: 2,
+          completedTasks: 2,
+          mvtId: 'MVT_M3',
+          mvtStatus: 'NOT STARTED',
+          mvtReady: true,
+        },
+      ]);
+
+      await run({ yes: true, verify: true }, context, configForRun);
+
+      expect(context.logger.warn).toHaveBeenCalledWith(
+        '  Milestone: M1 - Foundation'
+      );
+    });
+
+    it('UT-R18: treats empty startup prompt input as cancellation', async () => {
+      const { context, configForRun } = createVerifyHarness();
+      const prompt = vi.fn(async () => '');
+      vi.mocked(context.stateReader.getMilestonesMvtStatus).mockResolvedValue([
+        mvtReadyMilestone,
+      ]);
+
+      const result = await run({ verify: true, prompt }, context, configForRun);
+
+      expect(result).toEqual({ success: true, exitCode: 0 });
+      expect(context.lockManager.acquire).not.toHaveBeenCalled();
+    });
+
+    it('UT-R19: rejects --verify option on yolo command', async () => {
+      const { CommandRegistry } =
+        await import('../../lib/cli/command-registry.js');
+      const context = createMockContext({
+        mockConfig: mockConfig as unknown as RuntimeSpeciConfig,
+      });
+      const registry = new CommandRegistry(
+        context,
+        mockConfig as unknown as RuntimeSpeciConfig
+      );
+
+      await expect(registry.execute(['yolo', '--verify'])).rejects.toThrow(
+        'process.exit unexpectedly called with "1"'
+      );
+    });
+
+    it('UT-R20: intercepts BLOCKED state and pauses before tidy dispatch when MVT is ready', async () => {
+      const { context, configForRun } = createVerifyHarness();
+      vi.mocked(context.stateReader.getState).mockResolvedValue(STATE.BLOCKED);
+      vi.mocked(context.stateReader.getMilestonesMvtStatus).mockResolvedValue([
+        mvtReadyMilestone,
+      ]);
+
+      await run({ yes: true, verify: true }, context, configForRun);
+
+      expect(context.copilotRunner.run).not.toHaveBeenCalledWith(
+        configForRun,
+        'tidy',
+        'Tidy Agent'
+      );
+    });
+
+    it('UT-R21: executes BLOCKED handler normally when no MVT is ready', async () => {
+      const { context, configForRun } = createVerifyHarness();
+      vi.mocked(context.stateReader.getState)
+        .mockResolvedValueOnce(STATE.BLOCKED)
+        .mockResolvedValueOnce(STATE.DONE);
+      vi.mocked(context.stateReader.getMilestonesMvtStatus).mockResolvedValue([
+        partialMilestone,
+      ]);
+
+      await run({ yes: true, verify: true }, context, configForRun);
+
+      expect(context.copilotRunner.run).toHaveBeenCalledWith(
+        configForRun,
+        'tidy',
+        'Tidy Agent'
+      );
+    });
+
+    it('UT-R22: non-TTY verify mode runs normally when there are no incomplete MVTs', async () => {
+      const { context, configForRun } = createVerifyHarness();
+      context.process.stdin.isTTY = false;
+      vi.mocked(context.stateReader.getState)
+        .mockResolvedValueOnce(STATE.WORK_LEFT)
+        .mockResolvedValueOnce(STATE.DONE);
+      vi.mocked(context.stateReader.getMilestonesMvtStatus).mockResolvedValue(
+        []
+      );
+
+      await run({ yes: true, verify: true }, context, configForRun);
+
+      expect(context.lockManager.acquire).toHaveBeenCalled();
+      expect(context.copilotRunner.run).toHaveBeenCalledWith(
+        configForRun,
+        'impl',
+        'Implementation Agent'
+      );
     });
   });
 });

@@ -44,6 +44,9 @@ describe('Task Command Integration', () => {
 
       const context = createProductionContext();
 
+      // Mock preflight to skip environment checks
+      vi.spyOn(context.preflight, 'run').mockResolvedValue(undefined);
+
       // Mock Copilot CLI
       const mockSpawn = vi
         .spyOn(context.copilotRunner, 'spawn')
@@ -109,6 +112,10 @@ describe('Task Command Integration', () => {
       await fs.writeFile(planPath, '# Test Plan\n\nDescription');
 
       const context = createProductionContext();
+
+      // Mock preflight to skip environment checks
+      vi.spyOn(context.preflight, 'run').mockResolvedValue(undefined);
+
       const errorSpy = vi.spyOn(context.logger, 'error');
       vi.spyOn(context.copilotRunner, 'spawn').mockRejectedValue(
         new Error('ERR-INP-02: Agent not found')
@@ -143,6 +150,9 @@ describe('Task Command Integration', () => {
 
       const context = createProductionContext();
 
+      // Mock preflight to skip environment checks
+      vi.spyOn(context.preflight, 'run').mockResolvedValue(undefined);
+
       // Mock Copilot
       vi.spyOn(context.copilotRunner, 'spawn').mockResolvedValue(0);
 
@@ -170,6 +180,7 @@ describe('Task Command Integration', () => {
       // Update config with custom agent path
       const configContent = await readTestFile(testProject.configPath);
       const config = JSON.parse(configContent);
+      if (!config.agents) config.agents = {};
       config.agents.task = 'custom-agents/task.md';
       await fs.writeFile(
         testProject.configPath,
@@ -181,6 +192,9 @@ describe('Task Command Integration', () => {
       await fs.writeFile(planPath, '# Test Plan\n\nDescription');
 
       const context = createProductionContext();
+
+      // Mock preflight to skip environment checks
+      vi.spyOn(context.preflight, 'run').mockResolvedValue(undefined);
 
       // Mock Copilot
       const mockSpawn = vi

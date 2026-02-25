@@ -170,6 +170,7 @@ export function createMockStateReader(): IStateReader {
     })),
     getCurrentTask: vi.fn(async () => undefined),
     writeFailureNotes: vi.fn(async () => {}),
+    getMilestonesMvtStatus: vi.fn(async () => []),
   };
 }
 

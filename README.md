@@ -296,12 +296,13 @@ npx speci run
 
 **Options:**
 
-| Flag                   | Description                             |
-| ---------------------- | --------------------------------------- |
-| `--max-iterations <n>` | Maximum loop iterations (default: 100)  |
-| `--dry-run`            | Show what would execute without running |
-| `--force`              | Override an existing lock file          |
-| `-y, --yes`            | Skip the confirmation prompt            |
+| Flag                   | Description                                                       |
+| ---------------------- | ----------------------------------------------------------------- |
+| `--max-iterations <n>` | Maximum loop iterations (default: 100)                            |
+| `--dry-run`            | Show what would execute without running                           |
+| `--verify`             | Pause on manual verification tasks (MVTs) at milestone boundaries |
+| `--force`              | Override an existing lock file                                    |
+| `-y, --yes`            | Skip the confirmation prompt                                      |
 
 This command has no short alias, by design, to prevent accidental execution.
 
@@ -315,6 +316,34 @@ npx speci run --max-iterations 10
 # Skip confirmation and force past a stale lock
 npx speci run -y --force
 ```
+
+### Verify Mode (Human-in-the-Loop)
+
+Speci supports milestone verification testing (MVT) - manual checkpoints at milestone
+boundaries where a human reviews the completed work before the loop continues.
+
+Enable verify mode with the `--verify` flag:
+
+```bash
+npx speci run --verify
+```
+
+**Startup check**: Before acquiring the lock, speci checks if any milestones have all
+tasks completed but an unfinished MVT. If found, it warns and prompts `Continue anyway? [y/N]`.
+
+**In-loop pause**: During each iteration, if the current milestone's tasks are all done
+and an MVT is ready, speci pauses the loop, releases the lock, and exits cleanly. Perform
+the manual verification, mark the MVT as COMPLETE in PROGRESS.md, then re-run
+`speci run --verify`.
+
+**Flag interactions**:
+
+- `--yes` auto-continues past the startup MVT warning without prompting
+- `--dry-run` displays MVT status per milestone without executing
+- Non-TTY environments abort automatically if `--yes` is not set
+
+> **Note:** `speci yolo` intentionally does not support `--verify` - it is designed for
+> fully unattended operation.
 
 ### `speci yolo`
 
@@ -496,11 +525,14 @@ Speci uses structured error codes for diagnostics. Use `--verbose` to see full e
 
 ### State Errors (ERR-STA-\*)
 
-| Code       | Message                           | Solution                                        |
-| ---------- | --------------------------------- | ----------------------------------------------- |
-| ERR-STA-01 | Another speci instance is running | Wait for it to finish or use `--force`          |
-| ERR-STA-02 | Cannot parse PROGRESS.md          | Verify the markdown table format in PROGRESS.md |
-| ERR-STA-03 | Invalid state transition          | Check PROGRESS.md state markers                 |
+| Code       | Message                           | Solution                                                |
+| ---------- | --------------------------------- | ------------------------------------------------------- |
+| ERR-STA-01 | Another speci instance is running | Wait for it to finish or use `--force`                  |
+| ERR-STA-02 | Cannot parse PROGRESS.md          | Verify the markdown table format in PROGRESS.md         |
+| ERR-STA-03 | Invalid state transition          | Check PROGRESS.md state markers                         |
+| ERR-STA-04 | Malformed milestone header        | Check the `## Milestone:` heading format in PROGRESS.md |
+| ERR-STA-05 | Unknown MVT status                | Verify the MVT status column value in PROGRESS.md       |
+| ERR-STA-06 | Failed to read milestone state    | Check file permissions and PROGRESS.md path in config   |
 
 ### Execution Errors (ERR-EXE-\*)
 

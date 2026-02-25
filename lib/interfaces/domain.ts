@@ -3,6 +3,7 @@ import type {
   CleanupFn,
   CopilotArgsOptions,
   CurrentTask,
+  MilestoneInfo,
   GateFailureInfo,
   GateResult,
   LockInfo,
@@ -98,6 +99,17 @@ export interface IStateReader {
     config: SpeciConfig,
     gateFailure: GateFailureInfo
   ): Promise<void>;
+
+  /**
+   * Get milestone-level MVT readiness status from PROGRESS.md
+   * @param config - Speci configuration
+   * @param options - Cache options
+   * @returns Milestone status entries
+   */
+  getMilestonesMvtStatus(
+    config: SpeciConfig,
+    options?: StateOptions
+  ): Promise<MilestoneInfo[]>;
 }
 
 /**
