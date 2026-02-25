@@ -19,6 +19,7 @@ import { findSimilarCommands } from '@/utils/suggest.js';
 import { debug, log } from '@/utils/logger.js';
 import { exitWithCleanup } from '@/utils/exit.js';
 import { PreflightError } from '@/utils/preflight.js';
+import { sleepAfterCommand } from '@/utils/sleep.js';
 import type { CommandContext, CommandResult } from '@/interfaces.js';
 import type { SpeciConfig } from '@/types.js';
 
@@ -98,18 +99,40 @@ export class CommandRegistry {
       context: CommandContext,
       config: SpeciConfig
     ) => Promise<CommandResult>
-  ): (options: T) => Promise<void> {
-    return async (options: T) => {
+  ): (options: T, command: Command) => Promise<void> {
+    return async (options: T, command: Command) => {
+      const { sleepAfter, dryRun } = command.opts() as {
+        sleepAfter?: boolean;
+        dryRun?: boolean;
+      };
+      let exitCode: number | undefined;
       try {
         const result = await commandFn(options, this.context, this.config);
         if (!result.success) {
-          await exitWithCleanup(result.exitCode);
+          exitCode = result.exitCode;
         }
       } catch (err) {
         const handled = await this.handlePreflightError(err);
-        if (!handled) {
+        if (handled.handled) {
+          exitCode = handled.exitCode;
+        } else {
+          if (sleepAfter && !dryRun) {
+            await sleepAfterCommand(
+              this.context.process.platform,
+              this.context.logger
+            );
+          }
           throw err;
         }
+      }
+      if (sleepAfter && !dryRun) {
+        await sleepAfterCommand(
+          this.context.process.platform,
+          this.context.logger
+        );
+      }
+      if (exitCode !== undefined) {
+        await exitWithCleanup(exitCode);
       }
     };
   }
@@ -152,6 +175,7 @@ Examples:
       )
       .option('-o, --output <path>', 'Output plan to file')
       .option('-v, --verbose', 'Show detailed output')
+      .option('--sleep-after', 'Put machine to sleep after command completes')
       .addHelpText(
         'after',
         `
@@ -176,6 +200,7 @@ Examples:
       .option('-p, --plan <path>', 'Path to plan file')
       .option('-v, --verbose', 'Show detailed output')
       .option('-c, --clean', 'Clean task files and progress before generating')
+      .option('--sleep-after', 'Put machine to sleep after command completes')
       .addHelpText(
         'after',
         `
@@ -222,6 +247,7 @@ Examples:
       .option('--force', 'Override existing lock')
       .option('-y, --yes', 'Skip confirmation prompt')
       .option('-v, --verbose', 'Show detailed output')
+      .option('--sleep-after', 'Put machine to sleep after command completes')
       .option(
         '--verify',
         'Pause on manual verification tasks (MVTs) at milestone boundaries'
@@ -253,6 +279,7 @@ Examples:
       .option('-o, --output <path>', 'Output plan to file')
       .option('--force', 'Override existing lock')
       .option('-v, --verbose', 'Show detailed output')
+      .option('--sleep-after', 'Put machine to sleep after command completes')
       .addHelpText(
         'after',
         `
@@ -336,9 +363,11 @@ Examples:
 
   /**
    * Handle preflight errors consistently across all commands.
-   * Returns true if the error was handled, false otherwise.
+   * Returns handled metadata for caller-controlled exit handling.
    */
-  private async handlePreflightError(err: unknown): Promise<boolean> {
+  private async handlePreflightError(
+    err: unknown
+  ): Promise<{ handled: true; exitCode: number } | { handled: false }> {
     if (err instanceof PreflightError) {
       log.error(`Preflight check failed: ${err.check}`);
       log.error(err.message);
@@ -346,10 +375,9 @@ Examples:
       for (const step of err.remediation) {
         log.muted(`  • ${step}`);
       }
-      await exitWithCleanup(err.exitCode);
-      return true;
+      return { handled: true, exitCode: err.exitCode };
     }
-    return false;
+    return { handled: false };
   }
 
   /**

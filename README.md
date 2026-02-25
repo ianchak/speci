@@ -199,6 +199,7 @@ npx speci plan -p "Build a REST API for user authentication"
 | `-p, --prompt <text>`    | Initial prompt describing what to plan       |
 | `-i, --input <files...>` | Input files for context (design docs, specs) |
 | `-o, --output <path>`    | Save plan to a specific file                 |
+| `--sleep-after`          | Put machine to sleep after command completes |
 
 ```bash
 # Plan using a design doc as context
@@ -225,6 +226,7 @@ npx speci task --plan docs/plan.md
 | ------------------- | ----------------------------------------------- |
 | `-p, --plan <path>` | Path to plan file (required)                    |
 | `-c, --clean`       | Clean task files and progress before generating |
+| `--sleep-after`     | Put machine to sleep after command completes    |
 
 ```bash
 # Clean existing tasks and regenerate from a new plan
@@ -303,6 +305,7 @@ npx speci run
 | `--verify`             | Pause on manual verification tasks (MVTs) at milestone boundaries |
 | `--force`              | Override an existing lock file                                    |
 | `-y, --yes`            | Skip the confirmation prompt                                      |
+| `--sleep-after`        | Put machine to sleep after command completes                      |
 
 This command has no short alias, by design, to prevent accidental execution.
 
@@ -361,6 +364,7 @@ npx speci yolo -p "Build a REST API for user authentication"
 | `-i, --input <files...>` | Input files for context (design docs, specs) |
 | `-o, --output <path>`    | Save plan to a specific file                 |
 | `--force`                | Override an existing lock file               |
+| `--sleep-after`          | Put machine to sleep after command completes |
 
 Requires at least `--prompt` or `--input`. Only one `yolo` command can run at a time - a lock file prevents concurrent executions.
 

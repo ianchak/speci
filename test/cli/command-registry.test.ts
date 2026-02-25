@@ -5,6 +5,10 @@ import type { CommandContext } from '../../lib/interfaces.js';
 import type { SpeciConfig } from '../../lib/types.js';
 import { createMockContext } from '../../lib/adapters/test-context.js';
 
+type PreflightHandleResult =
+  | { handled: true; exitCode: number }
+  | { handled: false };
+
 describe('CommandRegistry', () => {
   let mockContext: CommandContext;
   let mockConfig: SpeciConfig;
@@ -460,7 +464,9 @@ describe('CommandRegistry', () => {
       const registry = new CommandRegistry(mockContext, mockConfig);
       const handleSpy = vi.spyOn(
         registry as unknown as {
-          handlePreflightError: (err: unknown) => Promise<boolean>;
+          handlePreflightError: (
+            err: unknown
+          ) => Promise<PreflightHandleResult>;
         },
         'handlePreflightError'
       );
@@ -489,7 +495,9 @@ describe('CommandRegistry', () => {
       const registry = new CommandRegistry(mockContext, mockConfig);
       const handleSpy = vi.spyOn(
         registry as unknown as {
-          handlePreflightError: (err: unknown) => Promise<boolean>;
+          handlePreflightError: (
+            err: unknown
+          ) => Promise<PreflightHandleResult>;
         },
         'handlePreflightError'
       );
@@ -501,6 +509,523 @@ describe('CommandRegistry', () => {
 
       vi.doUnmock('@/commands/clean.js');
       vi.doUnmock('@/utils/exit.js');
+    });
+
+    describe('handlePreflightError refactor (TASK_003)', () => {
+      it('returns handled=true with exitCode for PreflightError', async () => {
+        const { CommandRegistry } =
+          await import('../../lib/cli/command-registry.js');
+        const { PreflightError } = await import('../../lib/utils/preflight.js');
+        const registry = new CommandRegistry(mockContext, mockConfig);
+        const preflightError = new PreflightError(
+          'Configuration not found',
+          'No speci.config.json found',
+          ['Run `speci init`']
+        );
+
+        const result = await (
+          registry as unknown as {
+            handlePreflightError: (
+              err: unknown
+            ) => Promise<PreflightHandleResult>;
+          }
+        ).handlePreflightError(preflightError);
+
+        expect(result).toEqual({ handled: true, exitCode: 2 });
+      });
+
+      it('returns handled=false for non-Preflight Error', async () => {
+        const { CommandRegistry } =
+          await import('../../lib/cli/command-registry.js');
+        const registry = new CommandRegistry(mockContext, mockConfig);
+
+        const result = await (
+          registry as unknown as {
+            handlePreflightError: (
+              err: unknown
+            ) => Promise<PreflightHandleResult>;
+          }
+        ).handlePreflightError(new Error('boom'));
+
+        expect(result).toEqual({ handled: false });
+      });
+
+      it('returns handled=false for non-Error throwables', async () => {
+        const { CommandRegistry } =
+          await import('../../lib/cli/command-registry.js');
+        const registry = new CommandRegistry(mockContext, mockConfig);
+
+        const result = await (
+          registry as unknown as {
+            handlePreflightError: (
+              err: unknown
+            ) => Promise<PreflightHandleResult>;
+          }
+        ).handlePreflightError('boom');
+
+        expect(result).toEqual({ handled: false });
+      });
+
+      it('makeAction closure accepts Command as second arg', async () => {
+        const { CommandRegistry } =
+          await import('../../lib/cli/command-registry.js');
+        const registry = new CommandRegistry(mockContext, mockConfig);
+        const action = (
+          registry as unknown as {
+            makeAction: <T>(
+              commandFn: (
+                options: T,
+                context: CommandContext,
+                config: SpeciConfig
+              ) => Promise<{ success: boolean; exitCode: number }>
+            ) => (options: T, command: Command) => Promise<void>;
+          }
+        ).makeAction(async () => ({ success: true, exitCode: 0 }));
+
+        await expect(action({}, new Command())).resolves.toBeUndefined();
+      });
+    });
+
+    describe('--sleep-after integration (TASK_004)', () => {
+      const createActionWithMocks = async (
+        commandFn: (
+          options: Record<string, unknown>,
+          context: CommandContext,
+          config: SpeciConfig
+        ) => Promise<{ success: boolean; exitCode: number }>
+      ) => {
+        vi.resetModules();
+        const sleepAfterCommandMock = vi.fn().mockResolvedValue(undefined);
+        const exitWithCleanupMock = vi.fn(async () => undefined as never);
+        vi.doMock('@/utils/sleep.js', () => ({
+          sleepAfterCommand: sleepAfterCommandMock,
+        }));
+        vi.doMock('@/utils/exit.js', () => ({
+          exitWithCleanup: exitWithCleanupMock,
+        }));
+        const { CommandRegistry } =
+          await import('../../lib/cli/command-registry.js');
+        const registry = new CommandRegistry(mockContext, mockConfig);
+        const action = (
+          registry as unknown as {
+            makeAction: (
+              fn: (
+                options: Record<string, unknown>,
+                context: CommandContext,
+                config: SpeciConfig
+              ) => Promise<{ success: boolean; exitCode: number }>
+            ) => (
+              options: Record<string, unknown>,
+              command: Command
+            ) => Promise<void>;
+          }
+        ).makeAction(commandFn);
+        const cleanup = () => {
+          vi.doUnmock('@/utils/sleep.js');
+          vi.doUnmock('@/utils/exit.js');
+        };
+        return { action, sleepAfterCommandMock, exitWithCleanupMock, cleanup };
+      };
+
+      it('IT-1: calls sleepAfterCommand when --sleep-after is true', async () => {
+        const { action, sleepAfterCommandMock, cleanup } =
+          await createActionWithMocks(async () => ({
+            success: true,
+            exitCode: 0,
+          }));
+        const command = {
+          opts: () => ({ sleepAfter: true }),
+        } as unknown as Command;
+
+        await action({}, command);
+
+        expect(sleepAfterCommandMock).toHaveBeenCalledOnce();
+        expect(sleepAfterCommandMock).toHaveBeenCalledWith(
+          mockContext.process.platform,
+          mockContext.logger
+        );
+        cleanup();
+      });
+
+      it('IT-2: does not call sleepAfterCommand when --sleep-after is absent', async () => {
+        const { action, sleepAfterCommandMock, cleanup } =
+          await createActionWithMocks(async () => ({
+            success: true,
+            exitCode: 0,
+          }));
+        const command = { opts: () => ({}) } as unknown as Command;
+
+        await action({}, command);
+
+        expect(sleepAfterCommandMock).not.toHaveBeenCalled();
+        cleanup();
+      });
+
+      it('IT-3: skips sleep when --dry-run and --sleep-after are both true', async () => {
+        const { action, sleepAfterCommandMock, cleanup } =
+          await createActionWithMocks(async () => ({
+            success: true,
+            exitCode: 0,
+          }));
+        const command = {
+          opts: () => ({ sleepAfter: true, dryRun: true }),
+        } as unknown as Command;
+
+        await action({}, command);
+
+        expect(sleepAfterCommandMock).not.toHaveBeenCalled();
+        cleanup();
+      });
+
+      it('IT-4: calls sleep before exit on command failure result', async () => {
+        const { action, sleepAfterCommandMock, exitWithCleanupMock, cleanup } =
+          await createActionWithMocks(async () => ({
+            success: false,
+            exitCode: 1,
+          }));
+        const command = {
+          opts: () => ({ sleepAfter: true }),
+        } as unknown as Command;
+
+        await action({}, command);
+
+        expect(sleepAfterCommandMock).toHaveBeenCalledOnce();
+        expect(exitWithCleanupMock).toHaveBeenCalledWith(1);
+        expect(sleepAfterCommandMock.mock.invocationCallOrder[0]).toBeLessThan(
+          exitWithCleanupMock.mock.invocationCallOrder[0]
+        );
+        cleanup();
+      });
+
+      it('IT-5: calls sleep on generic thrown Error and rethrows', async () => {
+        const { action, sleepAfterCommandMock, cleanup } =
+          await createActionWithMocks(async () => {
+            throw new Error('boom');
+          });
+        const command = {
+          opts: () => ({ sleepAfter: true }),
+        } as unknown as Command;
+
+        await expect(action({}, command)).rejects.toThrow('boom');
+        expect(sleepAfterCommandMock).toHaveBeenCalledOnce();
+        cleanup();
+      });
+
+      it('IT-6: includes --sleep-after on plan command', async () => {
+        const { CommandRegistry } =
+          await import('../../lib/cli/command-registry.js');
+        const registry = new CommandRegistry(mockContext, mockConfig);
+        const planCmd = registry
+          .getProgram()
+          .commands.find((cmd: Command) => cmd.name() === 'plan');
+        const optionNames = planCmd?.options.map(
+          (opt: { long?: string }) => opt.long
+        );
+
+        expect(optionNames).toContain('--sleep-after');
+      });
+
+      it('IT-7: includes --sleep-after on task command', async () => {
+        const { CommandRegistry } =
+          await import('../../lib/cli/command-registry.js');
+        const registry = new CommandRegistry(mockContext, mockConfig);
+        const taskCmd = registry
+          .getProgram()
+          .commands.find((cmd: Command) => cmd.name() === 'task');
+        const optionNames = taskCmd?.options.map(
+          (opt: { long?: string }) => opt.long
+        );
+
+        expect(optionNames).toContain('--sleep-after');
+      });
+
+      it('IT-8: includes --sleep-after on run command', async () => {
+        const { CommandRegistry } =
+          await import('../../lib/cli/command-registry.js');
+        const registry = new CommandRegistry(mockContext, mockConfig);
+        const runCmd = registry
+          .getProgram()
+          .commands.find((cmd: Command) => cmd.name() === 'run');
+        const optionNames = runCmd?.options.map(
+          (opt: { long?: string }) => opt.long
+        );
+
+        expect(optionNames).toContain('--sleep-after');
+      });
+
+      it('IT-9: includes --sleep-after on yolo command', async () => {
+        const { CommandRegistry } =
+          await import('../../lib/cli/command-registry.js');
+        const registry = new CommandRegistry(mockContext, mockConfig);
+        const yoloCmd = registry
+          .getProgram()
+          .commands.find((cmd: Command) => cmd.name() === 'yolo');
+        const optionNames = yoloCmd?.options.map(
+          (opt: { long?: string }) => opt.long
+        );
+
+        expect(optionNames).toContain('--sleep-after');
+      });
+
+      it('IT-10: preserves original exit code when sleeping on failure', async () => {
+        const { action, exitWithCleanupMock, cleanup } =
+          await createActionWithMocks(async () => ({
+            success: false,
+            exitCode: 1,
+          }));
+        const command = {
+          opts: () => ({ sleepAfter: true }),
+        } as unknown as Command;
+
+        await action({}, command);
+
+        expect(exitWithCleanupMock).toHaveBeenCalledWith(1);
+        cleanup();
+      });
+
+      it('IT-11: invokes sleep after command cleanup work', async () => {
+        const cleanupWorkMock = vi.fn();
+        const { action, sleepAfterCommandMock, cleanup } =
+          await createActionWithMocks(async () => {
+            cleanupWorkMock();
+            return { success: true, exitCode: 0 };
+          });
+        const command = {
+          opts: () => ({ sleepAfter: true }),
+        } as unknown as Command;
+
+        await action({}, command);
+
+        expect(cleanupWorkMock).toHaveBeenCalledOnce();
+        expect(cleanupWorkMock.mock.invocationCallOrder[0]).toBeLessThan(
+          sleepAfterCommandMock.mock.invocationCallOrder[0]
+        );
+        cleanup();
+      });
+
+      it('IT-12: sleeps before exit for PreflightError path', async () => {
+        vi.resetModules();
+        const sleepAfterCommandMock = vi.fn().mockResolvedValue(undefined);
+        const exitWithCleanupMock = vi.fn(async () => undefined as never);
+        vi.doMock('@/utils/sleep.js', () => ({
+          sleepAfterCommand: sleepAfterCommandMock,
+        }));
+        vi.doMock('@/utils/exit.js', () => ({
+          exitWithCleanup: exitWithCleanupMock,
+        }));
+        const { PreflightError } = await import('../../lib/utils/preflight.js');
+        const { CommandRegistry } =
+          await import('../../lib/cli/command-registry.js');
+        const registry = new CommandRegistry(mockContext, mockConfig);
+        const action = (
+          registry as unknown as {
+            makeAction: (
+              fn: (
+                options: Record<string, unknown>,
+                context: CommandContext,
+                config: SpeciConfig
+              ) => Promise<{ success: boolean; exitCode: number }>
+            ) => (
+              options: Record<string, unknown>,
+              command: Command
+            ) => Promise<void>;
+          }
+        ).makeAction(async () => {
+          throw new PreflightError('Config missing', 'no config', ['run init']);
+        });
+        const command = {
+          opts: () => ({ sleepAfter: true }),
+        } as unknown as Command;
+
+        await action({}, command);
+
+        expect(sleepAfterCommandMock).toHaveBeenCalledOnce();
+        expect(exitWithCleanupMock).toHaveBeenCalledWith(2);
+        expect(sleepAfterCommandMock.mock.invocationCallOrder[0]).toBeLessThan(
+          exitWithCleanupMock.mock.invocationCallOrder[0]
+        );
+        vi.doUnmock('@/utils/sleep.js');
+        vi.doUnmock('@/utils/exit.js');
+      });
+
+      it('IT-13: triggers sleep for instant successful command', async () => {
+        const { action, sleepAfterCommandMock, cleanup } =
+          await createActionWithMocks(async () => ({
+            success: true,
+            exitCode: 0,
+          }));
+        const command = {
+          opts: () => ({ sleepAfter: true }),
+        } as unknown as Command;
+
+        await action({}, command);
+
+        expect(sleepAfterCommandMock).toHaveBeenCalledOnce();
+        cleanup();
+      });
+
+      it('IT-14: invokes sleep after async command completion', async () => {
+        const completeMock = vi.fn();
+        const { action, sleepAfterCommandMock, cleanup } =
+          await createActionWithMocks(async () => {
+            await Promise.resolve();
+            completeMock();
+            return { success: true, exitCode: 0 };
+          });
+        const command = {
+          opts: () => ({ sleepAfter: true }),
+        } as unknown as Command;
+
+        await action({}, command);
+
+        expect(completeMock.mock.invocationCallOrder[0]).toBeLessThan(
+          sleepAfterCommandMock.mock.invocationCallOrder[0]
+        );
+        cleanup();
+      });
+
+      it('IT-15: triggers sleep for early-exit success result', async () => {
+        const { action, sleepAfterCommandMock, cleanup } =
+          await createActionWithMocks(async () => ({
+            success: true,
+            exitCode: 0,
+          }));
+        const command = {
+          opts: () => ({ sleepAfter: true }),
+        } as unknown as Command;
+
+        await action({}, command);
+
+        expect(sleepAfterCommandMock).toHaveBeenCalledOnce();
+        cleanup();
+      });
+
+      it('IT-16: calls sleep for non-Error throwable and rethrows value', async () => {
+        const { action, sleepAfterCommandMock, cleanup } =
+          await createActionWithMocks(async () => {
+            throw 'unexpected';
+          });
+        const command = {
+          opts: () => ({ sleepAfter: true }),
+        } as unknown as Command;
+
+        await expect(action({}, command)).rejects.toBe('unexpected');
+        expect(sleepAfterCommandMock).toHaveBeenCalledOnce();
+        cleanup();
+      });
+
+      it('IT-17: passes DI platform value into sleepAfterCommand', async () => {
+        mockContext.process.platform = 'darwin';
+        const { action, sleepAfterCommandMock, cleanup } =
+          await createActionWithMocks(async () => ({
+            success: true,
+            exitCode: 0,
+          }));
+        const command = {
+          opts: () => ({ sleepAfter: true }),
+        } as unknown as Command;
+
+        await action({}, command);
+
+        expect(sleepAfterCommandMock).toHaveBeenCalledWith(
+          'darwin',
+          mockContext.logger
+        );
+        cleanup();
+      });
+
+      it('IT-18: passes context logger reference into sleepAfterCommand', async () => {
+        const { action, sleepAfterCommandMock, cleanup } =
+          await createActionWithMocks(async () => ({
+            success: true,
+            exitCode: 0,
+          }));
+        const command = {
+          opts: () => ({ sleepAfter: true }),
+        } as unknown as Command;
+
+        await action({}, command);
+
+        expect(sleepAfterCommandMock.mock.calls[0][1]).toBe(mockContext.logger);
+        cleanup();
+      });
+
+      it('IT-19: does not include --sleep-after on init/status/clean/refactor', async () => {
+        const { CommandRegistry } =
+          await import('../../lib/cli/command-registry.js');
+        const registry = new CommandRegistry(mockContext, mockConfig);
+        const commandNames = ['init', 'status', 'clean', 'refactor'];
+
+        for (const commandName of commandNames) {
+          const cmd = registry
+            .getProgram()
+            .commands.find((c: Command) => c.name() === commandName);
+          const optionNames = cmd?.options.map(
+            (opt: { long?: string }) => opt.long
+          );
+          expect(optionNames).not.toContain('--sleep-after');
+        }
+      });
+
+      it('IT-20: preflight handled result is consumed before exit', async () => {
+        vi.resetModules();
+        const sleepAfterCommandMock = vi.fn().mockResolvedValue(undefined);
+        const exitWithCleanupMock = vi.fn(async () => undefined as never);
+        vi.doMock('@/utils/sleep.js', () => ({
+          sleepAfterCommand: sleepAfterCommandMock,
+        }));
+        vi.doMock('@/utils/exit.js', () => ({
+          exitWithCleanup: exitWithCleanupMock,
+        }));
+        const { PreflightError } = await import('../../lib/utils/preflight.js');
+        const { CommandRegistry } =
+          await import('../../lib/cli/command-registry.js');
+        const registry = new CommandRegistry(mockContext, mockConfig);
+        const action = (
+          registry as unknown as {
+            makeAction: (
+              fn: (
+                options: Record<string, unknown>,
+                context: CommandContext,
+                config: SpeciConfig
+              ) => Promise<{ success: boolean; exitCode: number }>
+            ) => (
+              options: Record<string, unknown>,
+              command: Command
+            ) => Promise<void>;
+          }
+        ).makeAction(async () => {
+          throw new PreflightError('Copilot missing', 'missing', ['install']);
+        });
+        const command = {
+          opts: () => ({ sleepAfter: true }),
+        } as unknown as Command;
+
+        await action({}, command);
+
+        expect(exitWithCleanupMock).toHaveBeenCalledWith(2);
+        expect(sleepAfterCommandMock.mock.invocationCallOrder[0]).toBeLessThan(
+          exitWithCleanupMock.mock.invocationCallOrder[0]
+        );
+        vi.doUnmock('@/utils/sleep.js');
+        vi.doUnmock('@/utils/exit.js');
+      });
+
+      it('IT-21: reads sleepAfter from command.opts(), not options object', async () => {
+        const { action, sleepAfterCommandMock, cleanup } =
+          await createActionWithMocks(async () => ({
+            success: true,
+            exitCode: 0,
+          }));
+        const command = {
+          opts: () => ({ sleepAfter: true }),
+        } as unknown as Command;
+
+        await action({ sleepAfter: false }, command);
+
+        expect(sleepAfterCommandMock).toHaveBeenCalledOnce();
+        cleanup();
+      });
     });
   });
 
