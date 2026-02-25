@@ -72,10 +72,34 @@ export function drawBox(
   content: string | string[],
   options: BoxOptions = {}
 ): string {
-  const { title, padding = 1, width = 60, borderColor = 'sky400' } = options;
+  const {
+    title,
+    padding = 1,
+    width = 60,
+    style = 'double',
+    borderColor = 'sky400',
+  } = options;
 
   const useUnicode = supportsUnicode();
-  const chars = useUnicode ? BOX_CHARS : ASCII_BOX_CHARS;
+  const allChars = useUnicode ? BOX_CHARS : ASCII_BOX_CHARS;
+  const chars =
+    style === 'single'
+      ? {
+          topLeft: allChars.singleTopLeft,
+          topRight: allChars.singleTopRight,
+          bottomLeft: allChars.singleBottomLeft,
+          bottomRight: allChars.singleBottomRight,
+          horizontal: allChars.singleHorizontal,
+          vertical: allChars.singleVertical,
+        }
+      : {
+          topLeft: allChars.topLeft,
+          topRight: allChars.topRight,
+          bottomLeft: allChars.bottomLeft,
+          bottomRight: allChars.bottomRight,
+          horizontal: allChars.horizontal,
+          vertical: allChars.vertical,
+        };
   const lines = Array.isArray(content) ? content : content.split('\n');
 
   // Calculate content width

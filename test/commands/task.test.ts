@@ -127,7 +127,11 @@ describe('task command', () => {
 
     // Clean up test directory
     if (existsSync(testDir)) {
-      rmSync(testDir, { recursive: true, force: true });
+      try {
+        rmSync(testDir, { recursive: true, force: true, maxRetries: 3, retryDelay: 100 });
+      } catch {
+        // Ignore cleanup errors on Windows (EBUSY)
+      }
     }
 
     vi.restoreAllMocks();
@@ -218,7 +222,13 @@ describe('task command', () => {
     });
 
     it('should exit with error when agent file not found', async () => {
-      const result = await task({ plan: 'plan.md', agent: 'nonexistent.md' });
+      // Remove the agent file so validateAgentFile fails before spawning copilot
+      const agentFile = join(testDir, '.github', 'agents', 'speci-task.agent.md');
+      if (existsSync(agentFile)) {
+        rmSync(agentFile);
+      }
+
+      const result = await task({ plan: 'plan.md' });
       expect(result.success).toBe(false);
       expect(result.exitCode).toBe(1);
     });

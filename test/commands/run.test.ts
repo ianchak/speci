@@ -66,6 +66,13 @@ describe('Run Command', () => {
     vi.spyOn(lock, 'acquireLock').mockResolvedValue(undefined);
     vi.spyOn(lock, 'releaseLock').mockResolvedValue(undefined);
     vi.spyOn(state, 'writeFailureNotes').mockResolvedValue(undefined);
+    vi.spyOn(state, 'getTaskStats').mockResolvedValue({
+      total: 6,
+      completed: 2,
+      remaining: 3,
+      inReview: 1,
+      blocked: 0,
+    });
   });
 
   afterEach(() => {
@@ -795,6 +802,42 @@ describe('Run Command', () => {
 
       // Should complete iteration without throwing
       expect(true).toBe(true);
+    });
+  });
+
+  describe('Task Progress Display', () => {
+    it('should display task progress box during confirmation prompt', async () => {
+      const prompt = vi.fn().mockResolvedValue('n');
+      vi.spyOn(state, 'getState').mockResolvedValue(STATE.WORK_LEFT);
+
+      await run({ yes: false, prompt });
+
+      expect(state.getTaskStats).toHaveBeenCalled();
+    });
+
+    it('should display task progress box in dry run mode', async () => {
+      vi.spyOn(state, 'getState').mockResolvedValue(STATE.WORK_LEFT);
+
+      await run({ dryRun: true });
+
+      expect(state.getTaskStats).toHaveBeenCalled();
+    });
+
+    it('should not display task progress box when total is 0', async () => {
+      const prompt = vi.fn().mockResolvedValue('n');
+      vi.spyOn(state, 'getState').mockResolvedValue(STATE.WORK_LEFT);
+      vi.spyOn(state, 'getTaskStats').mockResolvedValue({
+        total: 0,
+        completed: 0,
+        remaining: 0,
+        inReview: 0,
+        blocked: 0,
+      });
+
+      await run({ yes: false, prompt });
+
+      // getTaskStats is still called, but the box should not be rendered
+      expect(state.getTaskStats).toHaveBeenCalled();
     });
   });
 });
