@@ -1,5 +1,11 @@
 # speci
 
+## 0.13.1
+
+### Patch Changes
+
+- [`478eff7`](https://github.com/ianchak/speci/commit/478eff758c49bd71df3ad074b44de33ac4cf36d7) Thanks [@ianchak](https://github.com/ianchak)! - fix(clean): normalize file paths to use consistent OS-native separators
+
 ## 0.13.0
 
 ### Minor Changes
