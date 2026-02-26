@@ -965,6 +965,190 @@ describe('clean() prompt', () => {
   });
 });
 
+describe('clean() integration', () => {
+  let context: CommandContext;
+  let config: SpeciConfig;
+
+  beforeEach(() => {
+    context = createMockContext({ cwd: MOCK_CWD });
+    config = createConfig();
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  function setExists(paths: string[]): void {
+    vi.spyOn(context.fs, 'existsSync').mockImplementation((path: string) =>
+      paths.includes(path)
+    );
+  }
+
+  it('IT-1: clean() with --yes passes through to cleanFiles and deletes', async () => {
+    setExists([config.paths.tasks, config.paths.progress]);
+    vi.spyOn(context.fs, 'readdirSync').mockReturnValue([
+      'TASK_001.md',
+      'TASK_002.md',
+    ]);
+
+    const result = await clean({ yes: true }, context, config);
+
+    expect(result).toEqual({ success: true, exitCode: 0 });
+    expect(context.fs.rmSync).toHaveBeenCalledTimes(2);
+    expect(context.fs.unlinkSync).toHaveBeenCalledWith(config.paths.progress);
+  });
+
+  it('IT-2: clean() prompt confirmed leads to cleanFiles execution', async () => {
+    setExists([config.paths.tasks, config.paths.progress]);
+    vi.spyOn(context.fs, 'readdirSync').mockReturnValue(['TASK_001.md']);
+    const prompt = vi.fn().mockResolvedValue('y');
+
+    const result = await clean({ prompt }, context, config);
+
+    expect(result).toEqual({ success: true, exitCode: 0 });
+    expect(prompt).toHaveBeenCalledTimes(1);
+    expect(context.fs.rmSync).toHaveBeenCalledWith(
+      join(config.paths.tasks, 'TASK_001.md'),
+      { recursive: true, force: true }
+    );
+    expect(context.fs.unlinkSync).toHaveBeenCalledWith(config.paths.progress);
+  });
+
+  it('IT-3: clean() prompt rejected prevents any deletion', async () => {
+    setExists([config.paths.tasks, config.paths.progress]);
+    vi.spyOn(context.fs, 'readdirSync').mockReturnValue(['TASK_001.md']);
+    const prompt = vi.fn().mockResolvedValue('n');
+
+    const result = await clean({ prompt }, context, config);
+
+    expect(result).toEqual({ success: true, exitCode: 0 });
+    expect(prompt).toHaveBeenCalledTimes(1);
+    expect(context.fs.rmSync).not.toHaveBeenCalled();
+    expect(context.fs.unlinkSync).not.toHaveBeenCalled();
+    expect(context.logger.info).toHaveBeenCalledWith('Clean cancelled.');
+  });
+
+  it('IT-4: clean() lock file check happens before prompt', async () => {
+    setExists([config.paths.lock, config.paths.tasks, config.paths.progress]);
+    vi.spyOn(context.fs, 'readdirSync').mockReturnValue(['TASK_001.md']);
+    const prompt = vi.fn().mockResolvedValue('y');
+
+    const result = await clean({ prompt }, context, config);
+
+    expect(result.success).toBe(false);
+    expect(prompt).not.toHaveBeenCalled();
+    expect(context.fs.rmSync).not.toHaveBeenCalled();
+  });
+
+  it('IT-5: clean() path-outside-root check happens before prompt', async () => {
+    const outsideConfig = createConfig({
+      tasks: resolve(MOCK_CWD, '../outside/tasks'),
+      progress: 'docs/PROGRESS.md',
+    });
+    const prompt = vi.fn().mockResolvedValue('y');
+
+    const result = await clean({ prompt }, context, outsideConfig);
+
+    expect(result.success).toBe(false);
+    expect(result.error).toContain(
+      'Configured path resolves outside the project root'
+    );
+    expect(prompt).not.toHaveBeenCalled();
+    expect(context.fs.rmSync).not.toHaveBeenCalled();
+  });
+
+  it('IT-6: enumerateCleanTargets returns correct file list to confirmClean', async () => {
+    setExists([config.paths.tasks, config.paths.progress]);
+    vi.spyOn(context.fs, 'readdirSync').mockReturnValue([
+      'TASK_001.md',
+      'TASK_002.md',
+      'TASK_003.md',
+    ]);
+    const prompt = vi.fn().mockResolvedValue('y');
+
+    await clean({ prompt }, context, config);
+
+    expect(prompt).toHaveBeenCalledWith('Delete 4 file(s)? [y/N] ');
+    expect(vi.mocked(context.logger.info).mock.calls).toHaveLength(4);
+  });
+
+  it('IT-7: clean() enumerate -> list -> prompt -> delete sequence verified', async () => {
+    setExists([config.paths.tasks, config.paths.progress]);
+    vi.spyOn(context.fs, 'readdirSync').mockReturnValue(['TASK_001.md']);
+    const callLog: string[] = [];
+    vi.spyOn(context.logger, 'info').mockImplementation((message: string) => {
+      callLog.push(`info:${message}`);
+    });
+    const prompt = vi.fn(async () => {
+      callLog.push('prompt');
+      return 'y';
+    });
+    vi.spyOn(context.fs, 'rmSync').mockImplementation(() => {
+      callLog.push('rm');
+    });
+    vi.spyOn(context.fs, 'unlinkSync').mockImplementation(() => {
+      callLog.push('unlink');
+    });
+
+    const result = await clean({ prompt }, context, config);
+
+    expect(result).toEqual({ success: true, exitCode: 0 });
+    const promptIndex = callLog.indexOf('prompt');
+    const rmIndex = callLog.indexOf('rm');
+    const unlinkIndex = callLog.indexOf('unlink');
+    expect(callLog[0]).toContain('info:');
+    expect(promptIndex).toBeGreaterThan(0);
+    expect(rmIndex).toBeGreaterThan(promptIndex);
+    expect(unlinkIndex).toBeGreaterThan(promptIndex);
+  });
+
+  it('IT-8: clean() non-TTY stdin with --yes still deletes', async () => {
+    setExists([config.paths.tasks, config.paths.progress]);
+    vi.spyOn(context.fs, 'readdirSync').mockReturnValue(['TASK_001.md']);
+    Object.assign(context.process.stdin, { isTTY: false });
+
+    const result = await clean({ yes: true }, context, config);
+
+    expect(result).toEqual({ success: true, exitCode: 0 });
+    expect(context.fs.rmSync).toHaveBeenCalledWith(
+      join(config.paths.tasks, 'TASK_001.md'),
+      { recursive: true, force: true }
+    );
+    expect(context.fs.unlinkSync).toHaveBeenCalledWith(config.paths.progress);
+  });
+
+  it('IT-9: clean() loads config and threads it to cleanFiles when not pre-loaded', async () => {
+    setExists([config.paths.tasks, config.paths.progress]);
+    vi.spyOn(context.fs, 'readdirSync').mockReturnValue(['TASK_001.md']);
+    const loadSpy = vi
+      .spyOn(context.configLoader, 'load')
+      .mockResolvedValue(config);
+
+    const result = await clean({ yes: true }, context);
+
+    expect(result).toEqual({ success: true, exitCode: 0 });
+    expect(loadSpy).toHaveBeenCalledTimes(1);
+    expect(context.fs.rmSync).toHaveBeenCalledWith(
+      join(config.paths.tasks, 'TASK_001.md'),
+      { recursive: true, force: true }
+    );
+  });
+
+  it('IT-10: cleanFiles() called directly (task --clean bypass) works without prompt', () => {
+    setExists([config.paths.tasks, config.paths.progress]);
+    vi.spyOn(context.fs, 'readdirSync').mockReturnValue([
+      'TASK_001.md',
+      'TASK_002.md',
+    ]);
+
+    const result = cleanFiles(config, context);
+
+    expect(result).toEqual({ success: true, exitCode: 0 });
+    expect(context.fs.rmSync).toHaveBeenCalledTimes(2);
+    expect(context.fs.unlinkSync).toHaveBeenCalledWith(config.paths.progress);
+  });
+});
+
 describe.skip('task --clean', () => {
   it('calls cleanFiles before task generation when --clean is set', () => {
     expect(true).toBe(true);

@@ -326,11 +326,13 @@ Examples:
       .alias('c')
       .description('Remove generated task files and progress file')
       .option('-v, --verbose', 'Show detailed output')
+      .option('-y, --yes', 'Skip confirmation prompt')
       .addHelpText(
         'after',
         `
 Examples:
   $ speci clean                        Remove generated task files and progress file
+  $ speci clean --yes                  Skip confirmation prompt
   $ speci c                            Short alias version
   $ speci task --clean -p plan.md      Clean before generating tasks
 `
