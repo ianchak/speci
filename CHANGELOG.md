@@ -1,5 +1,11 @@
 # speci
 
+## 0.13.0
+
+### Minor Changes
+
+- [`a15f66e`](https://github.com/ianchak/speci/commit/a15f66e5dceffba8fdf8e89784f58f178498da63) Thanks [@ianchak](https://github.com/ianchak)! - feat(clean): add interactive confirmation prompt with --yes flag to skip
+
 ## 0.12.0
 
 ### Minor Changes
