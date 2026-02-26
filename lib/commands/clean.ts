@@ -1,4 +1,4 @@
-import { join, resolve, sep } from 'node:path';
+import { join, normalize, resolve, sep } from 'node:path';
 import { createInterface } from 'node:readline';
 import { createProductionContext } from '@/adapters/context-factory.js';
 import type { SpeciConfig } from '@/types.js';
@@ -21,12 +21,12 @@ function enumerateCleanTargets(
   if (context.fs.existsSync(config.paths.tasks)) {
     const entries = context.fs.readdirSync(config.paths.tasks);
     for (const entry of entries) {
-      filesToDelete.push(join(config.paths.tasks, entry));
+      filesToDelete.push(normalize(join(config.paths.tasks, entry)));
     }
   }
 
   if (context.fs.existsSync(config.paths.progress)) {
-    filesToDelete.push(config.paths.progress);
+    filesToDelete.push(normalize(config.paths.progress));
   }
 
   return filesToDelete;
@@ -40,6 +40,7 @@ async function confirmClean(
   for (const filePath of filesToDelete) {
     context.logger.info(filePath);
   }
+  context.logger.raw('');
 
   const question = `Delete ${filesToDelete.length} file(s)? [y/N] `;
   const answer = promptFn
@@ -102,10 +103,12 @@ export function cleanFiles(
     const progressExists = context.fs.existsSync(config.paths.progress);
 
     if (tasksExists) {
-      context.logger.warn(`Will delete contents of: ${config.paths.tasks}`);
+      context.logger.warn(
+        `Will delete contents of: ${normalize(config.paths.tasks)}`
+      );
     }
     if (progressExists) {
-      context.logger.warn(`Will delete: ${config.paths.progress}`);
+      context.logger.warn(`Will delete: ${normalize(config.paths.progress)}`);
     }
 
     const errors: string[] = [];
@@ -125,7 +128,7 @@ export function cleanFiles(
       }
 
       for (const entry of entries) {
-        const entryPath = join(config.paths.tasks, entry);
+        const entryPath = normalize(join(config.paths.tasks, entry));
         try {
           context.fs.rmSync(entryPath, { recursive: true, force: true });
           context.logger.debug(`Deleted ${entryPath}`);
@@ -140,14 +143,17 @@ export function cleanFiles(
     if (progressExists) {
       try {
         context.fs.unlinkSync(config.paths.progress);
-        context.logger.debug(`Deleted ${config.paths.progress}`);
+        context.logger.debug(`Deleted ${normalize(config.paths.progress)}`);
         deletedCount++;
       } catch {
-        errors.push(config.paths.progress);
-        context.logger.warn(`Failed to delete: ${config.paths.progress}`);
+        errors.push(normalize(config.paths.progress));
+        context.logger.warn(
+          `Failed to delete: ${normalize(config.paths.progress)}`
+        );
       }
     }
 
+    context.logger.raw('');
     if (deletedCount === 0 && errors.length === 0) {
       context.logger.info('Nothing to clean.');
     } else if (errors.length === 0) {
@@ -230,6 +236,7 @@ export async function clean(
       options.prompt
     );
     if (!confirmed) {
+      context.logger.raw('');
       context.logger.info('Clean cancelled.');
       return { success: true, exitCode: 0 };
     }

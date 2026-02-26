@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { join, resolve } from 'node:path';
+import { join, normalize, resolve } from 'node:path';
 import { tmpdir } from 'node:os';
 import { PassThrough } from 'node:stream';
 import { clean, cleanFiles } from '../../lib/commands/clean.js';
@@ -258,7 +258,7 @@ describe('cleanFiles', () => {
 
     expect(result.success).toBe(false);
     expect(result.error).toContain('[ERR-EXE-10]');
-    expect(result.error).toContain(config.paths.progress);
+    expect(result.error).toContain(normalize(config.paths.progress));
     expect(context.fs.rmSync).toHaveBeenCalledTimes(1);
   });
 
@@ -306,7 +306,7 @@ describe('cleanFiles', () => {
 
     expect(result.success).toBe(false);
     expect(result.error).toContain('[ERR-EXE-10]');
-    expect(result.error).toContain(config.paths.progress);
+    expect(result.error).toContain(normalize(config.paths.progress));
   });
 
   it('handles file vanishing between readdir and rmSync', () => {
@@ -670,7 +670,9 @@ describe('clean() prompt', () => {
     const result = await clean({ prompt }, context, config);
 
     expect(result).toEqual({ success: true, exitCode: 0 });
-    expect(context.logger.info).toHaveBeenCalledWith(config.paths.progress);
+    expect(context.logger.info).toHaveBeenCalledWith(
+      normalize(config.paths.progress)
+    );
     expect(prompt).toHaveBeenCalledWith('Delete 1 file(s)? [y/N] ');
     expect(context.fs.unlinkSync).not.toHaveBeenCalled();
   });
@@ -695,7 +697,7 @@ describe('clean() prompt', () => {
     );
     expect(context.logger.info).toHaveBeenNthCalledWith(
       3,
-      config.paths.progress
+      normalize(config.paths.progress)
     );
   });
 
@@ -918,7 +920,7 @@ describe('clean() prompt', () => {
       join(config.paths.tasks, 'TASK_001.md'),
       { recursive: true, force: true }
     );
-    expect(result.error).toContain(config.paths.progress);
+    expect(result.error).toContain(normalize(config.paths.progress));
   });
 
   it('removes symlinks without following them', async () => {
