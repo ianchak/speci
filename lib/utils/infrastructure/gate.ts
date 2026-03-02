@@ -15,6 +15,7 @@ import { colorize } from '@/ui/colors.js';
 export type { GateCommandResult, GateResult } from '@/types.js';
 
 const DEFAULT_TIMEOUT = 5 * 60 * 1000; // 5 minutes
+const SIGKILL_GRACE_MS = 5000;
 
 /**
  * Execute a single gate command
@@ -33,6 +34,8 @@ export async function executeGateCommand(
     const stdoutChunks: string[] = [];
     const stderrChunks: string[] = [];
     let timedOut = false;
+    let exited = false;
+    let killTimer: ReturnType<typeof setTimeout> | undefined;
 
     const child = spawn(command, [], {
       shell: true,
@@ -43,6 +46,12 @@ export async function executeGateCommand(
     const timer = setTimeout(() => {
       timedOut = true;
       child.kill('SIGTERM');
+      killTimer = setTimeout(() => {
+        if (!exited) {
+          // SIGKILL targets only the shell child; Unix grandchildren in other process groups may survive.
+          child.kill('SIGKILL');
+        }
+      }, SIGKILL_GRACE_MS);
     }, timeout);
 
     child.stdout?.on('data', (data: Buffer | string) => {
@@ -54,7 +63,11 @@ export async function executeGateCommand(
     });
 
     child.on('close', (code) => {
+      exited = true;
       clearTimeout(timer);
+      if (killTimer !== undefined) {
+        clearTimeout(killTimer);
+      }
       const duration = Date.now() - startTime;
       const stdout = stdoutChunks.join('');
       const stderr = stderrChunks.join('');
@@ -71,6 +84,9 @@ export async function executeGateCommand(
 
     child.on('error', (err) => {
       clearTimeout(timer);
+      if (killTimer !== undefined) {
+        clearTimeout(killTimer);
+      }
       const duration = Date.now() - startTime;
 
       resolve({
