@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { mkdirSync, rmSync, writeFileSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
+import * as atomicWriteModule from '../lib/utils/atomic-write.js';
 import {
   STATE,
   getState,
@@ -1562,6 +1563,22 @@ ${extraContent}`;
         ...overrides,
       };
     }
+
+    it('should persist updates via atomicWrite', async () => {
+      writeProgressWithHandoff();
+      const failure = makeGateFailure();
+      const atomicWriteSpy = vi
+        .spyOn(atomicWriteModule, 'atomicWrite')
+        .mockResolvedValue(undefined);
+
+      await writeFailureNotes(mockConfig, failure);
+
+      expect(atomicWriteSpy).toHaveBeenCalledTimes(1);
+      expect(atomicWriteSpy).toHaveBeenCalledWith(
+        mockConfig.paths.progress,
+        expect.any(String)
+      );
+    });
 
     it('should populate the For Fix Agent table with failure info', async () => {
       writeProgressWithHandoff();

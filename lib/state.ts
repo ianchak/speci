@@ -8,7 +8,7 @@
  * multiple state functions are called in quick succession.
  */
 
-import { readFile, writeFile } from 'node:fs/promises';
+import { readFile } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import type {
   SpeciConfig,
@@ -19,6 +19,7 @@ import type {
   GateFailureInfo,
 } from '@/types.js';
 import { STATE } from '@/types.js';
+import { atomicWrite } from '@/utils/atomic-write.js';
 import { log } from '@/utils/logger.js';
 
 // Re-export types for backward compatibility
@@ -619,7 +620,7 @@ export async function writeFailureNotes(
   const updated =
     content.slice(0, sectionIndex) + newTable + content.slice(endOffset);
 
-  await writeFile(progressPath, updated, 'utf8');
+  await atomicWrite(progressPath, updated);
 
   // Invalidate the read cache so subsequent state reads see the new content
   resetStateCache();
