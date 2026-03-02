@@ -5,6 +5,7 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { EXIT_CODE } from '../../../lib/constants.js';
 import {
   registerCleanup,
   unregisterCleanup,
@@ -23,6 +24,7 @@ describe('Signal Handling', () => {
   afterEach(() => {
     // Clean up after tests
     removeSignalHandlers();
+    vi.restoreAllMocks();
   });
 
   describe('Cleanup Registry', () => {
@@ -170,6 +172,34 @@ describe('Signal Handling', () => {
   });
 
   describe('Signal Handler Behavior', () => {
+    it('should execute SIGINT success callback and exit with SIGINT code', async () => {
+      const mockProcessExit = vi
+        .spyOn(process, 'exit')
+        .mockImplementation((() => {}) as never);
+
+      registerCleanup(vi.fn());
+      installSignalHandlers();
+      process.emit('SIGINT', 'SIGINT');
+
+      await new Promise((resolve) => setTimeout(resolve, 50));
+
+      expect(mockProcessExit).toHaveBeenCalledWith(EXIT_CODE.SIGINT);
+    });
+
+    it('should execute SIGTERM success callback and exit with SIGTERM code', async () => {
+      const mockProcessExit = vi
+        .spyOn(process, 'exit')
+        .mockImplementation((() => {}) as never);
+
+      registerCleanup(vi.fn());
+      installSignalHandlers();
+      process.emit('SIGTERM', 'SIGTERM');
+
+      await new Promise((resolve) => setTimeout(resolve, 50));
+
+      expect(mockProcessExit).toHaveBeenCalledWith(EXIT_CODE.SIGTERM);
+    });
+
     it('should handle SIGINT and run cleanup', async () => {
       const fn = vi.fn();
       registerCleanup(fn);

@@ -30,7 +30,7 @@
 | M1        | Safety & Error Handling                | 001-005 | MVT_M1 | 5        | 6     | IN PROGRESS |
 | M2        | DI Foundation & Quick Wins             | 006-011 | MVT_M2 | 6        | 7     | IN PROGRESS |
 | M3        | Run-Loop Safety & Status Decomposition | 012-015 | MVT_M3 | 1        | 5     | IN PROGRESS |
-| M4        | Prompt Infrastructure & DRY            | 016-019 | MVT_M4 | 0        | 5     | NOT STARTED |
+| M4        | Prompt Infrastructure & DRY            | 016-019 | MVT_M4 | 4        | 5     | IN PROGRESS |
 | M5        | Testability & Config Loading           | 020-024 | MVT_M5 | 0        | 6     | NOT STARTED |
 | M6        | DI Completions & Function Decomposition| 025-029 | MVT_M6 | 0        | 6     | NOT STARTED |
 | M7        | Singleton Encapsulation & Logging      | 030-034 | MVT_M7 | 0        | 6     | NOT STARTED |
@@ -128,7 +128,7 @@ graph TD
 | TASK_016 | Extract promptUser Utility + isYesAnswer Helper    | TASK_016_extract_prompt_user_utility.md           | COMPLETE    | PASSED        | MEDIUM   | M          | MVT_M3       | SA-20260302-016 | 1        |
 | TASK_017 | Extract parseProgressLines + computeMvtReadiness   | TASK_017_extract_parse_progress_lines.md          | COMPLETE    | PASSED        | MEDIUM   | M          | MVT_M3       | SA-20260302-017 | 1        |
 | TASK_018 | Extract validateCleanPreconditions from clean.ts   | TASK_018_extract_validate_clean_preconditions.md  | COMPLETE    | PASSED        | MEDIUM   | M          | MVT_M3       | SA-20260302-018 | 1        |
-| TASK_019 | Add SIGKILL Fallback in Gate Timeout Handler       | TASK_019_add_sigkill_fallback.md                  | IN REVIEW   |               | MEDIUM   | M          | MVT_M3       | SA-20260302-019 | 1        |
+| TASK_019 | Add SIGKILL Fallback in Gate Timeout Handler       | TASK_019_add_sigkill_fallback.md                  | COMPLETE    | PASSED        | MEDIUM   | M          | MVT_M3       | SA-20260302-019 | 1        |
 | MVT_M4   | Manual Verification: Prompt Infrastructure & DRY   | MVT_M4_prompt_infrastructure_dry.md               | NOT STARTED | —             | —        | 30 min     | TASK_016, TASK_017, TASK_018, TASK_019 | | |
 
 ### Dependencies
@@ -151,11 +151,11 @@ graph TD
 
 | Task ID  | Title                                          | File                                        | Status      | Review Status | Priority | Complexity | Dependencies | Assigned To | Attempts |
 | -------- | ---------------------------------------------- | ------------------------------------------- | ----------- | ------------- | -------- | ---------- | ------------ | ----------- | -------- |
-| TASK_020 | Lazy Config Loading in CommandRegistry         | TASK_020_lazy_config_loading.md             | NOT STARTED | —             | MEDIUM   | M          | MVT_M4       |             |          |
-| TASK_021 | Test Coverage for promptForce/confirmRun       | TASK_021_test_prompt_functions.md           | NOT STARTED | —             | MEDIUM   | M          | MVT_M4       |             |          |
-| TASK_022 | Add run.integration.test.ts                    | TASK_022_run_integration_test.md            | NOT STARTED | —             | MEDIUM   | M          | MVT_M4       |             |          |
-| TASK_023 | Add status/clean Integration Tests             | TASK_023_status_clean_integration_tests.md  | NOT STARTED | —             | MEDIUM   | M          | MVT_M4       |             |          |
-| TASK_024 | Cover signals.ts .then/.catch Callbacks        | TASK_024_signals_then_catch_coverage.md     | NOT STARTED | —             | MEDIUM   | M          | MVT_M4       |             |          |
+| TASK_020 | Lazy Config Loading in CommandRegistry         | TASK_020_lazy_config_loading.md             | COMPLETE    | PASSED        | MEDIUM   | M          | MVT_M4       | SA-20260302-020 | 1        |
+| TASK_021 | Test Coverage for promptForce/confirmRun       | TASK_021_test_prompt_functions.md           | COMPLETE    | PASSED        | MEDIUM   | M          | MVT_M4       | SA-20260302-021 | 1        |
+| TASK_022 | Add run.integration.test.ts                    | TASK_022_run_integration_test.md            | COMPLETE    | PASSED        | MEDIUM   | M          | MVT_M4       | SA-20260302-023 | 2        |
+| TASK_023 | Add status/clean Integration Tests             | TASK_023_status_clean_integration_tests.md  | COMPLETE    | PASSED        | MEDIUM   | M          | MVT_M4       | SA-20260302-024 | 1        |
+| TASK_024 | Cover signals.ts .then/.catch Callbacks        | TASK_024_signals_then_catch_coverage.md     | IN REVIEW   |               | MEDIUM   | M          | MVT_M4       | SA-20260302-025 | 1        |
 | MVT_M5   | Manual Verification: Testability & Config      | MVT_M5_testability_config_loading.md        | NOT STARTED | —             | —        | 30 min     | TASK_020, TASK_021, TASK_022, TASK_023, TASK_024 | | |
 
 ### Dependencies
@@ -356,13 +356,13 @@ TASK_001–005 → MVT_M1
 
 ## Subagent Tracking
 
-Last Subagent ID: SA-20260302-019
+Last Subagent ID: SA-20260302-025
 
 ---
 
 ## Review Tracking
 
-Last Review ID: RA-20260302-018
+Last Review ID: RA-20260302-024
 
 ---
 
@@ -372,20 +372,27 @@ Last Review ID: RA-20260302-018
 
 | Field             | Value |
 | ----------------- | ----- |
-| Task              | TASK_019 |
-| Impl Agent        | SA-20260302-019 |
-| Files Changed     | `lib/utils/infrastructure/gate.ts` |
-| Tests Added       | `test/utils/infrastructure/gate.test.ts` (2 new tests) |
+| Task              | TASK_024 |
+| Impl Agent        | SA-20260302-025 |
+| Files Changed     | None (test-only task) |
+| Tests Added       | `test/utils/infrastructure/signals.test.ts` (2 new tests) |
 | Rework?           | No |
-| Focus Areas       | Timeout path now escalates SIGTERM to SIGKILL after 5s and always clears timer on close/error. |
-| Known Limitations | SIGKILL targets the shell child only; Unix grandchildren in different process groups may survive. |
+| Focus Areas       | SIGINT/SIGTERM `.then` success callbacks invoking `process.exit` after synthetic signal emission |
+| Known Limitations | No production refactor performed; `.catch` coverage relied on existing tests |
 | Gate Results      | format:✅ lint:✅ typecheck:✅ test:✅ |
 
 ### For Fix Agent
 
 | Field           | Value |
 | --------------- | ----- |
-| Task            | —     |
-| Failed Gate     | —     |
-| Primary Error   | —     |
-| Root Cause Hint | —     |
+| Task            | — |
+| Task Goal       | — |
+| Review Agent    | — |
+| Failed Gate     | — |
+| Primary Error   | — |
+| Root Cause Hint | — |
+| Do NOT          | — |
+
+### Review Failure Notes
+
+Cleared — TASK_023 passed review RA-20260302-024.
