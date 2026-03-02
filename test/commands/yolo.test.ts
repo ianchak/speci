@@ -596,6 +596,47 @@ describe('yolo command', () => {
     }
   });
 
+  it('runs phase labels in plan-task-run order', async () => {
+    const context = createMockContext({ mockConfig, cwd: 'C:\\project' });
+    await yolo({ prompt: 'test' }, context, mockConfig);
+
+    const infoMessages = vi
+      .mocked(context.logger.info)
+      .mock.calls.map(([message]) => message);
+    const labels = infoMessages.filter((message) =>
+      message.startsWith('Phase ')
+    );
+    expect(labels).toEqual([
+      'Phase 1/3: Generating implementation plan...',
+      'Phase 2/3: Generating task list...',
+      'Phase 3/3: Running implementation loop...',
+    ]);
+
+    const planOrder = vi.mocked(planModule.plan).mock.invocationCallOrder[0];
+    const taskOrder = vi.mocked(taskModule.task).mock.invocationCallOrder[0];
+    const runOrder = vi.mocked(runModule.run).mock.invocationCallOrder[0];
+    expect(planOrder).toBeLessThan(taskOrder);
+    expect(taskOrder).toBeLessThan(runOrder);
+  });
+
+  it('logs success only for completed phases when task phase fails', async () => {
+    const context = createMockContext({ mockConfig, cwd: 'C:\\project' });
+    vi.spyOn(taskModule, 'task').mockResolvedValueOnce({
+      success: false,
+      exitCode: 1,
+      error: 'task failed exactly',
+    });
+
+    await yolo({ prompt: 'test' }, context, mockConfig);
+
+    const successMessages = vi
+      .mocked(context.logger.success)
+      .mock.calls.map(([message]) => message);
+    expect(successMessages).toContain('Plan generation complete');
+    expect(successMessages).not.toContain('Task generation complete');
+    expect(successMessages).not.toContain('Implementation complete');
+  });
+
   it('halts pipeline when plan fails due to missing input file', async () => {
     const context = createMockContext({ mockConfig, cwd: PROJECT_CWD });
     vi.spyOn(planModule, 'plan').mockResolvedValueOnce({

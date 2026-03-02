@@ -8,7 +8,6 @@
 
 import { createWriteStream, type WriteStream } from 'node:fs';
 import { join } from 'node:path';
-import { createInterface } from 'node:readline';
 import { Writable } from 'node:stream';
 import type { AgentRunResult, SpeciConfig } from '@/types.js';
 import { STATE } from '@/types.js';
@@ -16,7 +15,7 @@ import { createError } from '@/errors.js';
 import { MESSAGES } from '@/constants.js';
 import { closeLogFile } from '@/utils/logger.js';
 import { failResult, handleCommandError } from '@/utils/error-handler.js';
-import { createProductionContext } from '@/adapters/context-factory.js';
+import { isYesAnswer, promptUser } from '@/utils/helpers/prompt.js';
 import type { CommandContext, CommandResult } from '@/interfaces.js';
 import { renderIterationDisplay } from '@/ui/progress-bar.js';
 import { renderTaskProgressBox } from '@/ui/task-progress.js';
@@ -46,7 +45,7 @@ export interface RunOptions {
  */
 export async function run(
   options: RunOptions = {},
-  context: CommandContext = createProductionContext(),
+  context: CommandContext,
   config?: SpeciConfig
 ): Promise<CommandResult> {
   // 1. Load configuration (or use provided config)
@@ -73,7 +72,7 @@ export async function run(
       context.logger.warn(
         `Speci is already running (PID: ${lockInfo?.pid ?? 'unknown'})`
       );
-      const proceed = await promptForce(options.prompt);
+      const proceed = await promptForce(options.prompt, context.process);
       if (!proceed) {
         return { success: true, exitCode: 0 };
       }
@@ -98,9 +97,12 @@ export async function run(
 
   if (!options.yes) {
     const initialState = await context.stateReader.getState(loadedConfig);
+    const stats = await context.stateReader.getTaskStats(loadedConfig);
+    const renderedBox =
+      stats.total > 0 ? renderTaskProgressBox(stats) : undefined;
     const shouldProceed = await confirmRun(
       initialState,
-      loadedConfig,
+      renderedBox,
       context,
       options.prompt,
       options.verify
@@ -428,36 +430,32 @@ async function handleBlocked(
  * @returns true if user wants to proceed
  */
 async function promptForce(
-  promptFn?: (question: string) => Promise<string>
+  promptFn: ((question: string) => Promise<string>) | undefined,
+  proc:
+    | Pick<NodeJS.Process, 'stdin' | 'stdout'>
+    | {
+        stdin: NodeJS.ReadableStream;
+        stdout: NodeJS.WritableStream;
+      }
 ): Promise<boolean> {
-  if (promptFn) {
-    const answer = await promptFn('Override lock and continue anyway? [y/N] ');
-    return answer.toLowerCase() === 'y' || answer.toLowerCase() === 'yes';
-  }
-
-  const rl = createInterface({
-    input: process.stdin,
-    output: process.stdout,
-  });
-
-  return new Promise((resolve) => {
-    rl.question('Override lock and continue anyway? [y/N] ', (answer) => {
-      rl.close();
-      resolve(answer.toLowerCase() === 'y' || answer.toLowerCase() === 'yes');
-    });
-  });
+  const answer = await promptUser(
+    'Override lock and continue anyway? [y/N] ',
+    promptFn,
+    proc
+  );
+  return isYesAnswer(answer);
 }
 
 /**
  * Prompt user to confirm run execution
  *
  * @param state - Current state
- * @param loadedConfig - Speci configuration
+ * @param renderedBox - Pre-rendered task progress box (if available)
  * @param context - Command context for logging
  */
 async function confirmRun(
   state: STATE,
-  config: SpeciConfig,
+  renderedBox: string | undefined,
   context: CommandContext,
   promptFn?: (question: string) => Promise<string>,
   verify?: boolean
@@ -470,38 +468,21 @@ async function confirmRun(
   const action = getActionForState(state);
   context.logger.infoPlain(`Action: ${action}`);
 
-  // Display task progress summary
-  const stats = await context.stateReader.getTaskStats(config);
-  if (stats.total > 0) {
+  if (renderedBox) {
     context.logger.raw('');
-    context.logger.raw(renderTaskProgressBox(stats));
+    context.logger.raw(renderedBox);
   }
 
-  if (promptFn) {
-    const answer = await promptFn('\nProceed with run? [Y/n] ');
-    if (answer.toLowerCase() === 'n' || answer.toLowerCase() === 'no') {
-      context.logger.infoPlain('Run cancelled.');
-      return false;
-    }
-    return true;
+  const answer = await promptUser(
+    '\nProceed with run? [Y/n] ',
+    promptFn,
+    context.process
+  );
+  if (answer.toLowerCase() === 'n' || answer.toLowerCase() === 'no') {
+    context.logger.infoPlain('Run cancelled.');
+    return false;
   }
-
-  const rl = createInterface({
-    input: process.stdin,
-    output: process.stdout,
-  });
-
-  return new Promise((resolve) => {
-    rl.question('\nProceed with run? [Y/n] ', (answer) => {
-      rl.close();
-      if (answer.toLowerCase() === 'n' || answer.toLowerCase() === 'no') {
-        context.logger.infoPlain('Run cancelled.');
-        resolve(false);
-      } else {
-        resolve(true);
-      }
-    });
-  });
+  return true;
 }
 
 /**
@@ -579,7 +560,8 @@ function initializeLogFile(
   context: CommandContext
 ): WriteStream {
   try {
-    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+    const startedAt = new Date();
+    const timestamp = startedAt.toJSON().replace(/[:.]/g, '-');
     const logPath = join(config.paths.logs, `speci-run-${timestamp}.log`);
 
     // Ensure log directory exists
@@ -596,7 +578,7 @@ function initializeLogFile(
 
     // Write header
     stream.write(`=== Speci Run Session ===\n`);
-    stream.write(`Started: ${new Date().toISOString()}\n`);
+    stream.write(`Started: ${startedAt.toJSON()}\n`);
     stream.write(`PID: ${context.process.pid}\n\n`);
 
     return stream;
@@ -612,6 +594,21 @@ function initializeLogFile(
 }
 
 /**
+ * Write a timestamped log entry line.
+ *
+ * @param logFile - Log file stream
+ * @param category - Log category
+ * @param detail - Log entry detail text
+ */
+function writeLogEntry(
+  logFile: WriteStream,
+  category: string,
+  detail: string
+): void {
+  logFile.write(`[${new Date().toISOString()}] ${category} ${detail}\n`);
+}
+
+/**
  * Log iteration event to file
  *
  * @param logFile - Log file stream
@@ -623,8 +620,7 @@ function logIteration(
   iteration: number,
   event: string
 ): void {
-  const timestamp = new Date().toISOString();
-  logFile.write(`[${timestamp}] ITERATION ${iteration} ${event}\n`);
+  writeLogEntry(logFile, 'ITERATION', `${iteration} ${event}`);
 }
 
 /**
@@ -634,8 +630,7 @@ function logIteration(
  * @param state - Current state
  */
 function logState(logFile: WriteStream, state: STATE): void {
-  const timestamp = new Date().toISOString();
-  logFile.write(`[${timestamp}] STATE ${state}\n`);
+  writeLogEntry(logFile, 'STATE', String(state));
 }
 
 /**
@@ -652,10 +647,11 @@ function logAgent(
   event: string,
   attempt?: number
 ): void {
-  const timestamp = new Date().toISOString();
   const attemptStr = attempt ? ` (attempt ${attempt})` : '';
-  logFile.write(
-    `[${timestamp}] AGENT ${agentName.toUpperCase()} ${event}${attemptStr}\n`
+  writeLogEntry(
+    logFile,
+    'AGENT',
+    `${agentName.toUpperCase()} ${event}${attemptStr}`
   );
 }
 
@@ -673,9 +669,10 @@ function logMvtEvent(
   milestoneId: string,
   mvtId: string
 ): void {
-  const timestamp = new Date().toISOString();
-  logFile.write(
-    `[${timestamp}] MVT ${event} milestone=${milestoneId} mvt=${mvtId}\n`
+  writeLogEntry(
+    logFile,
+    'MVT',
+    `${event} milestone=${milestoneId} mvt=${mvtId}`
   );
 }
 
@@ -710,32 +707,18 @@ async function checkIncompleteMvts(
     return true;
   }
 
-  if (!context.process.stdin.isTTY) {
+  const { stdin } = context.process;
+  if (!stdin.isTTY) {
     context.logger.warn(MESSAGES.MVT_NON_TTY_ABORT);
     return false;
   }
 
-  if (options.prompt) {
-    const answer = await options.prompt('Continue anyway? [y/N] ');
-    if (answer.toLowerCase() === 'y' || answer.toLowerCase() === 'yes') {
-      return true;
-    }
-    context.logger.warn(MESSAGES.MVT_EXIT_CANCELLED);
-    return false;
-  }
-
-  const rl = createInterface({
-    input: context.process.stdin,
-    output: context.process.stdout,
-  });
-  const answer = await new Promise<string>((resolve) => {
-    rl.question('Continue anyway? [y/N] ', (response) => {
-      rl.close();
-      resolve(response);
-    });
-  });
-
-  if (answer.toLowerCase() === 'y' || answer.toLowerCase() === 'yes') {
+  const answer = await promptUser(
+    'Continue anyway? [y/N] ',
+    options.prompt,
+    context.process
+  );
+  if (isYesAnswer(answer)) {
     return true;
   }
   context.logger.warn(MESSAGES.MVT_EXIT_CANCELLED);
@@ -791,10 +774,7 @@ function logGate(
     results: Array<{ command: string; isSuccess: boolean; exitCode: number }>;
   }
 ): void {
-  const timestamp = new Date().toISOString();
-  logFile.write(
-    `[${timestamp}] GATE ${result.isSuccess ? 'PASSED' : 'FAILED'}\n`
-  );
+  writeLogEntry(logFile, 'GATE', result.isSuccess ? 'PASSED' : 'FAILED');
   for (const r of result.results) {
     logFile.write(
       `  - ${r.command}: ${r.isSuccess ? 'PASS' : `FAIL (exit ${r.exitCode})`}\n`

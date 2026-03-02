@@ -13,7 +13,9 @@ import {
   readFileSync,
 } from 'node:fs';
 import { join } from 'node:path';
-import { run } from '../../lib/commands/run.js';
+import { createInterface, type Interface } from 'node:readline';
+import { createProductionContext } from '../../lib/adapters/context-factory.js';
+import { run as runCommand } from '../../lib/commands/run.js';
 import { MESSAGES } from '../../lib/constants.js';
 import type {
   MilestoneInfo,
@@ -30,8 +32,27 @@ import * as loggerUtils from '../../lib/utils/logger.js';
 import type { SpeciConfig } from '../../lib/config.js';
 import { STATE } from '../../lib/state.js';
 
+vi.mock('node:readline', () => ({
+  createInterface: vi.fn(),
+}));
+
+const run = (
+  options: Parameters<typeof runCommand>[0] = {},
+  context: Parameters<typeof runCommand>[1] = createProductionContext(),
+  config?: Parameters<typeof runCommand>[2]
+) => runCommand(options, context, config);
+
 // Test directory for temp files
 const TEST_DIR = join(process.cwd(), '.test-run');
+
+function makeReadlineInterface(answer: string): Interface {
+  return {
+    question: vi.fn((_question: string, callback: (input: string) => void) =>
+      callback(answer)
+    ),
+    close: vi.fn(),
+  } as unknown as Interface;
+}
 
 // Mock config
 const mockConfig: SpeciConfig = {
@@ -66,6 +87,8 @@ const mockConfig: SpeciConfig = {
 
 describe('Run Command', () => {
   beforeEach(() => {
+    vi.mocked(createInterface).mockReset();
+
     // Setup test directory
     if (existsSync(TEST_DIR)) {
       rmSync(TEST_DIR, { recursive: true, force: true });
@@ -222,7 +245,9 @@ describe('Run Command', () => {
       expect(copilot.runAgent).toHaveBeenCalledWith(
         mockConfig,
         'impl',
-        'Implementation Agent'
+        'Implementation Agent',
+        undefined,
+        undefined
       );
     });
 
@@ -240,7 +265,9 @@ describe('Run Command', () => {
       expect(copilot.runAgent).toHaveBeenCalledWith(
         mockConfig,
         'review',
-        'Review Agent'
+        'Review Agent',
+        undefined,
+        undefined
       );
     });
 
@@ -258,7 +285,9 @@ describe('Run Command', () => {
       expect(copilot.runAgent).toHaveBeenCalledWith(
         mockConfig,
         'tidy',
-        'Tidy Agent'
+        'Tidy Agent',
+        undefined,
+        undefined
       );
     });
 
@@ -346,7 +375,9 @@ describe('Run Command', () => {
       expect(copilot.runAgent).toHaveBeenCalledWith(
         mockConfig,
         'fix',
-        'Fix Agent'
+        'Fix Agent',
+        undefined,
+        undefined
       );
     });
 
@@ -732,6 +763,82 @@ describe('Run Command', () => {
       expect(prompt).toHaveBeenCalledWith('\nProceed with run? [Y/n] ');
       expect(lock.acquireLock).toHaveBeenCalled();
     });
+
+    describe('readline fallback branches', () => {
+      it('should proceed through lock override when readline answer is y', async () => {
+        const context = createMockContext({
+          mockConfig: mockConfig as unknown as RuntimeSpeciConfig,
+          cwd: TEST_DIR,
+        });
+        const runtimeConfig = mockConfig as unknown as RuntimeSpeciConfig;
+
+        vi.mocked(createInterface).mockReturnValue(makeReadlineInterface('y'));
+        vi.mocked(context.lockManager.isLocked).mockResolvedValue(true);
+        vi.mocked(context.stateReader.getState).mockResolvedValue(STATE.DONE);
+
+        const result = await run({ yes: true }, context, runtimeConfig);
+
+        expect(result).toEqual({ success: true, exitCode: 0 });
+        expect(createInterface).toHaveBeenCalled();
+        expect(context.lockManager.acquire).toHaveBeenCalled();
+      });
+
+      it('should abort lock override when readline answer is n', async () => {
+        const context = createMockContext({
+          mockConfig: mockConfig as unknown as RuntimeSpeciConfig,
+          cwd: TEST_DIR,
+        });
+        const runtimeConfig = mockConfig as unknown as RuntimeSpeciConfig;
+
+        vi.mocked(createInterface).mockReturnValue(makeReadlineInterface('n'));
+        vi.mocked(context.lockManager.isLocked).mockResolvedValue(true);
+
+        const result = await run({ yes: true }, context, runtimeConfig);
+
+        expect(result).toEqual({ success: true, exitCode: 0 });
+        expect(createInterface).toHaveBeenCalled();
+        expect(context.lockManager.acquire).not.toHaveBeenCalled();
+      });
+
+      it('should cancel pre-run confirmation when readline answer is n', async () => {
+        const context = createMockContext({
+          mockConfig: mockConfig as unknown as RuntimeSpeciConfig,
+          cwd: TEST_DIR,
+        });
+        const runtimeConfig = mockConfig as unknown as RuntimeSpeciConfig;
+
+        vi.mocked(createInterface).mockReturnValue(makeReadlineInterface('n'));
+        vi.mocked(context.stateReader.getState).mockResolvedValue(
+          STATE.WORK_LEFT
+        );
+
+        const result = await run({ yes: false }, context, runtimeConfig);
+
+        expect(result).toEqual({
+          success: false,
+          exitCode: 0,
+          error: 'User cancelled',
+        });
+        expect(context.logger.infoPlain).toHaveBeenCalledWith('Run cancelled.');
+        expect(context.lockManager.acquire).not.toHaveBeenCalled();
+      });
+
+      it('should continue pre-run confirmation when readline answer is empty', async () => {
+        const context = createMockContext({
+          mockConfig: mockConfig as unknown as RuntimeSpeciConfig,
+          cwd: TEST_DIR,
+        });
+        const runtimeConfig = mockConfig as unknown as RuntimeSpeciConfig;
+
+        vi.mocked(createInterface).mockReturnValue(makeReadlineInterface(''));
+        vi.mocked(context.stateReader.getState).mockResolvedValue(STATE.DONE);
+
+        const result = await run({ yes: false }, context, runtimeConfig);
+
+        expect(result).toEqual({ success: true, exitCode: 0 });
+        expect(context.lockManager.acquire).toHaveBeenCalled();
+      });
+    });
   });
 
   describe('Lock Management', () => {
@@ -775,6 +882,46 @@ describe('Run Command', () => {
       const logFiles = readdirSync(mockConfig.paths.logs);
       expect(logFiles.length).toBeGreaterThan(0);
       expect(logFiles[0]).toMatch(/^speci-run-.*\.log$/);
+    });
+
+    it('should write timestamped ITERATION/STATE/AGENT/GATE log entries', async () => {
+      vi.spyOn(state, 'getState')
+        .mockResolvedValueOnce(STATE.WORK_LEFT)
+        .mockResolvedValueOnce(STATE.DONE);
+      vi.spyOn(copilot, 'runAgent').mockResolvedValue({
+        isSuccess: true,
+        exitCode: 0,
+      });
+      vi.spyOn(gate, 'runGate').mockResolvedValue({
+        isSuccess: true,
+        results: [
+          {
+            command: 'npm test',
+            isSuccess: true,
+            exitCode: 0,
+            output: '',
+            error: '',
+            duration: 0,
+          },
+        ],
+        totalDuration: 0,
+      });
+
+      await run({ yes: true });
+
+      const logFiles = readdirSync(mockConfig.paths.logs).sort();
+      const logContent = readFileSync(
+        join(mockConfig.paths.logs, logFiles[logFiles.length - 1]),
+        'utf8'
+      );
+      expect(logContent).toMatch(/\[\d{4}-\d{2}-\d{2}T.*Z\] ITERATION 1 START/);
+      expect(logContent).toMatch(/\[\d{4}-\d{2}-\d{2}T.*Z\] STATE WORK_LEFT/);
+      expect(logContent).toMatch(/\[\d{4}-\d{2}-\d{2}T.*Z\] AGENT IMPL START/);
+      expect(logContent).toMatch(
+        /\[\d{4}-\d{2}-\d{2}T.*Z\] AGENT IMPL SUCCESS/
+      );
+      expect(logContent).toMatch(/\[\d{4}-\d{2}-\d{2}T.*Z\] GATE PASSED/);
+      expect(logContent).toContain('  - npm test: PASS');
     });
   });
 
@@ -885,6 +1032,68 @@ describe('Run Command', () => {
 
       // getTaskStats is still called, but the box should not be rendered
       expect(state.getTaskStats).toHaveBeenCalled();
+    });
+
+    it('fetches task stats before prompt and renders precomputed progress box', async () => {
+      const context = createMockContext({
+        mockConfig: mockConfig as unknown as RuntimeSpeciConfig,
+        cwd: TEST_DIR,
+      });
+      const runtimeConfig = mockConfig as unknown as RuntimeSpeciConfig;
+      const prompt = vi.fn().mockResolvedValue('n');
+
+      vi.mocked(context.stateReader.getState).mockResolvedValue(
+        STATE.WORK_LEFT
+      );
+      vi.mocked(context.stateReader.getTaskStats).mockResolvedValue({
+        total: 3,
+        completed: 1,
+        remaining: 1,
+        inReview: 1,
+        blocked: 0,
+      });
+
+      await run({ yes: false, prompt }, context, runtimeConfig);
+
+      expect(context.stateReader.getTaskStats).toHaveBeenCalledWith(
+        runtimeConfig
+      );
+      const statsOrder = vi.mocked(context.stateReader.getTaskStats).mock
+        .invocationCallOrder[0];
+      const promptOrder = prompt.mock.invocationCallOrder[0];
+      expect(statsOrder).toBeLessThan(promptOrder);
+      expect(context.logger.raw).toHaveBeenCalledWith(
+        expect.stringContaining('Task Progress')
+      );
+    });
+
+    it('does not render progress box when stats total is zero in confirmation flow', async () => {
+      const context = createMockContext({
+        mockConfig: mockConfig as unknown as RuntimeSpeciConfig,
+        cwd: TEST_DIR,
+      });
+      const runtimeConfig = mockConfig as unknown as RuntimeSpeciConfig;
+      const prompt = vi.fn().mockResolvedValue('n');
+
+      vi.mocked(context.stateReader.getState).mockResolvedValue(
+        STATE.WORK_LEFT
+      );
+      vi.mocked(context.stateReader.getTaskStats).mockResolvedValue({
+        total: 0,
+        completed: 0,
+        remaining: 0,
+        inReview: 0,
+        blocked: 0,
+      });
+
+      await run({ yes: false, prompt }, context, runtimeConfig);
+
+      const rawMessages = vi
+        .mocked(context.logger.raw)
+        .mock.calls.map(([message]) => String(message));
+      expect(
+        rawMessages.some((message) => message.includes('Task Progress'))
+      ).toBe(false);
     });
   });
 
@@ -1325,6 +1534,68 @@ describe('Run Command', () => {
         'impl',
         'Implementation Agent'
       );
+    });
+
+    describe('readline fallback branches', () => {
+      it('UT-R24: checkIncompleteMvts continues when readline answer is y', async () => {
+        const { context, configForRun } = createVerifyHarness();
+        context.process.stdin.isTTY = true;
+        vi.mocked(context.stateReader.getState).mockResolvedValue(STATE.DONE);
+        vi.mocked(context.stateReader.getMilestonesMvtStatus).mockResolvedValue(
+          [mvtReadyMilestone]
+        );
+        vi.mocked(createInterface)
+          .mockReturnValueOnce(makeReadlineInterface(''))
+          .mockReturnValueOnce(makeReadlineInterface('y'));
+
+        const result = await run({ verify: true }, context, configForRun);
+
+        expect(result).toEqual({ success: true, exitCode: 0 });
+        expect(createInterface).toHaveBeenCalledTimes(2);
+        expect(context.lockManager.acquire).toHaveBeenCalled();
+      });
+
+      it('UT-R25: checkIncompleteMvts aborts when readline answer is n', async () => {
+        const { context, configForRun } = createVerifyHarness();
+        context.process.stdin.isTTY = true;
+        vi.mocked(context.stateReader.getState).mockResolvedValue(STATE.DONE);
+        vi.mocked(context.stateReader.getMilestonesMvtStatus).mockResolvedValue(
+          [mvtReadyMilestone]
+        );
+        vi.mocked(createInterface)
+          .mockReturnValueOnce(makeReadlineInterface(''))
+          .mockReturnValueOnce(makeReadlineInterface('n'));
+
+        const result = await run({ verify: true }, context, configForRun);
+
+        expect(result).toEqual({ success: true, exitCode: 0 });
+        expect(context.logger.warn).toHaveBeenCalledWith(
+          MESSAGES.MVT_EXIT_CANCELLED
+        );
+        expect(context.lockManager.acquire).not.toHaveBeenCalled();
+      });
+
+      it('UT-R26: checkIncompleteMvts non-TTY path aborts before readline', async () => {
+        const { context, configForRun } = createVerifyHarness();
+        const prompt = vi.fn(async () => 'y');
+        context.process.stdin.isTTY = false;
+        vi.mocked(context.stateReader.getMilestonesMvtStatus).mockResolvedValue(
+          [mvtReadyMilestone]
+        );
+
+        const result = await run(
+          { verify: true, prompt },
+          context,
+          configForRun
+        );
+
+        expect(result).toEqual({ success: true, exitCode: 0 });
+        expect(context.logger.warn).toHaveBeenCalledWith(
+          MESSAGES.MVT_NON_TTY_ABORT
+        );
+        expect(prompt).toHaveBeenCalledWith('\nProceed with run? [Y/n] ');
+        expect(createInterface).not.toHaveBeenCalled();
+      });
     });
   });
 });

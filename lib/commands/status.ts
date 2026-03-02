@@ -10,7 +10,6 @@ import { BANNER_ART, renderBanner } from '@/ui/banner.js';
 import { colorize } from '@/ui/colors.js';
 import { getGlyph } from '@/ui/glyphs.js';
 import { terminalState } from '@/ui/terminal.js';
-import { createProductionContext } from '@/adapters/context-factory.js';
 import type { CommandContext, CommandResult } from '@/interfaces.js';
 import { failResult, toErrorMessage } from '@/utils/error-handler.js';
 
@@ -50,6 +49,8 @@ interface StatusData {
 
 /** Refresh interval in milliseconds */
 const REFRESH_INTERVAL = 1000;
+const STATS_BOX_INNER_WIDTH = 24;
+const STATS_BOX_PADDING = 2;
 
 /** Maximum content width derived from banner art, used to constrain task name display
  * @internal Exported for testing
@@ -66,7 +67,7 @@ export const CONTENT_WIDTH = Math.max(...BANNER_ART.map((line) => line.length));
  */
 export async function status(
   options: StatusOptions = {},
-  context: CommandContext = createProductionContext(),
+  context: CommandContext,
   config?: SpeciConfig
 ): Promise<CommandResult> {
   try {
@@ -169,104 +170,129 @@ function renderStaticStatus(
  * @param verbose - Show timing info in footer
  * @param context - Dependency injection context
  */
-async function runLiveDashboard(
-  verbose: boolean | undefined,
-  context: CommandContext
-): Promise<void> {
-  const config = await context.configLoader.load();
-  let running = true;
-  let refreshCount = 0;
-  let intervalId: ReturnType<typeof setInterval> | null = null;
-  const isVsCodeTerminal =
-    context.process.env.TERM_PROGRAM === 'vscode' ||
-    context.process.env.VSCODE_INJECTION === '1';
-  const useAltScreen = !isVsCodeTerminal;
-
-  // Setup terminal for fullscreen
+function setupTerminal(
+  context: CommandContext,
+  useAltScreen: boolean
+): () => void {
   if (useAltScreen) {
     terminalState.capture();
     terminalState.enterAltScreen();
   }
   terminalState.hideCursor();
-  // Clear screen once at start (subsequent renders will overwrite in place)
   context.process.stdout.write('\x1b[2J');
 
-  // Promise resolver for when exit is triggered
-  let resolveExit: (() => void) | null = null;
-
-  // Handle exit signals - cleanup and prevent default exit behavior
-  const handleExit = () => {
-    if (!running) return; // Prevent double cleanup
-    running = false;
+  return () => {
     try {
-      // Clear the refresh interval
-      if (intervalId !== null) {
-        clearInterval(intervalId);
-        intervalId = null;
-      }
-
-      // Restore stdin state - must be done carefully
-      if (context.process.stdin.isTTY) {
-        const stdin = context.process.stdin;
-        if (typeof stdin.removeListener === 'function') {
-          stdin.removeListener('data', handleKeypress);
-        }
-        if (typeof stdin.setRawMode === 'function') {
-          stdin.setRawMode(false);
-        }
-        if (typeof stdin.pause === 'function') {
-          stdin.pause();
-        }
-      }
-
       terminalState.showCursor();
       if (useAltScreen) {
-        // Restore terminal state (cursor, alt screen, etc.)
         terminalState.exitAltScreen();
         terminalState.restore();
       } else {
-        // Clear the screen and return cursor to home in regular terminals
         context.process.stdout.write('\x1b[2J\x1b[H');
       }
-
-      // Write a newline to ensure clean prompt
       context.process.stdout.write('\n');
     } catch {
       // Ignore cleanup errors to avoid crashing on exit
-    } finally {
-      // Signal completion on next tick to ensure all cleanup is processed
-      if (resolveExit) {
-        setImmediate(() => resolveExit!());
-      }
     }
   };
+}
 
-  // Handle keypress for 'q' to quit
-  // Note: Ctrl+C (0x03) is handled via SIGINT signal, not here
+type ProcessWithRemoveListener = CommandContext['process'] & {
+  removeListener: (
+    event: string,
+    listener: (...args: unknown[]) => void
+  ) => void;
+};
+
+function hasProcessRemoveListener(
+  processRef: CommandContext['process']
+): processRef is ProcessWithRemoveListener {
+  return (
+    'removeListener' in processRef &&
+    typeof (processRef as { removeListener?: unknown }).removeListener ===
+      'function'
+  );
+}
+
+function setupInputHandlers(
+  context: CommandContext,
+  onExit: () => void
+): () => void {
   const handleKeypress = (key: Buffer) => {
     if (key.length === 0) {
       return;
     }
     const code = key[0];
-    // q, Q, or ESC to quit (Ctrl+C triggers SIGINT which calls handleExit)
     if (code === 0x71 || code === 0x51 || code === 0x1b) {
-      handleExit();
+      onExit();
     }
   };
 
-  // Register signal handlers
-  // These intercept signals and do cleanup instead of default termination
-  context.process.on('SIGINT', handleExit);
-  context.process.on('SIGTERM', handleExit);
+  context.process.on('SIGINT', onExit);
+  context.process.on('SIGTERM', onExit);
 
-  // Handle keypress for 'q' to quit
   if (context.process.stdin.isTTY) {
-    context.process.stdin.setRawMode(true);
-    context.process.stdin.resume();
-    context.process.stdin.on('data', handleKeypress);
+    if (typeof context.process.stdin.setRawMode === 'function') {
+      context.process.stdin.setRawMode(true);
+    }
+    if (typeof context.process.stdin.resume === 'function') {
+      context.process.stdin.resume();
+    }
+    if (typeof context.process.stdin.on === 'function') {
+      context.process.stdin.on('data', handleKeypress);
+    }
   }
 
-  // Initial render
+  return () => {
+    if (hasProcessRemoveListener(context.process)) {
+      context.process.removeListener('SIGINT', onExit);
+      context.process.removeListener('SIGTERM', onExit);
+    }
+    if (context.process.stdin.isTTY) {
+      if (typeof context.process.stdin.removeListener === 'function') {
+        context.process.stdin.removeListener('data', handleKeypress);
+      }
+      if (typeof context.process.stdin.setRawMode === 'function') {
+        context.process.stdin.setRawMode(false);
+      }
+      if (typeof context.process.stdin.pause === 'function') {
+        context.process.stdin.pause();
+      }
+    }
+  };
+}
+
+async function runRefreshLoop(
+  config: SpeciConfig,
+  context: CommandContext,
+  verbose: boolean | undefined,
+  teardownTerminal: () => void
+): Promise<void> {
+  let running = true;
+  let refreshCount = 0;
+  let intervalId: ReturnType<typeof setInterval> | null = null;
+  let resolveExit: (() => void) | null = null;
+  let teardownInput: (() => void) | null = null;
+
+  const handleExit = () => {
+    if (!running) return;
+    running = false;
+    if (intervalId !== null) {
+      clearInterval(intervalId);
+      intervalId = null;
+    }
+    if (teardownInput) {
+      teardownInput();
+      teardownInput = null;
+    }
+    teardownTerminal();
+    if (resolveExit) {
+      setImmediate(() => resolveExit?.());
+    }
+  };
+
+  teardownInput = setupInputHandlers(context, handleExit);
+
   try {
     const statusData = await gatherStatusData(config, context);
     renderFullscreen(statusData, refreshCount, verbose, context);
@@ -275,20 +301,16 @@ async function runLiveDashboard(
     throw error;
   }
 
-  // Refresh loop - wrapped in a promise to wait for exit
   return new Promise<void>((resolve) => {
     resolveExit = resolve;
-
     if (!running) {
       resolve();
       return;
     }
-
     intervalId = setInterval(async () => {
       if (!running) {
         return;
       }
-
       try {
         refreshCount++;
         const statusData = await gatherStatusData(config, context);
@@ -298,6 +320,19 @@ async function runLiveDashboard(
       }
     }, REFRESH_INTERVAL);
   });
+}
+
+async function runLiveDashboard(
+  verbose: boolean | undefined,
+  context: CommandContext
+): Promise<void> {
+  const config = await context.configLoader.load();
+  const isVsCodeTerminal =
+    context.process.env.TERM_PROGRAM === 'vscode' ||
+    context.process.env.VSCODE_INJECTION === '1';
+  const useAltScreen = !isVsCodeTerminal;
+  const teardownTerminal = setupTerminal(context, useAltScreen);
+  await runRefreshLoop(config, context, verbose, teardownTerminal);
 }
 
 /**
@@ -378,65 +413,7 @@ function buildContentLines(data: StatusData): string[] {
   lines.push(colorize(`${stateIcon} Current State: ${data.state}`, stateColor));
   lines.push('');
 
-  // Stats box with padding
-  const boxTitle = ' Task Progress ';
-  const padding = 2; // Internal horizontal padding
-  const innerWidth = 24; // Content area width
-  const boxWidth = innerWidth + padding * 2 + 2; // +2 for left/right borders
-  const titlePadLeft = Math.floor((boxWidth - 2 - boxTitle.length) / 2);
-  const titlePadRight = boxWidth - 2 - boxTitle.length - titlePadLeft;
-  const topBorder =
-    '┌' + '─'.repeat(titlePadLeft) + boxTitle + '─'.repeat(titlePadRight) + '┐';
-  const bottomBorder = '└' + '─'.repeat(boxWidth - 2) + '┘';
-  const emptyLine = '│' + ' '.repeat(boxWidth - 2) + '│';
-
-  // Format stats with compact alignment
-  const maxValLen = Math.max(
-    `${data.stats.completed}/${data.stats.total}`.length,
-    data.stats.pending.toString().length,
-    data.stats.inReview.toString().length,
-    data.stats.blocked.toString().length
-  );
-  const statsRows = [
-    {
-      icon: getGlyph('success'),
-      label: 'Completed',
-      value: `${data.stats.completed}/${data.stats.total}`,
-    },
-    {
-      icon: getGlyph('arrow'),
-      label: 'Pending',
-      value: data.stats.pending.toString(),
-    },
-    {
-      icon: getGlyph('bullet'),
-      label: 'In Review',
-      value: data.stats.inReview.toString(),
-    },
-    {
-      icon: getGlyph('error'),
-      label: 'Blocked',
-      value: data.stats.blocked.toString(),
-    },
-  ];
-
-  lines.push(colorize(topBorder, 'dim'));
-  lines.push(colorize(emptyLine, 'dim')); // Top padding
-  for (const row of statsRows) {
-    const labelPart = `${row.icon} ${row.label}:`;
-    const valuePart = row.value.padStart(maxValLen);
-    const gap = innerWidth - labelPart.length - valuePart.length;
-    const content =
-      ' '.repeat(padding) +
-      labelPart +
-      ' '.repeat(Math.max(1, gap)) +
-      valuePart +
-      ' '.repeat(padding);
-    lines.push(colorize('│', 'dim') + content + colorize('│', 'dim'));
-  }
-  lines.push(colorize(emptyLine, 'dim')); // Bottom padding
-  lines.push(colorize(bottomBorder, 'dim'));
-  lines.push('');
+  lines.push(...renderStatsBox(data.stats));
 
   // Progress bar
   const progressBarLines = renderProgressBarLines(
@@ -448,31 +425,110 @@ function buildContentLines(data: StatusData): string[] {
 
   // Lock status and current task
   if (data.lock.isLocked && data.lock.pid && data.lock.startTime) {
-    const commandLabel =
-      data.lock.command === 'yolo' ? 'Yolo pipeline' : 'Speci run';
-    lines.push(
-      colorize(
-        `${getGlyph('bullet')} ${commandLabel} is active (PID: ${data.lock.pid})`,
-        'sky400'
-      )
-    );
-    lines.push(colorize(`  Started: ${data.lock.startTime}`, 'dim'));
-    if (data.lock.elapsed) {
-      lines.push(colorize(`  Elapsed: ${data.lock.elapsed}`, 'dim'));
-    }
-    // Show current task if active run and task in progress/review
-    if (data.currentTask) {
-      lines.push('');
-      lines.push(colorize(`${getGlyph('arrow')} Working on:`, 'sky400'));
-      const taskText = `  ${data.currentTask.id}: ${data.currentTask.title}`;
-      const wrappedTaskLines = wrapText(taskText, CONTENT_WIDTH, '  ');
-      for (const taskLine of wrappedTaskLines) {
-        lines.push(colorize(taskLine, 'white'));
-      }
-      lines.push(colorize(`  Status: ${data.currentTask.status}`, 'dim'));
-    }
+    lines.push(...renderLockSection(data));
   } else {
     lines.push(colorize(`${getGlyph('bullet')} No active run`, 'dim'));
+  }
+
+  return lines;
+}
+
+function renderStatsBox(stats: StatusData['stats']): string[] {
+  const lines: string[] = [];
+  const boxTitle = ' Task Progress ';
+  const boxWidth = STATS_BOX_INNER_WIDTH + STATS_BOX_PADDING * 2 + 2;
+  const titlePadLeft = Math.floor((boxWidth - 2 - boxTitle.length) / 2);
+  const titlePadRight = boxWidth - 2 - boxTitle.length - titlePadLeft;
+  const topBorder =
+    '┌' + '─'.repeat(titlePadLeft) + boxTitle + '─'.repeat(titlePadRight) + '┐';
+  const bottomBorder = '└' + '─'.repeat(boxWidth - 2) + '┘';
+  const emptyLine = '│' + ' '.repeat(boxWidth - 2) + '│';
+
+  const maxValLen = Math.max(
+    `${stats.completed}/${stats.total}`.length,
+    stats.pending.toString().length,
+    stats.inReview.toString().length,
+    stats.blocked.toString().length
+  );
+  const statsRows = [
+    {
+      icon: getGlyph('success'),
+      label: 'Completed',
+      value: `${stats.completed}/${stats.total}`,
+    },
+    {
+      icon: getGlyph('arrow'),
+      label: 'Pending',
+      value: stats.pending.toString(),
+    },
+    {
+      icon: getGlyph('bullet'),
+      label: 'In Review',
+      value: stats.inReview.toString(),
+    },
+    {
+      icon: getGlyph('error'),
+      label: 'Blocked',
+      value: stats.blocked.toString(),
+    },
+  ];
+
+  lines.push(colorize(topBorder, 'dim'));
+  lines.push(colorize(emptyLine, 'dim'));
+  for (const row of statsRows) {
+    const labelPart = `${row.icon} ${row.label}:`;
+    const valuePart = row.value.padStart(maxValLen);
+    const gap = STATS_BOX_INNER_WIDTH - labelPart.length - valuePart.length;
+    const content =
+      ' '.repeat(STATS_BOX_PADDING) +
+      labelPart +
+      ' '.repeat(Math.max(1, gap)) +
+      valuePart +
+      ' '.repeat(STATS_BOX_PADDING);
+    lines.push(colorize('│', 'dim') + content + colorize('│', 'dim'));
+  }
+  lines.push(colorize(emptyLine, 'dim'));
+  lines.push(colorize(bottomBorder, 'dim'));
+  lines.push('');
+
+  return lines;
+}
+
+/**
+ * Render active lock section for status output.
+ * @param data - Status data
+ * @returns Lock section lines
+ */
+function renderLockSection(data: StatusData): string[] {
+  if (!data.lock.isLocked || !data.lock.pid || !data.lock.startTime) {
+    return [];
+  }
+
+  const lines: string[] = [];
+  const commandLabel =
+    data.lock.command === 'yolo' ? 'Yolo pipeline' : 'Speci run';
+
+  lines.push(
+    colorize(
+      `${getGlyph('bullet')} ${commandLabel} is active (PID: ${data.lock.pid})`,
+      'sky400'
+    )
+  );
+  lines.push(colorize(`  Started: ${data.lock.startTime}`, 'dim'));
+
+  if (data.lock.elapsed) {
+    lines.push(colorize(`  Elapsed: ${data.lock.elapsed}`, 'dim'));
+  }
+
+  if (data.currentTask) {
+    lines.push('');
+    lines.push(colorize(`${getGlyph('arrow')} Working on:`, 'sky400'));
+    const taskText = `  ${data.currentTask.id}: ${data.currentTask.title}`;
+    const wrappedTaskLines = wrapText(taskText, CONTENT_WIDTH, '  ');
+    for (const taskLine of wrappedTaskLines) {
+      lines.push(colorize(taskLine, 'white'));
+    }
+    lines.push(colorize(`  Status: ${data.currentTask.status}`, 'dim'));
   }
 
   return lines;
@@ -514,28 +570,8 @@ function renderStatusContent(
 
   // Lock status and current task
   if (data.lock.isLocked && data.lock.pid && data.lock.startTime) {
-    const commandLabel =
-      data.lock.command === 'yolo' ? 'Yolo pipeline' : 'Speci run';
-    output(
-      colorize(
-        `${getGlyph('bullet')} ${commandLabel} is active (PID: ${data.lock.pid})`,
-        'sky400'
-      )
-    );
-    output(colorize(`  Started: ${data.lock.startTime}`, 'dim'));
-    if (data.lock.elapsed) {
-      output(colorize(`  Elapsed: ${data.lock.elapsed}`, 'dim'));
-    }
-    // Show current task if active run and task in progress/review
-    if (data.currentTask) {
-      output();
-      output(colorize(`${getGlyph('arrow')} Working on:`, 'sky400'));
-      const taskText = `  ${data.currentTask.id}: ${data.currentTask.title}`;
-      const wrappedTaskLines = wrapText(taskText, CONTENT_WIDTH, '  ');
-      for (const taskLine of wrappedTaskLines) {
-        output(colorize(taskLine, 'white'));
-      }
-      output(colorize(`  Status: ${data.currentTask.status}`, 'dim'));
+    for (const line of renderLockSection(data)) {
+      output(line);
     }
   }
   output();

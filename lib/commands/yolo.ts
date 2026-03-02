@@ -1,5 +1,5 @@
 import { resolve } from 'node:path';
-import { createProductionContext } from '@/adapters/context-factory.js';
+import { MESSAGES } from '@/constants.js';
 import type { SpeciConfig } from '@/types.js';
 import { createError } from '@/errors.js';
 import type { CommandContext, CommandResult } from '@/interfaces.js';
@@ -29,6 +29,8 @@ export interface YoloOptions {
   /** Show detailed output */
   verbose?: boolean;
 }
+
+const PHASE_SEPARATOR = '━'.repeat(60);
 
 function validateAndResolvePath(pathValue: string, cwd: string): string {
   const resolvedPath = resolve(cwd, pathValue);
@@ -67,6 +69,101 @@ async function formatLockConflictError(
   return `Another yolo command is already running (PID: ${pid}). Use --force to override.`;
 }
 
+async function runPhase<T extends CommandResult>(
+  label: string,
+  fn: () => Promise<T>,
+  context: CommandContext
+): Promise<T> {
+  context.logger.info(PHASE_SEPARATOR);
+  context.logger.info(label);
+  const startTime = Date.now();
+  const result = await fn();
+  if (result.success) {
+    const successMessage =
+      label === 'Phase 1/3: Generating implementation plan...'
+        ? 'Plan generation complete'
+        : label === 'Phase 2/3: Generating task list...'
+          ? 'Task generation complete'
+          : 'Implementation complete';
+    context.logger.debug(`Phase completed in ${Date.now() - startTime}ms`);
+    context.logger.success(successMessage);
+  }
+  return result;
+}
+
+async function runYoloPipeline(
+  planPath: string,
+  options: YoloOptions,
+  context: CommandContext,
+  config: SpeciConfig
+): Promise<CommandResult> {
+  const planResult = await runPhase(
+    'Phase 1/3: Generating implementation plan...',
+    async () =>
+      plan(
+        {
+          prompt: options.prompt?.trim(),
+          input: options.input,
+          output: planPath,
+          verbose: options.verbose,
+        },
+        context,
+        config
+      ),
+    context
+  );
+  if (!planResult.success) {
+    return {
+      ...planResult,
+      error: `Yolo failed during plan phase: ${planResult.error ?? 'Unknown error'}`,
+    };
+  }
+
+  const taskResult = await runPhase(
+    'Phase 2/3: Generating task list...',
+    async () =>
+      task(
+        {
+          plan: planPath,
+          verbose: options.verbose,
+        },
+        context,
+        config
+      ),
+    context
+  );
+  if (!taskResult.success) {
+    return {
+      ...taskResult,
+      error: `Yolo failed during task phase: ${taskResult.error ?? 'Unknown error'}`,
+    };
+  }
+
+  const runResult = await runPhase(
+    'Phase 3/3: Running implementation loop...',
+    async () =>
+      run(
+        {
+          yes: true,
+          // force:true so run releases the yolo-held lock and acquires its own
+          force: true,
+          verbose: options.verbose,
+        },
+        context,
+        config
+      ),
+    context
+  );
+  if (!runResult.success) {
+    return {
+      ...runResult,
+      error: `Yolo failed during run phase: ${runResult.error ?? 'Unknown error'}`,
+    };
+  }
+
+  return { success: true, exitCode: 0 };
+}
+
 /**
  * Executes the yolo command pipeline: plan → task → run.
  * Security note: input/output paths are normalized with path.resolve() and validated to remain inside the project root before any config or pipeline work runs.
@@ -78,7 +175,7 @@ async function formatLockConflictError(
  */
 export async function yolo(
   options: YoloOptions,
-  context: CommandContext = createProductionContext(),
+  context: CommandContext,
   config?: SpeciConfig
 ): Promise<CommandResult> {
   const projectRoot = context.process.cwd();
@@ -97,8 +194,8 @@ export async function yolo(
 
   const normalizedPrompt = options.prompt?.trim();
   if (!normalizedPrompt && (!options.input || options.input.length === 0)) {
-    context.logger.error('Missing required input');
-    return failResult('Missing required input');
+    context.logger.error(MESSAGES.MISSING_REQUIRED_INPUT);
+    return failResult(MESSAGES.MISSING_REQUIRED_INPUT);
   }
 
   await context.preflight.run(
@@ -139,74 +236,14 @@ export async function yolo(
       });
     }
 
-    const phaseSeparator = '━'.repeat(60);
-
-    context.logger.info(phaseSeparator);
-    context.logger.info('Phase 1/3: Generating implementation plan...');
-    const planStartTime = Date.now();
     const planOutputPath = options.output ?? generatePlanOutputPath();
-    const planResult = await plan(
-      {
-        prompt: normalizedPrompt,
-        input: options.input,
-        output: planOutputPath,
-        verbose: options.verbose,
-      },
+    const pipelineOptions = { ...options, prompt: normalizedPrompt };
+    return await runYoloPipeline(
+      planOutputPath,
+      pipelineOptions,
       context,
       loadedConfig
     );
-    if (!planResult.success) {
-      return {
-        ...planResult,
-        error: `Yolo failed during plan phase: ${planResult.error ?? 'Unknown error'}`,
-      };
-    }
-    context.logger.debug(`Phase completed in ${Date.now() - planStartTime}ms`);
-    context.logger.success('Plan generation complete');
-
-    context.logger.info(phaseSeparator);
-    context.logger.info('Phase 2/3: Generating task list...');
-    const taskStartTime = Date.now();
-    const taskResult = await task(
-      {
-        plan: planOutputPath,
-        verbose: options.verbose,
-      },
-      context,
-      loadedConfig
-    );
-    if (!taskResult.success) {
-      return {
-        ...taskResult,
-        error: `Yolo failed during task phase: ${taskResult.error ?? 'Unknown error'}`,
-      };
-    }
-    context.logger.debug(`Phase completed in ${Date.now() - taskStartTime}ms`);
-    context.logger.success('Task generation complete');
-
-    context.logger.info(phaseSeparator);
-    context.logger.info('Phase 3/3: Running implementation loop...');
-    const runStartTime = Date.now();
-    const runResult = await run(
-      {
-        yes: true,
-        // force:true so run releases the yolo-held lock and acquires its own
-        force: true,
-        verbose: options.verbose,
-      },
-      context,
-      loadedConfig
-    );
-    if (!runResult.success) {
-      return {
-        ...runResult,
-        error: `Yolo failed during run phase: ${runResult.error ?? 'Unknown error'}`,
-      };
-    }
-    context.logger.debug(`Phase completed in ${Date.now() - runStartTime}ms`);
-    context.logger.success('Implementation complete');
-
-    return { success: true, exitCode: 0 };
   } catch (error) {
     return handleCommandError(error, 'Yolo', context.logger);
   } finally {

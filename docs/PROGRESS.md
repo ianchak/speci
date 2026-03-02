@@ -155,7 +155,7 @@ graph TD
 | TASK_021 | Test Coverage for promptForce/confirmRun       | TASK_021_test_prompt_functions.md           | COMPLETE    | PASSED        | MEDIUM   | M          | MVT_M4       | SA-20260302-021 | 1        |
 | TASK_022 | Add run.integration.test.ts                    | TASK_022_run_integration_test.md            | COMPLETE    | PASSED        | MEDIUM   | M          | MVT_M4       | SA-20260302-023 | 2        |
 | TASK_023 | Add status/clean Integration Tests             | TASK_023_status_clean_integration_tests.md  | COMPLETE    | PASSED        | MEDIUM   | M          | MVT_M4       | SA-20260302-024 | 1        |
-| TASK_024 | Cover signals.ts .then/.catch Callbacks        | TASK_024_signals_then_catch_coverage.md     | IN REVIEW   |               | MEDIUM   | M          | MVT_M4       | SA-20260302-025 | 1        |
+| TASK_024 | Cover signals.ts .then/.catch Callbacks        | TASK_024_signals_then_catch_coverage.md     | COMPLETE    | PASSED        | MEDIUM   | M          | MVT_M4       | SA-20260302-025 | 1        |
 | MVT_M5   | Manual Verification: Testability & Config      | MVT_M5_testability_config_loading.md        | NOT STARTED | —             | —        | 30 min     | TASK_020, TASK_021, TASK_022, TASK_023, TASK_024 | | |
 
 ### Dependencies
@@ -180,10 +180,10 @@ graph TD
 
 | Task ID  | Title                                              | File                                                              | Status      | Review Status | Priority | Complexity | Dependencies          | Assigned To | Attempts |
 | -------- | -------------------------------------------------- | ----------------------------------------------------------------- | ----------- | ------------- | -------- | ---------- | --------------------- | ----------- | -------- |
-| TASK_025 | Thread IFileSystem Through loadConfig/preflight    | TASK_025_thread_ifilesystem_loadconfig_preflight.md               | NOT STARTED | —             | MEDIUM   | M          | MVT_M5, TASK_022      |             |          |
-| TASK_026 | Add proc?: IProcess to copilot.ts runAgent         | TASK_026_add_iprocess_to_copilot.md                               | NOT STARTED | —             | MEDIUM   | M          | MVT_M5                |             |          |
-| TASK_027 | Validate Bundled Config + Typed applyMapping       | TASK_027_validate_bundled_config_typed_applyMapping.md            | NOT STARTED | —             | MEDIUM   | M          | MVT_M5                |             |          |
-| TASK_028 | Extract renderStatsBox, runYoloPipeline, decouple confirmRun | TASK_028_extract_renderstatsbox_runyolopipeline_decouple_confirmrun.md | NOT STARTED | — | MEDIUM | M     | MVT_M5                |             |          |
+| TASK_025 | Thread IFileSystem Through loadConfig/preflight    | TASK_025_thread_ifilesystem_loadconfig_preflight.md               | COMPLETE    | PASSED        | MEDIUM   | M          | MVT_M5, TASK_022      | SA-20260302-026 | 1        |
+| TASK_026 | Add proc?: IProcess to copilot.ts runAgent         | TASK_026_add_iprocess_to_copilot.md                               | COMPLETE    | PASSED        | MEDIUM   | M          | MVT_M5                | SA-20260302-027 | 1        |
+| TASK_027 | Validate Bundled Config + Typed applyMapping       | TASK_027_validate_bundled_config_typed_applyMapping.md            | COMPLETE    | PASSED        | MEDIUM   | M          | MVT_M5                | SA-20260302-028 | 1        |
+| TASK_028 | Extract renderStatsBox, runYoloPipeline, decouple confirmRun | TASK_028_extract_renderstatsbox_runyolopipeline_decouple_confirmrun.md | IN REVIEW |  | MEDIUM | M     | MVT_M5                | SA-20260302-029 | 1        |
 | TASK_029 | Add optional fs?: IFileSystem to readStateFile     | TASK_029_add_optional_fs_to_readstatefile.md                      | NOT STARTED | —             | MEDIUM   | M          | MVT_M5                |             |          |
 | MVT_M6   | Manual Verification: DI Completions & Decomposition| MVT_M6_di_completions_function_decomposition.md                   | NOT STARTED | —             | —        | 30 min     | TASK_025, TASK_026, TASK_027, TASK_028, TASK_029 | | |
 
@@ -356,13 +356,13 @@ TASK_001–005 → MVT_M1
 
 ## Subagent Tracking
 
-Last Subagent ID: SA-20260302-025
+Last Subagent ID: SA-20260302-029
 
 ---
 
 ## Review Tracking
 
-Last Review ID: RA-20260302-024
+Last Review ID: RA-20260302-028
 
 ---
 
@@ -372,13 +372,13 @@ Last Review ID: RA-20260302-024
 
 | Field             | Value |
 | ----------------- | ----- |
-| Task              | TASK_024 |
-| Impl Agent        | SA-20260302-025 |
-| Files Changed     | None (test-only task) |
-| Tests Added       | `test/utils/infrastructure/signals.test.ts` (2 new tests) |
+| Task              | TASK_028 |
+| Impl Agent        | SA-20260302-029 |
+| Files Changed     | `lib/commands/status.ts`, `lib/commands/yolo.ts`, `lib/commands/run.ts` |
+| Tests Added       | `test/ui/status.test.ts` (2 new tests), `test/commands/yolo.test.ts` (2 new tests), `test/commands/run.test.ts` (2 new tests) |
 | Rework?           | No |
-| Focus Areas       | SIGINT/SIGTERM `.then` success callbacks invoking `process.exit` after synthetic signal emission |
-| Known Limitations | No production refactor performed; `.catch` coverage relied on existing tests |
+| Focus Areas       | Extracted stats-box rendering and yolo phase orchestration helpers; confirmRun now receives pre-rendered task box from run() call site |
+| Known Limitations | No additional integration wiring was required; scope limited to TASK_028 refactors and tests |
 | Gate Results      | format:✅ lint:✅ typecheck:✅ test:✅ |
 
 ### For Fix Agent
@@ -395,4 +395,5 @@ Last Review ID: RA-20260302-024
 
 ### Review Failure Notes
 
-Cleared — TASK_023 passed review RA-20260302-024.
+None.
+
