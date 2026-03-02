@@ -7,10 +7,14 @@
  */
 
 import { relative, resolve } from 'node:path';
+import { MESSAGES } from '@/constants.js';
 import { infoBox } from '@/ui/box.js';
-import { createProductionContext } from '@/adapters/context-factory.js';
 import { initializeCommand } from '@/utils/command-helpers.js';
-import { failResult, handleCommandError } from '@/utils/error-handler.js';
+import {
+  failResult,
+  failValidation,
+  handleCommandError,
+} from '@/utils/error-handler.js';
 import { executeCopilotCommand } from '@/utils/copilot-helper.js';
 import { cleanFiles } from '@/commands/clean.js';
 import { PathValidator } from '@/validation/index.js';
@@ -45,9 +49,7 @@ function validatePlanFile(
   const result = new PathValidator(planPath).exists().isReadable().validate();
 
   if (!result.success) {
-    context.logger.error(result.error.message);
-    result.error.suggestions?.forEach((s) => context.logger.info(s));
-    return failResult(result.error.message);
+    return failValidation(result.error, context.logger);
   }
 
   return null;
@@ -65,20 +67,20 @@ function validatePlanFile(
  */
 export async function task(
   options: TaskOptions = {} as TaskOptions,
-  context: CommandContext = createProductionContext(),
-  config?: SpeciConfig
+  context: CommandContext,
+  preloadedConfig?: SpeciConfig
 ): Promise<CommandResult> {
   try {
     // Validate required option (must come before initialization)
     if (!options.plan) {
-      context.logger.error('Missing required input');
+      context.logger.error(MESSAGES.MISSING_REQUIRED_INPUT);
       context.logger.info('Required option:');
       context.logger.muted('  --plan <path>  Path to plan file');
       context.logger.raw('');
       context.logger.info('Examples:');
       context.logger.muted('  speci task --plan docs/plan.md');
       context.logger.muted('  speci t -p docs/plan.md');
-      return failResult('Missing required input');
+      return failResult(MESSAGES.MISSING_REQUIRED_INPUT);
     }
 
     // Resolve and validate plan file (must come before initialization)
@@ -92,19 +94,19 @@ export async function task(
       if (options.verbose) {
         context.logger.setVerbose(true);
       }
-      const loadedCfg = config ?? (await context.configLoader.load());
-      const cleanResult = cleanFiles(loadedCfg, context);
+      const config = preloadedConfig ?? (await context.configLoader.load());
+      const cleanResult = cleanFiles(config, context);
       if (!cleanResult.success) {
         return cleanResult;
       }
-      config = loadedCfg;
+      preloadedConfig = config;
       context.logger.raw('');
     }
 
     // Initialize command (config + preflight + agent validation)
-    const { config: loadedConfig, agentName } = await initializeCommand({
+    const { config, agentName } = await initializeCommand({
       commandName: 'task',
-      config, // Pass pre-loaded config if provided
+      config: preloadedConfig, // Pass pre-loaded config if provided
       context,
     });
 
@@ -120,7 +122,7 @@ export async function task(
     context.logger.raw('');
 
     // Build Copilot args for one-shot mode with plan context
-    const args = context.copilotRunner.buildArgs(loadedConfig, {
+    const args = context.copilotRunner.buildArgs(config, {
       prompt: `Read the plan file at ${planPath} and generate implementation tasks.`,
       agent: agentName,
       allowAll: true,

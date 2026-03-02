@@ -240,10 +240,10 @@ graph TD
 | Task ID  | Title                                              | File                                                    | Status      | Review Status | Priority | Complexity | Dependencies | Assigned To | Attempts |
 | -------- | -------------------------------------------------- | ------------------------------------------------------- | ----------- | ------------- | -------- | ---------- | ------------ | ----------- | -------- |
 | TASK_035 | Type Safety Batch (TYPE-05–TYPE-09)                | TASK_035_type_safety_small_fixes_batch.md               | COMPLETE    | PASSED        | MEDIUM   | M          | MVT_M7       | SA-20260302-035 | 1        |
-| TASK_036 | Fix Mock Stream Types + Agent Result Factories     | TASK_036_fix_mock_stream_types_agent_result_factories.md| IN REVIEW   |               | MEDIUM   | M          | MVT_M7       | SA-20260302-036 | 1        |
-| TASK_037 | ENV Constants + Boolean Naming                     | TASK_037_env_constants_boolean_naming.md                | NOT STARTED | —             | MEDIUM   | M          | MVT_M7       |             |          |
-| TASK_038 | Function & Type Renaming Batch                     | TASK_038_function_type_renaming_batch.md                | NOT STARTED | —             | MEDIUM   | M          | MVT_M7       |             |          |
-| TASK_039 | Minor Error Handling Fixes (ERR-02, ERR-06, ERR-08)| TASK_039_minor_error_handling_fixes.md                  | NOT STARTED | —             | MEDIUM   | M          | MVT_M7       |             |          |
+| TASK_036 | Fix Mock Stream Types + Agent Result Factories     | TASK_036_fix_mock_stream_types_agent_result_factories.md| COMPLETE    | PASSED        | MEDIUM   | M          | MVT_M7       | SA-20260302-036 | 1        |
+| TASK_037 | ENV Constants + Boolean Naming                     | TASK_037_env_constants_boolean_naming.md                | COMPLETE    | PASSED        | MEDIUM   | M          | MVT_M7       | SA-20260302-037 | 1        |
+| TASK_038 | Function & Type Renaming Batch                     | TASK_038_function_type_renaming_batch.md                | COMPLETE    | PASSED        | MEDIUM   | M          | MVT_M7       | SA-20260302-038 | 1        |
+| TASK_039 | Minor Error Handling Fixes (ERR-02, ERR-06, ERR-08)| TASK_039_minor_error_handling_fixes.md                  | COMPLETE    | PASSED        | MEDIUM   | M          | MVT_M7       | SA-20260302-039 | 1        |
 | MVT_M8   | Manual Verification: Type Safety & Naming          | MVT_M8_type_safety_naming.md                            | NOT STARTED | —             | —        | 30 min     | TASK_035, TASK_036, TASK_037, TASK_038, TASK_039 | | |
 
 ### Dependencies
@@ -268,7 +268,7 @@ graph TD
 
 | Task ID  | Title                                              | File                                          | Status      | Review Status | Priority | Complexity | Dependencies | Assigned To | Attempts |
 | -------- | -------------------------------------------------- | --------------------------------------------- | ----------- | ------------- | -------- | ---------- | ------------ | ----------- | -------- |
-| TASK_040 | DRY Helpers: failValidation, runPhase, phaseSeparator | TASK_040_dry_helper_functions.md           | NOT STARTED | —             | MEDIUM   | M          | MVT_M8       |             |          |
+| TASK_040 | DRY Helpers: failValidation, runPhase, phaseSeparator | TASK_040_dry_helper_functions.md           | IN REVIEW   | —             | MEDIUM   | M          | MVT_M8       | SA-20260302-040 | 1        |
 | TASK_041 | Function Design Improvements Batch                 | TASK_041_function_design_improvements.md      | NOT STARTED | —             | MEDIUM   | M          | MVT_M8       |             |          |
 | TASK_042 | Cross-Cutting Small Fixes (CC-06–CC-08)            | TASK_042_crosscutting_small_fixes.md          | NOT STARTED | —             | MEDIUM   | M          | MVT_M8       |             |          |
 | TASK_043 | Remove utils/ and config/interfaces Shim Files     | TASK_043_remove_shim_files.md                 | NOT STARTED | —             | MEDIUM   | M          | MVT_M8       |             |          |
@@ -356,13 +356,13 @@ TASK_001–005 → MVT_M1
 
 ## Subagent Tracking
 
-Last Subagent ID: SA-20260302-036
+Last Subagent ID: SA-20260302-040
 
 ---
 
 ## Review Tracking
 
-Last Review ID: RA-20260302-036
+Last Review ID: RA-20260302-040
 
 ---
 
@@ -372,28 +372,30 @@ Last Review ID: RA-20260302-036
 
 | Field             | Value |
 | ----------------- | ----- |
-| Task              | TASK_036 |
-| Impl Agent        | SA-20260302-036 |
-| Files Changed     | `lib/adapters/test-context.ts` |
-| Tests Added       | `test/adapters/test-context.test.ts` (6 new tests) |
+| Task              | TASK_040 |
+| Impl Agent        | SA-20260302-040 |
+| Files Changed     | `lib/utils/infrastructure/error-handler.ts`, `lib/commands/task.ts`, `lib/commands/refactor.ts`, `lib/commands/plan.ts` |
+| Tests Added       | `test/utils/infrastructure/error-handler.test.ts` (2 new tests) |
 | Rework?           | No |
-| Focus Areas       | Mock stream method coverage (`stdout`/`stdin`) and `mockAgentSuccess`/`mockAgentFailure` factory return shapes |
-| Known Limitations | No integration wiring changes were needed; scope limited to test utilities and adapter tests |
+| Focus Areas       | failValidation helper behavior parity at task/refactor/plan validation failure call sites |
+| Known Limitations | DUP-08/DUP-09 not modified because TASK_028 is already COMPLETE/PASSED in progress tracking |
 | Gate Results      | format:✅ lint:✅ typecheck:✅ test:✅ |
 
 ### For Fix Agent
 
 | Field           | Value |
 | --------------- | ----- |
-| Task            | — |
-| Task Goal       | — |
-| Review Agent    | — |
-| Failed Gate     | — |
-| Primary Error   | — |
-| Root Cause Hint | — |
-| Do NOT          | — |
+| Task            | - |
+| Task Goal       | - |
+| Review Agent    | - |
+| Failed Gate     | - |
+| Primary Error   | - |
+| Root Cause Hint | - |
+| Do NOT          | - |
 
 ### Review Failure Notes
 
 None.
+
+
 

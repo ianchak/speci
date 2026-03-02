@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import {
+  failValidation,
   failResult,
   handleCommandError,
   toErrorMessage,
@@ -31,10 +32,9 @@ describe('error-handler', () => {
   });
 
   describe('handleCommandError', () => {
-    it('should handle ERR-INP-02 error with init guidance', () => {
-      const error = new Error(
-        '[ERR-INP-02] Agent file not found: /path/to/speci-task.agent.md'
-      );
+    it('should handle ERR-INP-02 error name with init guidance regardless of message content', () => {
+      const error = new Error('Some unrelated error message');
+      error.name = 'ERR-INP-02';
       const result = handleCommandError(error, 'Task', mockLogger);
 
       expect(mockLogger.error).toHaveBeenCalledWith(error.message);
@@ -48,16 +48,33 @@ describe('error-handler', () => {
       });
     });
 
-    it('should handle plain agent file not found errors with init guidance', () => {
+    it('should handle plain agent file not found errors with generic error path', () => {
       const error = new Error(
         'Agent file not found: /path/to/speci-plan.agent.md'
       );
       const result = handleCommandError(error, 'Plan', mockLogger);
 
-      expect(mockLogger.error).toHaveBeenCalledWith(error.message);
-      expect(mockLogger.info).toHaveBeenCalledWith(
-        'Run "speci init" to create agents'
+      expect(mockLogger.error).toHaveBeenCalledWith(
+        `Plan command failed: ${error.message}`
       );
+      expect(mockLogger.info).not.toHaveBeenCalled();
+      expect(result).toEqual({
+        success: false,
+        exitCode: 1,
+        error: error.message,
+      });
+    });
+
+    it('should not special-case errors when only message includes ERR-INP-02', () => {
+      const error = new Error(
+        '[ERR-INP-02] Agent file not found: /path/to/speci-task.agent.md'
+      );
+      const result = handleCommandError(error, 'Task', mockLogger);
+
+      expect(mockLogger.error).toHaveBeenCalledWith(
+        `Task command failed: ${error.message}`
+      );
+      expect(mockLogger.info).not.toHaveBeenCalled();
       expect(result).toEqual({
         success: false,
         exitCode: 1,
@@ -207,6 +224,45 @@ describe('error-handler', () => {
         success: false,
         exitCode: 2,
         error: 'bad input',
+      });
+    });
+  });
+
+  describe('failValidation', () => {
+    it('should log error message and suggestions, then return failure result', () => {
+      const error = {
+        field: 'plan',
+        message: 'Plan file is required',
+        suggestions: ['Use --plan <path>', 'Check file path'],
+      };
+
+      const result = failValidation(error, mockLogger);
+
+      expect(mockLogger.error).toHaveBeenCalledWith('Plan file is required');
+      expect(mockLogger.info).toHaveBeenCalledTimes(2);
+      expect(mockLogger.info).toHaveBeenNthCalledWith(1, 'Use --plan <path>');
+      expect(mockLogger.info).toHaveBeenNthCalledWith(2, 'Check file path');
+      expect(result).toEqual({
+        success: false,
+        exitCode: 1,
+        error: 'Plan file is required',
+      });
+    });
+
+    it('should not log suggestions when none are provided', () => {
+      const error = {
+        field: 'scope',
+        message: 'Invalid scope',
+      };
+
+      const result = failValidation(error, mockLogger);
+
+      expect(mockLogger.error).toHaveBeenCalledWith('Invalid scope');
+      expect(mockLogger.info).not.toHaveBeenCalled();
+      expect(result).toEqual({
+        success: false,
+        exitCode: 1,
+        error: 'Invalid scope',
       });
     });
   });

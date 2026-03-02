@@ -8,9 +8,8 @@
 
 import { isAbsolute, resolve } from 'node:path';
 import { infoBox } from '@/ui/box.js';
-import { createProductionContext } from '@/adapters/context-factory.js';
 import { initializeCommand } from '@/utils/command-helpers.js';
-import { failResult, handleCommandError } from '@/utils/error-handler.js';
+import { failValidation, handleCommandError } from '@/utils/error-handler.js';
 import { executeCopilotCommand } from '@/utils/copilot-helper.js';
 import { PathValidator } from '@/validation/index.js';
 import type { CommandContext, CommandResult } from '@/interfaces.js';
@@ -59,9 +58,7 @@ function validateScope(
   const result = new PathValidator(resolved).isWithinProject(cwd).validate();
 
   if (!result.success) {
-    context.logger.error(result.error.message);
-    result.error.suggestions?.forEach((s) => context.logger.info(s));
-    return failResult(result.error.message);
+    return failValidation(result.error, context.logger);
   }
 
   // Check existence for directories (warn if doesn't exist, but don't fail)
@@ -91,8 +88,8 @@ function validateScope(
  */
 export async function refactor(
   options: RefactorOptions = {},
-  context: CommandContext = createProductionContext(),
-  config?: SpeciConfig
+  context: CommandContext,
+  preloadedConfig?: SpeciConfig
 ): Promise<CommandResult> {
   try {
     // Validate and resolve scope if provided (must come before initialization)
@@ -107,9 +104,9 @@ export async function refactor(
     }
 
     // Initialize command (config + preflight + agent validation)
-    const { config: loadedConfig, agentName } = await initializeCommand({
+    const { config, agentName } = await initializeCommand({
       commandName: 'refactor',
-      config, // Pass pre-loaded config if provided
+      config: preloadedConfig, // Pass pre-loaded config if provided
       context,
     });
 
@@ -131,7 +128,7 @@ export async function refactor(
     }
 
     // Build Copilot args for one-shot mode
-    const args = context.copilotRunner.buildArgs(loadedConfig, {
+    const args = context.copilotRunner.buildArgs(config, {
       prompt,
       agent: agentName,
       allowAll: true,

@@ -7,11 +7,15 @@
  */
 
 import { resolve } from 'node:path';
+import { MESSAGES } from '@/constants.js';
 import { drawBox } from '@/ui/box.js';
 import { colorize } from '@/ui/colors.js';
-import { createProductionContext } from '@/adapters/context-factory.js';
 import { initializeCommand } from '@/utils/command-helpers.js';
-import { failResult, handleCommandError } from '@/utils/error-handler.js';
+import {
+  failResult,
+  failValidation,
+  handleCommandError,
+} from '@/utils/error-handler.js';
 import { executeCopilotCommand } from '@/utils/copilot-helper.js';
 import { InputValidator } from '@/validation/index.js';
 import type { CommandContext, CommandResult } from '@/interfaces.js';
@@ -71,13 +75,13 @@ function displayCommandInfo(
  */
 export async function plan(
   options: PlanOptions = {},
-  context: CommandContext = createProductionContext(),
-  config?: SpeciConfig
+  context: CommandContext,
+  preloadedConfig?: SpeciConfig
 ): Promise<CommandResult> {
   try {
     // Require at least --prompt or --input (validate before initialization)
     if (!options.prompt && (!options.input || options.input.length === 0)) {
-      context.logger.error('Missing required input');
+      context.logger.error(MESSAGES.MISSING_REQUIRED_INPUT);
       context.logger.info('Provide at least one of:');
       context.logger.muted(
         '  --prompt <text>    Initial prompt describing what to plan'
@@ -90,7 +94,7 @@ export async function plan(
       context.logger.muted('  speci plan -p "Build a REST API for users"');
       context.logger.muted('  speci plan -i docs/design.md');
       context.logger.muted('  speci plan -i spec.md -p "Focus on auth"');
-      return failResult('Missing required input');
+      return failResult(MESSAGES.MISSING_REQUIRED_INPUT);
     }
 
     // Validate input using InputValidator
@@ -104,17 +108,13 @@ export async function plan(
       .validate();
 
     if (!validationResult.success) {
-      context.logger.error(validationResult.error.message);
-      validationResult.error.suggestions?.forEach((s) =>
-        context.logger.info(s)
-      );
-      return failResult(validationResult.error.message);
+      return failValidation(validationResult.error, context.logger);
     }
 
     // Initialize command with shared helper (skip preflight as plan doesn't need it)
-    const { config: loadedConfig, agentName } = await initializeCommand({
+    const { config, agentName } = await initializeCommand({
       commandName: 'plan',
-      config, // Pass pre-loaded config if provided
+      config: preloadedConfig, // Pass pre-loaded config if provided
       skipPreflight: true,
       context,
     });
@@ -169,10 +169,10 @@ export async function plan(
     context.logger.raw('');
 
     // Build Copilot args - one-shot mode with prompt
-    const args = context.copilotRunner.buildArgs(loadedConfig, {
+    const args = context.copilotRunner.buildArgs(config, {
       prompt: fullPrompt || undefined,
       agent: agentName,
-      allowAll: loadedConfig.copilot.permissions === 'allow-all',
+      allowAll: config.copilot.permissions === 'allow-all',
       command: 'plan',
     });
 
