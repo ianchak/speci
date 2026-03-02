@@ -183,8 +183,8 @@ graph TD
 | TASK_025 | Thread IFileSystem Through loadConfig/preflight    | TASK_025_thread_ifilesystem_loadconfig_preflight.md               | COMPLETE    | PASSED        | MEDIUM   | M          | MVT_M5, TASK_022      | SA-20260302-026 | 1        |
 | TASK_026 | Add proc?: IProcess to copilot.ts runAgent         | TASK_026_add_iprocess_to_copilot.md                               | COMPLETE    | PASSED        | MEDIUM   | M          | MVT_M5                | SA-20260302-027 | 1        |
 | TASK_027 | Validate Bundled Config + Typed applyMapping       | TASK_027_validate_bundled_config_typed_applyMapping.md            | COMPLETE    | PASSED        | MEDIUM   | M          | MVT_M5                | SA-20260302-028 | 1        |
-| TASK_028 | Extract renderStatsBox, runYoloPipeline, decouple confirmRun | TASK_028_extract_renderstatsbox_runyolopipeline_decouple_confirmrun.md | IN REVIEW |  | MEDIUM | M     | MVT_M5                | SA-20260302-029 | 1        |
-| TASK_029 | Add optional fs?: IFileSystem to readStateFile     | TASK_029_add_optional_fs_to_readstatefile.md                      | NOT STARTED | —             | MEDIUM   | M          | MVT_M5                |             |          |
+| TASK_028 | Extract renderStatsBox, runYoloPipeline, decouple confirmRun | TASK_028_extract_renderstatsbox_runyolopipeline_decouple_confirmrun.md | COMPLETE | PASSED | MEDIUM | M     | MVT_M5                | SA-20260302-029 | 1        |
+| TASK_029 | Add optional fs?: IFileSystem to readStateFile     | TASK_029_add_optional_fs_to_readstatefile.md                      | COMPLETE    | PASSED        | MEDIUM   | M          | MVT_M5                | SA-20260302-030 | 1        |
 | MVT_M6   | Manual Verification: DI Completions & Decomposition| MVT_M6_di_completions_function_decomposition.md                   | NOT STARTED | —             | —        | 30 min     | TASK_025, TASK_026, TASK_027, TASK_028, TASK_029 | | |
 
 ### Dependencies
@@ -210,11 +210,11 @@ graph TD
 
 | Task ID  | Title                                              | File                                                        | Status      | Review Status | Priority | Complexity | Dependencies          | Assigned To | Attempts |
 | -------- | -------------------------------------------------- | ----------------------------------------------------------- | ----------- | ------------- | -------- | ---------- | --------------------- | ----------- | -------- |
-| TASK_030 | SignalManager Pre-Condition Integration Test       | TASK_030_signal_manager_precondition_integration_test.md    | NOT STARTED | —             | MEDIUM   | M          | MVT_M6                |             |          |
-| TASK_031 | Encapsulate signals.ts in SignalManager Class      | TASK_031_signal_manager_class.md                            | NOT STARTED | —             | MEDIUM   | M          | MVT_M6, TASK_030      |             |          |
-| TASK_032 | Add IProcess to installSignalHandlers              | TASK_032_iprocess_in_signal_handlers.md                     | NOT STARTED | —             | MEDIUM   | M          | MVT_M6                |             |          |
-| TASK_033 | Encapsulate stateFileCache in StateCache Class     | TASK_033_state_cache_class.md                               | NOT STARTED | —             | MEDIUM   | M          | MVT_M6                |             |          |
-| TASK_034 | Thread ILogger Through Infrastructure Functions    | TASK_034_ilogger_in_infrastructure_functions.md             | NOT STARTED | —             | MEDIUM   | M          | MVT_M6                |             |          |
+| TASK_030 | SignalManager Pre-Condition Integration Test       | TASK_030_signal_manager_precondition_integration_test.md    | COMPLETE    | PASSED        | MEDIUM   | M          | MVT_M6                | SA-20260302-031 | 1        |
+| TASK_031 | Encapsulate signals.ts in SignalManager Class      | TASK_031_signal_manager_class.md                            | COMPLETE    | PASSED        | MEDIUM   | M          | MVT_M6, TASK_030      | SA-20260302-032 | 1        |
+| TASK_032 | Add IProcess to installSignalHandlers              | TASK_032_iprocess_in_signal_handlers.md                     | COMPLETE    | PASSED        | MEDIUM   | M          | MVT_M6                | SA-20260302-032 | 1        |
+| TASK_033 | Encapsulate stateFileCache in StateCache Class     | TASK_033_state_cache_class.md                               | COMPLETE    | PASSED        | MEDIUM   | M          | MVT_M6                | SA-20260302-033 | 1        |
+| TASK_034 | Thread ILogger Through Infrastructure Functions    | TASK_034_ilogger_in_infrastructure_functions.md             | COMPLETE    | PASSED        | MEDIUM   | M          | MVT_M6                | SA-20260302-034 | 1        |
 | MVT_M7   | Manual Verification: Singleton & Logging           | MVT_M7_singleton_encapsulation_logging_unification.md       | NOT STARTED | —             | —        | 30 min     | TASK_030, TASK_031, TASK_032, TASK_033, TASK_034 | | |
 
 ### Dependencies
@@ -239,8 +239,8 @@ graph TD
 
 | Task ID  | Title                                              | File                                                    | Status      | Review Status | Priority | Complexity | Dependencies | Assigned To | Attempts |
 | -------- | -------------------------------------------------- | ------------------------------------------------------- | ----------- | ------------- | -------- | ---------- | ------------ | ----------- | -------- |
-| TASK_035 | Type Safety Batch (TYPE-05–TYPE-09)                | TASK_035_type_safety_small_fixes_batch.md               | NOT STARTED | —             | MEDIUM   | M          | MVT_M7       |             |          |
-| TASK_036 | Fix Mock Stream Types + Agent Result Factories     | TASK_036_fix_mock_stream_types_agent_result_factories.md| NOT STARTED | —             | MEDIUM   | M          | MVT_M7       |             |          |
+| TASK_035 | Type Safety Batch (TYPE-05–TYPE-09)                | TASK_035_type_safety_small_fixes_batch.md               | COMPLETE    | PASSED        | MEDIUM   | M          | MVT_M7       | SA-20260302-035 | 1        |
+| TASK_036 | Fix Mock Stream Types + Agent Result Factories     | TASK_036_fix_mock_stream_types_agent_result_factories.md| IN REVIEW   |               | MEDIUM   | M          | MVT_M7       | SA-20260302-036 | 1        |
 | TASK_037 | ENV Constants + Boolean Naming                     | TASK_037_env_constants_boolean_naming.md                | NOT STARTED | —             | MEDIUM   | M          | MVT_M7       |             |          |
 | TASK_038 | Function & Type Renaming Batch                     | TASK_038_function_type_renaming_batch.md                | NOT STARTED | —             | MEDIUM   | M          | MVT_M7       |             |          |
 | TASK_039 | Minor Error Handling Fixes (ERR-02, ERR-06, ERR-08)| TASK_039_minor_error_handling_fixes.md                  | NOT STARTED | —             | MEDIUM   | M          | MVT_M7       |             |          |
@@ -356,13 +356,13 @@ TASK_001–005 → MVT_M1
 
 ## Subagent Tracking
 
-Last Subagent ID: SA-20260302-029
+Last Subagent ID: SA-20260302-036
 
 ---
 
 ## Review Tracking
 
-Last Review ID: RA-20260302-028
+Last Review ID: RA-20260302-036
 
 ---
 
@@ -372,13 +372,13 @@ Last Review ID: RA-20260302-028
 
 | Field             | Value |
 | ----------------- | ----- |
-| Task              | TASK_028 |
-| Impl Agent        | SA-20260302-029 |
-| Files Changed     | `lib/commands/status.ts`, `lib/commands/yolo.ts`, `lib/commands/run.ts` |
-| Tests Added       | `test/ui/status.test.ts` (2 new tests), `test/commands/yolo.test.ts` (2 new tests), `test/commands/run.test.ts` (2 new tests) |
+| Task              | TASK_036 |
+| Impl Agent        | SA-20260302-036 |
+| Files Changed     | `lib/adapters/test-context.ts` |
+| Tests Added       | `test/adapters/test-context.test.ts` (6 new tests) |
 | Rework?           | No |
-| Focus Areas       | Extracted stats-box rendering and yolo phase orchestration helpers; confirmRun now receives pre-rendered task box from run() call site |
-| Known Limitations | No additional integration wiring was required; scope limited to TASK_028 refactors and tests |
+| Focus Areas       | Mock stream method coverage (`stdout`/`stdin`) and `mockAgentSuccess`/`mockAgentFailure` factory return shapes |
+| Known Limitations | No integration wiring changes were needed; scope limited to test utilities and adapter tests |
 | Gate Results      | format:✅ lint:✅ typecheck:✅ test:✅ |
 
 ### For Fix Agent

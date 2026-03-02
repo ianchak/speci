@@ -19,9 +19,34 @@ import type {
   IPreflight,
   ISignalManager,
 } from '@/interfaces.js';
-import type { SpeciConfig } from '@/types.js';
+import type { AgentRunResult, SpeciConfig } from '@/types.js';
 import { STATE } from '@/types.js';
 import { DEFAULT_PATHS } from '@/constants.js';
+
+/**
+ * Mock stdout stream used by test process doubles.
+ */
+export interface MockWriteStream {
+  isTTY: boolean;
+  columns: number;
+  rows: number;
+  write: ReturnType<typeof vi.fn>;
+  on: ReturnType<typeof vi.fn>;
+  off: ReturnType<typeof vi.fn>;
+}
+
+/**
+ * Mock stdin stream used by test process doubles.
+ */
+export interface MockReadStream {
+  isTTY: boolean;
+  setRawMode: ReturnType<typeof vi.fn>;
+  resume: ReturnType<typeof vi.fn>;
+  pause: ReturnType<typeof vi.fn>;
+  on: ReturnType<typeof vi.fn>;
+  off: ReturnType<typeof vi.fn>;
+  removeListener: ReturnType<typeof vi.fn>;
+}
 
 /**
  * Create a mock filesystem for testing
@@ -53,6 +78,30 @@ export function createMockFileSystem(): IFileSystem {
  * @returns Mock IProcess with Vitest spy methods
  */
 export function createMockProcess(): IProcess {
+  const stdout: NodeJS.WriteStream & MockWriteStream = Object.assign(
+    Object.create(process.stdout),
+    {
+      isTTY: false,
+      columns: 80,
+      rows: 24,
+      write: vi.fn(() => true),
+      on: vi.fn(),
+      off: vi.fn(),
+    }
+  );
+  const stdin: NodeJS.ReadStream & MockReadStream = Object.assign(
+    Object.create(process.stdin),
+    {
+      isTTY: false,
+      setRawMode: vi.fn(),
+      resume: vi.fn(),
+      pause: vi.fn(),
+      on: vi.fn(),
+      off: vi.fn(),
+      removeListener: vi.fn(),
+    }
+  );
+
   return {
     env: {},
     cwd: vi.fn(() => '/mock/cwd'),
@@ -61,17 +110,28 @@ export function createMockProcess(): IProcess {
     }) as never,
     pid: 12345,
     platform: 'linux',
-    stdout: {
-      isTTY: false,
-      columns: 80,
-      rows: 24,
-      write: vi.fn(),
-    } as unknown as NodeJS.WriteStream,
-    stdin: {
-      isTTY: false,
-    } as unknown as NodeJS.ReadStream,
+    stdout,
+    stdin,
     on: vi.fn(),
+    off: vi.fn(),
   };
+}
+
+/**
+ * Create a successful agent run result for tests.
+ */
+export function mockAgentSuccess(exitCode: 0 = 0): AgentRunResult {
+  return { isSuccess: true, exitCode };
+}
+
+/**
+ * Create a failed agent run result for tests.
+ */
+export function mockAgentFailure(
+  exitCode = 1,
+  error = 'Agent run failed'
+): AgentRunResult {
+  return { isSuccess: false, exitCode, error };
 }
 
 /**
@@ -149,7 +209,7 @@ export function createMockCopilotRunner(): ICopilotRunner {
   return {
     buildArgs: vi.fn(() => []),
     spawn: vi.fn(async () => 0),
-    run: vi.fn(async () => ({ isSuccess: true, exitCode: 0 }) as const),
+    run: vi.fn(async () => mockAgentSuccess()),
   };
 }
 
