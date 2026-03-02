@@ -13,6 +13,9 @@ import {
   displayStaticBanner,
   shouldShowBanner,
 } from '../lib/cli/initialize.js';
+import { EXIT_CODE } from '../lib/constants.js';
+import { exitWithCleanup } from '../lib/utils/exit.js';
+import { log } from '../lib/utils/logger.js';
 
 /**
  * Main CLI orchestration function
@@ -62,8 +65,15 @@ async function main(): Promise<void> {
   }
 }
 
+process.on('unhandledRejection', (reason) => {
+  const message = reason instanceof Error ? reason.message : String(reason);
+  log.error(message);
+  void exitWithCleanup(EXIT_CODE.ERROR);
+});
+
 // Execute main function
 main().catch((error) => {
-  console.error('Fatal error:', error);
-  process.exit(1);
+  const message = error instanceof Error ? error.message : String(error);
+  log.error(message);
+  void exitWithCleanup(EXIT_CODE.ERROR);
 });

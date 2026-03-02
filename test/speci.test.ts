@@ -522,4 +522,122 @@ Examples:
       expect(availableCommands).toContain('status');
     });
   });
+
+  describe('Fatal and Unhandled Rejection Handlers', () => {
+    const logErrorMock = vi.fn<(message: string) => void>();
+    const exitWithCleanupMock = vi.fn<(code: number) => Promise<never>>(
+      async () => undefined as never
+    );
+
+    function setupModuleMocks(loadError?: unknown): void {
+      vi.doMock('../lib/constants.js', () => ({
+        EXIT_CODE: { ERROR: 1 },
+      }));
+      vi.doMock('../lib/utils/logger.js', () => ({
+        log: { error: logErrorMock },
+      }));
+      vi.doMock('../lib/utils/exit.js', () => ({
+        exitWithCleanup: exitWithCleanupMock,
+      }));
+      vi.doMock('../lib/adapters/context-factory.js', () => ({
+        createProductionContext: () => ({
+          configLoader: {
+            load: vi.fn(async () => {
+              if (loadError !== undefined) {
+                throw loadError;
+              }
+              return {};
+            }),
+          },
+        }),
+      }));
+      vi.doMock('../lib/cli/command-registry.js', () => ({
+        CommandRegistry: class {
+          getProgram(): { opts: () => { color: boolean } } {
+            return { opts: () => ({ color: false }) };
+          }
+          async execute(): Promise<void> {}
+        },
+      }));
+      vi.doMock('../lib/cli/initialize.js', () => ({
+        displayBanner: vi.fn(),
+        displayStaticBanner: vi.fn(),
+        shouldShowBanner: vi.fn(() => false),
+      }));
+    }
+
+    beforeEach(() => {
+      vi.resetModules();
+      logErrorMock.mockClear();
+      exitWithCleanupMock.mockClear();
+      process.argv = ['node', 'speci'];
+    });
+
+    it('logs error.message and exits with cleanup for fatal Error rejection', async () => {
+      const consoleErrorSpy = vi
+        .spyOn(console, 'error')
+        .mockImplementation(() => {});
+      vi.spyOn(process, 'on').mockImplementation(() => process);
+      setupModuleMocks(new Error('fatal boom'));
+
+      await import('../bin/speci.js');
+      await Promise.resolve();
+      await Promise.resolve();
+
+      expect(logErrorMock).toHaveBeenCalledWith('fatal boom');
+      expect(exitWithCleanupMock).toHaveBeenCalledWith(1);
+      expect(consoleErrorSpy).not.toHaveBeenCalledWith(
+        'Fatal error:',
+        expect.anything()
+      );
+    });
+
+    it('logs stringified reason for fatal non-Error rejection', async () => {
+      vi.spyOn(process, 'on').mockImplementation(() => process);
+      setupModuleMocks('fatal string');
+
+      await import('../bin/speci.js');
+      await Promise.resolve();
+      await Promise.resolve();
+
+      expect(logErrorMock).toHaveBeenCalledWith('fatal string');
+      expect(exitWithCleanupMock).toHaveBeenCalledWith(1);
+    });
+
+    it('registers unhandledRejection and handles Error reason', async () => {
+      let unhandledRejectionHandler: ((reason: unknown) => void) | undefined;
+      vi.spyOn(process, 'on').mockImplementation((event, listener) => {
+        if (event === 'unhandledRejection') {
+          unhandledRejectionHandler = listener as (reason: unknown) => void;
+        }
+        return process;
+      });
+      setupModuleMocks();
+
+      await import('../bin/speci.js');
+      expect(unhandledRejectionHandler).toBeDefined();
+
+      unhandledRejectionHandler?.(new Error('reject boom'));
+
+      expect(logErrorMock).toHaveBeenCalledWith('reject boom');
+      expect(exitWithCleanupMock).toHaveBeenCalledWith(1);
+    });
+
+    it('handles unhandledRejection non-Error reason via String(reason)', async () => {
+      let unhandledRejectionHandler: ((reason: unknown) => void) | undefined;
+      vi.spyOn(process, 'on').mockImplementation((event, listener) => {
+        if (event === 'unhandledRejection') {
+          unhandledRejectionHandler = listener as (reason: unknown) => void;
+        }
+        return process;
+      });
+      setupModuleMocks();
+
+      await import('../bin/speci.js');
+      unhandledRejectionHandler?.('reject string');
+
+      expect(logErrorMock).toHaveBeenCalledWith('reject string');
+      expect(exitWithCleanupMock).toHaveBeenCalledWith(1);
+    });
+  });
 });
