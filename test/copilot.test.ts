@@ -981,6 +981,108 @@ describe('copilot', () => {
         );
       }
     });
+
+    it('should use fallback message when a string is thrown', async () => {
+      vi.mocked(spawn).mockImplementation(() => {
+        const proc = new EventEmitter() as ChildProcess;
+        proc.stdout = new EventEmitter() as never;
+        proc.stderr = new EventEmitter() as never;
+
+        setTimeout(() => {
+          proc.emit('error', 'boom');
+        }, 10);
+
+        return proc;
+      });
+
+      const result = await runAgent(config, 'test-agent', 'plan', {
+        maxRetries: 0,
+        baseDelay: 1,
+        maxDelay: 1,
+        retryableExitCodes: [429, 52, 124, 7, 6],
+      });
+
+      expect(result.isSuccess).toBe(false);
+      if (!result.isSuccess) {
+        expect(result.error).toBe('Failed after 0 retries');
+      }
+    });
+
+    it('should use fallback message when a plain object is thrown', async () => {
+      vi.mocked(spawn).mockImplementation(() => {
+        const proc = new EventEmitter() as ChildProcess;
+        proc.stdout = new EventEmitter() as never;
+        proc.stderr = new EventEmitter() as never;
+
+        setTimeout(() => {
+          proc.emit('error', { message: 'oops' });
+        }, 10);
+
+        return proc;
+      });
+
+      const result = await runAgent(config, 'test-agent', 'plan', {
+        maxRetries: 0,
+        baseDelay: 1,
+        maxDelay: 1,
+        retryableExitCodes: [429, 52, 124, 7, 6],
+      });
+
+      expect(result.isSuccess).toBe(false);
+      if (!result.isSuccess) {
+        expect(result.error).toBe('Failed after 0 retries');
+      }
+    });
+
+    it('should return Error.message when an Error is thrown', async () => {
+      vi.mocked(spawn).mockImplementation(() => {
+        const proc = new EventEmitter() as ChildProcess;
+        proc.stdout = new EventEmitter() as never;
+        proc.stderr = new EventEmitter() as never;
+
+        setTimeout(() => {
+          proc.emit('error', new Error('boom'));
+        }, 10);
+
+        return proc;
+      });
+
+      const result = await runAgent(config, 'test-agent', 'plan', {
+        maxRetries: 0,
+        baseDelay: 1,
+        maxDelay: 1,
+        retryableExitCodes: [429, 52, 124, 7, 6],
+      });
+
+      expect(result.isSuccess).toBe(false);
+      if (!result.isSuccess) {
+        expect(result.error).toBe('boom');
+      }
+    });
+
+    it('should treat plain-object ENOENT code as non-retryable', async () => {
+      vi.mocked(spawn).mockImplementation(() => {
+        const proc = new EventEmitter() as ChildProcess;
+        proc.stdout = new EventEmitter() as never;
+        proc.stderr = new EventEmitter() as never;
+
+        setTimeout(() => {
+          proc.emit('error', { code: 'ENOENT' });
+        }, 10);
+
+        return proc;
+      });
+
+      const result = await runAgent(config, 'test-agent', 'plan');
+
+      expect(result.isSuccess).toBe(false);
+      if (!result.isSuccess) {
+        expect(result.exitCode).toBe(127);
+        expect(result.error).toBe(
+          'Copilot CLI not found. Is it installed and in PATH?'
+        );
+      }
+    });
   });
 
   describe('Retry Logic Comprehensive Edge Cases', () => {

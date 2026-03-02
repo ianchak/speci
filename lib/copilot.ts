@@ -211,10 +211,16 @@ export async function runAgent(
         };
       }
     } catch (err) {
-      lastError = err as Error;
+      if (err instanceof Error) {
+        lastError = err;
+      }
 
       // ENOENT is not retryable
-      if ((err as NodeJS.ErrnoException).code === 'ENOENT') {
+      const code =
+        typeof err === 'object' && err !== null && 'code' in err
+          ? (err as NodeJS.ErrnoException).code
+          : undefined;
+      if (code === 'ENOENT') {
         return {
           isSuccess: false,
           exitCode: 127,
