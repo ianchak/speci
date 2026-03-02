@@ -128,21 +128,23 @@ export async function run(
   context.signalManager.install();
 
   // Register cleanup functions
-  context.signalManager.registerCleanup(async () => {
+  const lockCleanup = async () => {
     await context.lockManager.release(loadedConfig);
-  });
+  };
+  context.signalManager.registerCleanup(lockCleanup);
 
   // 8. Initialize logging (after all early exits)
   const logFile = initializeLogFile(loadedConfig, context);
 
   // Register log file cleanup
-  context.signalManager.registerCleanup(async () => {
+  const logCleanup = async () => {
     try {
       await closeLogFile(logFile);
     } catch {
       // Log file may not be initialized if we exited early
     }
-  });
+  };
+  context.signalManager.registerCleanup(logCleanup);
 
   try {
     // 9. Run main loop
@@ -158,6 +160,8 @@ export async function run(
     } catch {
       // Log file may not be initialized if we exited early
     }
+    context.signalManager.unregisterCleanup(lockCleanup);
+    context.signalManager.unregisterCleanup(logCleanup);
     context.signalManager.remove();
   }
 }

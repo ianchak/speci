@@ -26,6 +26,7 @@ import * as lock from '../../lib/utils/lock.js';
 import * as preflight from '../../lib/utils/preflight.js';
 import * as gate from '../../lib/utils/gate.js';
 import * as copilot from '../../lib/copilot.js';
+import * as loggerUtils from '../../lib/utils/logger.js';
 import type { SpeciConfig } from '../../lib/config.js';
 import { STATE } from '../../lib/state.js';
 
@@ -155,6 +156,40 @@ describe('Run Command', () => {
       await run({ yes: true });
 
       expect(existsSync(mockConfig.paths.logs)).toBe(true);
+    });
+
+    it('should cleanup once and unregister both registered cleanup handlers', async () => {
+      const context = createMockContext({
+        mockConfig: mockConfig as unknown as RuntimeSpeciConfig,
+        cwd: TEST_DIR,
+      });
+      const closeLogFileSpy = vi
+        .spyOn(loggerUtils, 'closeLogFile')
+        .mockResolvedValue(undefined);
+      vi.mocked(context.stateReader.getState).mockResolvedValue(STATE.DONE);
+
+      await run(
+        { yes: true },
+        context,
+        mockConfig as unknown as RuntimeSpeciConfig
+      );
+
+      expect(context.lockManager.release).toHaveBeenCalledTimes(1);
+      expect(closeLogFileSpy).toHaveBeenCalledTimes(1);
+      expect(context.signalManager.registerCleanup).toHaveBeenCalledTimes(2);
+      expect(context.signalManager.unregisterCleanup).toHaveBeenCalledTimes(2);
+
+      const registeredCleanupHandlers = vi
+        .mocked(context.signalManager.registerCleanup)
+        .mock.calls.map(([cleanup]) => cleanup);
+      expect(context.signalManager.unregisterCleanup).toHaveBeenNthCalledWith(
+        1,
+        registeredCleanupHandlers[0]
+      );
+      expect(context.signalManager.unregisterCleanup).toHaveBeenNthCalledWith(
+        2,
+        registeredCleanupHandlers[1]
+      );
     });
   });
 
