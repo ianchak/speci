@@ -18,11 +18,11 @@ Speci operates as an autonomous loop that reads a PROGRESS.md file to determine 
 2. **Task** breaks the plan into trackable tasks with a PROGRESS.md file
 3. **Run** enters the implementation loop:
 
-- Tasks marked WORK_LEFT get an implementation agent
+- When tasks remain incomplete (state: WORK_LEFT), an implementation agent is dispatched
 - Gate validation runs your lint, typecheck, and test commands
 - If gates fail, a fix agent attempts repairs (up to a configurable limit)
 - Tasks marked IN_REVIEW get a review agent
-- Tasks marked BLOCKED get a tidy agent
+- When all remaining tasks are blocked (state: BLOCKED), a tidy agent is dispatched
 - The loop continues until all tasks are DONE or limits are reached
 
 ### Workflow Diagram
