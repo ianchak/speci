@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { setLoggerProcess, log } from '../../../lib/utils/logger.js';
-import type { IProcess } from '../../../lib/interfaces.js';
+import { createLogger } from '../../../lib/utils/infrastructure/logger.js';
+import type { IProcess } from '../../../lib/interfaces/index.js';
 
 describe('logger with IProcess', () => {
   let consoleLogSpy: ReturnType<typeof vi.spyOn>;
@@ -14,8 +14,6 @@ describe('logger with IProcess', () => {
   afterEach(() => {
     consoleLogSpy.mockRestore();
     consoleErrorSpy.mockRestore();
-    // Reset to real process
-    setLoggerProcess(process);
   });
 
   it('should use mock process.env for debug mode detection', () => {
@@ -27,13 +25,16 @@ describe('logger with IProcess', () => {
       exit: vi.fn() as never,
       pid: 12345,
       platform: 'linux',
+      version: 'v22.0.0',
+      argv: ['node', 'speci'],
       stdout: {} as NodeJS.WriteStream,
       stdin: {} as NodeJS.ReadStream,
       on: vi.fn(),
+      off: vi.fn(),
     };
 
-    setLoggerProcess(mockProcess);
-    log.debug('test debug message');
+    const logger = createLogger(mockProcess);
+    logger.debug('test debug message');
 
     // Should output debug message when SPECI_DEBUG=1
     expect(consoleLogSpy).toHaveBeenCalled();
@@ -46,13 +47,16 @@ describe('logger with IProcess', () => {
       exit: vi.fn() as never,
       pid: 12345,
       platform: 'linux',
+      version: 'v22.0.0',
+      argv: ['node', 'speci'],
       stdout: {} as NodeJS.WriteStream,
       stdin: {} as NodeJS.ReadStream,
       on: vi.fn(),
+      off: vi.fn(),
     };
 
-    setLoggerProcess(mockProcess);
-    log.debug('test debug message');
+    const logger = createLogger(mockProcess);
+    logger.debug('test debug message');
 
     // Should not output debug message when SPECI_DEBUG not set
     expect(consoleLogSpy).not.toHaveBeenCalled();
@@ -67,20 +71,23 @@ describe('logger with IProcess', () => {
       exit: vi.fn() as never,
       pid: 12345,
       platform: 'linux',
+      version: 'v22.0.0',
+      argv: ['node', 'speci'],
       stdout: {} as NodeJS.WriteStream,
       stdin: {} as NodeJS.ReadStream,
       on: vi.fn(),
+      off: vi.fn(),
     };
 
-    setLoggerProcess(mockProcess);
-    log.debug('test debug message');
+    const logger = createLogger(mockProcess);
+    logger.debug('test debug message');
 
     expect(consoleLogSpy).toHaveBeenCalled();
   });
 
   it('should work with real process when not set', () => {
-    // Don't set mock process, should use real one
-    log.info('test message');
+    const logger = createLogger(process);
+    logger.info('test message');
 
     // Should work without errors
     expect(consoleLogSpy).toHaveBeenCalled();

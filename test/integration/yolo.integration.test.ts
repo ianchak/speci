@@ -5,7 +5,7 @@ import { createMockContext } from '@/adapters/test-context.js';
 import { createError } from '@/errors.js';
 import { yolo } from '@/commands/yolo.js';
 import { status } from '@/commands/status.js';
-import type { CommandContext } from '@/interfaces.js';
+import type { CommandContext } from '@/interfaces/index.js';
 import type { IntegrationProject } from '../helpers/integration-helpers.js';
 import {
   createYoloIntegrationProject,

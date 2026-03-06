@@ -9,7 +9,7 @@ import {
   renderBorder,
   renderIterationDisplay,
 } from '../../lib/ui/progress-bar.js';
-import { stripAnsi } from '../../lib/ui/colors.js';
+import { stripAnsi, isColorSupported } from '../../lib/ui/colors.js';
 
 describe('Progress Bar', () => {
   let originalEnv: NodeJS.ProcessEnv;
@@ -208,21 +208,31 @@ describe('Progress Bar', () => {
 
     it('should apply ANSI color codes when colors are supported', () => {
       const bar = renderBar(1, 2, 4);
-      // Should contain ANSI escape sequences
-      expect(bar).toContain('\u001b[');
-      // Stripped version should just be characters
+      if (isColorSupported()) {
+        expect(bar).toContain('\u001b[');
+      } else {
+        expect(bar).not.toContain('\u001b[');
+      }
       expect(stripAnsi(bar)).toBe('##..');
     });
 
     it('should colorize border', () => {
       const border = renderBorder(5);
-      expect(border).toContain('\u001b[');
+      if (isColorSupported()) {
+        expect(border).toContain('\u001b[');
+      } else {
+        expect(border).not.toContain('\u001b[');
+      }
       expect(stripAnsi(border)).toBe('-'.repeat(5));
     });
 
     it('should colorize iteration label', () => {
       const label = formatIterationLabel({ current: 1, total: 3 });
-      expect(label).toContain('\u001b[');
+      if (isColorSupported()) {
+        expect(label).toContain('\u001b[');
+      } else {
+        expect(label).not.toContain('\u001b[');
+      }
       const plain = stripAnsi(label);
       expect(plain).toContain('1');
       expect(plain).toContain('3');

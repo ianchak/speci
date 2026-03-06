@@ -9,14 +9,14 @@
  * Failed checks exit with code 2 (usage error) and provide actionable remediation steps.
  */
 
-import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { execSync } from 'node:child_process';
+import { NodeFileSystem } from '@/adapters/node-filesystem.js';
 import { log } from '../infrastructure/logger.js';
 import type { SpeciConfig, PreflightOptions } from '@/types.js';
-import { getAgentsTemplatePath } from '@/config.js';
+import { getAgentsTemplatePath } from '@/config/index.js';
 import { CONFIG_FILENAME, GITHUB_AGENTS_DIR } from '@/constants.js';
-import type { IProcess } from '@/interfaces.js';
+import type { IFileSystem, ILogger, IProcess } from '@/interfaces/index.js';
 import { PathValidator } from '@/validation/index.js';
 
 // Re-export for backward compatibility
@@ -86,11 +86,18 @@ export async function checkCopilotInstalled(
  * @param startDir - Directory to begin traversal from
  * @returns Directory containing target, or null when root is reached
  */
-function walkUpToFind(target: string, startDir: string): string | null {
+function walkUpToFind(
+  target: string,
+  startDir: string,
+  fs: IFileSystem,
+  logger?: ILogger
+): string | null {
+  const resolvedLogger = logger ?? log;
   let currentDir = startDir;
 
   for (;;) {
-    if (existsSync(join(currentDir, target))) {
+    if (fs.existsSync(join(currentDir, target))) {
+      resolvedLogger.debug(`Found ${target} at ${currentDir}`);
       return currentDir;
     }
 
@@ -110,9 +117,11 @@ function walkUpToFind(target: string, startDir: string): string | null {
  * @throws {PreflightError} If config file is not found
  */
 export async function checkConfigExists(
-  proc: IProcess = process
+  proc: IProcess = process,
+  fs: IFileSystem = new NodeFileSystem(),
+  logger?: ILogger
 ): Promise<void> {
-  if (walkUpToFind(CONFIG_FILENAME, proc.cwd()) === null) {
+  if (walkUpToFind(CONFIG_FILENAME, proc.cwd(), fs, logger) === null) {
     throw new PreflightError(
       'Configuration not found',
       `No ${CONFIG_FILENAME} found in current directory or any parent.`,
@@ -154,9 +163,11 @@ export async function checkProgressExists(config: SpeciConfig): Promise<void> {
  * @throws {PreflightError} If not in a git repository
  */
 export async function checkGitRepository(
-  proc: IProcess = process
+  proc: IProcess = process,
+  fs: IFileSystem = new NodeFileSystem(),
+  logger?: ILogger
 ): Promise<void> {
-  if (walkUpToFind('.git', proc.cwd()) === null) {
+  if (walkUpToFind('.git', proc.cwd(), fs, logger) === null) {
     throw new PreflightError(
       'Git repository not found',
       'Current directory is not within a git repository.',
@@ -175,16 +186,22 @@ export async function checkGitRepository(
  * @param baseDir - Base directory for relative paths
  * @returns Array of relative file paths
  */
-function listFilesRecursive(dir: string, baseDir: string): string[] {
+function listFilesRecursive(
+  dir: string,
+  baseDir: string,
+  fs: IFileSystem,
+  logger?: ILogger
+): string[] {
+  const resolvedLogger = logger ?? log;
   const files: string[] = [];
-  const entries = readdirSync(dir);
+  const entries = fs.readdirSync(dir);
 
   for (const entry of entries) {
     const fullPath = join(dir, entry);
-    const stat = statSync(fullPath);
+    const stat = fs.statSync(fullPath);
 
     if (stat.isDirectory()) {
-      files.push(...listFilesRecursive(fullPath, baseDir));
+      files.push(...listFilesRecursive(fullPath, baseDir, fs, resolvedLogger));
     } else if (stat.isFile()) {
       // Use forward slashes for consistent cross-platform paths
       const relativePath = fullPath
@@ -208,12 +225,15 @@ function listFilesRecursive(dir: string, baseDir: string): string[] {
  * @throws {PreflightError} If agent files directory or agent files are missing
  */
 export async function checkAgentTemplates(
-  proc: IProcess = process
+  proc: IProcess = process,
+  fs: IFileSystem = new NodeFileSystem(),
+  logger?: ILogger
 ): Promise<void> {
+  const resolvedLogger = logger ?? log;
   const projectAgentsDir = join(proc.cwd(), GITHUB_AGENTS_DIR);
 
   // Check if agents directory exists at all
-  if (!existsSync(projectAgentsDir)) {
+  if (!fs.existsSync(projectAgentsDir)) {
     throw new PreflightError(
       'Agent files not found',
       `Agent files directory not found at: ${GITHUB_AGENTS_DIR}`,
@@ -226,16 +246,21 @@ export async function checkAgentTemplates(
 
   // Get the bundled templates directory
   const templatesDir = getAgentsTemplatePath();
-  if (!existsSync(templatesDir)) {
+  if (!fs.existsSync(templatesDir)) {
     // Bundled templates missing — installation issue, skip check
-    log.debug(
+    resolvedLogger.debug(
       'Bundled agent templates directory not found, skipping agent check'
     );
     return;
   }
 
   // List all files in the templates directory
-  const templateFiles = listFilesRecursive(templatesDir, templatesDir);
+  const templateFiles = listFilesRecursive(
+    templatesDir,
+    templatesDir,
+    fs,
+    resolvedLogger
+  );
   const missing: string[] = [];
   const outdated: string[] = [];
 
@@ -243,12 +268,12 @@ export async function checkAgentTemplates(
     const projectFile = join(projectAgentsDir, relPath);
     const templateFile = join(templatesDir, relPath);
 
-    if (!existsSync(projectFile)) {
+    if (!fs.existsSync(projectFile)) {
       missing.push(relPath);
     } else {
       // Compare contents
-      const projectContent = readFileSync(projectFile, 'utf8');
-      const templateContent = readFileSync(templateFile, 'utf8');
+      const projectContent = fs.readFileSync(projectFile, 'utf8');
+      const templateContent = fs.readFileSync(templateFile, 'utf8');
 
       if (projectContent !== templateContent) {
         outdated.push(relPath);
@@ -270,13 +295,13 @@ export async function checkAgentTemplates(
 
   // Outdated agents are a warning (don't block)
   if (outdated.length > 0) {
-    log.warn(
+    resolvedLogger.warn(
       `${outdated.length} agent file(s) differ from bundled templates: ${outdated.join(', ')}`
     );
-    log.warn(
+    resolvedLogger.warn(
       'Run `speci init --update-agents` to update agent files to latest versions'
     );
-    log.raw('');
+    resolvedLogger.raw('');
   }
 }
 
@@ -294,8 +319,12 @@ export async function checkAgentTemplates(
 export async function preflight(
   config: SpeciConfig,
   options: PreflightOptions = {},
-  proc: IProcess = process
+  proc: IProcess = process,
+  fs?: IFileSystem,
+  logger?: ILogger
 ): Promise<void> {
+  const resolvedLogger = logger ?? log;
+  const resolvedFs = fs ?? new NodeFileSystem();
   const opts = { ...DEFAULT_OPTIONS, ...options };
   const checks: Promise<void>[] = [];
 
@@ -304,10 +333,10 @@ export async function preflight(
     checks.push(checkCopilotInstalled(proc));
   }
   if (opts.requireConfig) {
-    checks.push(checkConfigExists(proc));
+    checks.push(checkConfigExists(proc, resolvedFs, resolvedLogger));
   }
   if (opts.requireGit) {
-    checks.push(checkGitRepository(proc));
+    checks.push(checkGitRepository(proc, resolvedFs, resolvedLogger));
   }
 
   // Run independent checks in parallel
@@ -320,8 +349,8 @@ export async function preflight(
 
   // Agent template check runs after independent checks
   if (opts.requireAgents) {
-    await checkAgentTemplates(proc);
+    await checkAgentTemplates(proc, resolvedFs, resolvedLogger);
   }
 
-  log.debug('All preflight checks passed');
+  resolvedLogger.debug('All preflight checks passed');
 }

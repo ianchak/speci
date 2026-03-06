@@ -10,12 +10,14 @@ import {
   getMilestonesMvtStatus,
   hasStatePattern,
   resetStateCache,
+  StateCache,
   writeFailureNotes,
   type GateFailureInfo,
+  type StateOptions,
 } from '../lib/state.js';
 import { readFileSync } from 'node:fs';
-import { log } from '../lib/utils/logger.js';
-import { type SpeciConfig } from '../lib/config.js';
+import { log } from '../lib/utils/infrastructure/logger.js';
+import { type SpeciConfig } from '../lib/config/index.js';
 
 describe('state', () => {
   let testDir: string;
@@ -91,9 +93,61 @@ describe('state', () => {
   });
 
   describe('getState', () => {
+    const legacyGetStateFromContent = (content: string): STATE => {
+      const legacyPriority: Array<{ state: STATE; pattern: RegExp }> = [
+        { state: STATE.BLOCKED, pattern: /TASK_\d+\s*\|.*BLOCKED/i },
+        { state: STATE.IN_REVIEW, pattern: /TASK_\d+\s*\|.*IN.REVIEW/i },
+        {
+          state: STATE.WORK_LEFT,
+          pattern: /TASK_\d+\s*\|.*(NOT STARTED|IN PROGRESS)/i,
+        },
+      ];
+
+      for (const { state, pattern } of legacyPriority) {
+        if (pattern.test(content)) {
+          return state;
+        }
+      }
+      return STATE.DONE;
+    };
+
     it('should return NO_PROGRESS when file does not exist', async () => {
       const state = await getState(mockConfig);
       expect(state).toBe(STATE.NO_PROGRESS);
+    });
+
+    it('should read state via injected in-memory fs when provided', async () => {
+      const content = `# Progress
+| Task ID  | Title | Status      |
+| -------- | ----- | ----------- |
+| TASK_001 | Setup | NOT STARTED |
+`;
+      const fsOptions: NonNullable<StateOptions['fs']> = {
+        existsSync: vi.fn(() => true),
+        readFile: vi.fn(async () => content),
+        writeFile: vi.fn(async () => {}),
+      };
+
+      const state = await getState(mockConfig, { fs: fsOptions, ttl: 0 });
+
+      expect(state).toBe(STATE.WORK_LEFT);
+      expect(fsOptions.readFile).toHaveBeenCalledWith(
+        mockConfig.paths.progress,
+        'utf8'
+      );
+    });
+
+    it('should return NO_PROGRESS from injected fs when existsSync is false', async () => {
+      const fsOptions: NonNullable<StateOptions['fs']> = {
+        existsSync: vi.fn(() => false),
+        readFile: vi.fn(async () => '# Progress'),
+        writeFile: vi.fn(async () => {}),
+      };
+
+      const state = await getState(mockConfig, { fs: fsOptions, ttl: 0 });
+
+      expect(state).toBe(STATE.NO_PROGRESS);
+      expect(fsOptions.readFile).not.toHaveBeenCalled();
     });
 
     it('should return BLOCKED when any task is blocked', async () => {
@@ -196,6 +250,71 @@ describe('state', () => {
       expect(state).toBe(STATE.IN_REVIEW);
     });
 
+    it('should preserve legacy regex parity on well-formed fixtures', async () => {
+      const fixtures = [
+        `# Progress
+| Task ID  | Title | Status      |
+| -------- | ----- | ----------- |
+| TASK_001 | Setup | BLOCKED     |
+| TASK_002 | Parse | NOT STARTED |
+`,
+        `# Progress
+| Task ID  | Title | Status      |
+| -------- | ----- | ----------- |
+| TASK_001 | Setup | IN REVIEW   |
+| TASK_002 | Parse | NOT STARTED |
+`,
+        `# Progress
+| Task ID  | Title | Status      |
+| -------- | ----- | ----------- |
+| TASK_001 | Setup | IN PROGRESS |
+`,
+        `# Progress
+| Task ID  | Title | Status   |
+| -------- | ----- | -------- |
+| TASK_001 | Setup | COMPLETE |
+`,
+      ];
+
+      for (const content of fixtures) {
+        writeFileSync(mockConfig.paths.progress, content);
+        const state = await getState(mockConfig, { forceRefresh: true });
+        expect(state).toBe(legacyGetStateFromContent(content));
+      }
+    });
+
+    it('should ignore status keywords in title when status is COMPLETE', async () => {
+      const rows = [
+        '| TASK_042 | Move NOT STARTED tasks to backlog | COMPLETE |',
+        '| TASK_043 | Document IN PROGRESS workflow | COMPLETE |',
+        '| TASK_044 | Archive IN REVIEW notes | COMPLETE |',
+        '| TASK_045 | Fix BLOCKED queue logic | COMPLETE |',
+      ];
+
+      for (const row of rows) {
+        const content = `# Progress
+| Task ID  | Title | Status   |
+| -------- | ----- | -------- |
+${row}
+`;
+        writeFileSync(mockConfig.paths.progress, content);
+        const state = await getState(mockConfig, { forceRefresh: true });
+        expect(state).toBe(STATE.DONE);
+      }
+    });
+
+    it('should still return WORK_LEFT when real work exists with misleading title rows', async () => {
+      const content = `# Progress
+| Task ID  | Title | Status      |
+| -------- | ----- | ----------- |
+| TASK_042 | Move NOT STARTED tasks to backlog | COMPLETE |
+| TASK_046 | Real pending task | NOT STARTED |
+`;
+      writeFileSync(mockConfig.paths.progress, content);
+      const state = await getState(mockConfig);
+      expect(state).toBe(STATE.WORK_LEFT);
+    });
+
     it('should perform case-insensitive status matching', async () => {
       const content = `# Progress
 | Task ID  | Title  | Status      |
@@ -278,6 +397,29 @@ Some random text
       expect(stats.inReview).toBe(1);
     });
 
+    it('should recognize all valid task statuses', async () => {
+      const content = `# Progress
+| Task ID  | Title    | Status      | Review | Priority | Complexity | Deps |
+| -------- | -------- | ----------- | ------ | -------- | ---------- | ---- |
+| TASK_001 | Task one | COMPLETE    | PASSED | HIGH     | S          | None |
+| TASK_002 | Task two | COMPLETED   | PASSED | HIGH     | S          | None |
+| TASK_003 | Task 3   | DONE        | PASSED | HIGH     | S          | None |
+| TASK_004 | Task 4   | BLOCKED     | -      | HIGH     | S          | None |
+| TASK_005 | Task 5   | IN_REVIEW   | -      | HIGH     | S          | None |
+| TASK_006 | Task 6   | IN REVIEW   | -      | HIGH     | S          | None |
+| TASK_007 | Task 7   | NOT STARTED | -      | HIGH     | S          | None |
+| TASK_008 | Task 8   | IN PROGRESS | -      | HIGH     | S          | None |
+`;
+      writeFileSync(mockConfig.paths.progress, content);
+      const stats = await getTaskStats(mockConfig);
+
+      expect(stats.total).toBe(8);
+      expect(stats.completed).toBe(3);
+      expect(stats.blocked).toBe(1);
+      expect(stats.inReview).toBe(2);
+      expect(stats.remaining).toBe(2);
+    });
+
     it('should parse multi-column rows and read status from 3rd column', async () => {
       const content = `# Progress
 
@@ -349,6 +491,18 @@ Some random text
       expect(current?.title).toBe('Yolo Command Skeleton');
       expect(current?.status).toBe('IN PROGRESS');
     });
+
+    it('should normalize IN_REVIEW current task status to IN REVIEW', async () => {
+      const content = `# Progress
+
+| Task ID  | Title          | File        | Status    | Review Status |
+| -------- | -------------- | ----------- | --------- | ------------- |
+| TASK_001 | Review pending | TASK_001.md | IN_REVIEW | —             |
+`;
+      writeFileSync(mockConfig.paths.progress, content);
+      const current = await getCurrentTask(mockConfig);
+      expect(current?.status).toBe('IN REVIEW');
+    });
   });
 
   describe('getMilestonesMvtStatus', () => {
@@ -384,11 +538,11 @@ Some random text
         completedTasks: 0,
         mvtId: 'MVT_M1',
         mvtStatus: 'NOT STARTED',
-        mvtReady: false,
+        isMvtReady: false,
       });
     });
 
-    it('UT-S04: mvtReady true when all tasks complete and MVT not complete', async () => {
+    it('UT-S04: isMvtReady true when all tasks complete and MVT not complete', async () => {
       writeProgress(`## Milestone: M1 - Foundation
 | TASK_001 | A | COMPLETE |
 | TASK_002 | B | COMPLETE |
@@ -396,16 +550,16 @@ Some random text
 | MVT_M1 | Manual | NOT STARTED |`);
       const [m1] = await getMilestonesMvtStatus(mockConfig);
       expect(m1.completedTasks).toBe(3);
-      expect(m1.mvtReady).toBe(true);
+      expect(m1.isMvtReady).toBe(true);
     });
 
-    it('UT-S05: mvtReady false when MVT is COMPLETE', async () => {
+    it('UT-S05: isMvtReady false when MVT is COMPLETE', async () => {
       writeProgress(`## Milestone: M1 - Foundation
 | TASK_001 | A | COMPLETE |
 | TASK_002 | B | COMPLETE |
 | MVT_M1 | Manual | COMPLETE |`);
       const [m1] = await getMilestonesMvtStatus(mockConfig);
-      expect(m1.mvtReady).toBe(false);
+      expect(m1.isMvtReady).toBe(false);
     });
 
     it('UT-S06: handles multiple milestones with mixed readiness', async () => {
@@ -420,7 +574,7 @@ Some random text
 | TASK_004 | D | NOT STARTED |
 | MVT_M3 | Manual | NOT STARTED |`);
       const result = await getMilestonesMvtStatus(mockConfig);
-      expect(result.map((m) => m.mvtReady)).toEqual([false, true, false]);
+      expect(result.map((m) => m.isMvtReady)).toEqual([false, true, false]);
     });
 
     it('UT-S07: handles milestone with no MVT row', async () => {
@@ -429,7 +583,7 @@ Some random text
       const [m1] = await getMilestonesMvtStatus(mockConfig);
       expect(m1.mvtId).toBeNull();
       expect(m1.mvtStatus).toBeNull();
-      expect(m1.mvtReady).toBe(false);
+      expect(m1.isMvtReady).toBe(false);
     });
 
     it('UT-S08: treats BLOCKED MVT as ready when tasks complete', async () => {
@@ -437,7 +591,7 @@ Some random text
 | TASK_001 | A | COMPLETE |
 | MVT_M1 | Manual | BLOCKED |`);
       const [m1] = await getMilestonesMvtStatus(mockConfig);
-      expect(m1.mvtReady).toBe(true);
+      expect(m1.isMvtReady).toBe(true);
     });
 
     it('UT-S09: treats IN PROGRESS MVT as ready when tasks complete', async () => {
@@ -445,7 +599,7 @@ Some random text
 | TASK_001 | A | COMPLETE |
 | MVT_M1 | Manual | IN PROGRESS |`);
       const [m1] = await getMilestonesMvtStatus(mockConfig);
-      expect(m1.mvtReady).toBe(true);
+      expect(m1.isMvtReady).toBe(true);
     });
 
     it('UT-S10: ignores header/separator rows in milestone tables', async () => {
@@ -501,7 +655,7 @@ Some random text
 | MVT_M1 | Manual | NOT STARTED |`);
       const [m1] = await getMilestonesMvtStatus(mockConfig);
       expect(m1.totalTasks).toBe(0);
-      expect(m1.mvtReady).toBe(false);
+      expect(m1.isMvtReady).toBe(false);
     });
 
     it('UT-S15: blank MVT status becomes null', async () => {
@@ -529,7 +683,16 @@ Some random text
 | TASK_001 | A | COMPLETE |
 | MVT_M1 | Manual | IN REVIEW |`);
       const [m1] = await getMilestonesMvtStatus(mockConfig);
-      expect(m1.mvtReady).toBe(true);
+      expect(m1.isMvtReady).toBe(true);
+    });
+
+    it('UT-S17b: COMPLETED MVT status normalizes to COMPLETE', async () => {
+      writeProgress(`## Milestone: M1 - Foundation
+| TASK_001 | A | COMPLETE |
+| MVT_M1 | Manual | COMPLETED |`);
+      const [m1] = await getMilestonesMvtStatus(mockConfig);
+      expect(m1.mvtStatus).toBe('COMPLETE');
+      expect(m1.isMvtReady).toBe(false);
     });
 
     it('UT-S18: last MVT row wins in same milestone', async () => {
@@ -540,7 +703,7 @@ Some random text
       const [m1] = await getMilestonesMvtStatus(mockConfig);
       expect(m1.mvtId).toBe('MVT_M1b');
       expect(m1.mvtStatus).toBe('COMPLETE');
-      expect(m1.mvtReady).toBe(false);
+      expect(m1.isMvtReady).toBe(false);
     });
 
     it('UT-S19: readiness is computed per milestone only', async () => {
@@ -553,8 +716,8 @@ Some random text
 | TASK_004 | D | COMPLETE |
 | MVT_M2 | Manual | NOT STARTED |`);
       const result = await getMilestonesMvtStatus(mockConfig);
-      expect(result[0].mvtReady).toBe(false);
-      expect(result[1].mvtReady).toBe(true);
+      expect(result[0].isMvtReady).toBe(false);
+      expect(result[1].isMvtReady).toBe(true);
     });
 
     it('UT-S20: parses 9-column table format', async () => {
@@ -648,6 +811,9 @@ Some random text
         ...mockConfig,
         paths: { ...mockConfig.paths, progress: testDir },
       };
+      await expect(getMilestonesMvtStatus(errorConfig)).rejects.toMatchObject({
+        name: 'ERR-STA-06',
+      });
       await expect(getMilestonesMvtStatus(errorConfig)).rejects.toThrow(
         /\[ERR-STA-06\]/
       );
@@ -670,7 +836,7 @@ Some random text
 | TASK_002 | B | NOT STARTED |`);
       const result = await getMilestonesMvtStatus(mockConfig);
       expect(result.every((entry) => entry.mvtId === null)).toBe(true);
-      expect(result.every((entry) => entry.mvtReady === false)).toBe(true);
+      expect(result.every((entry) => entry.isMvtReady === false)).toBe(true);
       expect(debugSpy).toHaveBeenCalledWith(
         'getMilestonesMvtStatus: No MVT rows found in any milestone'
       );
@@ -941,6 +1107,76 @@ Some random text
       resetStateCache();
     });
 
+    it('isolates cache entries across StateCache instances', async () => {
+      const progressPath = join(testDir, 'PROGRESS.md');
+      const cacheA = new StateCache();
+      const cacheB = new StateCache();
+      const fsA = {
+        existsSync: vi.fn(() => true),
+        readFile: vi.fn(
+          async (_path: string, _encoding?: BufferEncoding): Promise<string> =>
+            '# Progress\n| TASK_001 | A | NOT STARTED |'
+        ),
+      };
+      const fsB = {
+        existsSync: vi.fn(() => true),
+        readFile: vi.fn(
+          async (_path: string, _encoding?: BufferEncoding): Promise<string> =>
+            '# Progress\n| TASK_001 | B | COMPLETE |'
+        ),
+      };
+
+      const linesA = await cacheA.get(progressPath, 200, fsA);
+      const linesB = await cacheB.get(progressPath, 200, fsB);
+
+      expect(linesA?.join('\n')).toContain('NOT STARTED');
+      expect(linesB?.join('\n')).toContain('COMPLETE');
+    });
+
+    it('returns a copy of cached lines to prevent mutation leaks', async () => {
+      const progressPath = join(testDir, 'PROGRESS.md');
+      const cache = new StateCache();
+      const fs = {
+        existsSync: vi.fn(() => true),
+        readFile: vi.fn(
+          async (_path: string, _encoding?: BufferEncoding): Promise<string> =>
+            'line1\nline2'
+        ),
+      };
+
+      const first = await cache.get(progressPath, 200, fs);
+      if (!first) {
+        expect.unreachable('Expected lines from StateCache.get');
+      }
+      first[0] = 'mutated';
+      const second = await cache.get(progressPath, 200, fs);
+
+      expect(second?.[0]).toBe('line1');
+    });
+
+    it('re-reads after reset clears a cached entry', async () => {
+      const progressPath = join(testDir, 'PROGRESS.md');
+      const cache = new StateCache();
+      const readFile = vi.fn(
+        async (_path: string, _encoding?: BufferEncoding): Promise<string> =>
+          'old'
+      );
+      readFile.mockResolvedValueOnce('old').mockResolvedValueOnce('new');
+      const fs = {
+        existsSync: vi.fn(() => true),
+        readFile,
+      };
+
+      const first = await cache.get(progressPath, 200, fs);
+      expect(first?.[0]).toBe('old');
+
+      cache.reset();
+
+      const second = await cache.get(progressPath, 200, fs);
+      expect(second?.[0]).toBe('new');
+      expect(fs.readFile).toHaveBeenCalledTimes(2);
+    });
+
     it('should read file on first call', async () => {
       const content = `# Progress
 | Task ID  | Title | Status      |
@@ -952,6 +1188,40 @@ Some random text
 
       const state = await getState(mockConfig);
       expect(state).toBe(STATE.WORK_LEFT);
+    });
+
+    it('should return NO_PROGRESS for missing file without calling existsSync pre-check', async () => {
+      vi.resetModules();
+      const existsSyncMock = vi.fn(() => true);
+      vi.doMock('node:fs', async () => {
+        const actual =
+          await vi.importActual<typeof import('node:fs')>('node:fs');
+        return { ...actual, existsSync: existsSyncMock };
+      });
+
+      const stateModule = await import('../lib/state.js');
+      stateModule.resetStateCache();
+      const state = await stateModule.getState(mockConfig);
+
+      expect(state).toBe(STATE.NO_PROGRESS);
+      expect(existsSyncMock).not.toHaveBeenCalled();
+      vi.doUnmock('node:fs');
+    });
+
+    it('should rethrow non-ENOENT readFile errors', async () => {
+      mkdirSync(mockConfig.paths.progress, { recursive: true });
+
+      try {
+        await getState(mockConfig);
+        expect.unreachable(
+          'Expected readStateFile to rethrow non-ENOENT errors'
+        );
+      } catch (error: unknown) {
+        expect(error).toBeInstanceOf(Error);
+        if (error && typeof error === 'object' && 'code' in error) {
+          expect(error.code).not.toBe('ENOENT');
+        }
+      }
     });
 
     it('should use cache on second call within TTL', async () => {
@@ -1562,6 +1832,47 @@ ${extraContent}`;
         ...overrides,
       };
     }
+
+    it('should write failure notes via injected in-memory fs when provided', async () => {
+      const content = `# Progress
+
+## Tasks
+
+| Task ID  | Title              | Status      | Review Status | Priority | Complexity | Dependencies | Assigned To | Attempts |
+| -------- | ------------------ | ----------- | ------------- | -------- | ---------- | ------------ | ----------- | -------- |
+| TASK_004 | CLI Integration    | IN PROGRESS | —             | HIGH     | S (≤2h)    | TASK_003     |             |          |
+
+---
+
+## Agent Handoff
+
+### For Fix Agent
+
+| Field           | Value |
+| --------------- | ----- |
+| Task            | —     |
+| Failed Gate     | —     |
+| Primary Error   | —     |
+| Root Cause Hint | —     |
+`;
+      const fsOptions: NonNullable<StateOptions['fs']> = {
+        existsSync: vi.fn(() => true),
+        readFile: vi.fn(async () => content),
+        writeFile: vi.fn(async () => {}),
+      };
+
+      await writeFailureNotes(mockConfig, makeGateFailure(), { fs: fsOptions });
+
+      expect(fsOptions.readFile).toHaveBeenCalledWith(
+        mockConfig.paths.progress,
+        'utf8'
+      );
+      expect(fsOptions.writeFile).toHaveBeenCalledWith(
+        mockConfig.paths.progress,
+        expect.stringContaining('| Failed Gate     | npm run lint |'),
+        'utf8'
+      );
+    });
 
     it('should populate the For Fix Agent table with failure info', async () => {
       writeProgressWithHandoff();

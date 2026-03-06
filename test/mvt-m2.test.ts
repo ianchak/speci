@@ -13,7 +13,7 @@ import {
   getDefaults,
   validateConfig,
   type SpeciConfig,
-} from '../lib/config.js';
+} from '../lib/config/index.js';
 import {
   getState,
   STATE,
@@ -25,9 +25,12 @@ import {
   releaseLock,
   getLockInfo,
   isLocked,
-} from '../lib/utils/lock.js';
-import { preflight } from '../lib/utils/preflight.js';
-import { runGate, executeGateCommand } from '../lib/utils/gate.js';
+} from '../lib/utils/infrastructure/lock.js';
+import { preflight } from '../lib/utils/helpers/preflight.js';
+import {
+  runGate,
+  executeGateCommand,
+} from '../lib/utils/infrastructure/gate.js';
 
 describe('MVT_M2: Core Libraries Integration', () => {
   let testDir: string;

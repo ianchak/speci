@@ -1,10 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { NodePreflight } from '@/adapters/node-preflight.js';
-import type { IProcess } from '@/interfaces.js';
+import { createMockContext } from '@/adapters/test-context.js';
+import type { IProcess } from '@/interfaces/index.js';
 import type { PreflightOptions, SpeciConfig } from '@/types.js';
-import * as preflightModule from '@/utils/preflight.js';
+import * as preflightModule from '@/utils/helpers/preflight.js';
 
-vi.mock('@/utils/preflight.js', () => ({
+vi.mock('@/utils/helpers/preflight.js', () => ({
   preflight: vi.fn(),
 }));
 
@@ -12,7 +13,7 @@ describe('NodePreflight', () => {
   const config = {
     version: '1.0.0',
   } as unknown as SpeciConfig;
-  const adapter = new NodePreflight();
+  const adapter = new NodePreflight(createMockContext().logger);
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -28,7 +29,9 @@ describe('NodePreflight', () => {
     expect(preflightModule.preflight).toHaveBeenCalledWith(
       config,
       options,
-      mockProcess
+      mockProcess,
+      undefined,
+      expect.anything()
     );
   });
 
@@ -40,7 +43,9 @@ describe('NodePreflight', () => {
     expect(preflightModule.preflight).toHaveBeenCalledWith(
       config,
       undefined,
-      undefined
+      undefined,
+      undefined,
+      expect.anything()
     );
   });
 });

@@ -8,8 +8,15 @@ import {
 } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
-import { init } from '../../lib/commands/init.js';
-import { getDefaults } from '../../lib/config.js';
+import { createProductionContext } from '../../lib/adapters/context-factory.js';
+import { init as initCommand } from '../../lib/commands/init.js';
+import { getDefaults } from '../../lib/config/index.js';
+
+const init = (
+  options: Parameters<typeof initCommand>[0] = {},
+  context: Parameters<typeof initCommand>[1] = createProductionContext(),
+  config?: Parameters<typeof initCommand>[2]
+) => initCommand(options, context, config);
 
 describe('init command', () => {
   let testDir: string;

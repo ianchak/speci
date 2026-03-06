@@ -19,7 +19,7 @@ import { task } from '../lib/commands/task.js';
 import { refactor } from '../lib/commands/refactor.js';
 import { status } from '../lib/commands/status.js';
 import { createMockContext } from '../lib/adapters/test-context.js';
-import type { CommandContext, CommandResult } from '../lib/interfaces.js';
+import type { CommandContext, CommandResult } from '../lib/interfaces/index.js';
 import type { SpeciConfig } from '../lib/types.js';
 
 describe('Command API Standardization (TASK_027)', () => {

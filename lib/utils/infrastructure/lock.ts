@@ -18,10 +18,14 @@ import { dirname } from 'node:path';
 import type { SpeciConfig, LockFileData, LockInfo } from '@/types.js';
 import { log } from './logger.js';
 import { createError } from '@/errors.js';
-import type { IProcess } from '@/interfaces.js';
+import type { ILogger, IProcess } from '@/interfaces/index.js';
 
 // Re-export types for backward compatibility
 export type { LockFileData, LockInfo } from '@/types.js';
+
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
 
 /**
  * Check if a process is running
@@ -53,22 +57,24 @@ function isProcessRunning(pid: number): boolean {
  * Acquire the lock for speci run execution
  *
  * @param config - Speci configuration
- * @param processParam - IProcess instance (defaults to global process)
+ * @param proc - Falls back to the Node.js global `process` when omitted. Intentional for production use; pass a stub in tests.
  * @param command - Command name (e.g., "run", "fix")
  * @param metadata - Optional metadata to include in lock file
  * @throws Error if lock already exists and is not stale
  */
 export async function acquireLock(
   config: SpeciConfig,
-  processParam?: IProcess,
+  proc?: IProcess,
   command: string = 'unknown',
   metadata?: {
     iteration?: number;
     taskId?: string;
     state?: string;
-  }
+  },
+  logger?: ILogger
 ): Promise<void> {
-  const proc = processParam || process;
+  const resolvedLogger = logger ?? log;
+  const processRef = proc || process;
   const lockPath = config.paths.lock;
   const tempPath = `${lockPath}.tmp`;
 
@@ -78,8 +84,8 @@ export async function acquireLock(
 
     // If lock is stale, remove it
     if (info.isStale) {
-      log.infoPlain(`Removed stale lock from PID ${info.pid}`);
-      await releaseLock(config);
+      resolvedLogger.infoPlain(`Removed stale lock from PID ${info.pid}`);
+      await releaseLock(config, resolvedLogger);
     } else {
       throw createError(
         'ERR-STA-01',
@@ -100,7 +106,7 @@ export async function acquireLock(
   // Create lock data in JSON format
   const lockData: LockFileData = {
     version: '1.0.0',
-    pid: proc.pid,
+    pid: processRef.pid,
     started: new Date().toISOString(),
     command,
     ...(metadata && { metadata }),
@@ -128,7 +134,11 @@ export async function acquireLock(
  *
  * @param config - Speci configuration
  */
-export async function releaseLock(config: SpeciConfig): Promise<void> {
+export async function releaseLock(
+  config: SpeciConfig,
+  logger?: ILogger
+): Promise<void> {
+  const resolvedLogger = logger ?? log;
   const lockPath = config.paths.lock;
 
   try {
@@ -137,7 +147,9 @@ export async function releaseLock(config: SpeciConfig): Promise<void> {
     }
   } catch (err) {
     // Log warning but don't throw - cleanup should be best-effort
-    log.warn(`Could not release lock file: ${(err as Error).message}`);
+    resolvedLogger.warn(
+      `Could not release lock file: ${(err as Error).message}`
+    );
   }
 }
 
@@ -157,7 +169,10 @@ export async function isLocked(config: SpeciConfig): Promise<boolean> {
  * @param config - Speci configuration
  * @returns Lock information including PID, start time, elapsed time, command, staleness, and metadata
  */
-export async function getLockInfo(config: SpeciConfig): Promise<LockInfo> {
+export async function getLockInfo(
+  config: SpeciConfig,
+  isRunning: (pid: number) => boolean = isProcessRunning
+): Promise<LockInfo> {
   const lockPath = config.paths.lock;
 
   if (!existsSync(lockPath)) {
@@ -175,10 +190,32 @@ export async function getLockInfo(config: SpeciConfig): Promise<LockInfo> {
   try {
     const content = readFileSync(lockPath, 'utf8');
 
+    const trimmed = content.trim();
+    const looksLikeJson =
+      trimmed.startsWith('{') ||
+      trimmed.startsWith('[') ||
+      trimmed.startsWith('"') ||
+      trimmed === 'true' ||
+      trimmed === 'false' ||
+      trimmed === 'null' ||
+      /^-?\d/.test(trimmed);
+
     // Try to parse as JSON first (new format)
-    if (content.trim().startsWith('{')) {
+    if (looksLikeJson) {
       try {
-        const lockData = JSON.parse(content) as Partial<LockFileData>;
+        const raw: unknown = JSON.parse(content);
+        if (!isPlainObject(raw)) {
+          return {
+            isLocked: true,
+            started: null,
+            pid: null,
+            elapsed: null,
+            command: undefined,
+            isStale: undefined,
+            metadata: undefined,
+          };
+        }
+        const lockData = raw as Partial<LockFileData>;
 
         // Validate and extract fields
         let pid: number | null = null;
@@ -197,7 +234,7 @@ export async function getLockInfo(config: SpeciConfig): Promise<LockInfo> {
         const elapsed = started ? formatElapsed(started) : null;
         const command =
           typeof lockData.command === 'string' ? lockData.command : undefined;
-        const isStale = pid !== null ? !isProcessRunning(pid) : undefined;
+        const isStale = pid !== null ? !isRunning(pid) : undefined;
 
         return {
           isLocked: true,
@@ -241,7 +278,7 @@ export async function getLockInfo(config: SpeciConfig): Promise<LockInfo> {
     }
 
     const elapsed = started ? formatElapsed(started) : null;
-    const isStale = pid !== null ? !isProcessRunning(pid) : undefined;
+    const isStale = pid !== null ? !isRunning(pid) : undefined;
 
     return {
       isLocked: true,

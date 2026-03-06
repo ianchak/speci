@@ -12,7 +12,7 @@ import {
   type AgentRunResult,
 } from '@/copilot.js';
 import type { SpeciConfig } from '@/types.js';
-import type { ICopilotRunner } from '@/interfaces.js';
+import type { ICopilotRunner, ILogger, IProcess } from '@/interfaces/index.js';
 
 /**
  * Node.js copilot runner adapter
@@ -20,22 +20,25 @@ import type { ICopilotRunner } from '@/interfaces.js';
  * Implements ICopilotRunner by delegating to the existing copilot module.
  */
 export class NodeCopilotRunner implements ICopilotRunner {
+  constructor(private readonly logger: ILogger) {}
+
   buildArgs(config: SpeciConfig, options: CopilotArgsOptions): string[] {
     return buildCopilotArgs(config, options);
   }
 
   async spawn(
     args: string[],
-    options?: { inherit?: boolean; cwd?: string }
+    options?: { inherit?: boolean; cwd?: string },
+    proc?: IProcess
   ): Promise<number> {
-    return spawnCopilot(args, options);
+    return spawnCopilot(args, options, proc);
   }
 
   async run(
     config: SpeciConfig,
     agentName: string,
-    label: string
+    proc?: IProcess
   ): Promise<AgentRunResult> {
-    return runAgent(config, agentName, label);
+    return runAgent(config, agentName, undefined, proc, this.logger);
   }
 }

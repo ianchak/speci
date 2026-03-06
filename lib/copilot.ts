@@ -16,12 +16,13 @@ import type {
   CopilotArgsOptions,
   AgentRunResult,
 } from '@/types.js';
-import { log } from '@/utils/logger.js';
+import { log } from '@/utils/infrastructure/logger.js';
 import { getAgentFilename } from '@/constants.js';
 import {
   formatCopilotCommand,
   renderCopilotCommandBox,
-} from '@/utils/copilot-command-display.js';
+} from '@/utils/helpers/copilot-command-display.js';
+import type { ILogger, IProcess } from '@/interfaces/index.js';
 
 // Re-export types for backward compatibility
 export type {
@@ -114,15 +115,16 @@ export function buildCopilotArgs(
  */
 export async function spawnCopilot(
   args: string[],
-  options: { inherit?: boolean; cwd?: string } = {}
+  options: { inherit?: boolean; cwd?: string } = {},
+  proc?: IProcess
 ): Promise<number> {
-  const { inherit = true, cwd = process.cwd() } = options;
+  const { inherit = true, cwd = proc?.cwd() ?? process.cwd() } = options;
 
   return new Promise((resolve, reject) => {
     const child = spawn('copilot', args, {
       stdio: inherit ? 'inherit' : 'pipe',
       cwd,
-      env: process.env,
+      env: proc?.env ?? process.env,
       shell: false,
     });
 
@@ -151,7 +153,6 @@ async function sleep(ms: number): Promise<void> {
  *
  * @param config - Speci configuration
  * @param agentName - Name of agent to run
- * @param label - Human-readable label for logging
  * @param policy - Retry policy (uses default if not specified)
  * @returns Promise that resolves with agent run result
  * @throws {Error} If agent file not found or execution fails
@@ -159,9 +160,11 @@ async function sleep(ms: number): Promise<void> {
 export async function runAgent(
   config: SpeciConfig,
   agentName: string,
-  _label: string,
-  policy: RetryPolicy = DEFAULT_RETRY_POLICY
+  policy: RetryPolicy = DEFAULT_RETRY_POLICY,
+  proc?: IProcess,
+  logger?: ILogger
 ): Promise<AgentRunResult> {
+  const resolvedLogger = logger ?? log;
   let lastError: Error | undefined;
   let lastExitCode = 1;
 
@@ -171,7 +174,9 @@ export async function runAgent(
         policy.baseDelay * Math.pow(2, attempt - 1),
         policy.maxDelay
       );
-      log.warn(`Retry ${attempt}/${policy.maxRetries} after ${delay}ms...`);
+      resolvedLogger.warn(
+        `Retry ${attempt}/${policy.maxRetries} after ${delay}ms...`
+      );
       await sleep(delay);
     }
 
@@ -192,9 +197,9 @@ export async function runAgent(
         logsDir,
       });
 
-      log.infoPlain(renderCopilotCommandBox(args));
-      log.debug(`Spawning copilot: ${formatCopilotCommand(args)}`);
-      const exitCode = await spawnCopilot(args);
+      resolvedLogger.infoPlain(renderCopilotCommandBox(args));
+      resolvedLogger.debug(`Spawning copilot: ${formatCopilotCommand(args)}`);
+      const exitCode = await spawnCopilot(args, {}, proc);
 
       if (exitCode === 0) {
         return { isSuccess: true, exitCode: 0 };
@@ -211,10 +216,16 @@ export async function runAgent(
         };
       }
     } catch (err) {
-      lastError = err as Error;
+      if (err instanceof Error) {
+        lastError = err;
+      }
 
       // ENOENT is not retryable
-      if ((err as NodeJS.ErrnoException).code === 'ENOENT') {
+      const code =
+        typeof err === 'object' && err !== null && 'code' in err
+          ? (err as NodeJS.ErrnoException).code
+          : undefined;
+      if (code === 'ENOENT') {
         return {
           isSuccess: false,
           exitCode: 127,

@@ -2,7 +2,8 @@
  * Error handling utilities for command error handling
  */
 
-import type { CommandResult, ILogger } from '@/interfaces.js';
+import type { CommandResult, ILogger } from '@/interfaces/index.js';
+import type { ValidationError } from '@/validation/types.js';
 
 /**
  * Command execution result with error
@@ -49,6 +50,22 @@ export function failResult(
 }
 
 /**
+ * Log a validation error (message + suggestions) and return a failure result.
+ *
+ * @param error - Validation error from a failed ValidationResult
+ * @param logger - Logger used for output
+ * @returns Standardized command failure result
+ */
+export function failValidation(
+  error: ValidationError,
+  logger: ILogger
+): CommandResult & { success: false; exitCode: 1; error: string } {
+  logger.error(error.message);
+  error.suggestions?.forEach((suggestion) => logger.info(suggestion));
+  return failResult(error.message);
+}
+
+/**
  * Handle command errors consistently
  *
  * @param error - The error that was caught
@@ -61,11 +78,7 @@ export function handleCommandError(
   commandName: string,
   logger: ILogger
 ): CommandErrorResult {
-  if (
-    error instanceof Error &&
-    (error.message.includes('ERR-INP-02') ||
-      error.message.includes('Agent file not found'))
-  ) {
+  if (error instanceof Error && error.name === 'ERR-INP-02') {
     logger.error(error.message);
     logger.info('Run "speci init" to create agents');
     return failResult(error.message);

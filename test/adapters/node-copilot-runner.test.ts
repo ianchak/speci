@@ -5,6 +5,8 @@ import type {
   CopilotArgsOptions,
   SpeciConfig,
 } from '@/types.js';
+import { createMockProcess } from '@/adapters/test-context.js';
+import { createMockContext } from '@/adapters/test-context.js';
 import * as copilotModule from '@/copilot.js';
 
 vi.mock('@/copilot.js', async () => {
@@ -26,7 +28,7 @@ describe('NodeCopilotRunner', () => {
     agent: 'speci-impl',
     command: 'impl',
   };
-  const adapter = new NodeCopilotRunner();
+  const adapter = new NodeCopilotRunner(createMockContext().logger);
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -48,24 +50,32 @@ describe('NodeCopilotRunner', () => {
   it('delegates spawn to spawnCopilot', async () => {
     const args = ['--help'];
     const spawnOptions = { inherit: false, cwd: 'C:\\temp' };
+    const proc = createMockProcess();
     vi.mocked(copilotModule.spawnCopilot).mockResolvedValue(0);
 
-    const result = await adapter.spawn(args, spawnOptions);
+    const result = await adapter.spawn(args, spawnOptions, proc);
 
-    expect(copilotModule.spawnCopilot).toHaveBeenCalledWith(args, spawnOptions);
+    expect(copilotModule.spawnCopilot).toHaveBeenCalledWith(
+      args,
+      spawnOptions,
+      proc
+    );
     expect(result).toBe(0);
   });
 
   it('delegates run to runAgent', async () => {
     const expected: AgentRunResult = { isSuccess: true, exitCode: 0 };
+    const proc = createMockProcess();
     vi.mocked(copilotModule.runAgent).mockResolvedValue(expected);
 
-    const result = await adapter.run(config, 'speci-impl', 'Implementation');
+    const result = await adapter.run(config, 'speci-impl', proc);
 
     expect(copilotModule.runAgent).toHaveBeenCalledWith(
       config,
       'speci-impl',
-      'Implementation'
+      undefined,
+      proc,
+      expect.anything()
     );
     expect(result).toBe(expected);
   });

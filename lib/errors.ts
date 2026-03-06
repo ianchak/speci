@@ -16,6 +16,42 @@ export interface ErrorDefinition {
   solution: string;
 }
 
+export type ErrorCode =
+  | 'ERR-PRE-01'
+  | 'ERR-PRE-02'
+  | 'ERR-PRE-03'
+  | 'ERR-PRE-04'
+  | 'ERR-PRE-05'
+  | 'ERR-PRE-06'
+  | 'ERR-INP-01'
+  | 'ERR-INP-02'
+  | 'ERR-INP-03'
+  | 'ERR-INP-04'
+  | 'ERR-INP-05'
+  | 'ERR-INP-06'
+  | 'ERR-INP-07'
+  | 'ERR-INP-08'
+  | 'ERR-INP-09'
+  | 'ERR-INP-10'
+  | 'ERR-INP-11'
+  | 'ERR-STA-01'
+  | 'ERR-STA-02'
+  | 'ERR-STA-03'
+  | 'ERR-STA-04'
+  | 'ERR-STA-05'
+  | 'ERR-STA-06'
+  | 'ERR-EXE-01'
+  | 'ERR-EXE-02'
+  | 'ERR-EXE-03'
+  | 'ERR-EXE-04'
+  | 'ERR-EXE-05'
+  | 'ERR-EXE-06'
+  | 'ERR-EXE-07'
+  | 'ERR-EXE-08'
+  | 'ERR-EXE-09'
+  | 'ERR-EXE-10'
+  | 'ERR-UI-01';
+
 /**
  * Context object for error interpolation
  */
@@ -31,7 +67,7 @@ export type ErrorContext = Record<string, string | number | undefined>;
  * - ERR-EXE-* : Execution errors (command failures, timeouts)
  * - ERR-UI-*  : UI errors (rendering, color parsing)
  */
-export const ERROR_CODES: Record<string, ErrorDefinition> = {
+export const ERROR_CODES: Record<ErrorCode, ErrorDefinition> = {
   // Prerequisite Errors (ERR-PRE-*)
   'ERR-PRE-01': {
     message: 'Copilot CLI is not installed',
@@ -225,9 +261,9 @@ export const ERROR_CODES: Record<string, ErrorDefinition> = {
  * Get error definition by code
  *
  * @param code - Error code (e.g., 'ERR-PRE-01')
- * @returns Error definition or undefined if code not found
+ * @returns Error definition
  */
-export function getErrorDefinition(code: string): ErrorDefinition | undefined {
+export function getErrorDefinition(code: ErrorCode): ErrorDefinition {
   return ERROR_CODES[code];
 }
 
@@ -252,11 +288,8 @@ function interpolateContext(template: string, context: ErrorContext): string {
  * @param contextJson - Optional JSON string containing context variables for interpolation
  * @returns Formatted error message
  */
-export function formatError(code: string, contextJson?: string): string {
+export function formatError(code: ErrorCode, contextJson?: string): string {
   const def = getErrorDefinition(code);
-  if (!def) {
-    return `Unknown error code: ${code}`;
-  }
 
   // Parse context if provided
   let context: ErrorContext = {};
@@ -291,7 +324,7 @@ export function formatError(code: string, contextJson?: string): string {
  * @param contextJson - Optional JSON string containing context variables for interpolation
  * @returns Error object with formatted message
  */
-export function createError(code: string, contextJson?: string): Error {
+export function createError(code: ErrorCode, contextJson?: string): Error {
   const message = formatError(code, contextJson);
   const error = new Error(message);
   error.name = code;

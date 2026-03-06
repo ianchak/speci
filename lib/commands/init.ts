@@ -10,13 +10,15 @@ import {
   getDefaults,
   getAgentsTemplatePath,
   getConfigTemplatePath,
-} from '@/config.js';
+} from '@/config/index.js';
 import type { SpeciConfig } from '@/types.js';
 import { CONFIG_FILENAME, GITHUB_AGENTS_DIR } from '@/constants.js';
 import { createError } from '@/errors.js';
-import { createProductionContext } from '@/adapters/context-factory.js';
-import { handleCommandError, toErrorMessage } from '@/utils/error-handler.js';
-import type { CommandContext, CommandResult } from '@/interfaces.js';
+import {
+  handleCommandError,
+  toErrorMessage,
+} from '@/utils/infrastructure/error-handler.js';
+import type { CommandContext, CommandResult } from '@/interfaces/index.js';
 
 /**
  * Options for the init command
@@ -290,7 +292,7 @@ function displaySuccess(context: CommandContext): void {
  */
 export async function init(
   options: InitOptions = {},
-  context: CommandContext = createProductionContext(),
+  context: CommandContext,
   _config?: SpeciConfig
 ): Promise<CommandResult> {
   try {

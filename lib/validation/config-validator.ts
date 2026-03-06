@@ -38,7 +38,6 @@ function isSafePath(path: string): boolean {
  */
 export class ConfigValidator {
   private config: Partial<SpeciConfig>;
-  private errors: ValidationError[] = [];
 
   constructor(config: Partial<SpeciConfig>) {
     this.config = config;
@@ -47,9 +46,9 @@ export class ConfigValidator {
   /**
    * Validate config version
    */
-  validateVersion(): this {
+  validateVersion(errors: ValidationError[] = []): this {
     if (this.config.version && !this.config.version.startsWith('1.')) {
-      this.errors.push({
+      errors.push({
         field: 'version',
         message: `Config version '${this.config.version}' is not compatible. Expected: 1.x`,
         suggestions: ['Update to version 1.x', 'Check migration guide'],
@@ -61,11 +60,11 @@ export class ConfigValidator {
   /**
    * Validate paths for directory traversal
    */
-  validatePaths(): this {
+  validatePaths(errors: ValidationError[] = []): this {
     if (this.config.paths) {
       for (const [key, value] of Object.entries(this.config.paths)) {
         if (value && !isSafePath(value)) {
-          this.errors.push({
+          errors.push({
             field: `paths.${key}`,
             message: `Path contains directory traversal: ${value}`,
             suggestions: [
@@ -83,13 +82,13 @@ export class ConfigValidator {
   /**
    * Validate copilot permissions
    */
-  validateCopilot(): this {
+  validateCopilot(errors: ValidationError[] = []): this {
     const validPermissions = ['allow-all', 'yolo', 'strict', 'none'];
     if (
       this.config.copilot?.permissions &&
       !validPermissions.includes(this.config.copilot.permissions)
     ) {
-      this.errors.push({
+      errors.push({
         field: 'copilot.permissions',
         message: `Invalid copilot permissions: ${this.config.copilot.permissions}`,
         suggestions: [
@@ -104,10 +103,10 @@ export class ConfigValidator {
   /**
    * Validate gate settings
    */
-  validateGate(): this {
+  validateGate(errors: ValidationError[] = []): this {
     if (this.config.gate?.maxFixAttempts !== undefined) {
       if (this.config.gate.maxFixAttempts < 0) {
-        this.errors.push({
+        errors.push({
           field: 'gate.maxFixAttempts',
           message: `maxFixAttempts must be at least 0, got: ${this.config.gate.maxFixAttempts}`,
           suggestions: ['Set to 0 to disable fix attempts', 'Default is 3'],
@@ -120,10 +119,10 @@ export class ConfigValidator {
   /**
    * Validate loop settings
    */
-  validateLoop(): this {
+  validateLoop(errors: ValidationError[] = []): this {
     if (this.config.loop?.maxIterations !== undefined) {
       if (this.config.loop.maxIterations < 1) {
-        this.errors.push({
+        errors.push({
           field: 'loop.maxIterations',
           message: `maxIterations must be at least 1, got: ${this.config.loop.maxIterations}`,
           suggestions: ['Set to 1 or higher', 'Default is 10'],
@@ -139,16 +138,26 @@ export class ConfigValidator {
    * @returns ValidationResult with config if valid, error if invalid
    */
   validate(): ValidationResult<SpeciConfig> {
-    this.validateVersion()
-      .validatePaths()
-      .validateCopilot()
-      .validateGate()
-      .validateLoop();
+    const errors: ValidationError[] = [];
+    this.validateVersion(errors)
+      .validatePaths(errors)
+      .validateCopilot(errors)
+      .validateGate(errors)
+      .validateLoop(errors);
 
-    if (this.errors.length > 0) {
-      return { success: false, error: this.errors[0] };
+    if (errors.length > 0) {
+      return { success: false, error: errors[0] };
     }
 
-    return { success: true, value: this.config as SpeciConfig };
+    return {
+      success: true,
+      value: {
+        version: this.config.version!,
+        paths: this.config.paths!,
+        copilot: this.config.copilot!,
+        gate: this.config.gate!,
+        loop: this.config.loop!,
+      },
+    };
   }
 }

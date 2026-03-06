@@ -6,9 +6,12 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { registerCleanup, runCleanup } from '../lib/utils/signals.js';
-import { canRetryGate, runGate } from '../lib/utils/gate.js';
-import type { SpeciConfig } from '../lib/config.js';
+import {
+  registerCleanup,
+  runCleanup,
+} from '../lib/utils/infrastructure/signals.js';
+import { canRetryGate, runGate } from '../lib/utils/infrastructure/gate.js';
+import type { SpeciConfig } from '../lib/config/index.js';
 import { NodeLogger } from '../lib/adapters/node-logger.js';
 import { NodeProcess } from '../lib/adapters/node-process.js';
 

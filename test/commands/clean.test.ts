@@ -4,8 +4,8 @@ import { tmpdir } from 'node:os';
 import { PassThrough } from 'node:stream';
 import { clean, cleanFiles } from '../../lib/commands/clean.js';
 import { createMockContext } from '../../lib/adapters/test-context.js';
-import type { SpeciConfig } from '../../lib/config.js';
-import type { CommandContext } from '../../lib/interfaces.js';
+import type { SpeciConfig } from '../../lib/config/index.js';
+import type { CommandContext } from '../../lib/interfaces/index.js';
 
 const MOCK_CWD = join(tmpdir(), 'speci-test-project');
 
@@ -398,6 +398,38 @@ describe('cleanFiles', () => {
     expect(context.fs.unlinkSync).not.toHaveBeenCalled();
   });
 
+  it('rejects tasks path outside project root before deletion', () => {
+    const outsideConfig = createConfig({
+      tasks: resolve(MOCK_CWD, '../outside/tasks'),
+    });
+
+    const result = cleanFiles(outsideConfig, context);
+
+    expect(result.success).toBe(false);
+    expect(result.exitCode).toBe(1);
+    expect(result.error).toContain(
+      `Configured path resolves outside the project root: ${resolve(MOCK_CWD, '../outside/tasks')}`
+    );
+    expect(context.fs.rmSync).not.toHaveBeenCalled();
+    expect(context.fs.unlinkSync).not.toHaveBeenCalled();
+  });
+
+  it('rejects progress path outside project root before deletion', () => {
+    const outsideConfig = createConfig({
+      progress: resolve(MOCK_CWD, '../outside/PROGRESS.md'),
+    });
+
+    const result = cleanFiles(outsideConfig, context);
+
+    expect(result.success).toBe(false);
+    expect(result.exitCode).toBe(1);
+    expect(result.error).toContain(
+      `Configured path resolves outside the project root: ${resolve(MOCK_CWD, '../outside/PROGRESS.md')}`
+    );
+    expect(context.fs.rmSync).not.toHaveBeenCalled();
+    expect(context.fs.unlinkSync).not.toHaveBeenCalled();
+  });
+
   it('handles large number of task files', () => {
     setExists([config.paths.tasks]);
     const files = Array.from({ length: 100 }, (_, i) => `TASK_${i + 1}.md`);
@@ -488,6 +520,54 @@ describe('clean', () => {
     expect(context.logger.error).toHaveBeenCalledWith(
       'Clean command failed: config load failed'
     );
+  });
+
+  it('fails when lock file exists before delegating', async () => {
+    vi.spyOn(context.fs, 'existsSync').mockImplementation((path: string) => {
+      return path === config.paths.lock;
+    });
+
+    const result = await clean({}, context, config);
+
+    expect(result.success).toBe(false);
+    expect(result.exitCode).toBe(1);
+    expect(result.error).toContain('Cannot clean while speci is running');
+    expect(context.fs.rmSync).not.toHaveBeenCalled();
+    expect(context.fs.unlinkSync).not.toHaveBeenCalled();
+  });
+
+  it('fails when tasks path resolves outside project root', async () => {
+    const outsideConfig = createConfig({
+      tasks: resolve(MOCK_CWD, '../outside/tasks'),
+    });
+    vi.spyOn(context.fs, 'existsSync').mockReturnValue(false);
+
+    const result = await clean({}, context, outsideConfig);
+
+    expect(result.success).toBe(false);
+    expect(result.exitCode).toBe(1);
+    expect(result.error).toContain(
+      `Configured path resolves outside the project root: ${resolve(MOCK_CWD, '../outside/tasks')}`
+    );
+    expect(context.fs.rmSync).not.toHaveBeenCalled();
+    expect(context.fs.unlinkSync).not.toHaveBeenCalled();
+  });
+
+  it('fails when progress path resolves outside project root', async () => {
+    const outsideConfig = createConfig({
+      progress: resolve(MOCK_CWD, '../outside/PROGRESS.md'),
+    });
+    vi.spyOn(context.fs, 'existsSync').mockReturnValue(false);
+
+    const result = await clean({}, context, outsideConfig);
+
+    expect(result.success).toBe(false);
+    expect(result.exitCode).toBe(1);
+    expect(result.error).toContain(
+      `Configured path resolves outside the project root: ${resolve(MOCK_CWD, '../outside/PROGRESS.md')}`
+    );
+    expect(context.fs.rmSync).not.toHaveBeenCalled();
+    expect(context.fs.unlinkSync).not.toHaveBeenCalled();
   });
 });
 

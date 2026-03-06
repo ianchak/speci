@@ -10,7 +10,7 @@ import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { plan } from '../../lib/commands/plan.js';
 import { createMockContext } from '../../lib/adapters/test-context.js';
-import type { CommandContext } from '../../lib/interfaces.js';
+import type { CommandContext } from '../../lib/interfaces/index.js';
 
 describe('plan command', () => {
   let testDir: string;
@@ -335,6 +335,9 @@ describe('plan command', () => {
       expect(result.success).toBe(false);
       expect(result.exitCode).toBe(1);
       expect(result.error).toContain('Missing required input');
+      expect(mockContext.logger.error).toHaveBeenCalledWith(
+        'Missing required input'
+      );
     });
 
     it('should return error when input file does not exist', async () => {
@@ -360,17 +363,13 @@ describe('plan command', () => {
     });
   });
 
-  describe('default context', () => {
-    it('should use production context when context not provided', async () => {
-      // This test verifies the default parameter works
-      // Note: We can't easily test this without mocking the whole system
-      // So we just verify the function signature allows calling without context
+  describe('context signature', () => {
+    it('should require context in the function signature', () => {
       expect(plan).toBeDefined();
-      // Default parameters don't count towards function.length, so we can't test it this way
-      // Instead we verify the type signature allows it
-      const _typeTest: (options?: {
-        prompt?: string;
-      }) => Promise<{ success: boolean; exitCode: number }> = plan;
+      const _typeTest: (
+        options: { prompt?: string },
+        context: Parameters<typeof plan>[1]
+      ) => Promise<{ success: boolean; exitCode: number }> = plan;
       expect(_typeTest).toBe(plan);
     });
   });

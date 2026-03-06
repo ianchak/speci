@@ -10,54 +10,11 @@ import { colorize } from '@/ui/colors.js';
 import { getGlyph } from '@/ui/glyphs.js';
 import { drawBox } from '@/ui/box.js';
 import { ENV } from '@/constants.js';
-import type { IProcess } from '@/interfaces.js';
+import type { ILogger, IProcess } from '@/interfaces/index.js';
 
-/**
- * Verbose mode flag (can be set programmatically)
- */
-let verboseMode = false;
-
-/**
- * Process instance for environment access (defaults to global process)
- */
-let loggerProcess: IProcess = process;
-
-/**
- * Set the process instance for logger to use
- *
- * @param proc - IProcess instance
- */
-export function setLoggerProcess(proc: IProcess): void {
-  loggerProcess = proc;
-}
-
-/**
- * Enable or disable verbose mode
- *
- * @param enabled - Whether to enable verbose mode
- */
-export function setVerbose(enabled: boolean): void {
-  verboseMode = enabled;
-}
-
-/**
- * Check if verbose mode is enabled
- *
- * @returns true if verbose mode is enabled via setVerbose() or SPECI_DEBUG env var
- */
-export function isVerbose(): boolean {
-  return verboseMode || isDebugMode();
-}
-
-/**
- * Check if debug mode is enabled via environment variable
- *
- * @returns true if SPECI_DEBUG is set to '1' or 'true'
- */
-function isDebugMode(): boolean {
+function isDebugMode(proc: IProcess): boolean {
   return (
-    loggerProcess.env[ENV.SPECI_DEBUG] === '1' ||
-    loggerProcess.env[ENV.SPECI_DEBUG] === 'true'
+    proc.env[ENV.SPECI_DEBUG] === '1' || proc.env[ENV.SPECI_DEBUG] === 'true'
   );
 }
 
@@ -69,106 +26,143 @@ function getTimestamp(): string {
   return new Date().toISOString().split('T')[1].split('.')[0];
 }
 
-/**
- * Styled logging object with semantic methods
- */
-export const log = {
-  /**
-   * Log informational message (blue styled)
-   * @param message - Message to log
-   */
-  info(message: string): void {
-    console.log(colorize(`${getGlyph('bullet')} ${message}`, 'sky400'));
-  },
-
-  /**
-   * Log error message with error glyph (red styled)
-   * @param message - Error message to log
-   */
-  error(message: string): void {
-    console.error(colorize(`${getGlyph('error')} ${message}`, 'error'));
-  },
-
-  /**
-   * Log warning message with warning glyph (yellow/amber styled)
-   * @param message - Warning message to log
-   */
-  warn(message: string): void {
-    console.warn(colorize(`${getGlyph('warning')} ${message}`, 'warning'));
-  },
-
-  /**
-   * Log success message with success glyph (green styled)
-   * @param message - Success message to log
-   */
-  success(message: string): void {
-    console.log(colorize(`${getGlyph('success')} ${message}`, 'success'));
-  },
-
-  /**
-   * Log debug message (only when verbose mode or SPECI_DEBUG is enabled)
-   * Includes timestamp in output
-   *
-   * @param message - Debug message to log
-   */
-  debug(message: string): void {
-    if (isVerbose()) {
-      console.log(colorize(`[${getTimestamp()}] DEBUG: ${message}`, 'dim'));
-    }
-  },
-
-  /**
-   * Log muted message (dim styled, for less important info)
-   * @param message - Message to log in muted style
-   */
-  muted(message: string): void {
-    console.log(colorize(message, 'dim'));
-  },
-
-  /**
-   * Log raw message without any formatting or glyphs
-   * @param message - Message to log as-is
-   */
-  raw(message: string): void {
-    console.log(message);
-  },
-
-  /**
-   * Log informational message without glyph prefix (blue styled)
-   * Use for multi-line or formatted messages where prefix would look awkward
-   * @param message - Message to log
-   */
-  infoPlain(message: string): void {
-    console.log(colorize(message, 'sky400'));
-  },
-
-  /**
-   * Log warning message without glyph prefix (yellow/amber styled)
-   * Use for multi-line or formatted messages where prefix would look awkward
-   * @param message - Message to log
-   */
-  warnPlain(message: string): void {
-    console.warn(colorize(message, 'warning'));
-  },
-
-  /**
-   * Log error message without glyph prefix (red styled)
-   * Use for multi-line or formatted messages where prefix would look awkward
-   * @param message - Message to log
-   */
-  errorPlain(message: string): void {
-    console.error(colorize(message, 'error'));
-  },
-
-  /**
-   * Log success message without glyph prefix (green styled)
-   * Use for multi-line or formatted messages where prefix would look awkward
-   * @param message - Message to log
-   */
-  successPlain(message: string): void {
-    console.log(colorize(message, 'success'));
-  },
+type LoggerWithVerbose = ILogger & {
+  isVerbose(): boolean;
 };
+
+/**
+ * Create a logger instance bound to a process object.
+ */
+export function createLogger(proc: IProcess): LoggerWithVerbose {
+  let verboseMode = false;
+
+  const isVerbose = (): boolean => verboseMode || isDebugMode(proc);
+
+  return {
+    /**
+     * Log informational message (blue styled)
+     * @param message - Message to log
+     */
+    info(message: string): void {
+      console.log(colorize(`${getGlyph('bullet')} ${message}`, 'sky400'));
+    },
+
+    /**
+     * Log error message with error glyph (red styled)
+     * @param message - Error message to log
+     */
+    error(message: string): void {
+      console.error(colorize(`${getGlyph('error')} ${message}`, 'error'));
+    },
+
+    /**
+     * Log warning message with warning glyph (yellow/amber styled)
+     * @param message - Warning message to log
+     */
+    warn(message: string): void {
+      console.warn(colorize(`${getGlyph('warning')} ${message}`, 'warning'));
+    },
+
+    /**
+     * Log success message with success glyph (green styled)
+     * @param message - Success message to log
+     */
+    success(message: string): void {
+      console.log(colorize(`${getGlyph('success')} ${message}`, 'success'));
+    },
+
+    /**
+     * Log debug message (only when verbose mode or SPECI_DEBUG is enabled)
+     * Includes timestamp in output
+     *
+     * @param message - Debug message to log
+     */
+    debug(message: string): void {
+      if (isVerbose()) {
+        console.log(colorize(`[${getTimestamp()}] DEBUG: ${message}`, 'dim'));
+      }
+    },
+
+    /**
+     * Log muted message (dim styled, for less important info)
+     * @param message - Message to log in muted style
+     */
+    muted(message: string): void {
+      console.log(colorize(message, 'dim'));
+    },
+
+    /**
+     * Log raw message without any formatting or glyphs
+     * @param message - Message to log as-is
+     */
+    raw(message: string): void {
+      console.log(message);
+    },
+
+    /**
+     * Log informational message without glyph prefix (blue styled)
+     * Use for multi-line or formatted messages where prefix would look awkward
+     * @param message - Message to log
+     */
+    infoPlain(message: string): void {
+      console.log(colorize(message, 'sky400'));
+    },
+
+    /**
+     * Log warning message without glyph prefix (yellow/amber styled)
+     * Use for multi-line or formatted messages where prefix would look awkward
+     * @param message - Message to log
+     */
+    warnPlain(message: string): void {
+      console.warn(colorize(message, 'warning'));
+    },
+
+    /**
+     * Log error message without glyph prefix (red styled)
+     * Use for multi-line or formatted messages where prefix would look awkward
+     * @param message - Message to log
+     */
+    errorPlain(message: string): void {
+      console.error(colorize(message, 'error'));
+    },
+
+    /**
+     * Log success message without glyph prefix (green styled)
+     * Use for multi-line or formatted messages where prefix would look awkward
+     * @param message - Message to log
+     */
+    successPlain(message: string): void {
+      console.log(colorize(message, 'success'));
+    },
+
+    setVerbose(enabled: boolean): void {
+      verboseMode = enabled;
+    },
+
+    isVerbose,
+  };
+}
+
+/**
+ * Styled logging object with semantic methods.
+ */
+export const log = createLogger(process);
+
+/**
+ * Enable or disable verbose mode on the module-level logger.
+ *
+ * @param enabled - Whether to enable verbose mode
+ */
+export function setVerbose(enabled: boolean): void {
+  log.setVerbose(enabled);
+}
+
+/**
+ * Check if verbose mode is enabled for the module-level logger.
+ */
+export function isVerbose(): boolean {
+  return log.isVerbose();
+}
 
 /**
  * Log debug message with optional data (only in verbose mode)

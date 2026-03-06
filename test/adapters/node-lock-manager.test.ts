@@ -1,10 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { NodeLockManager } from '@/adapters/node-lock-manager.js';
-import type { IProcess } from '@/interfaces.js';
+import { createMockContext } from '@/adapters/test-context.js';
+import type { IProcess } from '@/interfaces/index.js';
 import type { LockInfo, SpeciConfig } from '@/types.js';
-import * as lockModule from '@/utils/lock.js';
+import * as lockModule from '@/utils/infrastructure/lock.js';
 
-vi.mock('@/utils/lock.js', () => ({
+vi.mock('@/utils/infrastructure/lock.js', () => ({
   acquireLock: vi.fn(),
   releaseLock: vi.fn(),
   isLocked: vi.fn(),
@@ -15,7 +16,7 @@ describe('NodeLockManager', () => {
   const config = {
     paths: { lock: '.speci-lock' },
   } as unknown as SpeciConfig;
-  const adapter = new NodeLockManager();
+  const adapter = new NodeLockManager(createMockContext().logger);
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -30,7 +31,8 @@ describe('NodeLockManager', () => {
       config,
       undefined,
       undefined,
-      undefined
+      undefined,
+      expect.anything()
     );
   });
 
@@ -45,7 +47,8 @@ describe('NodeLockManager', () => {
       config,
       mockProcess,
       'run',
-      metadata
+      metadata,
+      expect.anything()
     );
   });
 
@@ -54,7 +57,10 @@ describe('NodeLockManager', () => {
 
     await adapter.release(config);
 
-    expect(lockModule.releaseLock).toHaveBeenCalledWith(config);
+    expect(lockModule.releaseLock).toHaveBeenCalledWith(
+      config,
+      expect.anything()
+    );
   });
 
   it('delegates isLocked to isLocked', async () => {

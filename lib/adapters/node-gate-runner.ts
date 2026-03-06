@@ -5,16 +5,18 @@
  * the gate module for quality gate execution.
  */
 
-import type { IGateRunner } from '@/interfaces.js';
+import type { IGateRunner, ILogger } from '@/interfaces/index.js';
 import type { SpeciConfig, GateResult } from '@/types.js';
-import { runGate, canRetryGate } from '@/utils/gate.js';
+import { runGate, canRetryGate } from '@/utils/infrastructure/gate.js';
 
 /**
  * Production gate runner using the gate module
  */
 export class NodeGateRunner implements IGateRunner {
+  constructor(private readonly logger: ILogger) {}
+
   async run(config: SpeciConfig): Promise<GateResult> {
-    return runGate(config);
+    return runGate(config, this.logger);
   }
 
   canRetry(config: SpeciConfig, attemptCount: number): boolean {

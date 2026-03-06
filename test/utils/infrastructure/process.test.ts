@@ -1,12 +1,14 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { spawn, type ChildProcess } from 'node:child_process';
+import { EventEmitter } from 'node:events';
 import {
   trackChild,
   cleanupChildren,
   preventZombies,
   getTrackedChildCount,
   killAllChildren,
-} from '../../../lib/utils/process.js';
+  KILL_TIMEOUT_MS,
+} from '../../../lib/utils/infrastructure/process.js';
 
 describe('process utilities', () => {
   beforeEach(() => {
@@ -61,6 +63,53 @@ describe('process utilities', () => {
 
       // Should not crash
       expect(true).toBe(true);
+    });
+
+    describe('timer and error handling', () => {
+      class MockChildProcess extends EventEmitter {
+        pid = 12345;
+        killed = false;
+        kill = vi.fn((signal?: NodeJS.Signals | number) => {
+          if (signal === 'SIGKILL' || signal === 'SIGTERM') {
+            this.killed = true;
+          }
+          return true;
+        });
+      }
+
+      afterEach(() => {
+        vi.useRealTimers();
+      });
+
+      it('force-kills child after timeout', async () => {
+        vi.useFakeTimers();
+        const child = new MockChildProcess() as unknown as ChildProcess;
+        trackChild(child);
+
+        const cleanupPromise = cleanupChildren();
+        await vi.advanceTimersByTimeAsync(KILL_TIMEOUT_MS);
+        await cleanupPromise;
+
+        expect(
+          (child as unknown as MockChildProcess).kill
+        ).toHaveBeenCalledWith('SIGTERM');
+        expect(
+          (child as unknown as MockChildProcess).kill
+        ).toHaveBeenCalledWith('SIGKILL');
+      });
+
+      it('removes child from registry on child error event', () => {
+        const child = new MockChildProcess() as unknown as ChildProcess;
+        trackChild(child);
+        expect(getTrackedChildCount()).toBeGreaterThan(0);
+
+        (child as unknown as EventEmitter).emit(
+          'error',
+          new Error('spawn ENOENT')
+        );
+
+        expect(getTrackedChildCount()).toBe(0);
+      });
     });
   });
 

@@ -81,6 +81,10 @@ describe('constants module', () => {
       expect(MESSAGES.RUN_INIT).toBe('Run speci init to create configuration');
     });
 
+    it('should export MISSING_REQUIRED_INPUT message', () => {
+      expect(MESSAGES.MISSING_REQUIRED_INPUT).toBe('Missing required input');
+    });
+
     it('should be a const object with string values', () => {
       expect(typeof MESSAGES.RUN_INIT).toBe('string');
     });

@@ -3,7 +3,7 @@ import {
   formatDate,
   ensureUtf8,
   formatElapsed,
-} from '../../../lib/utils/formatting.js';
+} from '../../../lib/utils/helpers/formatting.js';
 
 describe('formatting utilities', () => {
   describe('formatDate', () => {

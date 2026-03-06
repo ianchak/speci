@@ -8,47 +8,11 @@
 
 import { log } from './logger.js';
 import { EXIT_CODE } from '@/constants.js';
+import type { ILogger, IProcess } from '@/interfaces/index.js';
 import type { CleanupFn } from '@/types.js';
 
 // Re-export for backward compatibility
 export type { CleanupFn } from '@/types.js';
-
-/**
- * Internal state
- */
-const cleanupRegistry: CleanupFn[] = [];
-let isCleaningUp = false;
-let signalReceived = false;
-
-/**
- * Returns true when cleanup is currently running.
- */
-export function isRunningCleanup(): boolean {
-  return isCleaningUp;
-}
-
-/**
- * Register a cleanup function to be called on exit
- *
- * Cleanup functions are called in reverse registration order (LIFO).
- *
- * @param fn - Cleanup function (sync or async)
- */
-export function registerCleanup(fn: CleanupFn): void {
-  cleanupRegistry.push(fn);
-}
-
-/**
- * Remove a cleanup function from the registry
- *
- * @param fn - Cleanup function to remove
- */
-export function unregisterCleanup(fn: CleanupFn): void {
-  const index = cleanupRegistry.indexOf(fn);
-  if (index !== -1) {
-    cleanupRegistry.splice(index, 1);
-  }
-}
 
 /**
  * Cleanup timeout configuration
@@ -56,162 +20,203 @@ export function unregisterCleanup(fn: CleanupFn): void {
 const CLEANUP_TIMEOUT_MS = 5000;
 
 /**
- * Execute all registered cleanup functions in reverse order
- *
- * Safe to call multiple times - will only execute once per set of registered handlers.
- * After cleanup completes, the flag is reset to allow new cleanup registrations and execution.
- * Continues cleanup even if individual functions throw errors.
- * Includes 5-second timeout to prevent hanging on slow cleanup handlers.
+ * Manages process signal handlers and graceful cleanup registration.
  */
-export async function runCleanup(): Promise<void> {
-  if (isCleaningUp) return;
-  isCleaningUp = true;
+export class SignalManager {
+  private readonly cleanupRegistry: CleanupFn[] = [];
+  private isCleaningUp = false;
+  private signalReceived = false;
+  private proc?: IProcess;
+  private logger?: ILogger;
 
-  let timeoutId: NodeJS.Timeout | null = null;
+  /**
+   * Returns true when cleanup is currently running.
+   */
+  isRunningCleanup = (): boolean => this.isCleaningUp;
 
-  // Create timeout promise that resolves to an outcome marker instead of rejecting.
-  // This prevents dangling unhandled rejections when cleanup wins the race.
-  const timeoutPromise = new Promise<{ status: 'timeout' }>((resolve) => {
-    timeoutId = setTimeout(
-      () => resolve({ status: 'timeout' }),
-      CLEANUP_TIMEOUT_MS
-    );
-  });
+  /**
+   * Register a cleanup function to be called on exit.
+   */
+  registerCleanup = (fn: CleanupFn): void => {
+    this.cleanupRegistry.push(fn);
+  };
 
-  // Create cleanup promise
-  const cleanupPromise = (async () => {
-    let hasError = false;
-    let firstError: unknown = null;
+  /**
+   * Remove a cleanup function from the registry.
+   */
+  unregisterCleanup = (fn: CleanupFn): void => {
+    const index = this.cleanupRegistry.indexOf(fn);
+    if (index !== -1) {
+      this.cleanupRegistry.splice(index, 1);
+    }
+  };
 
-    // Run in reverse order (last registered = first cleaned)
-    for (let i = cleanupRegistry.length - 1; i >= 0; i--) {
-      try {
-        await cleanupRegistry[i]();
-      } catch (err) {
-        // Log but continue cleanup
-        log.error(
-          `Cleanup error: ${err instanceof Error ? err.message : String(err)}`
-        );
-        if (!hasError) {
-          hasError = true;
-          firstError = err;
+  /**
+   * Execute all registered cleanup functions in reverse order.
+   */
+  runCleanup = async (logger?: ILogger): Promise<void> => {
+    const resolvedLogger = logger ?? this.logger ?? log;
+    if (this.isCleaningUp) return;
+    this.isCleaningUp = true;
+
+    let timeoutId: NodeJS.Timeout | null = null;
+    const timeoutPromise = new Promise<{ status: 'timeout' }>((resolve) => {
+      timeoutId = setTimeout(
+        () => resolve({ status: 'timeout' }),
+        CLEANUP_TIMEOUT_MS
+      );
+    });
+
+    const cleanupPromise = (async () => {
+      let hasError = false;
+      let firstError: unknown = null;
+
+      for (let i = this.cleanupRegistry.length - 1; i >= 0; i--) {
+        try {
+          await this.cleanupRegistry[i]();
+        } catch (err) {
+          resolvedLogger.error(
+            `Cleanup error: ${err instanceof Error ? err.message : String(err)}`
+          );
+          if (!hasError) {
+            hasError = true;
+            firstError = err;
+          }
         }
       }
-    }
 
-    // Clear registry after cleanup
-    cleanupRegistry.length = 0;
+      this.cleanupRegistry.length = 0;
 
-    // Propagate first error if any occurred
-    if (hasError) {
-      throw firstError;
-    }
-  })();
-
-  // Normalize cleanup result into explicit outcomes so rejections are always consumed.
-  const cleanupOutcomePromise = cleanupPromise
-    .then(() => ({ status: 'ok' as const }))
-    .catch((error) => ({ status: 'error' as const, error }));
-
-  // Race cleanup against timeout
-  try {
-    const result = await Promise.race([cleanupOutcomePromise, timeoutPromise]);
-
-    if (result.status === 'timeout') {
-      const timeoutError = new Error('Cleanup timeout after 5s');
-      log.error(`Cleanup did not complete in time: ${timeoutError.message}`);
-      throw timeoutError;
-    }
-
-    if (result.status === 'error') {
-      throw result.error;
-    }
-  } finally {
-    if (timeoutId) {
-      clearTimeout(timeoutId);
-    }
-    // Reset flag to allow future cleanup cycles (important for tests)
-    isCleaningUp = false;
-  }
-}
-
-/**
- * Handle SIGINT (Ctrl+C)
- *
- * First Ctrl+C: graceful shutdown with cleanup
- * Second Ctrl+C: immediate force exit
- */
-function handleSigint(): void {
-  if (signalReceived) {
-    // Second Ctrl+C - force exit
-    log.errorPlain('\nForce exiting...');
-    process.exit(EXIT_CODE.SIGINT);
-  }
-
-  signalReceived = true;
-  log.infoPlain('\nInterrupted. Cleaning up...');
-
-  runCleanup()
-    .then(() => process.exit(EXIT_CODE.SIGINT))
-    .catch((err) => {
-      const errorMessage = err instanceof Error ? err.message : String(err);
-      log.error(`Cleanup failed during signal handler: ${errorMessage}`);
-      if (err instanceof Error && err.stack) {
-        log.error(`Stack trace: ${err.stack}`);
+      if (hasError) {
+        throw firstError;
       }
-      process.exit(EXIT_CODE.SIGINT);
-    });
-}
+    })();
 
-/**
- * Handle SIGTERM
- *
- * Graceful shutdown with same cleanup as SIGINT.
- */
-function handleSigterm(): void {
-  log.infoPlain('\nReceived SIGTERM. Shutting down gracefully...');
+    const cleanupOutcomePromise = cleanupPromise
+      .then(() => ({ status: 'ok' as const }))
+      .catch((error) => ({ status: 'error' as const, error }));
 
-  runCleanup()
-    .then(() => process.exit(EXIT_CODE.SIGTERM))
-    .catch((err) => {
-      const errorMessage = err instanceof Error ? err.message : String(err);
-      log.error(`Cleanup failed during signal handler: ${errorMessage}`);
-      if (err instanceof Error && err.stack) {
-        log.error(`Stack trace: ${err.stack}`);
+    try {
+      const result = await Promise.race([
+        cleanupOutcomePromise,
+        timeoutPromise,
+      ]);
+
+      if (result.status === 'timeout') {
+        const timeoutError = new Error('Cleanup timeout after 5s');
+        resolvedLogger.error(
+          `Cleanup did not complete in time: ${timeoutError.message}`
+        );
+        throw timeoutError;
       }
-      process.exit(EXIT_CODE.SIGTERM);
-    });
-}
 
-/**
- * Install signal handlers
- *
- * Registers handlers for SIGINT and SIGTERM.
- * On Windows, also handles SIGHUP for console close events.
- */
-export function installSignalHandlers(): void {
-  process.on('SIGINT', handleSigint);
-  process.on('SIGTERM', handleSigterm);
+      if (result.status === 'error') {
+        throw result.error;
+      }
+    } finally {
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
+      this.isCleaningUp = false;
+    }
+  };
 
-  // Windows doesn't support SIGTERM well
-  if (process.platform === 'win32') {
-    // Handle Windows console close events
-    process.on('SIGHUP', handleSigterm);
+  /**
+   * Handle SIGINT (Ctrl+C).
+   */
+  handleSigint = (): void => {
+    const resolvedLogger = this.logger ?? log;
+    if (this.signalReceived) {
+      resolvedLogger.errorPlain('\nForce exiting...');
+      this.exitWithCode(EXIT_CODE.SIGINT);
+    }
+
+    this.signalReceived = true;
+    resolvedLogger.infoPlain('\nInterrupted. Cleaning up...');
+
+    this.runCleanup(resolvedLogger)
+      .then(() => this.exitWithCode(EXIT_CODE.SIGINT))
+      .catch((err) => {
+        const errorMessage = err instanceof Error ? err.message : String(err);
+        resolvedLogger.error(
+          `Cleanup failed during signal handler: ${errorMessage}`
+        );
+        if (err instanceof Error && err.stack) {
+          resolvedLogger.error(`Stack trace: ${err.stack}`);
+        }
+        this.exitWithCode(EXIT_CODE.SIGINT);
+      });
+  };
+
+  /**
+   * Handle SIGTERM.
+   */
+  handleSigterm = (): void => {
+    const resolvedLogger = this.logger ?? log;
+    resolvedLogger.infoPlain('\nReceived SIGTERM. Shutting down gracefully...');
+
+    this.runCleanup(resolvedLogger)
+      .then(() => this.exitWithCode(EXIT_CODE.SIGTERM))
+      .catch((err) => {
+        const errorMessage = err instanceof Error ? err.message : String(err);
+        resolvedLogger.error(
+          `Cleanup failed during signal handler: ${errorMessage}`
+        );
+        if (err instanceof Error && err.stack) {
+          resolvedLogger.error(`Stack trace: ${err.stack}`);
+        }
+        this.exitWithCode(EXIT_CODE.SIGTERM);
+      });
+  };
+
+  /**
+   * Install signal handlers.
+   */
+  installSignalHandlers = (proc?: IProcess, logger?: ILogger): void => {
+    this.proc = proc;
+    this.logger = logger;
+    const processRef = this.proc ?? process;
+    processRef.on('SIGINT', this.handleSigint);
+    processRef.on('SIGTERM', this.handleSigterm);
+    if ((this.proc?.platform ?? process.platform) === 'win32') {
+      processRef.on('SIGHUP', this.handleSigterm);
+    }
+  };
+
+  /**
+   * Remove signal handlers.
+   */
+  removeSignalHandlers = (): void => {
+    const processRef = this.proc ?? process;
+    processRef.off('SIGINT', this.handleSigint);
+    processRef.off('SIGTERM', this.handleSigterm);
+    if ((this.proc?.platform ?? process.platform) === 'win32') {
+      processRef.off('SIGHUP', this.handleSigterm);
+    }
+    this.signalReceived = false;
+  };
+
+  private exitWithCode(code: number): never {
+    if (this.proc) {
+      return this.proc.exit(code);
+    }
+    return process.exit(code);
   }
 }
 
-/**
- * Remove signal handlers
- *
- * Cleans up all registered signal handlers and resets state.
- * Important to call this after command completion to prevent
- * memory leaks in test suites.
- */
-export function removeSignalHandlers(): void {
-  process.off('SIGINT', handleSigint);
-  process.off('SIGTERM', handleSigterm);
-  if (process.platform === 'win32') {
-    process.off('SIGHUP', handleSigterm);
-  }
-  signalReceived = false;
-}
+export const defaultSignalManager = new SignalManager();
+
+export const isRunningCleanup = (): boolean =>
+  defaultSignalManager.isRunningCleanup();
+export const registerCleanup = (fn: CleanupFn): void =>
+  defaultSignalManager.registerCleanup(fn);
+export const unregisterCleanup = (fn: CleanupFn): void =>
+  defaultSignalManager.unregisterCleanup(fn);
+export const runCleanup = (logger?: ILogger): Promise<void> =>
+  defaultSignalManager.runCleanup(logger);
+export const installSignalHandlers = (
+  proc?: IProcess,
+  logger?: ILogger
+): void => defaultSignalManager.installSignalHandlers(proc, logger);
+export const removeSignalHandlers = (): void =>
+  defaultSignalManager.removeSignalHandlers();

@@ -60,6 +60,15 @@ export function supportsColor(): boolean {
   return process.stdout.isTTY ?? false;
 }
 
+const _colorSupported = supportsColor();
+
+/**
+ * Get cached terminal color support result.
+ *
+ * @returns true if colors were detected as supported at module load time
+ */
+export const isColorSupported = (): boolean => _colorSupported;
+
 /**
  * Strip ANSI escape codes from string
  *
@@ -98,7 +107,7 @@ export function visibleLength(str: string): number {
  * @returns ANSI-wrapped text or plain text if NO_COLOR
  */
 export function colorize(text: string, color: ColorName): string {
-  if (!supportsColor()) {
+  if (!isColorSupported()) {
     return text;
   }
 

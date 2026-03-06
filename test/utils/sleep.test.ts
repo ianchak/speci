@@ -4,8 +4,8 @@ import {
   SLEEP_DELAY_SECONDS,
   getSleepCommand,
   sleepAfterCommand,
-} from '../../lib/utils/sleep.js';
-import type { ILogger } from '../../lib/interfaces.js';
+} from '../../lib/utils/infrastructure/sleep.js';
+import type { ILogger } from '../../lib/interfaces/index.js';
 
 vi.mock('node:timers/promises', () => ({
   setTimeout: vi.fn(

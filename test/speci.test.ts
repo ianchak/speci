@@ -269,7 +269,8 @@ describe('CLI Entry Point', () => {
 
     it('should provide suggestions for typos using findSimilarCommands', async () => {
       // Import the actual suggest utility
-      const { findSimilarCommands } = await import('../lib/utils/suggest.js');
+      const { findSimilarCommands } =
+        await import('../lib/utils/helpers/suggest.js');
 
       const availableCommands = [
         'init',
@@ -520,6 +521,135 @@ Examples:
       expect(availableCommands).toContain('refactor');
       expect(availableCommands).toContain('run');
       expect(availableCommands).toContain('status');
+    });
+  });
+
+  describe('Fatal and Unhandled Rejection Handlers', () => {
+    const logErrorMock = vi.fn<(message: string) => void>();
+    const exitWithCleanupMock = vi.fn<(code: number) => Promise<never>>(
+      async () => undefined as never
+    );
+
+    function setupModuleMocks(loadError?: unknown): void {
+      vi.doMock('../lib/constants.js', () => ({
+        EXIT_CODE: { ERROR: 1 },
+      }));
+      vi.doMock('../lib/utils/infrastructure/logger.js', () => ({
+        log: { error: logErrorMock },
+      }));
+      vi.doMock('../lib/utils/infrastructure/exit.js', () => ({
+        exitWithCleanup: exitWithCleanupMock,
+      }));
+      vi.doMock('../lib/adapters/context-factory.js', () => ({
+        createProductionContext: () => ({
+          configLoader: {
+            load: vi.fn(async () => {
+              if (loadError !== undefined) {
+                throw loadError;
+              }
+              return {};
+            }),
+          },
+        }),
+      }));
+      vi.doMock('../lib/cli/command-registry.js', () => ({
+        CommandRegistry: class {
+          getProgram(): {
+            opts: () => { color: boolean };
+            help: () => void;
+          } {
+            return { opts: () => ({ color: false }), help: () => {} };
+          }
+          async execute(): Promise<void> {
+            if (loadError !== undefined) {
+              throw loadError;
+            }
+          }
+        },
+      }));
+      vi.doMock('../lib/cli/initialize.js', () => ({
+        displayBanner: vi.fn(),
+        displayStaticBanner: vi.fn(),
+        shouldShowBanner: vi.fn(() => false),
+      }));
+    }
+
+    beforeEach(() => {
+      vi.resetModules();
+      logErrorMock.mockClear();
+      exitWithCleanupMock.mockClear();
+      process.argv = ['node', 'speci', '--version'];
+    });
+
+    it('logs error.message and exits with cleanup for fatal Error rejection', async () => {
+      const consoleErrorSpy = vi
+        .spyOn(console, 'error')
+        .mockImplementation(() => {});
+      vi.spyOn(process, 'on').mockImplementation(() => process);
+      setupModuleMocks(new Error('fatal boom'));
+
+      await import('../bin/speci.js');
+      await Promise.resolve();
+      await Promise.resolve();
+
+      expect(logErrorMock).toHaveBeenCalledWith('Fatal error: fatal boom');
+      expect(exitWithCleanupMock).toHaveBeenCalledWith(1);
+      expect(consoleErrorSpy).not.toHaveBeenCalledWith(
+        'Fatal error:',
+        expect.anything()
+      );
+    });
+
+    it('logs stringified reason for fatal non-Error rejection', async () => {
+      vi.spyOn(process, 'on').mockImplementation(() => process);
+      setupModuleMocks('fatal string');
+
+      await import('../bin/speci.js');
+      await Promise.resolve();
+      await Promise.resolve();
+
+      expect(logErrorMock).toHaveBeenCalledWith('Fatal error: fatal string');
+      expect(exitWithCleanupMock).toHaveBeenCalledWith(1);
+    });
+
+    it('registers unhandledRejection and handles Error reason', async () => {
+      let unhandledRejectionHandler: ((reason: unknown) => void) | undefined;
+      vi.spyOn(process, 'on').mockImplementation((event, listener) => {
+        if (event === 'unhandledRejection') {
+          unhandledRejectionHandler = listener as (reason: unknown) => void;
+        }
+        return process;
+      });
+      setupModuleMocks();
+
+      await import('../bin/speci.js');
+      expect(unhandledRejectionHandler).toBeDefined();
+
+      unhandledRejectionHandler?.(new Error('reject boom'));
+
+      expect(logErrorMock).toHaveBeenCalledWith(
+        'Unhandled rejection: reject boom'
+      );
+      expect(exitWithCleanupMock).toHaveBeenCalledWith(1);
+    });
+
+    it('handles unhandledRejection non-Error reason via String(reason)', async () => {
+      let unhandledRejectionHandler: ((reason: unknown) => void) | undefined;
+      vi.spyOn(process, 'on').mockImplementation((event, listener) => {
+        if (event === 'unhandledRejection') {
+          unhandledRejectionHandler = listener as (reason: unknown) => void;
+        }
+        return process;
+      });
+      setupModuleMocks();
+
+      await import('../bin/speci.js');
+      unhandledRejectionHandler?.('reject string');
+
+      expect(logErrorMock).toHaveBeenCalledWith(
+        'Unhandled rejection: reject string'
+      );
+      expect(exitWithCleanupMock).toHaveBeenCalledWith(1);
     });
   });
 });
