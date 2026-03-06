@@ -5,27 +5,27 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { join } from 'node:path';
 import {
-  normalizeAgentName,
+  buildAgentName,
   validateAgentFile,
   initializeCommand,
-} from '../../../lib/utils/command-helpers.js';
+} from '../../../lib/utils/helpers/command-helpers.js';
 import { createMockContext } from '../../../lib/adapters/test-context.js';
-import type { SpeciConfig } from '../../../lib/config.js';
+import type { SpeciConfig } from '../../../lib/config/index.js';
 
 describe('command-helpers', () => {
-  describe('normalizeAgentName', () => {
+  describe('buildAgentName', () => {
     it('should use default agent name', () => {
-      const result = normalizeAgentName('plan');
+      const result = buildAgentName('plan');
       expect(result).toBe('speci-plan');
     });
 
     it('should work with all command names', () => {
-      expect(normalizeAgentName('plan')).toBe('speci-plan');
-      expect(normalizeAgentName('task')).toBe('speci-task');
-      expect(normalizeAgentName('refactor')).toBe('speci-refactor');
-      expect(normalizeAgentName('impl')).toBe('speci-impl');
-      expect(normalizeAgentName('review')).toBe('speci-review');
-      expect(normalizeAgentName('fix')).toBe('speci-fix');
+      expect(buildAgentName('plan')).toBe('speci-plan');
+      expect(buildAgentName('task')).toBe('speci-task');
+      expect(buildAgentName('refactor')).toBe('speci-refactor');
+      expect(buildAgentName('impl')).toBe('speci-impl');
+      expect(buildAgentName('review')).toBe('speci-review');
+      expect(buildAgentName('fix')).toBe('speci-fix');
     });
   });
 

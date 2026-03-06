@@ -19,7 +19,7 @@ import { join } from 'node:path';
 import {
   atomicWrite,
   atomicWriteSync,
-} from '../../../lib/utils/atomic-write.js';
+} from '../../../lib/utils/infrastructure/atomic-write.js';
 
 // Test directory setup
 const testDir = join(process.cwd(), '.test-atomic-write');

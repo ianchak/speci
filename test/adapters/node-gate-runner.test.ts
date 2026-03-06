@@ -1,9 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { NodeGateRunner } from '@/adapters/node-gate-runner.js';
+import { createMockContext } from '@/adapters/test-context.js';
 import type { GateResult, SpeciConfig } from '@/types.js';
-import * as gateModule from '@/utils/gate.js';
+import * as gateModule from '@/utils/infrastructure/gate.js';
 
-vi.mock('@/utils/gate.js', () => ({
+vi.mock('@/utils/infrastructure/gate.js', () => ({
   runGate: vi.fn(),
   canRetryGate: vi.fn(),
 }));
@@ -12,7 +13,7 @@ describe('NodeGateRunner', () => {
   const config = {
     gate: { maxFixAttempts: 3 },
   } as unknown as SpeciConfig;
-  const adapter = new NodeGateRunner();
+  const adapter = new NodeGateRunner(createMockContext().logger);
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -28,7 +29,7 @@ describe('NodeGateRunner', () => {
 
     const result = await adapter.run(config);
 
-    expect(gateModule.runGate).toHaveBeenCalledWith(config);
+    expect(gateModule.runGate).toHaveBeenCalledWith(config, expect.anything());
     expect(result).toBe(expected);
   });
 

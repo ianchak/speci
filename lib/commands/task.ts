@@ -7,18 +7,17 @@
  */
 
 import { relative, resolve } from 'node:path';
-import { MESSAGES } from '@/constants.js';
 import { infoBox } from '@/ui/box.js';
-import { initializeCommand } from '@/utils/command-helpers.js';
+import { initializeCommand } from '@/utils/helpers/command-helpers.js';
 import {
   failResult,
   failValidation,
   handleCommandError,
-} from '@/utils/error-handler.js';
-import { executeCopilotCommand } from '@/utils/copilot-helper.js';
+} from '@/utils/infrastructure/error-handler.js';
+import { executeCopilotCommand } from '@/utils/helpers/copilot-helper.js';
 import { cleanFiles } from '@/commands/clean.js';
-import { PathValidator } from '@/validation/index.js';
-import type { CommandContext, CommandResult } from '@/interfaces.js';
+import { InputValidator, PathValidator } from '@/validation/index.js';
+import type { CommandContext, CommandResult } from '@/interfaces/index.js';
 import type { SpeciConfig } from '@/types.js';
 
 /**
@@ -72,19 +71,21 @@ export async function task(
 ): Promise<CommandResult> {
   try {
     // Validate required option (must come before initialization)
-    if (!options.plan) {
-      context.logger.error(MESSAGES.MISSING_REQUIRED_INPUT);
-      context.logger.info('Required option:');
-      context.logger.muted('  --plan <path>  Path to plan file');
-      context.logger.raw('');
-      context.logger.info('Examples:');
-      context.logger.muted('  speci task --plan docs/plan.md');
-      context.logger.muted('  speci t -p docs/plan.md');
-      return failResult(MESSAGES.MISSING_REQUIRED_INPUT);
+    const inputValidation = new InputValidator(context.fs)
+      .required('plan', options.plan, '--plan <path> is required')
+      .validate();
+    if (!inputValidation.success) {
+      context.logger.error(inputValidation.error.message);
+      return failResult(inputValidation.error.message);
+    }
+    const planOption = options.plan;
+    if (planOption === undefined || planOption === null || planOption === '') {
+      context.logger.error('--plan <path> is required');
+      return failResult('--plan <path> is required');
     }
 
     // Resolve and validate plan file (must come before initialization)
-    const planPath = resolve(context.process.cwd(), options.plan);
+    const planPath = resolve(context.process.cwd(), planOption);
     const validationError = validatePlanFile(planPath, context);
     if (validationError) {
       return validationError;

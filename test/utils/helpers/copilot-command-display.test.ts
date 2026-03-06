@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import {
   formatCopilotCommand,
   renderCopilotCommandBox,
-} from '../../../lib/utils/copilot-command-display.js';
+} from '../../../lib/utils/helpers/copilot-command-display.js';
 
 describe('copilot-command-display', () => {
   let originalEnv: NodeJS.ProcessEnv;

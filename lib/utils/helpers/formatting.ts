@@ -1,6 +1,5 @@
 /**
- * Internationalization utilities
- * Provides date formatting and UTF-8 encoding helpers
+ * Date and string formatting utilities
  */
 
 export interface FormatDateOptions {

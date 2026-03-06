@@ -304,5 +304,21 @@ describe('ConfigValidator', () => {
 
       expect(result.success).toBe(true);
     });
+
+    it('should not bleed errors across repeated validate calls', () => {
+      const validator = new ConfigValidator({
+        ...validConfig,
+        version: '2.0.0',
+      });
+      const firstResult = validator.validate();
+
+      expect(firstResult.success).toBe(false);
+
+      Object.assign(validator as unknown as { config: Partial<SpeciConfig> }, {
+        config: validConfig,
+      });
+      const secondResult = validator.validate();
+      expect(secondResult.success).toBe(true);
+    });
   });
 });

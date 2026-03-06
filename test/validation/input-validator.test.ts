@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { mkdirSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { InputValidator } from '@/validation/input-validator.js';
-import type { IFileSystem } from '@/interfaces.js';
+import type { IFileSystem } from '@/interfaces/index.js';
 
 // Mock filesystem for testing
 class MockFileSystem implements IFileSystem {
@@ -172,6 +172,32 @@ describe('InputValidator', () => {
           result.error.suggestions?.some((s) => s.includes('Resolved path'))
         ).toBe(true);
       }
+    });
+  });
+
+  describe('required()', () => {
+    it('should fail for undefined, null, and empty string values', () => {
+      const undefinedResult = new InputValidator(mockFs)
+        .required('plan', undefined, '--plan <path> is required')
+        .validate();
+      const nullResult = new InputValidator(mockFs)
+        .required('plan', null, '--plan <path> is required')
+        .validate();
+      const emptyResult = new InputValidator(mockFs)
+        .required('plan', '', '--plan <path> is required')
+        .validate();
+
+      expect(undefinedResult.success).toBe(false);
+      expect(nullResult.success).toBe(false);
+      expect(emptyResult.success).toBe(false);
+    });
+
+    it('should pass for non-empty string values', () => {
+      const result = new InputValidator(mockFs)
+        .required('plan', 'docs/plan.md', '--plan <path> is required')
+        .validate();
+
+      expect(result.success).toBe(true);
     });
   });
 

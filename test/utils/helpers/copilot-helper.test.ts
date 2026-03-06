@@ -3,7 +3,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { executeCopilotCommand } from '../../../lib/utils/copilot-helper.js';
+import { executeCopilotCommand } from '../../../lib/utils/helpers/copilot-helper.js';
 import { createMockContext } from '../../../lib/adapters/test-context.js';
 
 describe('copilot-helper', () => {

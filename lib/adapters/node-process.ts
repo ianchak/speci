@@ -4,7 +4,7 @@
  * Production implementation of IProcess that wraps the Node.js process global.
  */
 
-import type { IProcess } from '@/interfaces.js';
+import type { IProcess } from '@/interfaces/index.js';
 
 /**
  * Node.js process adapter
@@ -32,6 +32,14 @@ export class NodeProcess implements IProcess {
     return process.platform;
   }
 
+  get version(): string {
+    return process.version;
+  }
+
+  get argv(): string[] {
+    return process.argv;
+  }
+
   get stdout(): NodeJS.WriteStream {
     return process.stdout;
   }
@@ -42,5 +50,9 @@ export class NodeProcess implements IProcess {
 
   on(event: string, listener: (...args: unknown[]) => void): void {
     process.on(event, listener);
+  }
+
+  off(event: string, listener: (...args: unknown[]) => void): void {
+    process.off(event, listener);
   }
 }

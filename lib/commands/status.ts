@@ -10,8 +10,11 @@ import { BANNER_ART, renderBanner } from '@/ui/banner.js';
 import { colorize } from '@/ui/colors.js';
 import { getGlyph } from '@/ui/glyphs.js';
 import { terminalState } from '@/ui/terminal.js';
-import type { CommandContext, CommandResult } from '@/interfaces.js';
-import { failResult, toErrorMessage } from '@/utils/error-handler.js';
+import type { CommandContext, CommandResult } from '@/interfaces/index.js';
+import {
+  failResult,
+  toErrorMessage,
+} from '@/utils/infrastructure/error-handler.js';
 
 /**
  * Status command options
@@ -68,21 +71,21 @@ export const CONTENT_WIDTH = Math.max(...BANNER_ART.map((line) => line.length));
 export async function status(
   options: StatusOptions = {},
   context: CommandContext,
-  config?: SpeciConfig
+  preloadedConfig?: SpeciConfig
 ): Promise<CommandResult> {
   try {
     // JSON mode: single output and exit
     if (options.json) {
-      const loadedConfig = config ?? (await context.configLoader.load());
-      const statusData = await gatherStatusData(loadedConfig, context);
+      const config = preloadedConfig ?? (await context.configLoader.load());
+      const statusData = await gatherStatusData(config, context);
       context.logger.raw(JSON.stringify(statusData, null, 2));
       return { success: true, exitCode: 0 };
     }
 
     // Once mode or non-TTY: single render and exit
     if (options.once || !context.process.stdout.isTTY) {
-      const loadedConfig = config ?? (await context.configLoader.load());
-      const statusData = await gatherStatusData(loadedConfig, context);
+      const config = preloadedConfig ?? (await context.configLoader.load());
+      const statusData = await gatherStatusData(config, context);
       const output: OutputFn = (msg?: string) => context.logger.raw(msg ?? '');
       renderStaticStatus(statusData, options.verbose, output);
       return { success: true, exitCode: 0 };

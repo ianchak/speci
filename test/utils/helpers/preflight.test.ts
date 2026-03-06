@@ -12,9 +12,10 @@ import {
   checkAgentTemplates,
   PreflightError,
   type PreflightOptions,
-} from '../../../lib/utils/preflight.js';
-import type { SpeciConfig } from '../../../lib/config.js';
-import { GITHUB_AGENTS_DIR } from '../../../lib/config.js';
+} from '../../../lib/utils/helpers/preflight.js';
+import type { SpeciConfig } from '../../../lib/config/index.js';
+import type { IFileSystem, IProcess } from '../../../lib/interfaces/index.js';
+import { GITHUB_AGENTS_DIR } from '../../../lib/config/index.js';
 
 // Mock execSync for copilot checks
 vi.mock('node:child_process', () => ({
@@ -314,7 +315,7 @@ describe('preflight', () => {
       );
 
       // Mock getAgentsTemplatePath
-      const config = await import('../../../lib/config.js');
+      const config = await import('../../../lib/config/index.js');
       vi.spyOn(config, 'getAgentsTemplatePath').mockReturnValue(templatesDir);
 
       await expect(checkAgentTemplates()).resolves.toBeUndefined();
@@ -345,7 +346,7 @@ describe('preflight', () => {
         '# Plan Agent\nVersion 2'
       );
 
-      const config = await import('../../../lib/config.js');
+      const config = await import('../../../lib/config/index.js');
       vi.spyOn(config, 'getAgentsTemplatePath').mockReturnValue(templatesDir);
 
       await expect(checkAgentTemplates()).rejects.toThrow(PreflightError);
@@ -381,10 +382,11 @@ describe('preflight', () => {
         '# Task Generator'
       );
 
-      const config = await import('../../../lib/config.js');
+      const config = await import('../../../lib/config/index.js');
       vi.spyOn(config, 'getAgentsTemplatePath').mockReturnValue(templatesDir);
 
-      const { log } = await import('../../../lib/utils/logger.js');
+      const { log } =
+        await import('../../../lib/utils/infrastructure/logger.js');
       const warnSpy = vi.spyOn(log, 'warn').mockImplementation(() => {});
 
       // Should not throw
@@ -406,7 +408,7 @@ describe('preflight', () => {
       const agentsDir = join(testDir, GITHUB_AGENTS_DIR);
       mkdirSync(agentsDir, { recursive: true });
 
-      const config = await import('../../../lib/config.js');
+      const config = await import('../../../lib/config/index.js');
       vi.spyOn(config, 'getAgentsTemplatePath').mockReturnValue(
         join(testDir, '__nonexistent_templates')
       );
@@ -418,6 +420,27 @@ describe('preflight', () => {
 
   describe('preflight', () => {
     let mockConfig: SpeciConfig;
+
+    function createMockFs(
+      existsSyncImpl: (path: string) => boolean
+    ): IFileSystem {
+      return {
+        existsSync: vi.fn(existsSyncImpl),
+        readFileSync: vi.fn(() => ''),
+        writeFileSync: vi.fn(),
+        mkdirSync: vi.fn(),
+        unlinkSync: vi.fn(),
+        rmSync: vi.fn(),
+        readdirSync: vi.fn(() => []),
+        statSync: vi.fn(() => ({
+          isDirectory: () => false,
+          isFile: () => false,
+        })),
+        copyFileSync: vi.fn(),
+        readFile: vi.fn(async () => ''),
+        writeFile: vi.fn(async () => {}),
+      };
+    }
 
     beforeEach(() => {
       mockConfig = {
@@ -449,6 +472,134 @@ describe('preflight', () => {
           maxIterations: 100,
         },
       };
+    });
+
+    it('should support in-memory filesystem for config and git checks', async () => {
+      const mockProc: IProcess = {
+        env: process.env,
+        cwd: () => testDir,
+        exit: ((code?: number) => {
+          throw new Error(`Unexpected exit: ${String(code)}`);
+        }) as IProcess['exit'],
+        pid: process.pid,
+        platform: process.platform,
+        version: process.version,
+        argv: process.argv,
+        stdout: process.stdout,
+        stdin: process.stdin,
+        on: vi.fn(),
+        off: vi.fn(),
+      };
+      const mockFs = createMockFs(
+        (path) =>
+          path === join(testDir, 'speci.config.json') ||
+          path === join(testDir, '.git')
+      );
+
+      await expect(
+        preflight(
+          mockConfig,
+          {
+            requireCopilot: false,
+            requireConfig: true,
+            requireGit: true,
+            requireProgress: false,
+            requireAgents: false,
+          },
+          mockProc,
+          mockFs
+        )
+      ).resolves.toBeUndefined();
+      expect(mockFs.existsSync).toHaveBeenCalled();
+    });
+
+    it('should throw when injected filesystem is missing required config', async () => {
+      const mockProc: IProcess = {
+        env: process.env,
+        cwd: () => testDir,
+        exit: ((code?: number) => {
+          throw new Error(`Unexpected exit: ${String(code)}`);
+        }) as IProcess['exit'],
+        pid: process.pid,
+        platform: process.platform,
+        version: process.version,
+        argv: process.argv,
+        stdout: process.stdout,
+        stdin: process.stdin,
+        on: vi.fn(),
+        off: vi.fn(),
+      };
+      const mockFs = createMockFs((path) => path === join(testDir, '.git'));
+
+      await expect(
+        preflight(
+          mockConfig,
+          {
+            requireCopilot: false,
+            requireConfig: true,
+            requireGit: true,
+            requireProgress: false,
+            requireAgents: false,
+          },
+          mockProc,
+          mockFs
+        )
+      ).rejects.toThrow(PreflightError);
+    });
+
+    it('uses injected logger for completion debug output', async () => {
+      const mockProc: IProcess = {
+        env: process.env,
+        cwd: () => testDir,
+        exit: ((code?: number) => {
+          throw new Error(`Unexpected exit: ${String(code)}`);
+        }) as IProcess['exit'],
+        pid: process.pid,
+        platform: process.platform,
+        version: process.version,
+        argv: process.argv,
+        stdout: process.stdout,
+        stdin: process.stdin,
+        on: vi.fn(),
+        off: vi.fn(),
+      };
+      const mockFs = createMockFs(
+        (path) =>
+          path === join(testDir, 'speci.config.json') ||
+          path === join(testDir, '.git')
+      );
+      const injectedLogger = {
+        info: vi.fn(),
+        infoPlain: vi.fn(),
+        warnPlain: vi.fn(),
+        errorPlain: vi.fn(),
+        successPlain: vi.fn(),
+        error: vi.fn(),
+        warn: vi.fn(),
+        success: vi.fn(),
+        debug: vi.fn(),
+        muted: vi.fn(),
+        raw: vi.fn(),
+        setVerbose: vi.fn(),
+      };
+
+      await preflight(
+        mockConfig,
+        {
+          requireCopilot: false,
+          requireConfig: true,
+          requireGit: true,
+          requireProgress: false,
+          requireAgents: false,
+        },
+        mockProc,
+        mockFs,
+        injectedLogger
+      );
+
+      expect(injectedLogger.debug).toHaveBeenCalledWith(
+        'All preflight checks passed'
+      );
     });
 
     it('should run all checks when no options provided', async () => {

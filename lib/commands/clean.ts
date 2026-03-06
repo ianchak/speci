@@ -1,10 +1,12 @@
 import { join, normalize, resolve, sep } from 'node:path';
-import { createInterface } from 'node:readline';
-import { createProductionContext } from '@/adapters/context-factory.js';
 import type { SpeciConfig } from '@/types.js';
 import { formatError } from '@/errors.js';
-import type { CommandContext, CommandResult } from '@/interfaces.js';
-import { failResult, handleCommandError } from '@/utils/error-handler.js';
+import type { CommandContext, CommandResult } from '@/interfaces/index.js';
+import {
+  failResult,
+  handleCommandError,
+} from '@/utils/infrastructure/error-handler.js';
+import { isYesAnswer, promptUser } from '@/utils/helpers/prompt.js';
 
 export interface CleanOptions {
   verbose?: boolean;
@@ -43,21 +45,40 @@ async function confirmClean(
   context.logger.raw('');
 
   const question = `Delete ${filesToDelete.length} file(s)? [y/N] `;
-  const answer = promptFn
-    ? await promptFn(question)
-    : await new Promise<string>((resolveAnswer) => {
-        const rl = createInterface({
-          input: context.process.stdin,
-          output: context.process.stdout,
-        });
-        rl.question(question, (input) => {
-          rl.close();
-          resolveAnswer(input);
-        });
-      });
+  const answer = await promptUser(question, promptFn, context.process);
+  return isYesAnswer(answer);
+}
 
-  const normalized = answer.trim().toLowerCase();
-  return normalized === 'y' || normalized === 'yes';
+function validateCleanPreconditions(
+  config: SpeciConfig,
+  context: CommandContext
+): CommandResult | null {
+  if (context.fs.existsSync(config.paths.lock)) {
+    context.logger.warn(
+      'Cannot clean while speci is running. Wait for the active run to complete or remove the lock file.'
+    );
+    return failResult(
+      'Cannot clean while speci is running. Wait for the active run to complete or remove the lock file.'
+    );
+  }
+
+  const cwd = context.process.cwd();
+  const cwdPrefix = cwd.endsWith(sep) ? cwd : `${cwd}${sep}`;
+  const resolvedTasksPath = resolve(cwd, config.paths.tasks);
+  const resolvedProgressPath = resolve(cwd, config.paths.progress);
+  const isWithinProject = (targetPath: string): boolean =>
+    targetPath === cwd || targetPath.startsWith(cwdPrefix);
+
+  if (
+    !isWithinProject(resolvedTasksPath) ||
+    !isWithinProject(resolvedProgressPath)
+  ) {
+    return failResult(
+      `Configured path resolves outside the project root: ${!isWithinProject(resolvedTasksPath) ? resolvedTasksPath : resolvedProgressPath}`
+    );
+  }
+
+  return null;
 }
 
 /**
@@ -74,30 +95,8 @@ export function cleanFiles(
   context: CommandContext
 ): CommandResult {
   try {
-    if (context.fs.existsSync(config.paths.lock)) {
-      context.logger.warn(
-        'Cannot clean while speci is running. Wait for the active run to complete or remove the lock file.'
-      );
-      return failResult(
-        'Cannot clean while speci is running. Wait for the active run to complete or remove the lock file.'
-      );
-    }
-
-    const cwd = context.process.cwd();
-    const cwdPrefix = cwd.endsWith(sep) ? cwd : `${cwd}${sep}`;
-    const resolvedTasksPath = resolve(cwd, config.paths.tasks);
-    const resolvedProgressPath = resolve(cwd, config.paths.progress);
-    const isWithinProject = (targetPath: string): boolean =>
-      targetPath === cwd || targetPath.startsWith(cwdPrefix);
-
-    if (
-      !isWithinProject(resolvedTasksPath) ||
-      !isWithinProject(resolvedProgressPath)
-    ) {
-      return failResult(
-        `Configured path resolves outside the project root: ${!isWithinProject(resolvedTasksPath) ? resolvedTasksPath : resolvedProgressPath}`
-      );
-    }
+    const preconditionFailure = validateCleanPreconditions(config, context);
+    if (preconditionFailure !== null) return preconditionFailure;
 
     const tasksExists = context.fs.existsSync(config.paths.tasks);
     const progressExists = context.fs.existsSync(config.paths.progress);
@@ -184,46 +183,25 @@ export function cleanFiles(
  */
 export async function clean(
   options: CleanOptions,
-  context: CommandContext = createProductionContext(),
-  config?: SpeciConfig
+  context: CommandContext,
+  preloadedConfig?: SpeciConfig
 ): Promise<CommandResult> {
   try {
-    const loadedConfig = config ?? (await context.configLoader.load());
+    const config = preloadedConfig ?? (await context.configLoader.load());
     if (options.verbose) {
       context.logger.setVerbose(true);
     }
 
-    if (context.fs.existsSync(loadedConfig.paths.lock)) {
-      context.logger.warn(
-        'Cannot clean while speci is running. Wait for the active run to complete or remove the lock file.'
-      );
-      return failResult(
-        'Cannot clean while speci is running. Wait for the active run to complete or remove the lock file.'
-      );
-    }
+    const preconditionFailure = validateCleanPreconditions(config, context);
+    if (preconditionFailure !== null) return preconditionFailure;
 
-    const cwd = context.process.cwd();
-    const cwdPrefix = cwd.endsWith(sep) ? cwd : `${cwd}${sep}`;
-    const resolvedTasksPath = resolve(cwd, loadedConfig.paths.tasks);
-    const resolvedProgressPath = resolve(cwd, loadedConfig.paths.progress);
-    const isWithinProject = (targetPath: string): boolean =>
-      targetPath === cwd || targetPath.startsWith(cwdPrefix);
-
-    if (
-      !isWithinProject(resolvedTasksPath) ||
-      !isWithinProject(resolvedProgressPath)
-    ) {
-      return failResult(
-        `Configured path resolves outside the project root: ${!isWithinProject(resolvedTasksPath) ? resolvedTasksPath : resolvedProgressPath}`
-      );
-    }
-
-    const filesToDelete = enumerateCleanTargets(loadedConfig, context);
+    const filesToDelete = enumerateCleanTargets(config, context);
     if (filesToDelete.length === 0 || options.yes) {
-      return cleanFiles(loadedConfig, context);
+      return cleanFiles(config, context);
     }
 
-    if (!context.process.stdin.isTTY && !options.prompt) {
+    const { stdin } = context.process;
+    if (!stdin.isTTY && !options.prompt) {
       context.logger.info(
         'Clean cancelled: non-interactive terminal. Use --yes to skip confirmation.'
       );
@@ -241,7 +219,7 @@ export async function clean(
       return { success: true, exitCode: 0 };
     }
 
-    return cleanFiles(loadedConfig, context);
+    return cleanFiles(config, context);
   } catch (error) {
     return handleCommandError(error, 'Clean', context.logger);
   }

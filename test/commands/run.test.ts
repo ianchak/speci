@@ -22,14 +22,14 @@ import type {
   SpeciConfig as RuntimeSpeciConfig,
 } from '../../lib/types.js';
 import { createMockContext } from '../../lib/adapters/test-context.js';
-import * as config from '../../lib/config.js';
+import * as config from '../../lib/config/index.js';
 import * as state from '../../lib/state.js';
-import * as lock from '../../lib/utils/lock.js';
-import * as preflight from '../../lib/utils/preflight.js';
-import * as gate from '../../lib/utils/gate.js';
+import * as lock from '../../lib/utils/infrastructure/lock.js';
+import * as preflight from '../../lib/utils/helpers/preflight.js';
+import * as gate from '../../lib/utils/infrastructure/gate.js';
 import * as copilot from '../../lib/copilot.js';
-import * as loggerUtils from '../../lib/utils/logger.js';
-import type { SpeciConfig } from '../../lib/config.js';
+import * as loggerUtils from '../../lib/utils/infrastructure/logger.js';
+import type { SpeciConfig } from '../../lib/config/index.js';
 import { STATE } from '../../lib/state.js';
 
 vi.mock('node:readline', () => ({
@@ -140,7 +140,9 @@ describe('Run Command', () => {
           requireProgress: true,
           requireGit: true,
         },
-        expect.anything() // process parameter
+        expect.anything(), // process parameter
+        undefined,
+        expect.anything()
       );
     });
 
@@ -161,7 +163,8 @@ describe('Run Command', () => {
         mockConfig,
         expect.anything(), // process parameter
         'run',
-        undefined
+        undefined,
+        expect.anything()
       );
     });
 
@@ -170,7 +173,10 @@ describe('Run Command', () => {
 
       await run({ yes: true });
 
-      expect(lock.releaseLock).toHaveBeenCalledWith(mockConfig);
+      expect(lock.releaseLock).toHaveBeenCalledWith(
+        mockConfig,
+        expect.anything()
+      );
     });
 
     it('should create log directory if it does not exist', async () => {
@@ -245,9 +251,9 @@ describe('Run Command', () => {
       expect(copilot.runAgent).toHaveBeenCalledWith(
         mockConfig,
         'impl',
-        'Implementation Agent',
         undefined,
-        undefined
+        undefined,
+        expect.anything()
       );
     });
 
@@ -265,9 +271,9 @@ describe('Run Command', () => {
       expect(copilot.runAgent).toHaveBeenCalledWith(
         mockConfig,
         'review',
-        'Review Agent',
         undefined,
-        undefined
+        undefined,
+        expect.anything()
       );
     });
 
@@ -285,9 +291,9 @@ describe('Run Command', () => {
       expect(copilot.runAgent).toHaveBeenCalledWith(
         mockConfig,
         'tidy',
-        'Tidy Agent',
         undefined,
-        undefined
+        undefined,
+        expect.anything()
       );
     });
 
@@ -318,7 +324,7 @@ describe('Run Command', () => {
 
       await run({ yes: true });
 
-      expect(gate.runGate).toHaveBeenCalledWith(mockConfig);
+      expect(gate.runGate).toHaveBeenCalledWith(mockConfig, expect.anything());
     });
 
     it('should not run gates if impl agent fails', async () => {
@@ -375,9 +381,9 @@ describe('Run Command', () => {
       expect(copilot.runAgent).toHaveBeenCalledWith(
         mockConfig,
         'fix',
-        'Fix Agent',
         undefined,
-        undefined
+        undefined,
+        expect.anything()
       );
     });
 
@@ -527,7 +533,10 @@ describe('Run Command', () => {
 
       expect(state.writeFailureNotes).toHaveBeenCalledWith(
         mockConfig,
-        failedGateResult
+        failedGateResult,
+        expect.objectContaining({
+          fs: expect.anything(),
+        })
       );
     });
 
@@ -605,12 +614,18 @@ describe('Run Command', () => {
       expect(state.writeFailureNotes).toHaveBeenNthCalledWith(
         1,
         configWith2Attempts,
-        initialFailure
+        initialFailure,
+        expect.objectContaining({
+          fs: expect.anything(),
+        })
       );
       expect(state.writeFailureNotes).toHaveBeenNthCalledWith(
         2,
         configWith2Attempts,
-        retryFailure
+        retryFailure,
+        expect.objectContaining({
+          fs: expect.anything(),
+        })
       );
     });
   });
@@ -855,7 +870,10 @@ describe('Run Command', () => {
 
       await run({ yes: true });
 
-      expect(lock.releaseLock).toHaveBeenCalledWith(mockConfig);
+      expect(lock.releaseLock).toHaveBeenCalledWith(
+        mockConfig,
+        expect.anything()
+      );
     });
 
     it('should release lock on error', async () => {
@@ -865,7 +883,10 @@ describe('Run Command', () => {
       const result = await run({ yes: true });
 
       expect(result.success).toBe(false);
-      expect(lock.releaseLock).toHaveBeenCalledWith(mockConfig);
+      expect(lock.releaseLock).toHaveBeenCalledWith(
+        mockConfig,
+        expect.anything()
+      );
     });
   });
 
@@ -1105,7 +1126,7 @@ describe('Run Command', () => {
       completedTasks: 3,
       mvtId: 'MVT_M1',
       mvtStatus: 'NOT STARTED',
-      mvtReady: true,
+      isMvtReady: true,
     };
     const mvtCompleteMilestone: MilestoneInfo = {
       milestoneId: 'M1',
@@ -1114,7 +1135,7 @@ describe('Run Command', () => {
       completedTasks: 3,
       mvtId: 'MVT_M1',
       mvtStatus: 'COMPLETE',
-      mvtReady: false,
+      isMvtReady: false,
     };
     const partialMilestone: MilestoneInfo = {
       milestoneId: 'M1',
@@ -1123,7 +1144,7 @@ describe('Run Command', () => {
       completedTasks: 1,
       mvtId: 'MVT_M1',
       mvtStatus: 'NOT STARTED',
-      mvtReady: false,
+      isMvtReady: false,
     };
 
     function createVerifyHarness() {
@@ -1211,8 +1232,7 @@ describe('Run Command', () => {
 
       expect(context.copilotRunner.run).toHaveBeenCalledWith(
         configForRun,
-        'impl',
-        'Implementation Agent'
+        'impl'
       );
     });
 
@@ -1426,8 +1446,7 @@ describe('Run Command', () => {
 
       expect(context.copilotRunner.run).toHaveBeenCalledWith(
         configForRun,
-        'impl',
-        'Implementation Agent'
+        'impl'
       );
     });
 
@@ -1442,7 +1461,7 @@ describe('Run Command', () => {
           completedTasks: 2,
           mvtId: 'MVT_M3',
           mvtStatus: 'NOT STARTED',
-          mvtReady: true,
+          isMvtReady: true,
         },
       ]);
 
@@ -1493,8 +1512,7 @@ describe('Run Command', () => {
 
       expect(context.copilotRunner.run).not.toHaveBeenCalledWith(
         configForRun,
-        'tidy',
-        'Tidy Agent'
+        'tidy'
       );
     });
 
@@ -1511,8 +1529,7 @@ describe('Run Command', () => {
 
       expect(context.copilotRunner.run).toHaveBeenCalledWith(
         configForRun,
-        'tidy',
-        'Tidy Agent'
+        'tidy'
       );
     });
 
@@ -1531,8 +1548,7 @@ describe('Run Command', () => {
       expect(context.lockManager.acquire).toHaveBeenCalled();
       expect(context.copilotRunner.run).toHaveBeenCalledWith(
         configForRun,
-        'impl',
-        'Implementation Agent'
+        'impl'
       );
     });
 

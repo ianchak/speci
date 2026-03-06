@@ -8,7 +8,7 @@
 import { execSync as nodeExecSync } from 'node:child_process';
 import { setTimeout as delay } from 'node:timers/promises';
 import { MESSAGES } from '@/constants.js';
-import type { ILogger } from '@/interfaces.js';
+import type { ILogger } from '@/interfaces/index.js';
 
 /** Injectable exec function type for testability. */
 export type ExecSyncFn = (command: string) => void;

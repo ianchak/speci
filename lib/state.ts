@@ -8,7 +8,7 @@
  * multiple state functions are called in quick succession.
  */
 
-import { readFile } from 'node:fs/promises';
+import { readFile, writeFile } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import type {
   SpeciConfig,
@@ -19,8 +19,8 @@ import type {
   GateFailureInfo,
 } from '@/types.js';
 import { STATE } from '@/types.js';
-import { atomicWrite } from '@/utils/atomic-write.js';
-import { log } from '@/utils/logger.js';
+import { log } from '@/utils/infrastructure/logger.js';
+import { createError } from '@/errors.js';
 
 // Re-export types for backward compatibility
 export { STATE } from '@/types.js';
@@ -31,6 +31,7 @@ export type { TaskStats, CurrentTask, GateFailureInfo } from '@/types.js';
  */
 interface StateFileCache {
   lines: string[];
+  content: string;
   timestamp: number;
   ttl: number;
 }
@@ -41,28 +42,58 @@ interface StateFileCache {
 import type { StateOptions } from '@/types.js';
 export type { StateOptions } from '@/types.js';
 
-// Module-level cache for state file reads
-let stateFileCache: StateFileCache | null = null;
+/**
+ * File-system reader contract used by StateCache.
+ */
+export type FsReader = Pick<
+  NonNullable<StateOptions['fs']>,
+  'existsSync' | 'readFile'
+>;
 
 // Default TTL for cache (200ms)
 const DEFAULT_TTL = 200;
+const MIN_STATE_TABLE_COLUMNS = 4;
+const MIN_TASK_TABLE_COLUMNS = 7;
 
 // Pre-compile regex patterns at module load for performance
 const PATTERNS = {
-  BLOCKED: /TASK_\d+\s*\|.*BLOCKED/i,
-  IN_REVIEW: /TASK_\d+\s*\|.*IN.REVIEW/i,
-  WORK_LEFT: /TASK_\d+\s*\|.*(NOT STARTED|IN PROGRESS)/i,
   TASK_ROW: /^\s*\|\s*TASK_\d+\s*\|/i,
   MILESTONE_HEADER: /^##\s+Milestone:\s*M(\d+)\s*-\s*(.+)$/,
   MVT_ROW: /^\s*\|\s*MVT_\w+\s*\|/i,
 } as const;
 
-// Priority order for state detection (highest to lowest)
-const STATE_PRIORITY: Array<{ state: STATE; pattern: RegExp }> = [
-  { state: STATE.BLOCKED, pattern: PATTERNS.BLOCKED },
-  { state: STATE.IN_REVIEW, pattern: PATTERNS.IN_REVIEW },
-  { state: STATE.WORK_LEFT, pattern: PATTERNS.WORK_LEFT },
-];
+/** Canonical task status values used to identify task rows in PROGRESS.md. */
+const VALID_TASK_STATUSES = new Set<TaskStatus>([
+  'NOT STARTED',
+  'IN PROGRESS',
+  'IN REVIEW',
+  'COMPLETE',
+  'BLOCKED',
+]);
+
+/**
+ * Type predicate for canonical TaskStatus values.
+ * @param s - Status string to validate
+ * @returns true if the value is a canonical TaskStatus
+ */
+function isTaskStatus(s: string): s is TaskStatus {
+  return VALID_TASK_STATUSES.has(s as TaskStatus);
+}
+
+/**
+ * Normalise legacy status aliases to canonical values.
+ * @param value - Raw uppercase status value from table cell
+ * @returns Canonical status when known, otherwise original input
+ */
+function normaliseStatusAlias(value: string): string {
+  if (value === 'IN_REVIEW') {
+    return 'IN REVIEW';
+  }
+  if (value === 'COMPLETED' || value === 'DONE') {
+    return 'COMPLETE';
+  }
+  return value;
+}
 
 /**
  * Check if content matches a state pattern
@@ -75,9 +106,89 @@ export function hasStatePattern(content: string, pattern: RegExp): boolean {
 }
 
 /**
+ * Per-instance cache for PROGRESS.md file reads.
+ */
+export class StateCache {
+  private entry: StateFileCache | null = null;
+
+  /**
+   * Read state lines with TTL caching.
+   *
+   * @param progressPath - Path to PROGRESS.md
+   * @param ttl - Cache time-to-live in ms
+   * @param fs - Optional filesystem implementation
+   * @param forceRefresh - Whether to bypass cache
+   * @returns A shallow copy of cached/read lines, or undefined if file is absent
+   */
+  async get(
+    progressPath: string,
+    ttl: number,
+    fs?: FsReader,
+    forceRefresh = false
+  ): Promise<string[] | undefined> {
+    const now = Date.now();
+    if (
+      this.entry &&
+      !forceRefresh &&
+      now - this.entry.timestamp < this.entry.ttl
+    ) {
+      return [...this.entry.lines];
+    }
+
+    const injectedExistsSync = fs?.existsSync;
+    if (injectedExistsSync && !injectedExistsSync(progressPath)) {
+      return undefined;
+    }
+
+    const readStateContent = fs?.readFile
+      ? fs.readFile
+      : async (path: string, encoding?: BufferEncoding): Promise<string> => {
+          const content = await readFile(path, encoding);
+          return typeof content === 'string' ? content : content.toString();
+        };
+
+    let content: string;
+    try {
+      content = await readStateContent(progressPath, 'utf8');
+    } catch (error: unknown) {
+      if (
+        error &&
+        typeof error === 'object' &&
+        'code' in error &&
+        error.code === 'ENOENT'
+      ) {
+        return undefined;
+      }
+      throw error;
+    }
+
+    const lines = content.split('\n');
+    this.entry = {
+      lines,
+      content,
+      timestamp: now,
+      ttl,
+    };
+    return [...lines];
+  }
+
+  invalidate(): void {
+    this.entry = null;
+  }
+
+  reset(): void {
+    this.invalidate();
+  }
+}
+
+const defaultCache = new StateCache();
+
+/**
  * Reset the state file cache
  *
  * Useful for testing or when you need to force a fresh read.
+ *
+ * @deprecated Use instance-scoped StateCache via NodeStateReader instead.
  *
  * @example
  * ```typescript
@@ -86,7 +197,7 @@ export function hasStatePattern(content: string, pattern: RegExp): boolean {
  * ```
  */
 export function resetStateCache(): void {
-  stateFileCache = null;
+  defaultCache.reset();
 }
 
 /**
@@ -103,37 +214,12 @@ async function readStateFile(
   progressPath: string,
   options?: StateOptions
 ): Promise<string[] | undefined> {
-  // Check if file exists
-  if (!existsSync(progressPath)) {
-    return undefined;
-  }
-
-  const now = Date.now();
+  const cache =
+    (options as (StateOptions & { cache?: StateCache }) | undefined)?.cache ??
+    defaultCache;
   const ttl = options?.ttl ?? DEFAULT_TTL;
   const forceRefresh = options?.forceRefresh ?? false;
-
-  // Check cache validity
-  if (
-    stateFileCache &&
-    !forceRefresh &&
-    now - stateFileCache.timestamp < stateFileCache.ttl
-  ) {
-    // Cache hit - return cached lines
-    return stateFileCache.lines;
-  }
-
-  // Cache miss or expired - read from file
-  const content = await readFile(progressPath, 'utf8');
-  const lines = content.split('\n');
-
-  // Update cache
-  stateFileCache = {
-    lines,
-    timestamp: now,
-    ttl,
-  };
-
-  return lines;
+  return cache.get(progressPath, ttl, options?.fs, forceRefresh);
 }
 
 /**
@@ -172,17 +258,31 @@ export async function getState(
     return STATE.NO_PROGRESS;
   }
 
-  // Join lines for pattern matching
-  const content = lines.join('\n');
+  let hasBlocked = false;
+  let hasInReview = false;
+  let hasWorkLeft = false;
 
-  // Check patterns in priority order (early exit)
-  for (const { state, pattern } of STATE_PRIORITY) {
-    if (pattern.test(content)) {
-      return state;
+  for (const line of lines) {
+    if (!PATTERNS.TASK_ROW.test(line)) continue;
+
+    const cols = line.split('|');
+    if (cols.length < MIN_STATE_TABLE_COLUMNS) continue;
+
+    const status = findStatusInColumns(cols, VALID_TASK_STATUSES);
+    if (!status) continue;
+
+    if (status === 'BLOCKED') {
+      hasBlocked = true;
+    } else if (status === 'IN REVIEW') {
+      hasInReview = true;
+    } else if (status === 'NOT STARTED' || status === 'IN PROGRESS') {
+      hasWorkLeft = true;
     }
   }
 
-  // No incomplete tasks found
+  if (hasBlocked) return STATE.BLOCKED;
+  if (hasInReview) return STATE.IN_REVIEW;
+  if (hasWorkLeft) return STATE.WORK_LEFT;
   return STATE.DONE;
 }
 
@@ -198,15 +298,23 @@ export async function getState(
  */
 function findStatusInColumns(
   cols: string[],
-  validStatuses: Set<string>
+  validStatuses: ReadonlySet<TaskStatus>
+): TaskStatus | undefined;
+function findStatusInColumns(
+  cols: string[],
+  validStatuses: ReadonlySet<string>
+): string | undefined;
+function findStatusInColumns(
+  cols: string[],
+  validStatuses: ReadonlySet<string>
 ): string | undefined {
   // Start from index 3 (skip: empty first element, Task ID, Title)
   // Status could be at index 3 (old format) or 4 (new format with File column)
   for (let i = 3; i < cols.length && i <= 5; i++) {
     const value = cols[i].trim().toUpperCase();
-    if (validStatuses.has(value)) {
-      // Normalise legacy underscore forms to canonical TaskStatus values
-      return value === 'IN_REVIEW' ? 'IN REVIEW' : value;
+    const normalisedValue = normaliseStatusAlias(value);
+    if (validStatuses.has(value) || validStatuses.has(normalisedValue)) {
+      return normalisedValue;
     }
   }
   return undefined;
@@ -250,23 +358,6 @@ export async function getTaskStats(
     blocked: 0,
   };
 
-  // Valid task statuses (used to filter out non-task tables like Risk Areas)
-  const VALID_STATUSES = new Set([
-    'COMPLETE',
-    'COMPLETED',
-    'DONE',
-    'BLOCKED',
-    'IN_REVIEW',
-    'IN REVIEW',
-    'NOT STARTED',
-    'IN PROGRESS',
-  ]);
-
-  // Minimum columns required (Task ID, Title, Status, Review Status, Priority, Complexity, Dependencies, Assigned To, Attempts)
-  // Actual task tables have 9 data columns = 10+ elements after split (including empty first element)
-  // Risk Areas and other tables have fewer columns
-  const MIN_TASK_TABLE_COLUMNS = 7; // At least 6 data columns to be a real task table
-
   for (const line of lines) {
     // Match task rows: | TASK_001 | Title | Status | ... |
     if (!PATTERNS.TASK_ROW.test(line)) continue;
@@ -280,14 +371,14 @@ export async function getTaskStats(
 
     // Find the Status column dynamically (handles both with and without File column)
     // Scan from index 3 onward for the first column containing a valid status value
-    const status = findStatusInColumns(cols, VALID_STATUSES);
+    const status = findStatusInColumns(cols, VALID_TASK_STATUSES);
 
     // Skip rows that don't have a valid task status
     if (!status) continue;
 
     stats.total++;
 
-    if (status === 'COMPLETE' || status === 'COMPLETED' || status === 'DONE') {
+    if (status === 'COMPLETE') {
       stats.completed++;
     } else if (status === 'BLOCKED') {
       stats.blocked++;
@@ -334,19 +425,7 @@ export async function getCurrentTask(
   }
 
   // Look for IN PROGRESS first, then IN_REVIEW
-  const ACTIVE_STATUSES = new Set(['IN PROGRESS', 'IN_REVIEW', 'IN REVIEW']);
-
-  // Valid task statuses for column detection
-  const VALID_STATUSES = new Set([
-    'COMPLETE',
-    'COMPLETED',
-    'DONE',
-    'BLOCKED',
-    'IN_REVIEW',
-    'IN REVIEW',
-    'NOT STARTED',
-    'IN PROGRESS',
-  ]);
+  const ACTIVE_STATUSES = new Set<TaskStatus>(['IN PROGRESS', 'IN REVIEW']);
 
   for (const line of lines) {
     if (!PATTERNS.TASK_ROW.test(line)) continue;
@@ -358,11 +437,11 @@ export async function getCurrentTask(
     const title = cols[2].trim();
 
     // Find the Status column dynamically (handles both with and without File column)
-    const status = findStatusInColumns(cols, VALID_STATUSES);
+    const status = findStatusInColumns(cols, VALID_TASK_STATUSES);
     if (!status) continue;
 
     if (ACTIVE_STATUSES.has(status)) {
-      return { id: taskId, title, status: status as TaskStatus };
+      return { id: taskId, title, status };
     }
   }
 
@@ -388,27 +467,41 @@ export async function getMilestonesMvtStatus(
     lines = await readStateFile(config.paths.progress, options);
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    throw new Error(
-      `[ERR-STA-06] Failed to read PROGRESS.md for MVT detection: ${message}`,
-      { cause: error }
-    );
+    const err = createError(
+      'ERR-STA-06',
+      JSON.stringify({ error: message })
+    ) as Error & { cause?: unknown };
+    err.cause = error;
+    throw err;
   }
 
   if (lines === undefined) {
     return [];
   }
 
-  const VALID_STATUSES = new Set([
+  const result = parseProgressLines(lines);
+  computeMvtReadiness(result);
+
+  if (result.length === 0) {
+    log.debug('getMilestonesMvtStatus: No milestone sections found');
+  } else if (result.every((entry) => entry.mvtId === null)) {
+    log.debug('getMilestonesMvtStatus: No MVT rows found in any milestone');
+  }
+
+  return result;
+}
+
+function parseProgressLines(lines: string[]): MilestoneInfo[] {
+  const VALID_MVT_STATUSES = new Set<string>([
+    'NOT STARTED',
+    'IN PROGRESS',
+    'IN REVIEW',
+    'IN_REVIEW',
     'COMPLETE',
     'COMPLETED',
     'DONE',
     'BLOCKED',
-    'IN_REVIEW',
-    'IN REVIEW',
-    'NOT STARTED',
-    'IN PROGRESS',
   ]);
-
   const result: MilestoneInfo[] = [];
   let current: MilestoneInfo | null = null;
 
@@ -426,7 +519,6 @@ export async function getMilestonesMvtStatus(
 
       const milestoneNumber = milestoneMatch[1];
       const milestoneName = milestoneMatch[2];
-
       if (!milestoneNumber || !milestoneName) {
         log.debug(`[ERR-STA-04] Malformed milestone header, skipping: ${line}`);
         current = null;
@@ -440,7 +532,7 @@ export async function getMilestonesMvtStatus(
         completedTasks: 0,
         mvtId: null,
         mvtStatus: null,
-        mvtReady: false,
+        isMvtReady: false,
       };
       continue;
     }
@@ -450,17 +542,13 @@ export async function getMilestonesMvtStatus(
     }
 
     if (PATTERNS.TASK_ROW.test(line)) {
-      const status = findStatusInColumns(line.split('|'), VALID_STATUSES);
+      const status = findStatusInColumns(line.split('|'), VALID_TASK_STATUSES);
       if (!status) {
         continue;
       }
 
       current.totalTasks++;
-      if (
-        status === 'COMPLETE' ||
-        status === 'COMPLETED' ||
-        status === 'DONE'
-      ) {
+      if (status === 'COMPLETE') {
         current.completedTasks++;
       }
       continue;
@@ -469,7 +557,7 @@ export async function getMilestonesMvtStatus(
     if (PATTERNS.MVT_ROW.test(line)) {
       const cols = line.split('|');
       const mvtId = cols[1]?.trim() || null;
-      const rawStatus = findStatusInColumns(cols, VALID_STATUSES);
+      const rawStatus = findStatusInColumns(cols, VALID_MVT_STATUSES);
       if (!rawStatus) {
         log.debug(
           `[ERR-STA-05] Unexpected MVT status for ${mvtId ?? 'unknown'} — treating as null`
@@ -477,10 +565,8 @@ export async function getMilestonesMvtStatus(
       }
 
       let mvtStatus: TaskStatus | null = null;
-      if (rawStatus === 'COMPLETED' || rawStatus === 'DONE') {
-        mvtStatus = 'COMPLETE';
-      } else if (rawStatus) {
-        mvtStatus = rawStatus as TaskStatus;
+      if (rawStatus && isTaskStatus(rawStatus)) {
+        mvtStatus = rawStatus;
       }
 
       current.mvtId = mvtId;
@@ -491,23 +577,18 @@ export async function getMilestonesMvtStatus(
   if (current !== null) {
     result.push(current);
   }
+  return result;
+}
 
-  for (const entry of result) {
-    entry.mvtReady =
+function computeMvtReadiness(entries: MilestoneInfo[]): void {
+  for (const entry of entries) {
+    entry.isMvtReady =
       entry.completedTasks === entry.totalTasks &&
       entry.totalTasks > 0 &&
       entry.mvtId !== null &&
       entry.mvtStatus !== null &&
       entry.mvtStatus !== 'COMPLETE';
   }
-
-  if (result.length === 0) {
-    log.debug('getMilestonesMvtStatus: No milestone sections found');
-  } else if (result.every((entry) => entry.mvtId === null)) {
-    log.debug('getMilestonesMvtStatus: No MVT rows found in any milestone');
-  }
-
-  return result;
 }
 
 /** Maximum characters for the Primary Error field in the For Fix Agent table */
@@ -552,16 +633,25 @@ function truncateError(text: string, maxLength: number): string {
  */
 export async function writeFailureNotes(
   config: SpeciConfig,
-  gateFailure: GateFailureInfo
+  gateFailure: GateFailureInfo,
+  options?: StateOptions
 ): Promise<void> {
   const progressPath = config.paths.progress;
+  const fileExists = options?.fs?.existsSync ?? existsSync;
+  const readProgressFile = options?.fs?.readFile
+    ? options.fs.readFile
+    : async (path: string, encoding?: BufferEncoding): Promise<string> => {
+        const content = await readFile(path, encoding);
+        return typeof content === 'string' ? content : content.toString();
+      };
+  const writeProgressFile = options?.fs?.writeFile ?? writeFile;
 
-  if (!existsSync(progressPath)) {
+  if (!fileExists(progressPath)) {
     log.warn('PROGRESS.md not found — skipping failure notes');
     return;
   }
 
-  const content = await readFile(progressPath, 'utf8');
+  const content = await readProgressFile(progressPath, 'utf8');
 
   // Locate the ### For Fix Agent section
   const sectionHeading = '### For Fix Agent';
@@ -574,7 +664,10 @@ export async function writeFailureNotes(
   }
 
   // Determine current task (may be undefined)
-  const currentTask = await getCurrentTask(config, { forceRefresh: true });
+  const currentTask = await getCurrentTask(config, {
+    ...options,
+    forceRefresh: true,
+  });
   const taskValue = currentTask
     ? `${currentTask.id} — ${currentTask.title}`
     : '—';
@@ -620,7 +713,7 @@ export async function writeFailureNotes(
   const updated =
     content.slice(0, sectionIndex) + newTable + content.slice(endOffset);
 
-  await atomicWrite(progressPath, updated);
+  await writeProgressFile(progressPath, updated, 'utf8');
 
   // Invalidate the read cache so subsequent state reads see the new content
   resetStateCache();

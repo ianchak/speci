@@ -18,7 +18,7 @@ import type {
   IGateRunner,
   IPreflight,
   ISignalManager,
-} from '@/interfaces.js';
+} from '@/interfaces/index.js';
 import type { AgentRunResult, SpeciConfig } from '@/types.js';
 import { STATE } from '@/types.js';
 import { DEFAULT_PATHS } from '@/constants.js';
@@ -110,6 +110,8 @@ export function createMockProcess(): IProcess {
     }) as never,
     pid: 12345,
     platform: 'linux',
+    version: 'v22.0.0',
+    argv: ['node', 'speci'],
     stdout,
     stdin,
     on: vi.fn(),

@@ -5,32 +5,32 @@
  * the signals module for process signal handling.
  */
 
-import type { ISignalManager } from '@/interfaces.js';
+import type { ILogger, IProcess, ISignalManager } from '@/interfaces/index.js';
 import type { CleanupFn } from '@/types.js';
-import {
-  installSignalHandlers,
-  removeSignalHandlers,
-  registerCleanup,
-  unregisterCleanup,
-} from '@/utils/signals.js';
+import type { SignalManager } from '@/utils/infrastructure/signals.js';
 
 /**
  * Production signal manager using the signals module
  */
 export class NodeSignalManager implements ISignalManager {
-  install(): void {
-    installSignalHandlers();
+  constructor(
+    private readonly manager: SignalManager,
+    private readonly logger: ILogger
+  ) {}
+
+  install(proc?: IProcess): void {
+    this.manager.installSignalHandlers(proc, this.logger);
   }
 
   remove(): void {
-    removeSignalHandlers();
+    this.manager.removeSignalHandlers();
   }
 
   registerCleanup(fn: CleanupFn): void {
-    registerCleanup(fn);
+    this.manager.registerCleanup(fn);
   }
 
   unregisterCleanup(fn: CleanupFn): void {
-    unregisterCleanup(fn);
+    this.manager.unregisterCleanup(fn);
   }
 }

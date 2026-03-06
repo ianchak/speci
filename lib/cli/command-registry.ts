@@ -15,12 +15,12 @@ import { run } from '@/commands/run.js';
 import { yolo } from '@/commands/yolo.js';
 import { status } from '@/commands/status.js';
 import { clean } from '@/commands/clean.js';
-import { findSimilarCommands } from '@/utils/suggest.js';
-import { debug, log } from '@/utils/logger.js';
-import { exitWithCleanup } from '@/utils/exit.js';
-import { PreflightError } from '@/utils/preflight.js';
-import { sleepAfterCommand } from '@/utils/sleep.js';
-import type { CommandContext, CommandResult } from '@/interfaces.js';
+import { findSimilarCommands } from '@/utils/helpers/suggest.js';
+import { log } from '@/utils/infrastructure/logger.js';
+import { exitWithCleanup } from '@/utils/infrastructure/exit.js';
+import { PreflightError } from '@/utils/helpers/preflight.js';
+import { sleepAfterCommand } from '@/utils/infrastructure/sleep.js';
+import type { CommandContext, CommandResult } from '@/interfaces/index.js';
 import type { SpeciConfig } from '@/types.js';
 
 export const AVAILABLE_COMMANDS = [
@@ -40,9 +40,9 @@ export const AVAILABLE_COMMANDS = [
 export class CommandRegistry {
   private program: Command;
   private context: CommandContext;
-  private config: SpeciConfig;
+  private config?: SpeciConfig;
 
-  constructor(context: CommandContext, config: SpeciConfig) {
+  constructor(context: CommandContext, config?: SpeciConfig) {
     this.context = context;
     this.config = config;
     this.program = new Command();
@@ -68,10 +68,16 @@ export class CommandRegistry {
         const opts = _thisCommand.opts();
         if (opts.verbose) {
           this.context.logger.setVerbose(true);
-          debug('Verbose mode enabled');
-          debug('Node version', process.version);
-          debug('Platform', process.platform);
-          debug('Arguments', process.argv);
+          this.context.logger.debug('Verbose mode enabled');
+          this.context.logger.debug(
+            `Node version: ${this.context.process.version}`
+          );
+          this.context.logger.debug(
+            `Platform: ${this.context.process.platform}`
+          );
+          this.context.logger.debug(
+            `Arguments: ${this.context.process.argv.join(' ')}`
+          );
         }
       });
   }
@@ -97,7 +103,7 @@ export class CommandRegistry {
     commandFn: (
       options: T,
       context: CommandContext,
-      config: SpeciConfig
+      config?: SpeciConfig
     ) => Promise<CommandResult>
   ): (options: T, command: Command) => Promise<void> {
     return async (options: T, command: Command) => {

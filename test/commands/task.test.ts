@@ -8,13 +8,20 @@ import {
 } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
-import { task } from '../../lib/commands/task.js';
+import { createProductionContext } from '../../lib/adapters/context-factory.js';
 import { createMockContext } from '../../lib/adapters/test-context.js';
+import { task as taskCommand } from '../../lib/commands/task.js';
 import * as copilotModule from '../../lib/copilot.js';
 import * as cleanModule from '../../lib/commands/clean.js';
-import { resetConfigCache, type SpeciConfig } from '../../lib/config.js';
-import * as commandHelpers from '../../lib/utils/command-helpers.js';
-import * as copilotHelper from '../../lib/utils/copilot-helper.js';
+import { resetConfigCache, type SpeciConfig } from '../../lib/config/index.js';
+import * as commandHelpers from '../../lib/utils/helpers/command-helpers.js';
+import * as copilotHelper from '../../lib/utils/helpers/copilot-helper.js';
+
+const task = (
+  options: Parameters<typeof taskCommand>[0],
+  context: Parameters<typeof taskCommand>[1] = createProductionContext(),
+  config?: Parameters<typeof taskCommand>[2]
+) => taskCommand(options, context, config);
 
 type TaskTestConfig = SpeciConfig & {
   agents: {
@@ -29,9 +36,11 @@ type TaskTestConfig = SpeciConfig & {
 };
 
 // Mock preflight to skip agent template check (tested in preflight.test.ts)
-vi.mock('../../lib/utils/preflight.js', async (importOriginal) => {
+vi.mock('../../lib/utils/helpers/preflight.js', async (importOriginal) => {
   const actual =
-    await importOriginal<typeof import('../../lib/utils/preflight.js')>();
+    await importOriginal<
+      typeof import('../../lib/utils/helpers/preflight.js')
+    >();
   return {
     ...actual,
     preflight: vi.fn().mockResolvedValue(undefined),

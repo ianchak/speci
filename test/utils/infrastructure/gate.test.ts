@@ -11,8 +11,8 @@ import {
   executeGateCommand,
   runGate,
   canRetryGate,
-} from '../../../lib/utils/gate.js';
-import type { SpeciConfig } from '../../../lib/config.js';
+} from '../../../lib/utils/infrastructure/gate.js';
+import type { SpeciConfig } from '../../../lib/config/index.js';
 
 type MockChildProcess = EventEmitter & {
   stdout: EventEmitter;
@@ -36,7 +36,7 @@ async function loadExecuteGateCommandWithMockSpawn(
     spawn: vi.fn(() => child as unknown as ChildProcess),
   }));
 
-  const gateModule = await import('../../../lib/utils/gate.js');
+  const gateModule = await import('../../../lib/utils/infrastructure/gate.js');
   return gateModule.executeGateCommand;
 }
 
@@ -251,6 +251,36 @@ describe('Gate Runner', () => {
       expect(result.isSuccess).toBe(true);
       expect(result.results).toHaveLength(0);
       expect(result.totalDuration).toBe(0);
+    });
+
+    it('uses injected logger when provided', async () => {
+      const emptyConfig: SpeciConfig = {
+        ...mockConfig,
+        gate: {
+          ...mockConfig.gate,
+          commands: [],
+        },
+      };
+      const injectedLogger = {
+        info: vi.fn(),
+        infoPlain: vi.fn(),
+        warnPlain: vi.fn(),
+        errorPlain: vi.fn(),
+        successPlain: vi.fn(),
+        error: vi.fn(),
+        warn: vi.fn(),
+        success: vi.fn(),
+        debug: vi.fn(),
+        muted: vi.fn(),
+        raw: vi.fn(),
+        setVerbose: vi.fn(),
+      };
+
+      await runGate(emptyConfig, injectedLogger);
+
+      expect(injectedLogger.debug).toHaveBeenCalledWith(
+        'No gate commands configured, skipping gate'
+      );
     });
 
     it('should track total duration', async () => {

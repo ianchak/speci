@@ -8,11 +8,14 @@
 
 import { isAbsolute, resolve } from 'node:path';
 import { infoBox } from '@/ui/box.js';
-import { initializeCommand } from '@/utils/command-helpers.js';
-import { failValidation, handleCommandError } from '@/utils/error-handler.js';
-import { executeCopilotCommand } from '@/utils/copilot-helper.js';
+import { initializeCommand } from '@/utils/helpers/command-helpers.js';
+import {
+  failValidation,
+  handleCommandError,
+} from '@/utils/infrastructure/error-handler.js';
+import { executeCopilotCommand } from '@/utils/helpers/copilot-helper.js';
 import { PathValidator } from '@/validation/index.js';
-import type { CommandContext, CommandResult } from '@/interfaces.js';
+import type { CommandContext, CommandResult } from '@/interfaces/index.js';
 import type { SpeciConfig } from '@/types.js';
 
 /**

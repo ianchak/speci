@@ -1,3 +1,5 @@
+import type { IFileSystem } from '@/interfaces/index.js';
+
 /**
  * Shared Type Definitions
  *
@@ -121,7 +123,7 @@ export interface MilestoneInfo {
   completedTasks: number;
   mvtId: string | null;
   mvtStatus: TaskStatus | null;
-  mvtReady: boolean;
+  isMvtReady: boolean;
 }
 
 /**
@@ -138,6 +140,14 @@ export type CommandName =
   | 'review'
   | 'fix'
   | 'tidy';
+
+/**
+ * Agent dispatch specification for run-loop orchestration.
+ */
+export interface AgentDispatchSpec {
+  key: CommandName;
+  displayName: string;
+}
 
 /**
  * Options for building copilot CLI arguments
@@ -165,7 +175,7 @@ export interface CopilotArgsOptions {
  *
  * @example
  * ```typescript
- * const result = await runAgent(config, 'impl', 'Implementation');
+ * const result = await runAgent(config, 'impl');
  * if (result.isSuccess) {
  *   // TypeScript knows exitCode is 0, error doesn't exist
  *   console.log('Success!');
@@ -298,6 +308,8 @@ export interface StateOptions {
   forceRefresh?: boolean;
   /** Cache TTL in milliseconds (default: 200ms) */
   ttl?: number;
+  /** Optional file-system override for state read/write operations */
+  fs?: Pick<IFileSystem, 'existsSync' | 'readFile' | 'writeFile'>;
 }
 
 // ============================================================================
@@ -307,6 +319,4 @@ export interface StateOptions {
 /**
  * Cleanup function type — sync or async
  */
-export interface CleanupFn {
-  (): Promise<void> | void;
-}
+export type CleanupFn = () => Promise<void> | void;

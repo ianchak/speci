@@ -1,8 +1,7 @@
 import { resolve } from 'node:path';
-import { MESSAGES } from '@/constants.js';
 import type { SpeciConfig } from '@/types.js';
 import { createError } from '@/errors.js';
-import type { CommandContext, CommandResult } from '@/interfaces.js';
+import type { CommandContext, CommandResult } from '@/interfaces/index.js';
 import { plan } from '@/commands/plan.js';
 import { task } from '@/commands/task.js';
 import { run } from '@/commands/run.js';
@@ -10,8 +9,8 @@ import {
   failResult,
   handleCommandError,
   toErrorMessage,
-} from '@/utils/error-handler.js';
-import { PathValidator } from '@/validation/index.js';
+} from '@/utils/infrastructure/error-handler.js';
+import { InputValidator, PathValidator } from '@/validation/index.js';
 
 /**
  * Options accepted by yolo command.
@@ -176,7 +175,7 @@ async function runYoloPipeline(
 export async function yolo(
   options: YoloOptions,
   context: CommandContext,
-  config?: SpeciConfig
+  preloadedConfig?: SpeciConfig
 ): Promise<CommandResult> {
   const projectRoot = context.process.cwd();
 
@@ -190,16 +189,19 @@ export async function yolo(
     options.output = validateAndResolvePath(options.output, projectRoot);
   }
 
-  const loadedConfig = config ?? (await context.configLoader.load());
+  const config = preloadedConfig ?? (await context.configLoader.load());
 
   const normalizedPrompt = options.prompt?.trim();
-  if (!normalizedPrompt && (!options.input || options.input.length === 0)) {
-    context.logger.error(MESSAGES.MISSING_REQUIRED_INPUT);
-    return failResult(MESSAGES.MISSING_REQUIRED_INPUT);
+  const inputValidation = new InputValidator(context.fs)
+    .requireInput(options.input, normalizedPrompt)
+    .validate();
+  if (!inputValidation.success) {
+    context.logger.error(inputValidation.error.message);
+    return failResult(inputValidation.error.message);
   }
 
   await context.preflight.run(
-    loadedConfig,
+    config,
     {
       requireCopilot: true,
       requireConfig: true,
@@ -209,14 +211,14 @@ export async function yolo(
   );
 
   const lockCleanup = async () => {
-    await context.lockManager.release(loadedConfig);
+    await context.lockManager.release(config);
   };
   context.signalManager.registerCleanup(lockCleanup);
-  context.signalManager.install();
+  context.signalManager.install(context.process);
 
   try {
     try {
-      await context.lockManager.acquire(loadedConfig, context.process, 'yolo', {
+      await context.lockManager.acquire(config, context.process, 'yolo', {
         state: 'yolo:pipeline',
         iteration: 0,
       });
@@ -226,11 +228,11 @@ export async function yolo(
       }
 
       if (!options.force) {
-        return failResult(await formatLockConflictError(loadedConfig, context));
+        return failResult(await formatLockConflictError(config, context));
       }
 
-      await context.lockManager.release(loadedConfig);
-      await context.lockManager.acquire(loadedConfig, context.process, 'yolo', {
+      await context.lockManager.release(config);
+      await context.lockManager.acquire(config, context.process, 'yolo', {
         state: 'yolo:pipeline',
         iteration: 0,
       });
@@ -242,13 +244,13 @@ export async function yolo(
       planOutputPath,
       pipelineOptions,
       context,
-      loadedConfig
+      config
     );
   } catch (error) {
     return handleCommandError(error, 'Yolo', context.logger);
   } finally {
     try {
-      await context.lockManager.release(loadedConfig);
+      await context.lockManager.release(config);
     } catch (error) {
       const message = toErrorMessage(error);
       context.logger.warn(`Failed to release lock file: ${message}`);

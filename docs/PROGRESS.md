@@ -268,11 +268,11 @@ graph TD
 
 | Task ID  | Title                                              | File                                          | Status      | Review Status | Priority | Complexity | Dependencies | Assigned To | Attempts |
 | -------- | -------------------------------------------------- | --------------------------------------------- | ----------- | ------------- | -------- | ---------- | ------------ | ----------- | -------- |
-| TASK_040 | DRY Helpers: failValidation, runPhase, phaseSeparator | TASK_040_dry_helper_functions.md           | IN REVIEW   | —             | MEDIUM   | M          | MVT_M8       | SA-20260302-040 | 1        |
-| TASK_041 | Function Design Improvements Batch                 | TASK_041_function_design_improvements.md      | NOT STARTED | —             | MEDIUM   | M          | MVT_M8       |             |          |
-| TASK_042 | Cross-Cutting Small Fixes (CC-06–CC-08)            | TASK_042_crosscutting_small_fixes.md          | NOT STARTED | —             | MEDIUM   | M          | MVT_M8       |             |          |
-| TASK_043 | Remove utils/ and config/interfaces Shim Files     | TASK_043_remove_shim_files.md                 | NOT STARTED | —             | MEDIUM   | M          | MVT_M8       |             |          |
-| TASK_044 | Test Coverage + Injectable Lock/State Fixes        | TASK_044_test_coverage_injectable_fixes.md    | NOT STARTED | —             | MEDIUM   | M          | MVT_M8       |             |          |
+| TASK_040 | DRY Helpers: failValidation, runPhase, phaseSeparator | TASK_040_dry_helper_functions.md           | COMPLETE    | PASSED        | MEDIUM   | M          | MVT_M8       | SA-20260302-040 | 1        |
+| TASK_041 | Function Design Improvements Batch                 | TASK_041_function_design_improvements.md      | COMPLETE    | PASSED        | MEDIUM   | M          | MVT_M8       | SA-20260302-041 | 1        |
+| TASK_042 | Cross-Cutting Small Fixes (CC-06–CC-08)            | TASK_042_crosscutting_small_fixes.md          | COMPLETE    | PASSED        | MEDIUM   | M          | MVT_M8       | SA-20260302-042 | 1        |
+| TASK_043 | Remove utils/ and config/interfaces Shim Files     | TASK_043_remove_shim_files.md                 | COMPLETE    | PASSED        | MEDIUM   | M          | MVT_M8       | SA-20260302-043 | 1        |
+| TASK_044 | Test Coverage + Injectable Lock/State Fixes        | TASK_044_test_coverage_injectable_fixes.md    | COMPLETE    | PASSED        | MEDIUM   | M          | MVT_M8       | SA-20260302-044 | 1        |
 | MVT_M9   | Manual Verification: Code Quality & Cleanup        | MVT_M9_code_quality_architecture_cleanup.md   | NOT STARTED | —             | —        | 30 min     | TASK_040, TASK_041, TASK_042, TASK_043, TASK_044 | | |
 
 ### Dependencies
@@ -356,13 +356,13 @@ TASK_001–005 → MVT_M1
 
 ## Subagent Tracking
 
-Last Subagent ID: SA-20260302-040
+Last Subagent ID: SA-20260302-044
 
 ---
 
 ## Review Tracking
 
-Last Review ID: RA-20260302-040
+Last Review ID: RA-20260302-045
 
 ---
 
@@ -372,14 +372,14 @@ Last Review ID: RA-20260302-040
 
 | Field             | Value |
 | ----------------- | ----- |
-| Task              | TASK_040 |
-| Impl Agent        | SA-20260302-040 |
-| Files Changed     | `lib/utils/infrastructure/error-handler.ts`, `lib/commands/task.ts`, `lib/commands/refactor.ts`, `lib/commands/plan.ts` |
-| Tests Added       | `test/utils/infrastructure/error-handler.test.ts` (2 new tests) |
-| Rework?           | No |
-| Focus Areas       | failValidation helper behavior parity at task/refactor/plan validation failure call sites |
-| Known Limitations | DUP-08/DUP-09 not modified because TASK_028 is already COMPLETE/PASSED in progress tracking |
-| Gate Results      | format:✅ lint:✅ typecheck:✅ test:✅ |
+| Task              | - |
+| Impl Agent        | - |
+| Files Changed     | - |
+| Tests Added       | - |
+| Rework?           | - |
+| Focus Areas       | - |
+| Known Limitations | - |
+| Gate Results      | - |
 
 ### For Fix Agent
 
@@ -396,6 +396,3 @@ Last Review ID: RA-20260302-040
 ### Review Failure Notes
 
 None.
-
-
-

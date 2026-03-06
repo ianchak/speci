@@ -3,12 +3,12 @@ import { tmpdir } from 'node:os';
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
 import { createMockContext } from '../../lib/adapters/test-context.js';
 import { yolo } from '../../lib/commands/yolo.js';
-import type { SpeciConfig } from '../../lib/config.js';
+import type { SpeciConfig } from '../../lib/config/index.js';
 import { createError } from '../../lib/errors.js';
 import * as planModule from '../../lib/commands/plan.js';
 import * as runModule from '../../lib/commands/run.js';
 import * as taskModule from '../../lib/commands/task.js';
-import * as errorHandlerModule from '../../lib/utils/error-handler.js';
+import * as errorHandlerModule from '../../lib/utils/infrastructure/error-handler.js';
 
 const PROJECT_CWD = join(tmpdir(), 'speci-test-project');
 
@@ -105,6 +105,7 @@ describe('yolo command', () => {
       exitCode: 1,
       error: 'Missing required input',
     });
+    expect(context.logger.error).toHaveBeenCalledWith('Missing required input');
     expect(context.lockManager.acquire).not.toHaveBeenCalled();
     expect(planModule.plan).not.toHaveBeenCalled();
     expect(taskModule.task).not.toHaveBeenCalled();

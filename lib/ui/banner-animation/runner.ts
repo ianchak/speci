@@ -10,8 +10,11 @@ import { VERSION, BANNER_ART } from '@/ui/banner.js';
 import { supportsColor } from '@/ui/colors.js';
 import { HEX_COLORS } from '@/ui/palette.js';
 import { terminalState } from '@/ui/terminal.js';
-import { log } from '@/utils/logger.js';
-import { registerCleanup, unregisterCleanup } from '@/utils/signals.js';
+import { log } from '@/utils/infrastructure/logger.js';
+import {
+  registerCleanup,
+  unregisterCleanup,
+} from '@/utils/infrastructure/signals.js';
 import {
   clearGradientCache,
   renderWaveFrame,
@@ -64,7 +67,7 @@ export function shouldAnimate(options?: AnimateOptions): boolean {
     return false;
   }
 
-  if (process.env.SPECI_NO_ANIMATION) {
+  if (process.env[ENV.SPECI_NO_ANIMATION]) {
     return false;
   }
 

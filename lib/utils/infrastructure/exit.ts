@@ -8,6 +8,15 @@
 
 import { isRunningCleanup, runCleanup } from './signals.js';
 import { log } from './logger.js';
+import type { ILogger } from '@/interfaces/index.js';
+
+function exitProcess(
+  exitCode: number,
+  proc?: Pick<NodeJS.Process, 'exit'>
+): never {
+  (proc ?? process).exit(exitCode);
+  throw new Error('process.exit returned unexpectedly');
+}
 
 /**
  * Exit with cleanup execution
@@ -19,19 +28,24 @@ import { log } from './logger.js';
  * @param exitCode - Exit code to pass to process.exit()
  * @returns Never returns (process terminates)
  */
-export async function exitWithCleanup(exitCode: number): Promise<never> {
+export async function exitWithCleanup(
+  exitCode: number,
+  logger?: ILogger,
+  proc?: Pick<NodeJS.Process, 'exit'>
+): Promise<never> {
+  const resolvedLogger = logger ?? log;
   if (isRunningCleanup()) {
-    log.error('Cleanup already in progress, forcing exit');
-    process.exit(exitCode);
+    resolvedLogger.error('Cleanup already in progress, forcing exit');
+    exitProcess(exitCode, proc);
   }
   try {
-    await runCleanup();
+    await runCleanup(resolvedLogger);
   } catch (error) {
-    log.error(
+    resolvedLogger.error(
       `Cleanup failed: ${error instanceof Error ? error.message : String(error)}`
     );
   }
-  process.exit(exitCode);
+  exitProcess(exitCode, proc);
 }
 
 /**
@@ -43,6 +57,9 @@ export async function exitWithCleanup(exitCode: number): Promise<never> {
  * @param exitCode - Exit code to pass to process.exit()
  * @returns Never returns (process terminates)
  */
-export function exitSync(exitCode: number): never {
-  process.exit(exitCode);
+export function exitSync(
+  exitCode: number,
+  proc?: Pick<NodeJS.Process, 'exit'>
+): never {
+  return exitProcess(exitCode, proc);
 }

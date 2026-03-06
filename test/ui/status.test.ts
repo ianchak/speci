@@ -14,15 +14,15 @@ import {
 import { join } from 'node:path';
 import type { StatusOptions } from '../../lib/commands/status.js';
 import { createMockContext } from '../../lib/adapters/test-context.js';
-import type { CommandContext, IProcess } from '../../lib/interfaces.js';
-import type { SpeciConfig } from '../../lib/config.js';
+import type { CommandContext, IProcess } from '../../lib/interfaces/index.js';
+import type { SpeciConfig } from '../../lib/config/index.js';
 import {
   resetStateCache,
   getState,
   getTaskStats,
   getCurrentTask,
 } from '../../lib/state.js';
-import { getLockInfo } from '../../lib/utils/lock.js';
+import { getLockInfo } from '../../lib/utils/infrastructure/lock.js';
 import { terminalState } from '../../lib/ui/terminal.js';
 
 const TEST_DIR = join(process.cwd(), 'test', 'fixtures', 'status');

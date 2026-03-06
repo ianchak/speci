@@ -2,7 +2,7 @@
  * Error handling utilities for command error handling
  */
 
-import type { CommandResult, ILogger } from '@/interfaces.js';
+import type { CommandResult, ILogger } from '@/interfaces/index.js';
 import type { ValidationError } from '@/validation/types.js';
 
 /**

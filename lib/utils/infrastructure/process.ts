@@ -7,7 +7,7 @@ import type { ChildProcess } from 'node:child_process';
 
 const childRegistry = new Set<ChildProcess>();
 
-const KILL_TIMEOUT_MS = 5000;
+export const KILL_TIMEOUT_MS = 5000;
 
 /**
  * Track a child process for cleanup

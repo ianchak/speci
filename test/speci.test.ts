@@ -269,7 +269,8 @@ describe('CLI Entry Point', () => {
 
     it('should provide suggestions for typos using findSimilarCommands', async () => {
       // Import the actual suggest utility
-      const { findSimilarCommands } = await import('../lib/utils/suggest.js');
+      const { findSimilarCommands } =
+        await import('../lib/utils/helpers/suggest.js');
 
       const availableCommands = [
         'init',
@@ -533,10 +534,10 @@ Examples:
       vi.doMock('../lib/constants.js', () => ({
         EXIT_CODE: { ERROR: 1 },
       }));
-      vi.doMock('../lib/utils/logger.js', () => ({
+      vi.doMock('../lib/utils/infrastructure/logger.js', () => ({
         log: { error: logErrorMock },
       }));
-      vi.doMock('../lib/utils/exit.js', () => ({
+      vi.doMock('../lib/utils/infrastructure/exit.js', () => ({
         exitWithCleanup: exitWithCleanupMock,
       }));
       vi.doMock('../lib/adapters/context-factory.js', () => ({
@@ -553,10 +554,17 @@ Examples:
       }));
       vi.doMock('../lib/cli/command-registry.js', () => ({
         CommandRegistry: class {
-          getProgram(): { opts: () => { color: boolean } } {
-            return { opts: () => ({ color: false }) };
+          getProgram(): {
+            opts: () => { color: boolean };
+            help: () => void;
+          } {
+            return { opts: () => ({ color: false }), help: () => {} };
           }
-          async execute(): Promise<void> {}
+          async execute(): Promise<void> {
+            if (loadError !== undefined) {
+              throw loadError;
+            }
+          }
         },
       }));
       vi.doMock('../lib/cli/initialize.js', () => ({
@@ -570,7 +578,7 @@ Examples:
       vi.resetModules();
       logErrorMock.mockClear();
       exitWithCleanupMock.mockClear();
-      process.argv = ['node', 'speci'];
+      process.argv = ['node', 'speci', '--version'];
     });
 
     it('logs error.message and exits with cleanup for fatal Error rejection', async () => {
@@ -584,7 +592,7 @@ Examples:
       await Promise.resolve();
       await Promise.resolve();
 
-      expect(logErrorMock).toHaveBeenCalledWith('fatal boom');
+      expect(logErrorMock).toHaveBeenCalledWith('Fatal error: fatal boom');
       expect(exitWithCleanupMock).toHaveBeenCalledWith(1);
       expect(consoleErrorSpy).not.toHaveBeenCalledWith(
         'Fatal error:',
@@ -600,7 +608,7 @@ Examples:
       await Promise.resolve();
       await Promise.resolve();
 
-      expect(logErrorMock).toHaveBeenCalledWith('fatal string');
+      expect(logErrorMock).toHaveBeenCalledWith('Fatal error: fatal string');
       expect(exitWithCleanupMock).toHaveBeenCalledWith(1);
     });
 
@@ -619,7 +627,9 @@ Examples:
 
       unhandledRejectionHandler?.(new Error('reject boom'));
 
-      expect(logErrorMock).toHaveBeenCalledWith('reject boom');
+      expect(logErrorMock).toHaveBeenCalledWith(
+        'Unhandled rejection: reject boom'
+      );
       expect(exitWithCleanupMock).toHaveBeenCalledWith(1);
     });
 
@@ -636,7 +646,9 @@ Examples:
       await import('../bin/speci.js');
       unhandledRejectionHandler?.('reject string');
 
-      expect(logErrorMock).toHaveBeenCalledWith('reject string');
+      expect(logErrorMock).toHaveBeenCalledWith(
+        'Unhandled rejection: reject string'
+      );
       expect(exitWithCleanupMock).toHaveBeenCalledWith(1);
     });
   });

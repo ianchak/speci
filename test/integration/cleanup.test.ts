@@ -8,7 +8,10 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { mkdirSync, rmSync, existsSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { registerCleanup, runCleanup } from '../../lib/utils/signals.js';
+import {
+  registerCleanup,
+  runCleanup,
+} from '../../lib/utils/infrastructure/signals.js';
 
 describe('Cleanup Integration', () => {
   const testDir = join(process.cwd(), '.test-cleanup-integration');

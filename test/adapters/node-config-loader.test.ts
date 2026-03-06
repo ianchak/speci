@@ -1,10 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { NodeConfigLoader } from '@/adapters/node-config-loader.js';
-import type { IProcess } from '@/interfaces.js';
+import { createMockContext } from '@/adapters/test-context.js';
+import type { IFileSystem, IProcess } from '@/interfaces/index.js';
 import type { SpeciConfig } from '@/types.js';
-import * as configModule from '@/config.js';
+import * as configModule from '@/config/index.js';
 
-vi.mock('@/config.js', () => ({
+vi.mock('@/config/index.js', () => ({
   loadConfig: vi.fn(),
 }));
 
@@ -13,9 +14,14 @@ describe('NodeConfigLoader', () => {
     vi.clearAllMocks();
   });
 
-  it('delegates load to loadConfig with proc', async () => {
+  it('delegates load to loadConfig with proc and fs', async () => {
     const mockProcess = process as unknown as IProcess;
-    const adapter = new NodeConfigLoader(mockProcess);
+    const mockFs = {} as IFileSystem;
+    const adapter = new NodeConfigLoader(
+      mockProcess,
+      mockFs,
+      createMockContext().logger
+    );
     const expectedConfig = {
       version: '1.0.0',
     } as unknown as SpeciConfig;
@@ -25,6 +31,8 @@ describe('NodeConfigLoader', () => {
 
     expect(configModule.loadConfig).toHaveBeenCalledWith({
       proc: mockProcess,
+      fs: mockFs,
+      logger: expect.anything(),
     });
     expect(result).toBe(expectedConfig);
   });

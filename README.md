@@ -491,6 +491,7 @@ Environment variables override corresponding config file settings.
 | `SPECI_MAX_FIX_ATTEMPTS`    | `gate.maxFixAttempts` | Maximum fix attempts                 |
 | `SPECI_COPILOT_PERMISSIONS` | `copilot.permissions` | Permission mode                      |
 | `SPECI_DEBUG`               | N/A                   | Enable debug logging (`1` or `true`) |
+| `SPECI_ASCII`               | N/A                   | Force ASCII glyph fallback           |
 | `SPECI_NO_ANIMATION`        | N/A                   | Disable banner animation             |
 | `NO_COLOR`                  | N/A                   | Disable colored output               |
 

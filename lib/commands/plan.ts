@@ -7,18 +7,16 @@
  */
 
 import { resolve } from 'node:path';
-import { MESSAGES } from '@/constants.js';
 import { drawBox } from '@/ui/box.js';
 import { colorize } from '@/ui/colors.js';
-import { initializeCommand } from '@/utils/command-helpers.js';
+import { initializeCommand } from '@/utils/helpers/command-helpers.js';
 import {
   failResult,
-  failValidation,
   handleCommandError,
-} from '@/utils/error-handler.js';
-import { executeCopilotCommand } from '@/utils/copilot-helper.js';
+} from '@/utils/infrastructure/error-handler.js';
+import { executeCopilotCommand } from '@/utils/helpers/copilot-helper.js';
 import { InputValidator } from '@/validation/index.js';
-import type { CommandContext, CommandResult } from '@/interfaces.js';
+import type { CommandContext, CommandResult } from '@/interfaces/index.js';
 import type { SpeciConfig } from '@/types.js';
 
 /**
@@ -79,24 +77,6 @@ export async function plan(
   preloadedConfig?: SpeciConfig
 ): Promise<CommandResult> {
   try {
-    // Require at least --prompt or --input (validate before initialization)
-    if (!options.prompt && (!options.input || options.input.length === 0)) {
-      context.logger.error(MESSAGES.MISSING_REQUIRED_INPUT);
-      context.logger.info('Provide at least one of:');
-      context.logger.muted(
-        '  --prompt <text>    Initial prompt describing what to plan'
-      );
-      context.logger.muted(
-        '  --input <files...> Input files for context (design docs, specs)'
-      );
-      context.logger.raw('');
-      context.logger.info('Examples:');
-      context.logger.muted('  speci plan -p "Build a REST API for users"');
-      context.logger.muted('  speci plan -i docs/design.md');
-      context.logger.muted('  speci plan -i spec.md -p "Focus on auth"');
-      return failResult(MESSAGES.MISSING_REQUIRED_INPUT);
-    }
-
     // Validate input using InputValidator
     const inputFiles = options.input || [];
     const validationResult = new InputValidator(context.fs)
@@ -108,7 +88,8 @@ export async function plan(
       .validate();
 
     if (!validationResult.success) {
-      return failValidation(validationResult.error, context.logger);
+      context.logger.error(validationResult.error.message);
+      return failResult(validationResult.error.message);
     }
 
     // Initialize command with shared helper (skip preflight as plan doesn't need it)

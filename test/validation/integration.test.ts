@@ -7,7 +7,7 @@ import {
   InputValidator,
 } from '@/validation/index.js';
 import type { SpeciConfig } from '@/types.js';
-import type { IFileSystem } from '@/interfaces.js';
+import type { IFileSystem } from '@/interfaces/index.js';
 
 describe('Validation Module Integration', () => {
   let testDir: string;

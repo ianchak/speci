@@ -4,8 +4,8 @@ import {
   failResult,
   handleCommandError,
   toErrorMessage,
-} from '../../../lib/utils/error-handler.js';
-import type { ILogger } from '../../../lib/interfaces.js';
+} from '../../../lib/utils/infrastructure/error-handler.js';
+import type { ILogger } from '../../../lib/interfaces/index.js';
 
 describe('error-handler', () => {
   let mockLogger: ILogger;
