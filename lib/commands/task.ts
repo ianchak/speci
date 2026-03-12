@@ -78,11 +78,7 @@ export async function task(
       context.logger.error(inputValidation.error.message);
       return failResult(inputValidation.error.message);
     }
-    const planOption = options.plan;
-    if (planOption === undefined || planOption === null || planOption === '') {
-      context.logger.error('--plan <path> is required');
-      return failResult('--plan <path> is required');
-    }
+    const planOption = options.plan as string;
 
     // Resolve and validate plan file (must come before initialization)
     const planPath = resolve(context.process.cwd(), planOption);
