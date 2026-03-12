@@ -11,7 +11,7 @@ import { drawBox } from '@/ui/box.js';
 import { colorize } from '@/ui/colors.js';
 import { initializeCommand } from '@/utils/helpers/command-helpers.js';
 import {
-  failResult,
+  failValidation,
   handleCommandError,
 } from '@/utils/infrastructure/error-handler.js';
 import { executeCopilotCommand } from '@/utils/helpers/copilot-helper.js';
@@ -88,8 +88,7 @@ export async function plan(
       .validate();
 
     if (!validationResult.success) {
-      context.logger.error(validationResult.error.message);
-      return failResult(validationResult.error.message);
+      return failValidation(validationResult.error, context.logger);
     }
 
     // Initialize command with shared helper (skip preflight as plan doesn't need it)
