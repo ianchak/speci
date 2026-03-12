@@ -134,7 +134,6 @@ export async function refactor(
     const args = context.copilotRunner.buildArgs(config, {
       prompt,
       agent: agentName,
-      allowAll: true,
       command: 'refactor',
     });
 

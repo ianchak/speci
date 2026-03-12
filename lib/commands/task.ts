@@ -122,7 +122,6 @@ export async function task(
     const args = context.copilotRunner.buildArgs(config, {
       prompt: `Read the plan file at ${planPath} and generate implementation tasks.`,
       agent: agentName,
-      allowAll: true,
       command: 'task',
     });
 

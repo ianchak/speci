@@ -5,7 +5,7 @@ Interactive plan generation via GitHub Copilot CLI.
 ## Usage
 
 ```
-speci plan --prompt "Build a REST API" --input docs/spec.md --output docs/plan.md
+speci plan --prompt "Build a REST API" --input docs/spec.md --output docs/plan.md [--verbose]
 ```
 
 ## Flow Diagram

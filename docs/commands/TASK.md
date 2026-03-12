@@ -107,7 +107,7 @@ speci task --plan docs/plan.md [--clean] [--verbose]
                         │  ├─ --prompt "Read the plan file    │
                         │  │   at <path> and generate         │
                         │  │   implementation tasks."         │
-                        │  └─ --allow-all                     │
+                        │  └─ --allow-all (if configured)     │
                         └─────────────────────────────────────┘
                                            │
                                            ▼

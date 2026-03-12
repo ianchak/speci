@@ -158,7 +158,6 @@ export interface AgentDispatchSpec {
 export interface CopilotArgsOptions {
   prompt?: string;
   agent: string;
-  allowAll?: boolean;
   command: CommandName;
   /** Directory for session share logs (--share flag). When set, Copilot writes session markdown here. */
   logsDir?: string;

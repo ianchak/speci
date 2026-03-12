@@ -102,7 +102,7 @@ speci refactor [--scope src/utils] [--output docs/refactor-plan.md] [--verbose]
          │  ├─ --agent speci-refactor       │
          │  │         .agent.md              │
          │  ├─ --prompt "<built prompt>"    │
-         │  └─ --allow-all                  │
+         │  └─ --allow-all (if configured)  │
          └──────────────────────────────────┘
                          │
                          ▼

@@ -109,7 +109,6 @@ describe('types module', () => {
       const options: CopilotArgsOptions = {
         prompt: 'Test prompt',
         agent: 'test-agent',
-        allowAll: true,
         command: 'impl',
       };
 
