@@ -109,8 +109,7 @@ describe('Run Integration', () => {
     expect(result).toEqual({ success: true, exitCode: 0 });
     expect(context.copilotRunner.run).toHaveBeenCalledWith(
       project.config,
-      'impl',
-      'Implementation Agent'
+      'impl'
     );
   });
 
@@ -134,12 +133,7 @@ describe('Run Integration', () => {
 
     expect(result).toEqual({ success: true, exitCode: 0 });
     expect(context.copilotRunner.run).toHaveBeenCalledTimes(2);
-    expect(context.copilotRunner.run).toHaveBeenNthCalledWith(
-      2,
-      config,
-      'fix',
-      'Fix Agent'
-    );
+    expect(context.copilotRunner.run).toHaveBeenNthCalledWith(2, config, 'fix');
   });
 
   it('Test 3: WORK_LEFT fails after max fix attempts are exhausted', async () => {
@@ -182,8 +176,7 @@ describe('Run Integration', () => {
     expect(result).toEqual({ success: true, exitCode: 0 });
     expect(context.copilotRunner.run).toHaveBeenCalledWith(
       project.config,
-      'tidy',
-      'Tidy Agent'
+      'tidy'
     );
   });
 
@@ -205,8 +198,7 @@ describe('Run Integration', () => {
     expect(result).toEqual({ success: true, exitCode: 0 });
     expect(context.copilotRunner.run).toHaveBeenCalledWith(
       project.config,
-      'review',
-      'Review Agent'
+      'review'
     );
   });
 
