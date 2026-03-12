@@ -16,7 +16,7 @@ import {
   copyFileSync,
   promises as fsPromises,
 } from 'node:fs';
-import type { IFileSystem } from '@/interfaces.js';
+import type { IFileSystem } from '@/interfaces/index.js';
 
 /**
  * Node.js filesystem adapter

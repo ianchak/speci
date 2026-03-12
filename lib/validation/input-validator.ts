@@ -4,7 +4,7 @@
 
 import { resolve } from 'node:path';
 import type { ValidationResult, ValidationError } from './types.js';
-import type { IFileSystem } from '@/interfaces.js';
+import type { IFileSystem } from '@/interfaces/index.js';
 
 /**
  * InputValidator - Validates command input (prompts, files, required fields)
@@ -35,14 +35,27 @@ export class InputValidator {
     if (!hasFiles && !hasPrompt) {
       this.errors.push({
         field: 'input',
-        message:
-          'Missing required input: provide --input files or --prompt text',
+        message: 'Missing required input',
         suggestions: [
           'Provide input files: --input file1.md file2.md',
           'Or provide prompt: --prompt "Your instructions"',
           'Both can be used together',
         ],
       });
+    }
+    return this;
+  }
+
+  /**
+   * Require a field to be non-empty
+   *
+   * @param field - Field name for error reporting
+   * @param value - Field value to check
+   * @param message - Custom error message
+   */
+  required(field: string, value: unknown, message: string): this {
+    if (value === undefined || value === null || value === '') {
+      this.errors.push({ field, message });
     }
     return this;
   }

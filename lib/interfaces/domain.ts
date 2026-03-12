@@ -39,20 +39,20 @@ export interface ICopilotRunner {
    */
   spawn(
     args: string[],
-    options?: { inherit?: boolean; cwd?: string }
+    options?: { inherit?: boolean; cwd?: string },
+    proc?: IProcess
   ): Promise<number>;
 
   /**
    * Run agent with retry logic
    * @param config - Speci configuration
    * @param agentName - Name of agent to run
-   * @param label - Human-readable label for logging
    * @returns Promise resolving to agent run result
    */
   run(
     config: SpeciConfig,
     agentName: string,
-    label: string
+    proc?: IProcess
   ): Promise<AgentRunResult>;
 }
 
@@ -122,13 +122,13 @@ export interface ILockManager {
   /**
    * Acquire the lock for execution
    * @param config - Speci configuration
-   * @param processParam - IProcess instance
+   * @param proc - IProcess instance
    * @param command - Command name
    * @param metadata - Optional lock metadata
    */
   acquire(
     config: SpeciConfig,
-    processParam?: IProcess,
+    proc?: IProcess,
     command?: string,
     metadata?: { iteration?: number; taskId?: string; state?: string }
   ): Promise<void>;
@@ -188,13 +188,13 @@ export interface IPreflight {
    * Run preflight checks
    * @param config - Speci configuration
    * @param options - Options to customize which checks run
-   * @param processParam - IProcess instance
+   * @param proc - IProcess instance
    * @throws {PreflightError} If any check fails
    */
   run(
     config: SpeciConfig,
     options?: PreflightOptions,
-    processParam?: IProcess
+    proc?: IProcess
   ): Promise<void>;
 }
 
@@ -208,7 +208,7 @@ export interface ISignalManager {
   /**
    * Install signal handlers for SIGINT and SIGTERM
    */
-  install(): void;
+  install(proc?: IProcess): void;
 
   /**
    * Remove all signal handlers and reset state

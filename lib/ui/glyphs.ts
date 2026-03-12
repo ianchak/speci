@@ -1,3 +1,5 @@
+import { ENV } from '@/constants.js';
+
 /**
  * Unicode glyphs for modern terminal display
  */
@@ -35,7 +37,7 @@ export type SingleGlyphName = Exclude<GlyphName, 'spinner'>;
  */
 export function supportsUnicode(): boolean {
   // Explicit ASCII mode override
-  if (process.env.SPECI_ASCII !== undefined) {
+  if (process.env[ENV.SPECI_ASCII] !== undefined) {
     return false;
   }
 

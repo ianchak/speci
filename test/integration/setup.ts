@@ -9,7 +9,7 @@ import { mkdtemp, rm, mkdir, writeFile, readFile } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
-import type { SpeciConfig } from '@/config.js';
+import type { SpeciConfig } from '@/config/index.js';
 
 /**
  * Test project configuration

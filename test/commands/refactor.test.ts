@@ -8,14 +8,23 @@ import {
 } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
-import { refactor } from '../../lib/commands/refactor.js';
+import { createProductionContext } from '../../lib/adapters/context-factory.js';
+import { refactor as refactorCommand } from '../../lib/commands/refactor.js';
 import * as copilotModule from '../../lib/copilot.js';
-import { resetConfigCache } from '../../lib/config.js';
+import { resetConfigCache } from '../../lib/config/index.js';
+
+const refactor = (
+  options: Parameters<typeof refactorCommand>[0] = {},
+  context: Parameters<typeof refactorCommand>[1] = createProductionContext(),
+  config?: Parameters<typeof refactorCommand>[2]
+) => refactorCommand(options, context, config);
 
 // Mock preflight to skip agent template check (tested in preflight.test.ts)
-vi.mock('../../lib/utils/preflight.js', async (importOriginal) => {
+vi.mock('../../lib/utils/helpers/preflight.js', async (importOriginal) => {
   const actual =
-    await importOriginal<typeof import('../../lib/utils/preflight.js')>();
+    await importOriginal<
+      typeof import('../../lib/utils/helpers/preflight.js')
+    >();
   return {
     ...actual,
     preflight: vi.fn().mockResolvedValue(undefined),

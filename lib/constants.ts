@@ -24,6 +24,10 @@ export const CONFIG_FILENAME = 'speci.config.json';
 export const ENV = {
   /** Debug mode flag - set to '1' or 'true' to enable verbose logging */
   SPECI_DEBUG: 'SPECI_DEBUG',
+  /** Force ASCII glyph mode when set */
+  SPECI_ASCII: 'SPECI_ASCII',
+  /** Disable banner animation when set */
+  SPECI_NO_ANIMATION: 'SPECI_NO_ANIMATION',
   /** Universal color disable flag - set to any value to disable colors */
   NO_COLOR: 'NO_COLOR',
   /** Force color enable flag - set to any value to enable colors in non-TTY */
@@ -64,6 +68,7 @@ export function getAgentFilename(agentName: string): string {
 export const MESSAGES = {
   /** Instruction to run speci init command */
   RUN_INIT: 'Run speci init to create configuration',
+  MISSING_REQUIRED_INPUT: 'Missing required input',
   MVT_PAUSE: 'MVT verification required',
   MVT_PAUSE_INSTRUCTION:
     'Complete the MVT in PROGRESS.md, then re-run: speci run --verify',

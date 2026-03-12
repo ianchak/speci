@@ -16,7 +16,8 @@ import { NodeLockManager } from './node-lock-manager.js';
 import { NodeGateRunner } from './node-gate-runner.js';
 import { NodePreflight } from './node-preflight.js';
 import { NodeSignalManager } from './node-signal-manager.js';
-import type { CommandContext } from '@/interfaces.js';
+import { defaultSignalManager } from '@/utils/infrastructure/signals.js';
+import type { CommandContext } from '@/interfaces/index.js';
 
 /**
  * Create a production context with all dependencies wired up
@@ -25,17 +26,19 @@ import type { CommandContext } from '@/interfaces.js';
  */
 export function createProductionContext(): CommandContext {
   const nodeProcess = new NodeProcess();
+  const nodeFileSystem = new NodeFileSystem();
+  const nodeLogger = new NodeLogger(nodeProcess);
 
   return {
-    fs: new NodeFileSystem(),
+    fs: nodeFileSystem,
     process: nodeProcess,
-    logger: new NodeLogger(nodeProcess),
-    configLoader: new NodeConfigLoader(nodeProcess),
-    copilotRunner: new NodeCopilotRunner(),
-    stateReader: new NodeStateReader(),
-    lockManager: new NodeLockManager(),
-    gateRunner: new NodeGateRunner(),
-    preflight: new NodePreflight(),
-    signalManager: new NodeSignalManager(),
+    logger: nodeLogger,
+    configLoader: new NodeConfigLoader(nodeProcess, nodeFileSystem, nodeLogger),
+    copilotRunner: new NodeCopilotRunner(nodeLogger),
+    stateReader: new NodeStateReader(nodeFileSystem),
+    lockManager: new NodeLockManager(nodeLogger),
+    gateRunner: new NodeGateRunner(nodeLogger),
+    preflight: new NodePreflight(nodeLogger),
+    signalManager: new NodeSignalManager(defaultSignalManager, nodeLogger),
   };
 }

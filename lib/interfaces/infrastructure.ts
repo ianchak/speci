@@ -137,6 +137,16 @@ export interface IProcess {
   platform: NodeJS.Platform;
 
   /**
+   * Node.js runtime version string (e.g., "v22.0.0")
+   */
+  version: string;
+
+  /**
+   * Command-line arguments passed to the process
+   */
+  argv: string[];
+
+  /**
    * Standard output stream
    */
   stdout: NodeJS.WriteStream;
@@ -152,6 +162,13 @@ export interface IProcess {
    * @param listener - Event handler
    */
   on(event: string, listener: (...args: unknown[]) => void): void;
+
+  /**
+   * Remove event listener
+   * @param event - Event name
+   * @param listener - Event handler
+   */
+  off(event: string, listener: (...args: unknown[]) => void): void;
 }
 
 /**

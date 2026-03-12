@@ -159,8 +159,9 @@ describe('TASK_015: Standardize Logging', () => {
         // Should import from logger (either path alias or relative)
         const hasImport =
           content.includes("from '@/utils/logger") ||
+          content.includes("from '@/utils/infrastructure/logger.js'") ||
           content.includes("from './logger.js'") ||
-          content.includes('from "../utils/logger.js"') ||
+          content.includes('from "../utils/infrastructure/logger.js"') ||
           content.includes('from "../infrastructure/logger.js"');
         if (!hasImport) {
           missing.push(file);
@@ -179,7 +180,9 @@ describe('TASK_015: Standardize Logging', () => {
       );
 
       // Should have debug logging for config resolution
-      expect(content).toMatch(/log\.debug.*config|configuration/i);
+      expect(content).toMatch(
+        /(log|resolvedLogger)\.debug.*config|configuration/i
+      );
     });
 
     it('should have debug logging in copilot.ts', () => {
@@ -189,7 +192,7 @@ describe('TASK_015: Standardize Logging', () => {
       );
 
       // Should have debug logging for execution
-      expect(content).toMatch(/log\.debug/);
+      expect(content).toMatch(/(log|resolvedLogger)\.debug/);
     });
 
     it('should log state transitions in run.ts', () => {
@@ -214,7 +217,7 @@ describe('TASK_015: Standardize Logging', () => {
       expect(content).toContain("from './logger.js'");
 
       // Should use log methods
-      expect(content).toMatch(/log\.(info|error)/);
+      expect(content).toMatch(/(log|resolvedLogger)\.(info|error)/);
     });
   });
 

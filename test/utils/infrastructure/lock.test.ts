@@ -4,7 +4,7 @@
  * Tests for lib/utils/lock.ts
  */
 
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import {
   existsSync,
   readFileSync,
@@ -19,8 +19,8 @@ import {
   releaseLock,
   isLocked,
   getLockInfo,
-} from '../../../lib/utils/lock.js';
-import type { SpeciConfig } from '../../../lib/config.js';
+} from '../../../lib/utils/infrastructure/lock.js';
+import type { SpeciConfig } from '../../../lib/config/index.js';
 
 // Test config with temporary lock path
 const testDir = join(process.cwd(), '.test-lock');
@@ -157,6 +157,43 @@ describe('Lock File Management', () => {
       const content = readFileSync(testLockPath, 'utf8');
       const lockData = JSON.parse(content);
       expect(lockData.pid).toBe(process.pid);
+    });
+
+    it('uses injected logger for stale lock notice', async () => {
+      mkdirSync(testDir, { recursive: true });
+      const staleLock = {
+        version: '1.0.0',
+        pid: 999999,
+        started: new Date().toISOString(),
+        command: 'run',
+      };
+      writeFileSync(testLockPath, JSON.stringify(staleLock), 'utf8');
+      const injectedLogger = {
+        info: () => {},
+        infoPlain: vi.fn(),
+        warnPlain: () => {},
+        errorPlain: () => {},
+        successPlain: () => {},
+        error: () => {},
+        warn: vi.fn(),
+        success: () => {},
+        debug: () => {},
+        muted: () => {},
+        raw: () => {},
+        setVerbose: () => {},
+      };
+
+      await acquireLock(
+        mockConfig,
+        undefined,
+        'run',
+        undefined,
+        injectedLogger
+      );
+
+      expect(injectedLogger.infoPlain).toHaveBeenCalledWith(
+        expect.stringContaining('Removed stale lock')
+      );
     });
 
     it('creates parent directories if needed', async () => {
@@ -299,6 +336,16 @@ describe('Lock File Management', () => {
       expect(info.isStale).toBe(true);
     });
 
+    it('uses injected process checker for staleness detection', async () => {
+      await acquireLock(mockConfig, undefined, 'run');
+
+      const info = await getLockInfo(mockConfig, () => false);
+
+      expect(info.isLocked).toBe(true);
+      expect(info.pid).toBe(process.pid);
+      expect(info.isStale).toBe(true);
+    });
+
     it('calculates elapsed time in HH:MM:SS format', async () => {
       await acquireLock(mockConfig, undefined, 'run');
 
@@ -340,6 +387,30 @@ describe('Lock File Management', () => {
       const info = await getLockInfo(mockConfig);
 
       // Should report as locked but with null fields
+      expect(info.isLocked).toBe(true);
+      expect(info.started).toBeNull();
+      expect(info.pid).toBeNull();
+      expect(info.elapsed).toBeNull();
+    });
+
+    it('handles JSON array lock file gracefully', async () => {
+      mkdirSync(testDir, { recursive: true });
+      writeFileSync(testLockPath, '["invalid","lock"]', 'utf8');
+
+      const info = await getLockInfo(mockConfig);
+
+      expect(info.isLocked).toBe(true);
+      expect(info.started).toBeNull();
+      expect(info.pid).toBeNull();
+      expect(info.elapsed).toBeNull();
+    });
+
+    it('handles JSON primitive lock file gracefully', async () => {
+      mkdirSync(testDir, { recursive: true });
+      writeFileSync(testLockPath, '"invalid-lock"', 'utf8');
+
+      const info = await getLockInfo(mockConfig);
+
       expect(info.isLocked).toBe(true);
       expect(info.started).toBeNull();
       expect(info.pid).toBeNull();

@@ -13,6 +13,9 @@ import {
   displayStaticBanner,
   shouldShowBanner,
 } from '../lib/cli/initialize.js';
+import { EXIT_CODE } from '../lib/constants.js';
+import { exitWithCleanup } from '../lib/utils/infrastructure/exit.js';
+import { log } from '../lib/utils/infrastructure/logger.js';
 
 /**
  * Main CLI orchestration function
@@ -23,12 +26,11 @@ async function main(): Promise<void> {
   // Parse arguments (without node and script path)
   const args = process.argv.slice(2);
 
-  // Create production context and load config once for all commands
+  // Create production context
   const context = createProductionContext();
-  const config = await context.configLoader.load();
 
   // Create command registry
-  const registry = new CommandRegistry(context, config);
+  const registry = new CommandRegistry(context);
   const program = registry.getProgram();
 
   // Handle special cases for banner display
@@ -62,8 +64,15 @@ async function main(): Promise<void> {
   }
 }
 
+process.on('unhandledRejection', (reason) => {
+  const message = reason instanceof Error ? reason.message : String(reason);
+  log.error(`Unhandled rejection: ${message}`);
+  void exitWithCleanup(EXIT_CODE.ERROR);
+});
+
 // Execute main function
 main().catch((error) => {
-  console.error('Fatal error:', error);
-  process.exit(1);
+  const message = error instanceof Error ? error.message : String(error);
+  log.error(`Fatal error: ${message}`);
+  void exitWithCleanup(EXIT_CODE.ERROR);
 });

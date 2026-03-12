@@ -3,12 +3,12 @@ import { tmpdir } from 'node:os';
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
 import { createMockContext } from '../../lib/adapters/test-context.js';
 import { yolo } from '../../lib/commands/yolo.js';
-import type { SpeciConfig } from '../../lib/config.js';
+import type { SpeciConfig } from '../../lib/config/index.js';
 import { createError } from '../../lib/errors.js';
 import * as planModule from '../../lib/commands/plan.js';
 import * as runModule from '../../lib/commands/run.js';
 import * as taskModule from '../../lib/commands/task.js';
-import * as errorHandlerModule from '../../lib/utils/error-handler.js';
+import * as errorHandlerModule from '../../lib/utils/infrastructure/error-handler.js';
 
 const PROJECT_CWD = join(tmpdir(), 'speci-test-project');
 
@@ -100,11 +100,14 @@ describe('yolo command', () => {
     const context = createMockContext({ mockConfig, cwd: 'C:\\project' });
     const result = await yolo({}, context, mockConfig);
 
+    const expectedError =
+      'Missing required input\nProvide input files: --input file1.md file2.md\nOr provide prompt: --prompt "Your instructions"\nBoth can be used together';
     expect(result).toEqual({
       success: false,
       exitCode: 1,
-      error: 'Missing required input',
+      error: expectedError,
     });
+    expect(context.logger.error).toHaveBeenCalledWith(expectedError);
     expect(context.lockManager.acquire).not.toHaveBeenCalled();
     expect(planModule.plan).not.toHaveBeenCalled();
     expect(taskModule.task).not.toHaveBeenCalled();
@@ -551,7 +554,8 @@ describe('yolo command', () => {
     expect(result).toEqual({
       success: false,
       exitCode: 1,
-      error: 'Missing required input',
+      error:
+        'Missing required input\nProvide input files: --input file1.md file2.md\nOr provide prompt: --prompt "Your instructions"\nBoth can be used together',
     });
     expect(planModule.plan).not.toHaveBeenCalled();
   });
@@ -594,6 +598,47 @@ describe('yolo command', () => {
     for (const message of debugCalls) {
       expect(message).toMatch(/^Phase completed in \d+ms$/);
     }
+  });
+
+  it('runs phase labels in plan-task-run order', async () => {
+    const context = createMockContext({ mockConfig, cwd: 'C:\\project' });
+    await yolo({ prompt: 'test' }, context, mockConfig);
+
+    const infoMessages = vi
+      .mocked(context.logger.info)
+      .mock.calls.map(([message]) => message);
+    const labels = infoMessages.filter((message) =>
+      message.startsWith('Phase ')
+    );
+    expect(labels).toEqual([
+      'Phase 1/3: Generating implementation plan...',
+      'Phase 2/3: Generating task list...',
+      'Phase 3/3: Running implementation loop...',
+    ]);
+
+    const planOrder = vi.mocked(planModule.plan).mock.invocationCallOrder[0];
+    const taskOrder = vi.mocked(taskModule.task).mock.invocationCallOrder[0];
+    const runOrder = vi.mocked(runModule.run).mock.invocationCallOrder[0];
+    expect(planOrder).toBeLessThan(taskOrder);
+    expect(taskOrder).toBeLessThan(runOrder);
+  });
+
+  it('logs success only for completed phases when task phase fails', async () => {
+    const context = createMockContext({ mockConfig, cwd: 'C:\\project' });
+    vi.spyOn(taskModule, 'task').mockResolvedValueOnce({
+      success: false,
+      exitCode: 1,
+      error: 'task failed exactly',
+    });
+
+    await yolo({ prompt: 'test' }, context, mockConfig);
+
+    const successMessages = vi
+      .mocked(context.logger.success)
+      .mock.calls.map(([message]) => message);
+    expect(successMessages).toContain('Plan generation complete');
+    expect(successMessages).not.toContain('Task generation complete');
+    expect(successMessages).not.toContain('Implementation complete');
   });
 
   it('halts pipeline when plan fails due to missing input file', async () => {

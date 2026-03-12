@@ -6,14 +6,14 @@
  * Walks up directories to find config file (similar to ESLint/Prettier).
  */
 
-import { existsSync, readFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
+import { NodeFileSystem } from '@/adapters/node-filesystem.js';
 import { CONFIG_FILENAME, DEFAULT_PATHS } from '@/constants.js';
 import { createError } from '@/errors.js';
-import type { IProcess } from '@/interfaces.js';
+import type { IFileSystem, ILogger, IProcess } from '@/interfaces/index.js';
 import type { SpeciConfig } from '@/types.js';
 import { ConfigValidator } from '@/validation/index.js';
-import { log } from '@/utils/logger.js';
+import { log } from '@/utils/infrastructure/logger.js';
 import { applyEnvOverrides } from './env-overrides.js';
 import { resolveTemplatesDir, resetTemplatesCache } from './path-resolver.js';
 
@@ -39,18 +39,24 @@ let cachedDefaults: SpeciConfig | null = null;
  * console.log(defaults.paths.progress); // 'docs/PROGRESS.md'
  * ```
  */
-export function getDefaults(): SpeciConfig {
+export function getDefaults(
+  fs: IFileSystem = new NodeFileSystem()
+): SpeciConfig {
   if (cachedDefaults) {
     return cachedDefaults;
   }
 
   const templatePath = join(resolveTemplatesDir(), CONFIG_FILENAME);
 
-  if (existsSync(templatePath)) {
-    const content = readFileSync(templatePath, 'utf-8');
+  if (fs.existsSync(templatePath)) {
+    const content = fs.readFileSync(templatePath, 'utf-8');
     const parsed: unknown = JSON.parse(content);
+    if (!isPlainObject(parsed)) {
+      throw new Error(
+        'Bundled template speci.config.json has invalid structure'
+      );
+    }
     if (
-      !isPlainObject(parsed) ||
       typeof parsed.version !== 'string' ||
       !isPlainObject(parsed.paths) ||
       !isPlainObject(parsed.copilot) ||
@@ -61,7 +67,17 @@ export function getDefaults(): SpeciConfig {
         'Bundled template speci.config.json has invalid structure'
       );
     }
-    cachedDefaults = parsed as unknown as SpeciConfig;
+
+    const result = new ConfigValidator(
+      parsed as Partial<SpeciConfig>
+    ).validate();
+    if (!result.success) {
+      throw new Error(
+        `Bundled template speci.config.json has invalid structure: field '${result.error.field}' - ${result.error.message}`
+      );
+    }
+
+    cachedDefaults = result.value;
     return cachedDefaults;
   }
 
@@ -104,19 +120,24 @@ export function getDefaults(): SpeciConfig {
  * @param startDir - Starting directory
  * @returns Path to config file or undefined if not found
  */
-export function findConfigFile(startDir: string): string | undefined {
+export function findConfigFile(
+  startDir: string,
+  fs: IFileSystem,
+  logger?: ILogger
+): string | undefined {
+  const resolvedLogger = logger ?? log;
   let currentDir = startDir;
 
   while (true) {
     const configPath = join(currentDir, CONFIG_FILENAME);
-    if (existsSync(configPath)) {
-      log.debug(`Found config file at ${configPath}`);
+    if (fs.existsSync(configPath)) {
+      resolvedLogger.debug(`Found config file at ${configPath}`);
       return configPath;
     }
 
     const parentDir = dirname(currentDir);
     if (parentDir === currentDir) {
-      log.debug('No config file found, using defaults');
+      resolvedLogger.debug('No config file found, using defaults');
       return undefined;
     }
     currentDir = parentDir;
@@ -209,8 +230,11 @@ export function deepMerge<T extends object>(target: T, source: Partial<T>): T {
  * const validated = validateConfig({ paths: { progress: 'custom.md' } });
  * ```
  */
-export function validateConfig(rawConfig: Partial<SpeciConfig>): SpeciConfig {
-  const defaults = getDefaults();
+export function validateConfig(
+  rawConfig: Partial<SpeciConfig>,
+  fs: IFileSystem = new NodeFileSystem()
+): SpeciConfig {
+  const defaults = getDefaults(fs);
   const config = deepMerge(defaults, rawConfig);
 
   // Use ConfigValidator for validation
@@ -282,30 +306,34 @@ export function validateConfig(rawConfig: Partial<SpeciConfig>): SpeciConfig {
 export function loadConfig(options?: {
   forceRefresh?: boolean;
   proc?: IProcess;
+  fs?: IFileSystem;
+  logger?: ILogger;
 }): SpeciConfig {
+  const resolvedLogger = options?.logger ?? log;
   // Check cache unless forceRefresh requested
   if (cachedConfig && !options?.forceRefresh) {
-    log.debug('Config cache hit');
+    resolvedLogger.debug('Config cache hit');
     return cachedConfig;
   }
 
   const startTime = performance.now();
   const proc = options?.proc ?? process;
+  const resolvedFs = options?.fs ?? new NodeFileSystem();
 
   // Find config file
-  const configPath = findConfigFile(proc.cwd());
+  const configPath = findConfigFile(proc.cwd(), resolvedFs, resolvedLogger);
 
   let rawConfig: Partial<SpeciConfig> = {};
 
   if (configPath) {
     try {
-      const fileContent = readFileSync(configPath, 'utf-8');
+      const fileContent = resolvedFs.readFileSync(configPath, 'utf-8');
       const parsedRaw: unknown = JSON.parse(fileContent);
       if (!isPlainObject(parsedRaw)) {
         throw createError('ERR-INP-03');
       }
       rawConfig = parsedRaw as Partial<SpeciConfig>;
-      log.debug(`Loaded config from ${configPath}`);
+      resolvedLogger.debug(`Loaded config from ${configPath}`);
     } catch (error) {
       if (error instanceof SyntaxError) {
         throw createError('ERR-INP-03');
@@ -315,10 +343,10 @@ export function loadConfig(options?: {
   }
 
   // Validate and merge with defaults
-  const config = validateConfig(rawConfig);
+  const config = validateConfig(rawConfig, resolvedFs);
 
   // Apply environment variable overrides
-  applyEnvOverrides(config, proc);
+  applyEnvOverrides(config, proc, resolvedLogger);
 
   // Deep freeze for immutability
   const frozenConfig = deepFreeze(config);
@@ -327,7 +355,9 @@ export function loadConfig(options?: {
   cachedConfig = frozenConfig;
 
   const endTime = performance.now();
-  log.debug(`Config loaded in ${(endTime - startTime).toFixed(2)}ms`);
+  resolvedLogger.debug(
+    `Config loaded in ${(endTime - startTime).toFixed(2)}ms`
+  );
 
   return frozenConfig;
 }

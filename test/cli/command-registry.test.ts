@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { Command } from 'commander';
 import type { EventEmitter } from 'node:events';
-import type { CommandContext } from '../../lib/interfaces.js';
+import type { CommandContext } from '../../lib/interfaces/index.js';
 import type { SpeciConfig } from '../../lib/types.js';
 import { createMockContext } from '../../lib/adapters/test-context.js';
 
@@ -285,6 +285,142 @@ describe('CommandRegistry', () => {
     });
   });
 
+  describe('lazy config loading contract (TASK_020)', () => {
+    it('does not call configLoader.load for --help and --version', async () => {
+      const loadSpy = vi
+        .mocked(mockContext.configLoader.load)
+        .mockResolvedValue(mockConfig);
+      const { CommandRegistry } =
+        await import('../../lib/cli/command-registry.js');
+      const registry = new CommandRegistry(mockContext);
+
+      await expect(registry.execute(['--help'])).rejects.toThrow();
+      expect(loadSpy).toHaveBeenCalledTimes(0);
+
+      await expect(registry.execute(['--version'])).rejects.toThrow();
+      expect(loadSpy).toHaveBeenCalledTimes(0);
+    });
+
+    it('does not call configLoader.load for init', async () => {
+      vi.resetModules();
+      const initMock = vi
+        .fn()
+        .mockResolvedValue({ success: true, exitCode: 0 });
+      vi.doMock('@/commands/init.js', () => ({ init: initMock }));
+
+      const loadSpy = vi
+        .mocked(mockContext.configLoader.load)
+        .mockResolvedValue(mockConfig);
+      const { CommandRegistry } =
+        await import('../../lib/cli/command-registry.js');
+      const registry = new CommandRegistry(mockContext);
+
+      await registry.execute(['init']);
+
+      expect(loadSpy).toHaveBeenCalledTimes(0);
+      expect(initMock).toHaveBeenCalledWith(
+        expect.any(Object),
+        mockContext,
+        undefined
+      );
+      vi.doUnmock('@/commands/init.js');
+    });
+
+    it('calls configLoader.load once for each config-consuming command without preloaded config', async () => {
+      vi.resetModules();
+      const createLazyCommandMock = () =>
+        vi.fn(
+          async (
+            _options: Record<string, unknown>,
+            context: CommandContext,
+            config?: SpeciConfig
+          ) => {
+            const loadedConfig = config ?? (await context.configLoader.load());
+            expect(loadedConfig).toBeDefined();
+            return { success: true, exitCode: 0 };
+          }
+        );
+
+      vi.doMock('@/commands/run.js', () => ({ run: createLazyCommandMock() }));
+      vi.doMock('@/commands/status.js', () => ({
+        status: createLazyCommandMock(),
+      }));
+      vi.doMock('@/commands/clean.js', () => ({
+        clean: createLazyCommandMock(),
+      }));
+      vi.doMock('@/commands/plan.js', () => ({
+        plan: createLazyCommandMock(),
+      }));
+      vi.doMock('@/commands/task.js', () => ({
+        task: createLazyCommandMock(),
+      }));
+      vi.doMock('@/commands/refactor.js', () => ({
+        refactor: createLazyCommandMock(),
+      }));
+      vi.doMock('@/commands/yolo.js', () => ({
+        yolo: createLazyCommandMock(),
+      }));
+      vi.doMock('@/commands/init.js', () => ({
+        init: vi.fn().mockResolvedValue({ success: true, exitCode: 0 }),
+      }));
+
+      const loadSpy = vi
+        .mocked(mockContext.configLoader.load)
+        .mockResolvedValue(mockConfig);
+      const { CommandRegistry } =
+        await import('../../lib/cli/command-registry.js');
+      const registry = new CommandRegistry(mockContext);
+
+      const commandArgs = [
+        ['run'],
+        ['status', '--once'],
+        ['clean'],
+        ['plan'],
+        ['task'],
+        ['refactor'],
+        ['yolo'],
+      ];
+
+      for (const args of commandArgs) {
+        loadSpy.mockClear();
+        await registry.execute(args);
+        expect(loadSpy).toHaveBeenCalledTimes(1);
+      }
+
+      vi.doUnmock('@/commands/run.js');
+      vi.doUnmock('@/commands/status.js');
+      vi.doUnmock('@/commands/clean.js');
+      vi.doUnmock('@/commands/plan.js');
+      vi.doUnmock('@/commands/task.js');
+      vi.doUnmock('@/commands/refactor.js');
+      vi.doUnmock('@/commands/yolo.js');
+      vi.doUnmock('@/commands/init.js');
+    });
+
+    it('uses preloaded config without loading from configLoader', async () => {
+      vi.resetModules();
+      const runMock = vi.fn().mockResolvedValue({ success: true, exitCode: 0 });
+      vi.doMock('@/commands/run.js', () => ({ run: runMock }));
+
+      const loadSpy = vi
+        .mocked(mockContext.configLoader.load)
+        .mockResolvedValue(mockConfig);
+      const { CommandRegistry } =
+        await import('../../lib/cli/command-registry.js');
+      const registry = new CommandRegistry(mockContext, mockConfig);
+
+      await registry.execute(['run']);
+
+      expect(loadSpy).toHaveBeenCalledTimes(0);
+      expect(runMock).toHaveBeenCalledWith(
+        expect.any(Object),
+        mockContext,
+        mockConfig
+      );
+      vi.doUnmock('@/commands/run.js');
+    });
+  });
+
   describe('unknown command handler', () => {
     it('should register unknown command handler', async () => {
       const { CommandRegistry } =
@@ -304,7 +440,7 @@ describe('CommandRegistry', () => {
     it('should have access to findSimilarCommands function', async () => {
       // Verify the suggest module is available
       const { findSimilarCommands } =
-        await import('../../lib/utils/suggest.js');
+        await import('../../lib/utils/helpers/suggest.js');
 
       const suggestions = findSimilarCommands('runn', ['run', 'init', 'plan']);
       expect(suggestions).toContain('run');
@@ -446,7 +582,8 @@ describe('CommandRegistry', () => {
 
     it('handles PreflightError thrown by clean command action', async () => {
       vi.resetModules();
-      const { PreflightError } = await import('../../lib/utils/preflight.js');
+      const { PreflightError } =
+        await import('../../lib/utils/helpers/preflight.js');
       const preflightError = new PreflightError(
         'Configuration not found',
         'No speci.config.json found',
@@ -455,7 +592,7 @@ describe('CommandRegistry', () => {
       const cleanMock = vi.fn().mockRejectedValue(preflightError);
       const exitWithCleanupMock = vi.fn(async () => undefined as never);
       vi.doMock('@/commands/clean.js', () => ({ clean: cleanMock }));
-      vi.doMock('@/utils/exit.js', () => ({
+      vi.doMock('@/utils/infrastructure/exit.js', () => ({
         exitWithCleanup: exitWithCleanupMock,
       }));
 
@@ -477,7 +614,7 @@ describe('CommandRegistry', () => {
       expect(exitWithCleanupMock).toHaveBeenCalledWith(2);
 
       vi.doUnmock('@/commands/clean.js');
-      vi.doUnmock('@/utils/exit.js');
+      vi.doUnmock('@/utils/infrastructure/exit.js');
     });
 
     it('rethrows non-Preflight errors thrown by clean command action', async () => {
@@ -486,7 +623,7 @@ describe('CommandRegistry', () => {
       const cleanMock = vi.fn().mockRejectedValue(genericError);
       const exitWithCleanupMock = vi.fn(async () => undefined as never);
       vi.doMock('@/commands/clean.js', () => ({ clean: cleanMock }));
-      vi.doMock('@/utils/exit.js', () => ({
+      vi.doMock('@/utils/infrastructure/exit.js', () => ({
         exitWithCleanup: exitWithCleanupMock,
       }));
 
@@ -508,14 +645,15 @@ describe('CommandRegistry', () => {
       expect(exitWithCleanupMock).not.toHaveBeenCalled();
 
       vi.doUnmock('@/commands/clean.js');
-      vi.doUnmock('@/utils/exit.js');
+      vi.doUnmock('@/utils/infrastructure/exit.js');
     });
 
     describe('handlePreflightError refactor (TASK_003)', () => {
       it('returns handled=true with exitCode for PreflightError', async () => {
         const { CommandRegistry } =
           await import('../../lib/cli/command-registry.js');
-        const { PreflightError } = await import('../../lib/utils/preflight.js');
+        const { PreflightError } =
+          await import('../../lib/utils/helpers/preflight.js');
         const registry = new CommandRegistry(mockContext, mockConfig);
         const preflightError = new PreflightError(
           'Configuration not found',
@@ -576,7 +714,7 @@ describe('CommandRegistry', () => {
               commandFn: (
                 options: T,
                 context: CommandContext,
-                config: SpeciConfig
+                config?: SpeciConfig
               ) => Promise<{ success: boolean; exitCode: number }>
             ) => (options: T, command: Command) => Promise<void>;
           }
@@ -591,16 +729,16 @@ describe('CommandRegistry', () => {
         commandFn: (
           options: Record<string, unknown>,
           context: CommandContext,
-          config: SpeciConfig
+          config?: SpeciConfig
         ) => Promise<{ success: boolean; exitCode: number }>
       ) => {
         vi.resetModules();
         const sleepAfterCommandMock = vi.fn().mockResolvedValue(undefined);
         const exitWithCleanupMock = vi.fn(async () => undefined as never);
-        vi.doMock('@/utils/sleep.js', () => ({
+        vi.doMock('@/utils/infrastructure/sleep.js', () => ({
           sleepAfterCommand: sleepAfterCommandMock,
         }));
-        vi.doMock('@/utils/exit.js', () => ({
+        vi.doMock('@/utils/infrastructure/exit.js', () => ({
           exitWithCleanup: exitWithCleanupMock,
         }));
         const { CommandRegistry } =
@@ -612,7 +750,7 @@ describe('CommandRegistry', () => {
               fn: (
                 options: Record<string, unknown>,
                 context: CommandContext,
-                config: SpeciConfig
+                config?: SpeciConfig
               ) => Promise<{ success: boolean; exitCode: number }>
             ) => (
               options: Record<string, unknown>,
@@ -621,8 +759,8 @@ describe('CommandRegistry', () => {
           }
         ).makeAction(commandFn);
         const cleanup = () => {
-          vi.doUnmock('@/utils/sleep.js');
-          vi.doUnmock('@/utils/exit.js');
+          vi.doUnmock('@/utils/infrastructure/sleep.js');
+          vi.doUnmock('@/utils/infrastructure/exit.js');
         };
         return { action, sleepAfterCommandMock, exitWithCleanupMock, cleanup };
       };
@@ -807,13 +945,14 @@ describe('CommandRegistry', () => {
         vi.resetModules();
         const sleepAfterCommandMock = vi.fn().mockResolvedValue(undefined);
         const exitWithCleanupMock = vi.fn(async () => undefined as never);
-        vi.doMock('@/utils/sleep.js', () => ({
+        vi.doMock('@/utils/infrastructure/sleep.js', () => ({
           sleepAfterCommand: sleepAfterCommandMock,
         }));
-        vi.doMock('@/utils/exit.js', () => ({
+        vi.doMock('@/utils/infrastructure/exit.js', () => ({
           exitWithCleanup: exitWithCleanupMock,
         }));
-        const { PreflightError } = await import('../../lib/utils/preflight.js');
+        const { PreflightError } =
+          await import('../../lib/utils/helpers/preflight.js');
         const { CommandRegistry } =
           await import('../../lib/cli/command-registry.js');
         const registry = new CommandRegistry(mockContext, mockConfig);
@@ -823,7 +962,7 @@ describe('CommandRegistry', () => {
               fn: (
                 options: Record<string, unknown>,
                 context: CommandContext,
-                config: SpeciConfig
+                config?: SpeciConfig
               ) => Promise<{ success: boolean; exitCode: number }>
             ) => (
               options: Record<string, unknown>,
@@ -844,8 +983,8 @@ describe('CommandRegistry', () => {
         expect(sleepAfterCommandMock.mock.invocationCallOrder[0]).toBeLessThan(
           exitWithCleanupMock.mock.invocationCallOrder[0]
         );
-        vi.doUnmock('@/utils/sleep.js');
-        vi.doUnmock('@/utils/exit.js');
+        vi.doUnmock('@/utils/infrastructure/sleep.js');
+        vi.doUnmock('@/utils/infrastructure/exit.js');
       });
 
       it('IT-13: triggers sleep for instant successful command', async () => {
@@ -971,13 +1110,14 @@ describe('CommandRegistry', () => {
         vi.resetModules();
         const sleepAfterCommandMock = vi.fn().mockResolvedValue(undefined);
         const exitWithCleanupMock = vi.fn(async () => undefined as never);
-        vi.doMock('@/utils/sleep.js', () => ({
+        vi.doMock('@/utils/infrastructure/sleep.js', () => ({
           sleepAfterCommand: sleepAfterCommandMock,
         }));
-        vi.doMock('@/utils/exit.js', () => ({
+        vi.doMock('@/utils/infrastructure/exit.js', () => ({
           exitWithCleanup: exitWithCleanupMock,
         }));
-        const { PreflightError } = await import('../../lib/utils/preflight.js');
+        const { PreflightError } =
+          await import('../../lib/utils/helpers/preflight.js');
         const { CommandRegistry } =
           await import('../../lib/cli/command-registry.js');
         const registry = new CommandRegistry(mockContext, mockConfig);
@@ -987,7 +1127,7 @@ describe('CommandRegistry', () => {
               fn: (
                 options: Record<string, unknown>,
                 context: CommandContext,
-                config: SpeciConfig
+                config?: SpeciConfig
               ) => Promise<{ success: boolean; exitCode: number }>
             ) => (
               options: Record<string, unknown>,
@@ -1007,8 +1147,8 @@ describe('CommandRegistry', () => {
         expect(sleepAfterCommandMock.mock.invocationCallOrder[0]).toBeLessThan(
           exitWithCleanupMock.mock.invocationCallOrder[0]
         );
-        vi.doUnmock('@/utils/sleep.js');
-        vi.doUnmock('@/utils/exit.js');
+        vi.doUnmock('@/utils/infrastructure/sleep.js');
+        vi.doUnmock('@/utils/infrastructure/exit.js');
       });
 
       it('IT-21: reads sleepAfter from command.opts(), not options object', async () => {
@@ -1052,6 +1192,18 @@ describe('CommandRegistry', () => {
       ]);
 
       expect(mockContext.logger.setVerbose).toHaveBeenCalledWith(true);
+      expect(mockContext.logger.debug).toHaveBeenCalledWith(
+        'Verbose mode enabled'
+      );
+      expect(mockContext.logger.debug).toHaveBeenCalledWith(
+        `Node version: ${mockContext.process.version}`
+      );
+      expect(mockContext.logger.debug).toHaveBeenCalledWith(
+        `Platform: ${mockContext.process.platform}`
+      );
+      expect(mockContext.logger.debug).toHaveBeenCalledWith(
+        `Arguments: ${mockContext.process.argv.join(' ')}`
+      );
 
       vi.unmock('../../lib/commands/status.js');
     });

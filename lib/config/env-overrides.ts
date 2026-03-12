@@ -1,13 +1,13 @@
-import type { IProcess } from '@/interfaces.js';
+import type { ILogger, IProcess } from '@/interfaces/index.js';
 import type { SpeciConfig } from '@/types.js';
-import { log } from '@/utils/logger.js';
+import { log } from '@/utils/infrastructure/logger.js';
 
 /**
  * Environment variable mapping configuration
  */
 export interface EnvMapping {
   envVar: string;
-  configPath: string[];
+  configPath: readonly string[];
   type: 'string' | 'number' | 'boolean' | 'enum';
   enumValues?: string[];
   /** Minimum allowed value for numeric types (default: 0) */
@@ -17,7 +17,7 @@ export interface EnvMapping {
 /**
  * Environment variable to config path mappings
  */
-export const ENV_MAPPINGS: EnvMapping[] = [
+export const ENV_MAPPINGS = [
   // Path overrides
   { envVar: 'SPECI_LOG_PATH', configPath: ['paths', 'logs'], type: 'string' },
   { envVar: 'SPECI_LOGS_PATH', configPath: ['paths', 'logs'], type: 'string' },
@@ -54,12 +54,54 @@ export const ENV_MAPPINGS: EnvMapping[] = [
     type: 'enum',
     enumValues: ['allow-all', 'yolo', 'strict', 'none'],
   },
-];
+] as const satisfies readonly EnvMapping[];
 
 /**
  * Valid SPECI_* environment variable names
  */
 export const VALID_ENV_VARS = ENV_MAPPINGS.map((m) => m.envVar);
+
+type KnownEnvVar = (typeof ENV_MAPPINGS)[number]['envVar'];
+
+function assertNever(value: never): never {
+  throw new Error(`Unhandled config path: ${String(value)}`);
+}
+
+function applyMapping(
+  config: SpeciConfig,
+  mapping: (typeof ENV_MAPPINGS)[number],
+  value: unknown
+): void {
+  const key: KnownEnvVar = mapping.envVar;
+
+  switch (key) {
+    case 'SPECI_LOG_PATH':
+    case 'SPECI_LOGS_PATH':
+      config.paths.logs = value as string;
+      return;
+    case 'SPECI_PROGRESS_PATH':
+      config.paths.progress = value as string;
+      return;
+    case 'SPECI_LOCK_PATH':
+      config.paths.lock = value as string;
+      return;
+    case 'SPECI_TASKS_PATH':
+      config.paths.tasks = value as string;
+      return;
+    case 'SPECI_MAX_ITERATIONS':
+      config.loop.maxIterations = value as number;
+      return;
+    case 'SPECI_MAX_FIX_ATTEMPTS':
+      config.gate.maxFixAttempts = value as number;
+      return;
+    case 'SPECI_COPILOT_PERMISSIONS':
+      config.copilot.permissions =
+        value as SpeciConfig['copilot']['permissions'];
+      return;
+    default:
+      assertNever(key);
+  }
+}
 
 /**
  * Calculate Levenshtein distance between two strings
@@ -117,22 +159,23 @@ function isPlainObject(value: unknown): value is Record<string, unknown> {
  * Detect potential typos in SPECI_* environment variables
  * @param proc - Process instance to read environment from
  */
-export function detectEnvTypos(proc: IProcess): void {
+export function detectEnvTypos(proc: IProcess, logger?: ILogger): void {
+  const resolvedLogger = logger ?? log;
   const speciEnvVars = Object.keys(proc.env).filter((key) =>
     key.startsWith('SPECI_')
   );
 
   for (const envVar of speciEnvVars) {
-    if (!VALID_ENV_VARS.includes(envVar)) {
+    if (!VALID_ENV_VARS.some((validEnvVar) => validEnvVar === envVar)) {
       const suggestions = findSimilarEnvVars(envVar, VALID_ENV_VARS);
 
       if (suggestions.length > 0) {
-        log.warn(
+        resolvedLogger.warn(
           `Warning: Unknown environment variable "${envVar}". ` +
             `Did you mean "${suggestions[0]}"?`
         );
       } else {
-        log.warn(
+        resolvedLogger.warn(
           `Warning: Unknown environment variable "${envVar}". ` +
             `Valid SPECI_* variables: ${VALID_ENV_VARS.join(', ')}`
         );
@@ -226,14 +269,14 @@ export function setNestedValue(
  * @param config - Config object to modify
  * @param proc - Process instance to read environment from
  */
-export function applyEnvOverrides(config: SpeciConfig, proc: IProcess): void {
+export function applyEnvOverrides(
+  config: SpeciConfig,
+  proc: IProcess,
+  logger?: ILogger
+): void {
+  const resolvedLogger = logger ?? log;
   // Check for potential typos
-  detectEnvTypos(proc);
-
-  // Cast once at the boundary where we need dynamic property access
-  // This single cast is necessary to allow setNestedValue to work with
-  // the specific SpeciConfig interface using dynamic path-based access
-  const configRecord = config as unknown as Record<string, unknown>;
+  detectEnvTypos(proc, resolvedLogger);
 
   for (const mapping of ENV_MAPPINGS) {
     const value = proc.env[mapping.envVar];
@@ -245,13 +288,15 @@ export function applyEnvOverrides(config: SpeciConfig, proc: IProcess): void {
     const parsed = parseEnvValue(value, mapping);
 
     if (parsed.valid) {
-      setNestedValue(configRecord, mapping.configPath, parsed.value);
+      applyMapping(config, mapping, parsed.value);
 
-      log.debug(`Applying env override: ${mapping.envVar}=${parsed.value}`);
+      resolvedLogger.debug(
+        `Applying env override: ${mapping.envVar}=${parsed.value}`
+      );
     } else {
-      log.warn(
+      resolvedLogger.warn(
         `Warning: Invalid value for ${mapping.envVar}: "${value}". ` +
-          `Expected ${mapping.type}${mapping.enumValues ? ` (${mapping.enumValues.join('|')})` : ''}. ` +
+          `Expected ${mapping.type}${'enumValues' in mapping && mapping.enumValues ? ` (${mapping.enumValues.join('|')})` : ''}. ` +
           `Using config/default value instead.`
       );
     }

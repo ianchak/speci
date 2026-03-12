@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { NodeStateReader } from '@/adapters/node-state-reader.js';
+import { createMockContext } from '@/adapters/test-context.js';
 import type {
   CurrentTask,
   GateFailureInfo,
@@ -12,6 +13,9 @@ import { STATE } from '@/types.js';
 import * as stateModule from '@/state.js';
 
 vi.mock('@/state.js', () => ({
+  StateCache: class {
+    reset(): void {}
+  },
   getState: vi.fn(),
   getTaskStats: vi.fn(),
   getCurrentTask: vi.fn(),
@@ -24,7 +28,8 @@ describe('NodeStateReader', () => {
     paths: { progress: 'docs/PROGRESS.md' },
   } as unknown as SpeciConfig;
   const options: StateOptions = { forceRefresh: true };
-  const adapter = new NodeStateReader();
+  const mockFs = createMockContext().fs;
+  const adapter = new NodeStateReader(mockFs);
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -35,7 +40,14 @@ describe('NodeStateReader', () => {
 
     const result = await adapter.getState(config, options);
 
-    expect(stateModule.getState).toHaveBeenCalledWith(config, options);
+    expect(stateModule.getState).toHaveBeenCalledWith(
+      config,
+      expect.objectContaining({
+        ...options,
+        fs: mockFs,
+        cache: expect.any(Object),
+      })
+    );
     expect(result).toBe(STATE.WORK_LEFT);
   });
 
@@ -44,7 +56,13 @@ describe('NodeStateReader', () => {
 
     await adapter.getState(config);
 
-    expect(stateModule.getState).toHaveBeenCalledWith(config, undefined);
+    expect(stateModule.getState).toHaveBeenCalledWith(
+      config,
+      expect.objectContaining({
+        fs: mockFs,
+        cache: expect.any(Object),
+      })
+    );
   });
 
   it('delegates getTaskStats and forwards options', async () => {
@@ -59,7 +77,14 @@ describe('NodeStateReader', () => {
 
     const result = await adapter.getTaskStats(config, options);
 
-    expect(stateModule.getTaskStats).toHaveBeenCalledWith(config, options);
+    expect(stateModule.getTaskStats).toHaveBeenCalledWith(
+      config,
+      expect.objectContaining({
+        ...options,
+        fs: mockFs,
+        cache: expect.any(Object),
+      })
+    );
     expect(result).toBe(stats);
   });
 
@@ -73,7 +98,14 @@ describe('NodeStateReader', () => {
 
     const result = await adapter.getCurrentTask(config, options);
 
-    expect(stateModule.getCurrentTask).toHaveBeenCalledWith(config, options);
+    expect(stateModule.getCurrentTask).toHaveBeenCalledWith(
+      config,
+      expect.objectContaining({
+        ...options,
+        fs: mockFs,
+        cache: expect.any(Object),
+      })
+    );
     expect(result).toBe(task);
   });
 
@@ -95,7 +127,8 @@ describe('NodeStateReader', () => {
 
     expect(stateModule.writeFailureNotes).toHaveBeenCalledWith(
       config,
-      gateFailure
+      gateFailure,
+      { fs: mockFs }
     );
   });
 
@@ -108,7 +141,7 @@ describe('NodeStateReader', () => {
         completedTasks: 2,
         mvtId: 'MVT_M1',
         mvtStatus: 'NOT STARTED',
-        mvtReady: true,
+        isMvtReady: true,
       },
     ];
     vi.mocked(stateModule.getMilestonesMvtStatus).mockResolvedValue(milestones);
@@ -117,7 +150,11 @@ describe('NodeStateReader', () => {
 
     expect(stateModule.getMilestonesMvtStatus).toHaveBeenCalledWith(
       config,
-      options
+      expect.objectContaining({
+        ...options,
+        fs: mockFs,
+        cache: expect.any(Object),
+      })
     );
     expect(result).toBe(milestones);
   });
@@ -129,7 +166,31 @@ describe('NodeStateReader', () => {
 
     expect(stateModule.getMilestonesMvtStatus).toHaveBeenCalledWith(
       config,
-      undefined
+      expect.objectContaining({
+        fs: mockFs,
+        cache: expect.any(Object),
+      })
     );
+  });
+
+  it('uses a fresh cache per NodeStateReader instance', async () => {
+    vi.mocked(stateModule.getState).mockResolvedValue(STATE.WORK_LEFT);
+    const adapterA = new NodeStateReader(mockFs);
+    const adapterB = new NodeStateReader(mockFs);
+
+    await adapterA.getState(config);
+    await adapterB.getState(config);
+
+    const optionsA = vi.mocked(stateModule.getState).mock.calls[0]?.[1] as
+      | (StateOptions & { cache?: unknown })
+      | undefined;
+    const optionsB = vi.mocked(stateModule.getState).mock.calls[1]?.[1] as
+      | (StateOptions & { cache?: unknown })
+      | undefined;
+    const cacheA = optionsA?.cache;
+    const cacheB = optionsB?.cache;
+    expect(cacheA).toBeDefined();
+    expect(cacheB).toBeDefined();
+    expect(cacheA).not.toBe(cacheB);
   });
 });

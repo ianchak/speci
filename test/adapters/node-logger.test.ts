@@ -1,24 +1,25 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { NodeLogger } from '@/adapters/node-logger.js';
-import type { IProcess } from '@/interfaces.js';
-import * as loggerModule from '@/utils/logger.js';
+import type { IProcess } from '@/interfaces/index.js';
+import * as loggerModule from '@/utils/infrastructure/logger.js';
 
-vi.mock('@/utils/logger.js', () => ({
-  log: {
-    info: vi.fn(),
-    error: vi.fn(),
-    warn: vi.fn(),
-    success: vi.fn(),
-    debug: vi.fn(),
-    muted: vi.fn(),
-    raw: vi.fn(),
-    infoPlain: vi.fn(),
-    warnPlain: vi.fn(),
-    errorPlain: vi.fn(),
-    successPlain: vi.fn(),
-  },
-  setLoggerProcess: vi.fn(),
+const mockCreatedLogger = {
+  info: vi.fn(),
+  error: vi.fn(),
+  warn: vi.fn(),
+  success: vi.fn(),
+  debug: vi.fn(),
+  muted: vi.fn(),
+  raw: vi.fn(),
+  infoPlain: vi.fn(),
+  warnPlain: vi.fn(),
+  errorPlain: vi.fn(),
+  successPlain: vi.fn(),
   setVerbose: vi.fn(),
+};
+
+vi.mock('@/utils/infrastructure/logger.js', () => ({
+  createLogger: vi.fn(() => mockCreatedLogger),
 }));
 
 function createMockProcess(): IProcess {
@@ -30,9 +31,12 @@ function createMockProcess(): IProcess {
     },
     pid: 123,
     platform: 'win32',
+    version: 'v22.0.0',
+    argv: ['node', 'speci'],
     stdout: process.stdout,
     stdin: process.stdin,
     on: vi.fn(),
+    off: vi.fn(),
   };
 }
 
@@ -44,81 +48,83 @@ describe('NodeLogger', () => {
     mockProcess = createMockProcess();
   });
 
-  it('calls setLoggerProcess in constructor', () => {
+  it('creates a process-bound logger in constructor', () => {
     new NodeLogger(mockProcess);
 
-    expect(loggerModule.setLoggerProcess).toHaveBeenCalledWith(mockProcess);
+    expect(loggerModule.createLogger).toHaveBeenCalledWith(mockProcess);
   });
 
   it('delegates info', () => {
     const logger = new NodeLogger(mockProcess);
     logger.info('info');
-    expect(loggerModule.log.info).toHaveBeenCalledWith('info');
+    expect(mockCreatedLogger.info).toHaveBeenCalledWith('info');
   });
 
   it('delegates error', () => {
     const logger = new NodeLogger(mockProcess);
     logger.error('error');
-    expect(loggerModule.log.error).toHaveBeenCalledWith('error');
+    expect(mockCreatedLogger.error).toHaveBeenCalledWith('error');
   });
 
   it('delegates warn', () => {
     const logger = new NodeLogger(mockProcess);
     logger.warn('warn');
-    expect(loggerModule.log.warn).toHaveBeenCalledWith('warn');
+    expect(mockCreatedLogger.warn).toHaveBeenCalledWith('warn');
   });
 
   it('delegates success', () => {
     const logger = new NodeLogger(mockProcess);
     logger.success('success');
-    expect(loggerModule.log.success).toHaveBeenCalledWith('success');
+    expect(mockCreatedLogger.success).toHaveBeenCalledWith('success');
   });
 
   it('delegates debug', () => {
     const logger = new NodeLogger(mockProcess);
     logger.debug('debug');
-    expect(loggerModule.log.debug).toHaveBeenCalledWith('debug');
+    expect(mockCreatedLogger.debug).toHaveBeenCalledWith('debug');
   });
 
   it('delegates muted', () => {
     const logger = new NodeLogger(mockProcess);
     logger.muted('muted');
-    expect(loggerModule.log.muted).toHaveBeenCalledWith('muted');
+    expect(mockCreatedLogger.muted).toHaveBeenCalledWith('muted');
   });
 
   it('delegates raw', () => {
     const logger = new NodeLogger(mockProcess);
     logger.raw('raw');
-    expect(loggerModule.log.raw).toHaveBeenCalledWith('raw');
+    expect(mockCreatedLogger.raw).toHaveBeenCalledWith('raw');
   });
 
   it('delegates infoPlain', () => {
     const logger = new NodeLogger(mockProcess);
     logger.infoPlain('plain-info');
-    expect(loggerModule.log.infoPlain).toHaveBeenCalledWith('plain-info');
+    expect(mockCreatedLogger.infoPlain).toHaveBeenCalledWith('plain-info');
   });
 
   it('delegates warnPlain', () => {
     const logger = new NodeLogger(mockProcess);
     logger.warnPlain('plain-warn');
-    expect(loggerModule.log.warnPlain).toHaveBeenCalledWith('plain-warn');
+    expect(mockCreatedLogger.warnPlain).toHaveBeenCalledWith('plain-warn');
   });
 
   it('delegates errorPlain', () => {
     const logger = new NodeLogger(mockProcess);
     logger.errorPlain('plain-error');
-    expect(loggerModule.log.errorPlain).toHaveBeenCalledWith('plain-error');
+    expect(mockCreatedLogger.errorPlain).toHaveBeenCalledWith('plain-error');
   });
 
   it('delegates successPlain', () => {
     const logger = new NodeLogger(mockProcess);
     logger.successPlain('plain-success');
-    expect(loggerModule.log.successPlain).toHaveBeenCalledWith('plain-success');
+    expect(mockCreatedLogger.successPlain).toHaveBeenCalledWith(
+      'plain-success'
+    );
   });
 
   it('delegates setVerbose', () => {
     const logger = new NodeLogger(mockProcess);
     logger.setVerbose(true);
-    expect(loggerModule.setVerbose).toHaveBeenCalledWith(true);
+    expect(mockCreatedLogger.setVerbose).toHaveBeenCalledWith(true);
   });
 });

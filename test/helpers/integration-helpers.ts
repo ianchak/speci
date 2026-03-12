@@ -9,7 +9,7 @@ import {
 import { constants as fsConstants } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
-import type { SpeciConfig } from '@/config.js';
+import type { SpeciConfig } from '@/config/index.js';
 
 export interface IntegrationProject {
   root: string;

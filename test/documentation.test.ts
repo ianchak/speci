@@ -5,7 +5,12 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { setVerbose, isVerbose, debug, logError } from '../lib/utils/logger.js';
+import {
+  setVerbose,
+  isVerbose,
+  debug,
+  logError,
+} from '../lib/utils/infrastructure/logger.js';
 import {
   ERROR_CODES,
   getErrorDefinition,
@@ -161,12 +166,7 @@ describe('getErrorDefinition', () => {
   it('should return definition for valid code', () => {
     const def = getErrorDefinition('ERR-PRE-01');
     expect(def).toBeDefined();
-    expect(def?.message).toBe('Copilot CLI is not installed');
-  });
-
-  it('should return undefined for invalid code', () => {
-    const def = getErrorDefinition('ERR-INVALID-99');
-    expect(def).toBeUndefined();
+    expect(def.message).toBe('Copilot CLI is not installed');
   });
 
   it('should return definition with all fields', () => {
@@ -190,11 +190,6 @@ describe('formatError', () => {
     const formatted = formatError('ERR-PRE-01', 'during init command');
     expect(formatted).toContain('[ERR-PRE-01]');
     expect(formatted).toContain('Context: during init command');
-  });
-
-  it('should handle unknown error code', () => {
-    const formatted = formatError('ERR-UNKNOWN-99');
-    expect(formatted).toContain('Unknown error code');
   });
 
   it('should format multiline message', () => {

@@ -99,6 +99,56 @@ describe('Exit Utility', () => {
       expect(mockExit).toHaveBeenCalledWith(2);
       expect(mockRunCleanup).not.toHaveBeenCalled();
     });
+
+    it('uses injected logger when cleanup is already in progress', async () => {
+      const signalsModule =
+        await import('../../../lib/utils/infrastructure/signals.js');
+      vi.spyOn(signalsModule, 'isRunningCleanup').mockReturnValue(true);
+      const injectedLogger = {
+        info: vi.fn(),
+        infoPlain: vi.fn(),
+        warnPlain: vi.fn(),
+        errorPlain: vi.fn(),
+        successPlain: vi.fn(),
+        error: vi.fn(),
+        warn: vi.fn(),
+        success: vi.fn(),
+        debug: vi.fn(),
+        muted: vi.fn(),
+        raw: vi.fn(),
+        setVerbose: vi.fn(),
+      };
+
+      const { exitWithCleanup } =
+        await import('../../../lib/utils/infrastructure/exit.js');
+
+      await expect(exitWithCleanup(2, injectedLogger)).rejects.toThrow(
+        'process.exit called'
+      );
+      expect(injectedLogger.error).toHaveBeenCalledWith(
+        'Cleanup already in progress, forcing exit'
+      );
+    });
+
+    it('uses injected proc.exit instead of global process.exit', async () => {
+      const signalsModule =
+        await import('../../../lib/utils/infrastructure/signals.js');
+      vi.spyOn(signalsModule, 'runCleanup').mockResolvedValue(undefined);
+      const injectedProc = {
+        exit: vi.fn((() => {
+          throw new Error('injected.exit called');
+        }) as never),
+      };
+
+      const { exitWithCleanup } =
+        await import('../../../lib/utils/infrastructure/exit.js');
+
+      await expect(exitWithCleanup(0, undefined, injectedProc)).rejects.toThrow(
+        'injected.exit called'
+      );
+      expect(injectedProc.exit).toHaveBeenCalledWith(0);
+      expect(mockExit).not.toHaveBeenCalled();
+    });
   });
 
   describe('exitSync', () => {
@@ -129,6 +179,20 @@ describe('Exit Utility', () => {
       expect(() => exitSync(127)).toThrow('process.exit called');
 
       expect(mockExit).toHaveBeenCalledWith(127);
+    });
+
+    it('uses injected proc.exit instead of global process.exit', async () => {
+      const { exitSync } =
+        await import('../../../lib/utils/infrastructure/exit.js');
+      const injectedProc = {
+        exit: vi.fn((() => {
+          throw new Error('injected.exit called');
+        }) as never),
+      };
+
+      expect(() => exitSync(1, injectedProc)).toThrow('injected.exit called');
+      expect(injectedProc.exit).toHaveBeenCalledWith(1);
+      expect(mockExit).not.toHaveBeenCalled();
     });
   });
 });

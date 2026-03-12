@@ -7,7 +7,7 @@ import {
   resetConfigCache,
   getDefaults,
   type SpeciConfig,
-} from '../../lib/config.js';
+} from '../../lib/config/index.js';
 
 /**
  * Tests for type-safe deep merge functionality in lib/config.ts (TASK_032)

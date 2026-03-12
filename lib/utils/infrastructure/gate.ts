@@ -10,11 +10,13 @@ import type { SpeciConfig, GateCommandResult, GateResult } from '@/types.js';
 import { log } from './logger.js';
 import { getGlyph } from '@/ui/glyphs.js';
 import { colorize } from '@/ui/colors.js';
+import type { ILogger } from '@/interfaces/index.js';
 
 // Re-export types for backward compatibility
 export type { GateCommandResult, GateResult } from '@/types.js';
 
 const DEFAULT_TIMEOUT = 5 * 60 * 1000; // 5 minutes
+const SIGKILL_GRACE_MS = 5000;
 
 /**
  * Execute a single gate command
@@ -33,6 +35,8 @@ export async function executeGateCommand(
     const stdoutChunks: string[] = [];
     const stderrChunks: string[] = [];
     let timedOut = false;
+    let exited = false;
+    let killTimer: ReturnType<typeof setTimeout> | undefined;
 
     const child = spawn(command, [], {
       shell: true,
@@ -43,6 +47,12 @@ export async function executeGateCommand(
     const timer = setTimeout(() => {
       timedOut = true;
       child.kill('SIGTERM');
+      killTimer = setTimeout(() => {
+        if (!exited) {
+          // SIGKILL targets only the shell child; Unix grandchildren in other process groups may survive.
+          child.kill('SIGKILL');
+        }
+      }, SIGKILL_GRACE_MS);
     }, timeout);
 
     child.stdout?.on('data', (data: Buffer | string) => {
@@ -54,7 +64,11 @@ export async function executeGateCommand(
     });
 
     child.on('close', (code) => {
+      exited = true;
       clearTimeout(timer);
+      if (killTimer !== undefined) {
+        clearTimeout(killTimer);
+      }
       const duration = Date.now() - startTime;
       const stdout = stdoutChunks.join('');
       const stderr = stderrChunks.join('');
@@ -71,6 +85,9 @@ export async function executeGateCommand(
 
     child.on('error', (err) => {
       clearTimeout(timer);
+      if (killTimer !== undefined) {
+        clearTimeout(killTimer);
+      }
       const duration = Date.now() - startTime;
 
       resolve({
@@ -102,21 +119,25 @@ export function formatDuration(ms: number): string {
  * @param command - The command that was executed
  * @param result - Command result to log
  */
-function logCommandLine(command: string, result: GateCommandResult): void {
+function logCommandLine(
+  command: string,
+  result: GateCommandResult,
+  logger: ILogger
+): void {
   const duration = formatDuration(result.duration);
   if (result.isSuccess) {
-    log.raw(
+    logger.raw(
       `  ${colorize(`${getGlyph('pointer')}`, 'sky400')} ${colorize(command, 'sky400')}  ${colorize(`${getGlyph('success')} passed`, 'success')}  ${colorize(duration, 'dim')}`
     );
   } else {
-    log.raw(
+    logger.raw(
       `  ${colorize(`${getGlyph('pointer')}`, 'sky400')} ${colorize(command, 'sky400')}  ${colorize(`${getGlyph('error')} failed`, 'error')}  ${colorize(`exit ${result.exitCode}`, 'dim')}`
     );
     if (result.error) {
       const errorLines = result.error.split('\n').slice(0, 5);
       for (const line of errorLines) {
         if (line.trim()) {
-          log.errorPlain(`      ${line}`);
+          logger.errorPlain(`      ${line}`);
         }
       }
     }
@@ -128,16 +149,20 @@ function logCommandLine(command: string, result: GateCommandResult): void {
  * @param config - Speci configuration
  * @returns Aggregate gate result
  */
-export async function runGate(config: SpeciConfig): Promise<GateResult> {
+export async function runGate(
+  config: SpeciConfig,
+  logger?: ILogger
+): Promise<GateResult> {
+  const resolvedLogger = logger ?? log;
   const { commands, strategy = 'sequential' } = config.gate;
 
   if (commands.length === 0) {
-    log.debug('No gate commands configured, skipping gate');
+    resolvedLogger.debug('No gate commands configured, skipping gate');
     return { isSuccess: true, results: [], totalDuration: 0 };
   }
 
-  log.raw('');
-  log.infoPlain(
+  resolvedLogger.raw('');
+  resolvedLogger.infoPlain(
     `Running gate checks (${commands.length} commands, ${strategy})...`
   );
   const startTime = Date.now();
@@ -167,7 +192,7 @@ export async function runGate(config: SpeciConfig): Promise<GateResult> {
 
     // Log results after all complete (avoid interleaving)
     for (let i = 0; i < results.length; i++) {
-      logCommandLine(commands[i], results[i]);
+      logCommandLine(commands[i], results[i], resolvedLogger);
     }
   } else {
     // Sequential execution (existing behavior)
@@ -175,7 +200,7 @@ export async function runGate(config: SpeciConfig): Promise<GateResult> {
     for (const command of commands) {
       const result = await executeGateCommand(command);
       results.push(result);
-      logCommandLine(command, result);
+      logCommandLine(command, result, resolvedLogger);
     }
   }
 
@@ -183,8 +208,8 @@ export async function runGate(config: SpeciConfig): Promise<GateResult> {
   const isSuccess = results.every((r) => r.isSuccess);
 
   if (isSuccess) {
-    log.raw('');
-    log.success(
+    resolvedLogger.raw('');
+    resolvedLogger.success(
       `Gate passed ${getGlyph('bullet')} ${commands.length}/${commands.length} checks in ${formatDuration(totalDuration)}`
     );
     return {
@@ -197,8 +222,8 @@ export async function runGate(config: SpeciConfig): Promise<GateResult> {
   // At least one command failed
   const failed = results.filter((r) => !r.isSuccess);
   const firstError = failed[0];
-  log.raw('');
-  log.error(
+  resolvedLogger.raw('');
+  resolvedLogger.error(
     `Gate failed ${getGlyph('bullet')} ${failed.length}/${commands.length} checks failed`
   );
 

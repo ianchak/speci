@@ -13,6 +13,7 @@ import planCommand from '@/commands/plan.js';
 import taskCommand from '@/commands/task.js';
 import { run, type RunOptions } from '@/commands/run.js';
 import { createProductionContext } from '@/adapters/context-factory.js';
+import { NodeFileSystem } from '@/adapters/node-filesystem.js';
 import { createMockContext } from '@/adapters/test-context.js';
 import { CommandRegistry } from '@/cli/command-registry.js';
 import { STATE } from '@/types.js';
@@ -334,7 +335,7 @@ Last Review ID: RA-20260207-001
         completedTasks: 2,
         mvtId: 'MVT_M1',
         mvtStatus: 'NOT STARTED',
-        mvtReady: true,
+        isMvtReady: true,
       };
       vi.mocked(context.stateReader.getMilestonesMvtStatus)
         .mockResolvedValueOnce([])
@@ -371,7 +372,7 @@ Last Review ID: RA-20260207-001
         completedTasks: 2,
         mvtId: 'MVT_M1',
         mvtStatus: 'NOT STARTED',
-        mvtReady: true,
+        isMvtReady: true,
       };
       vi.mocked(context.stateReader.getMilestonesMvtStatus)
         .mockResolvedValueOnce([mvtReadyMilestone])
@@ -460,7 +461,7 @@ Last Review ID: RA-20260207-001
         completedTasks: 2,
         mvtId: 'MVT_M1',
         mvtStatus: 'NOT STARTED',
-        mvtReady: true,
+        isMvtReady: true,
       };
       vi.mocked(context.stateReader.getMilestonesMvtStatus).mockResolvedValue([
         mvtReadyMilestone,
@@ -503,7 +504,7 @@ Last Review ID: RA-20260207-001
 
       const { NodeStateReader } =
         await import('@/adapters/node-state-reader.js');
-      const reader = new NodeStateReader();
+      const reader = new NodeStateReader(new NodeFileSystem());
       const configWithProgressPath: SpeciConfig = {
         ...mockConfig,
         paths: {
@@ -518,7 +519,7 @@ Last Review ID: RA-20260207-001
       expect(result.length).toBeGreaterThanOrEqual(1);
       const m1 = result.find((m) => m.mvtId === 'MVT_M1');
       expect(m1).toBeDefined();
-      expect(m1?.mvtReady).toBe(true);
+      expect(m1?.isMvtReady).toBe(true);
     });
 
     it('IT-08: --verify + --yes auto-continues past startup warning then pauses in loop', async () => {
@@ -530,7 +531,7 @@ Last Review ID: RA-20260207-001
         completedTasks: 2,
         mvtId: 'MVT_M1',
         mvtStatus: 'NOT STARTED',
-        mvtReady: true,
+        isMvtReady: true,
       };
       vi.mocked(context.stateReader.getMilestonesMvtStatus)
         .mockResolvedValueOnce([mvtReadyMilestone])
@@ -566,7 +567,7 @@ Last Review ID: RA-20260207-001
         completedTasks: 2,
         mvtId: 'MVT_M1',
         mvtStatus: 'NOT STARTED',
-        mvtReady: true,
+        isMvtReady: true,
       };
       vi.mocked(context.stateReader.getState).mockResolvedValue(
         STATE.WORK_LEFT

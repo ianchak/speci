@@ -6,22 +6,16 @@
  * agent file validation, and common initialization sequence.
  */
 
-import { resolveAgentPath } from '@/config.js';
+import { resolveAgentPath } from '@/config/index.js';
 import { getAgentFilename } from '@/constants.js';
 import { createError } from '@/errors.js';
-import type { CommandContext } from '@/interfaces.js';
-import type { SpeciConfig } from '@/types.js';
+import type { CommandContext } from '@/interfaces/index.js';
+import type { CommandName, SpeciConfig } from '@/types.js';
 
 /**
  * Agent name type - subset of commands that use agents
  */
-type AgentCommandName =
-  | 'plan'
-  | 'task'
-  | 'refactor'
-  | 'impl'
-  | 'review'
-  | 'fix';
+type AgentCommandName = Exclude<CommandName, 'tidy'>;
 
 /**
  * Options for initializeCommand function
@@ -57,11 +51,11 @@ export interface InitializeCommandResult {
  *
  * @example
  * ```typescript
- * normalizeAgentName('plan') // 'speci-plan'
- * normalizeAgentName('task') // 'speci-task'
+ * buildAgentName('plan') // 'speci-plan'
+ * buildAgentName('task') // 'speci-task'
  * ```
  */
-export function normalizeAgentName(commandName: AgentCommandName): string {
+export function buildAgentName(commandName: AgentCommandName): string {
   return getAgentFilename(commandName);
 }
 
@@ -141,8 +135,8 @@ export async function initializeCommand(
     });
   }
 
-  // Step 3: Normalize agent name
-  const agentName = normalizeAgentName(options.commandName);
+  // Step 3: Build agent name
+  const agentName = buildAgentName(options.commandName);
 
   // Step 4: Resolve agent path
   const agentPath = resolveAgentPath(options.commandName, context.process);

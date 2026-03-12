@@ -8,18 +8,41 @@
 
 import { createWriteStream, type WriteStream } from 'node:fs';
 import { join } from 'node:path';
-import { createInterface } from 'node:readline';
 import { Writable } from 'node:stream';
-import type { AgentRunResult, SpeciConfig } from '@/types.js';
+import type {
+  AgentDispatchSpec,
+  AgentRunResult,
+  SpeciConfig,
+} from '@/types.js';
 import { STATE } from '@/types.js';
 import { createError } from '@/errors.js';
 import { MESSAGES } from '@/constants.js';
-import { closeLogFile } from '@/utils/logger.js';
-import { failResult, handleCommandError } from '@/utils/error-handler.js';
-import { createProductionContext } from '@/adapters/context-factory.js';
-import type { CommandContext, CommandResult } from '@/interfaces.js';
+import { closeLogFile } from '@/utils/infrastructure/logger.js';
+import {
+  failResult,
+  handleCommandError,
+} from '@/utils/infrastructure/error-handler.js';
+import { isYesAnswer, promptUser } from '@/utils/helpers/prompt.js';
+import type { CommandContext, CommandResult } from '@/interfaces/index.js';
 import { renderIterationDisplay } from '@/ui/progress-bar.js';
 import { renderTaskProgressBox } from '@/ui/task-progress.js';
+
+const IMPL_AGENT: AgentDispatchSpec = {
+  key: 'impl',
+  displayName: 'Implementation Agent',
+};
+const REVIEW_AGENT: AgentDispatchSpec = {
+  key: 'review',
+  displayName: 'Review Agent',
+};
+const FIX_AGENT: AgentDispatchSpec = {
+  key: 'fix',
+  displayName: 'Fix Agent',
+};
+const TIDY_AGENT: AgentDispatchSpec = {
+  key: 'tidy',
+  displayName: 'Tidy Agent',
+};
 
 /**
  * Options for the run command
@@ -40,23 +63,22 @@ export interface RunOptions {
  *
  * @param options - Command options with defaults
  * @param context - Dependency injection context (defaults to production)
- * @param config - Pre-loaded configuration (optional, will load if not provided)
+ * @param preloadedConfig - Pre-loaded configuration (optional, will load if not provided)
  * @returns Promise resolving to command result
  * @sideEffects Creates lock file, log file; spawns GitHub Copilot CLI processes; runs gate commands; reads/writes PROGRESS.md
  */
 export async function run(
   options: RunOptions = {},
-  context: CommandContext = createProductionContext(),
-  config?: SpeciConfig
+  context: CommandContext,
+  preloadedConfig?: SpeciConfig
 ): Promise<CommandResult> {
   // 1. Load configuration (or use provided config)
-  const loadedConfig = config ?? (await context.configLoader.load());
-  const maxIterations =
-    options.maxIterations ?? loadedConfig.loop.maxIterations;
+  const config = preloadedConfig ?? (await context.configLoader.load());
+  const maxIterations = options.maxIterations ?? config.loop.maxIterations;
 
   // 2. Run preflight checks
   await context.preflight.run(
-    loadedConfig,
+    config,
     {
       requireCopilot: true,
       requireConfig: true,
@@ -67,40 +89,37 @@ export async function run(
   );
 
   // 3. Check existing lock
-  if (await context.lockManager.isLocked(loadedConfig)) {
-    const lockInfo = await context.lockManager.getInfo(loadedConfig);
+  if (await context.lockManager.isLocked(config)) {
+    const lockInfo = await context.lockManager.getInfo(config);
     if (!options.force) {
       context.logger.warn(
         `Speci is already running (PID: ${lockInfo?.pid ?? 'unknown'})`
       );
-      const proceed = await promptForce(options.prompt);
+      const proceed = await promptForce(options.prompt, context.process);
       if (!proceed) {
         return { success: true, exitCode: 0 };
       }
     }
     // Release the existing lock before re-acquiring (handles both force=true
     // and the case where the user confirmed via promptForce).
-    await context.lockManager.release(loadedConfig);
+    await context.lockManager.release(config);
   }
 
   // 4. Dry run check and pre-run confirmation
   if (options.dryRun) {
-    const initialState = await context.stateReader.getState(loadedConfig);
-    await displayDryRun(
-      initialState,
-      loadedConfig,
-      maxIterations,
-      context,
-      options
-    );
+    const initialState = await context.stateReader.getState(config);
+    await displayDryRun(initialState, config, maxIterations, context, options);
     return { success: true, exitCode: 0 };
   }
 
   if (!options.yes) {
-    const initialState = await context.stateReader.getState(loadedConfig);
+    const initialState = await context.stateReader.getState(config);
+    const stats = await context.stateReader.getTaskStats(config);
+    const renderedBox =
+      stats.total > 0 ? renderTaskProgressBox(stats) : undefined;
     const shouldProceed = await confirmRun(
       initialState,
-      loadedConfig,
+      renderedBox,
       context,
       options.prompt,
       options.verify
@@ -111,53 +130,53 @@ export async function run(
   }
 
   if (options.verify) {
-    const shouldProceed = await checkIncompleteMvts(
-      loadedConfig,
-      context,
-      options
-    );
+    const shouldProceed = await checkIncompleteMvts(config, context, options);
     if (!shouldProceed) {
       return { success: true, exitCode: 0 };
     }
   }
 
   // 5. Acquire lock
-  await context.lockManager.acquire(loadedConfig, context.process, 'run');
+  await context.lockManager.acquire(config, context.process, 'run');
 
   // 6. Setup cleanup handlers (before creating log file)
-  context.signalManager.install();
+  context.signalManager.install(context.process);
 
   // Register cleanup functions
-  context.signalManager.registerCleanup(async () => {
-    await context.lockManager.release(loadedConfig);
-  });
+  const lockCleanup = async () => {
+    await context.lockManager.release(config);
+  };
+  context.signalManager.registerCleanup(lockCleanup);
 
   // 8. Initialize logging (after all early exits)
-  const logFile = initializeLogFile(loadedConfig, context);
+  const logFile = initializeLogFile(config, context);
 
   // Register log file cleanup
-  context.signalManager.registerCleanup(async () => {
+  const logCleanup = async () => {
     try {
       await closeLogFile(logFile);
     } catch {
       // Log file may not be initialized if we exited early
     }
-  });
+  };
+  context.signalManager.registerCleanup(logCleanup);
 
   try {
     // 9. Run main loop
-    await mainLoop(loadedConfig, maxIterations, logFile, options, context);
+    await mainLoop(config, maxIterations, logFile, options, context);
     return { success: true, exitCode: 0 };
   } catch (error) {
     return handleCommandError(error, 'Run', context.logger);
   } finally {
     // 10. Cleanup
-    await context.lockManager.release(loadedConfig);
+    await context.lockManager.release(config);
     try {
       await closeLogFile(logFile);
     } catch {
       // Log file may not be initialized if we exited early
     }
+    context.signalManager.unregisterCleanup(lockCleanup);
+    context.signalManager.unregisterCleanup(logCleanup);
     context.signalManager.remove();
   }
 }
@@ -238,13 +257,6 @@ async function mainLoop(
 /**
  * Handle WORK_LEFT state: dispatch impl agent and run gates
  *
- * @param loadedConfig - Speci configuration
- * @param logFile - Log file stream
- * @param options - Command options
- */
-/**
- * Handle WORK_LEFT state: dispatch impl agent and run gates
- *
  * @param config - Speci configuration
  * @param logFile - Log file stream
  * @param options - Command options
@@ -256,14 +268,7 @@ async function handleWorkLeft(
   _options: RunOptions,
   context: CommandContext
 ): Promise<void> {
-  const implResult = await dispatchAgent(
-    'impl',
-    'Implementation Agent',
-    'Dispatching implementation agent...',
-    config,
-    logFile,
-    context
-  );
+  const implResult = await dispatchAgent(IMPL_AGENT, config, logFile, context);
   if (!implResult.isSuccess) {
     return;
   }
@@ -286,9 +291,7 @@ async function handleWorkLeft(
 /**
  * Run an agent and log dispatch lifecycle.
  *
- * @param agentKey - Agent key passed to copilot runner
- * @param agentDisplayName - Human-readable agent name
- * @param dispatchMsg - Message printed before dispatch
+ * @param spec - Agent dispatch spec
  * @param config - Speci configuration
  * @param logFile - Log file stream
  * @param context - Command context for logging and execution
@@ -296,24 +299,18 @@ async function handleWorkLeft(
  * @returns Agent execution result
  */
 async function dispatchAgent(
-  agentKey: string,
-  agentDisplayName: string,
-  dispatchMsg: string,
+  spec: AgentDispatchSpec,
   config: SpeciConfig,
   logFile: WriteStream,
   context: CommandContext,
   attempt?: number
 ): Promise<AgentRunResult> {
-  context.logger.infoPlain(`${dispatchMsg}\n`);
-  logAgent(logFile, agentKey, 'START', attempt);
-  const result = await context.copilotRunner.run(
-    config,
-    agentKey,
-    agentDisplayName
-  );
-  logAgent(logFile, agentKey, result.isSuccess ? 'SUCCESS' : 'FAILED', attempt);
+  context.logger.infoPlain(`Dispatching ${spec.displayName}...\n`);
+  logAgent(logFile, spec.key, 'START', attempt);
+  const result = await context.copilotRunner.run(config, spec.key);
+  logAgent(logFile, spec.key, result.isSuccess ? 'SUCCESS' : 'FAILED', attempt);
   if (!result.isSuccess) {
-    context.logger.error(`${agentDisplayName} agent failed: ${result.error}`);
+    context.logger.error(`${spec.displayName} agent failed: ${result.error}`);
   }
   return result;
 }
@@ -345,9 +342,7 @@ async function runFixAttempts(
     }
 
     const fixResult = await dispatchAgent(
-      'fix',
-      'Fix Agent',
-      'Running fix agent...',
+      FIX_AGENT,
       config,
       logFile,
       context,
@@ -384,14 +379,7 @@ async function handleInReview(
   _options: RunOptions,
   context: CommandContext
 ): Promise<void> {
-  await dispatchAgent(
-    'review',
-    'Review Agent',
-    'Dispatching review agent...',
-    config,
-    logFile,
-    context
-  );
+  await dispatchAgent(REVIEW_AGENT, config, logFile, context);
 }
 
 /**
@@ -408,14 +396,7 @@ async function handleBlocked(
   _options: RunOptions,
   context: CommandContext
 ): Promise<void> {
-  await dispatchAgent(
-    'tidy',
-    'Tidy Agent',
-    'Dispatching tidy agent to unblock tasks...',
-    config,
-    logFile,
-    context
-  );
+  await dispatchAgent(TIDY_AGENT, config, logFile, context);
 }
 
 /**
@@ -424,36 +405,32 @@ async function handleBlocked(
  * @returns true if user wants to proceed
  */
 async function promptForce(
-  promptFn?: (question: string) => Promise<string>
+  promptFn: ((question: string) => Promise<string>) | undefined,
+  proc:
+    | Pick<NodeJS.Process, 'stdin' | 'stdout'>
+    | {
+        stdin: NodeJS.ReadableStream;
+        stdout: NodeJS.WritableStream;
+      }
 ): Promise<boolean> {
-  if (promptFn) {
-    const answer = await promptFn('Override lock and continue anyway? [y/N] ');
-    return answer.toLowerCase() === 'y' || answer.toLowerCase() === 'yes';
-  }
-
-  const rl = createInterface({
-    input: process.stdin,
-    output: process.stdout,
-  });
-
-  return new Promise((resolve) => {
-    rl.question('Override lock and continue anyway? [y/N] ', (answer) => {
-      rl.close();
-      resolve(answer.toLowerCase() === 'y' || answer.toLowerCase() === 'yes');
-    });
-  });
+  const answer = await promptUser(
+    'Override lock and continue anyway? [y/N] ',
+    promptFn,
+    proc
+  );
+  return isYesAnswer(answer);
 }
 
 /**
  * Prompt user to confirm run execution
  *
  * @param state - Current state
- * @param loadedConfig - Speci configuration
+ * @param renderedBox - Pre-rendered task progress box (if available)
  * @param context - Command context for logging
  */
 async function confirmRun(
   state: STATE,
-  config: SpeciConfig,
+  renderedBox: string | undefined,
   context: CommandContext,
   promptFn?: (question: string) => Promise<string>,
   verify?: boolean
@@ -466,38 +443,21 @@ async function confirmRun(
   const action = getActionForState(state);
   context.logger.infoPlain(`Action: ${action}`);
 
-  // Display task progress summary
-  const stats = await context.stateReader.getTaskStats(config);
-  if (stats.total > 0) {
+  if (renderedBox) {
     context.logger.raw('');
-    context.logger.raw(renderTaskProgressBox(stats));
+    context.logger.raw(renderedBox);
   }
 
-  if (promptFn) {
-    const answer = await promptFn('\nProceed with run? [Y/n] ');
-    if (answer.toLowerCase() === 'n' || answer.toLowerCase() === 'no') {
-      context.logger.infoPlain('Run cancelled.');
-      return false;
-    }
-    return true;
+  const answer = await promptUser(
+    '\nProceed with run? [Y/n] ',
+    promptFn,
+    context.process
+  );
+  if (answer.toLowerCase() === 'n' || answer.toLowerCase() === 'no') {
+    context.logger.infoPlain('Run cancelled.');
+    return false;
   }
-
-  const rl = createInterface({
-    input: process.stdin,
-    output: process.stdout,
-  });
-
-  return new Promise((resolve) => {
-    rl.question('\nProceed with run? [Y/n] ', (answer) => {
-      rl.close();
-      if (answer.toLowerCase() === 'n' || answer.toLowerCase() === 'no') {
-        context.logger.infoPlain('Run cancelled.');
-        resolve(false);
-      } else {
-        resolve(true);
-      }
-    });
-  });
+  return true;
 }
 
 /**
@@ -525,7 +485,7 @@ function getActionForState(state: STATE): string {
  * Display dry run information
  *
  * @param state - Current state
- * @param loadedConfig - Speci configuration
+ * @param config - Speci configuration
  * @param maxIterations - Maximum iterations
  * @param context - Command context for logging
  */
@@ -556,7 +516,7 @@ async function displayDryRun(
     const milestones = await context.stateReader.getMilestonesMvtStatus(config);
     for (const milestone of milestones) {
       context.logger.muted(
-        `  ${milestone.milestoneId}: ${milestone.milestoneName} — ${milestone.mvtId ?? 'N/A'} [${milestone.mvtStatus ?? 'N/A'}] (ready: ${milestone.mvtReady})`
+        `  ${milestone.milestoneId}: ${milestone.milestoneName} — ${milestone.mvtId ?? 'N/A'} [${milestone.mvtStatus ?? 'N/A'}] (ready: ${milestone.isMvtReady})`
       );
     }
   }
@@ -566,7 +526,7 @@ async function displayDryRun(
 /**
  * Initialize log file for run session
  *
- * @param loadedConfig - Speci configuration
+ * @param config - Speci configuration
  * @param context - Command context for filesystem and process
  * @returns WriteStream for log file
  */
@@ -575,7 +535,8 @@ function initializeLogFile(
   context: CommandContext
 ): WriteStream {
   try {
-    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+    const startedAt = new Date();
+    const timestamp = startedAt.toJSON().replace(/[:.]/g, '-');
     const logPath = join(config.paths.logs, `speci-run-${timestamp}.log`);
 
     // Ensure log directory exists
@@ -592,7 +553,7 @@ function initializeLogFile(
 
     // Write header
     stream.write(`=== Speci Run Session ===\n`);
-    stream.write(`Started: ${new Date().toISOString()}\n`);
+    stream.write(`Started: ${startedAt.toJSON()}\n`);
     stream.write(`PID: ${context.process.pid}\n\n`);
 
     return stream;
@@ -608,6 +569,21 @@ function initializeLogFile(
 }
 
 /**
+ * Write a timestamped log entry line.
+ *
+ * @param logFile - Log file stream
+ * @param category - Log category
+ * @param detail - Log entry detail text
+ */
+function writeLogEntry(
+  logFile: WriteStream,
+  category: string,
+  detail: string
+): void {
+  logFile.write(`[${new Date().toISOString()}] ${category} ${detail}\n`);
+}
+
+/**
  * Log iteration event to file
  *
  * @param logFile - Log file stream
@@ -619,8 +595,7 @@ function logIteration(
   iteration: number,
   event: string
 ): void {
-  const timestamp = new Date().toISOString();
-  logFile.write(`[${timestamp}] ITERATION ${iteration} ${event}\n`);
+  writeLogEntry(logFile, 'ITERATION', `${iteration} ${event}`);
 }
 
 /**
@@ -630,8 +605,7 @@ function logIteration(
  * @param state - Current state
  */
 function logState(logFile: WriteStream, state: STATE): void {
-  const timestamp = new Date().toISOString();
-  logFile.write(`[${timestamp}] STATE ${state}\n`);
+  writeLogEntry(logFile, 'STATE', String(state));
 }
 
 /**
@@ -648,10 +622,11 @@ function logAgent(
   event: string,
   attempt?: number
 ): void {
-  const timestamp = new Date().toISOString();
   const attemptStr = attempt ? ` (attempt ${attempt})` : '';
-  logFile.write(
-    `[${timestamp}] AGENT ${agentName.toUpperCase()} ${event}${attemptStr}\n`
+  writeLogEntry(
+    logFile,
+    'AGENT',
+    `${agentName.toUpperCase()} ${event}${attemptStr}`
   );
 }
 
@@ -669,9 +644,10 @@ function logMvtEvent(
   milestoneId: string,
   mvtId: string
 ): void {
-  const timestamp = new Date().toISOString();
-  logFile.write(
-    `[${timestamp}] MVT ${event} milestone=${milestoneId} mvt=${mvtId}\n`
+  writeLogEntry(
+    logFile,
+    'MVT',
+    `${event} milestone=${milestoneId} mvt=${mvtId}`
   );
 }
 
@@ -689,17 +665,12 @@ async function checkIncompleteMvts(
   options: RunOptions
 ): Promise<boolean> {
   const milestones = await context.stateReader.getMilestonesMvtStatus(config);
-  const incomplete = milestones.filter((milestone) => milestone.mvtReady);
+  const incomplete = milestones.filter((milestone) => milestone.isMvtReady);
   if (incomplete.length === 0) {
     return true;
   }
 
-  context.logger.warn(MESSAGES.MVT_WARNING_HEADER);
-  for (const milestone of incomplete) {
-    context.logger.warn(
-      `  ${milestone.milestoneId}: ${milestone.milestoneName} - ${milestone.mvtId ?? 'N/A'} [${milestone.mvtStatus ?? 'N/A'}]`
-    );
-  }
+  logIncompleteMilestones(context, incomplete);
 
   if (options.yes) {
     context.logger.info(MESSAGES.MVT_AUTO_CONTINUE);
@@ -711,31 +682,33 @@ async function checkIncompleteMvts(
     return false;
   }
 
-  if (options.prompt) {
-    const answer = await options.prompt('Continue anyway? [y/N] ');
-    if (answer.toLowerCase() === 'y' || answer.toLowerCase() === 'yes') {
-      return true;
-    }
+  const answer = await promptUser(
+    'Continue anyway? [y/N] ',
+    options.prompt,
+    context.process
+  );
+  const shouldContinue = isYesAnswer(answer);
+  if (!shouldContinue) {
     context.logger.warn(MESSAGES.MVT_EXIT_CANCELLED);
-    return false;
   }
+  return shouldContinue;
+}
 
-  const rl = createInterface({
-    input: context.process.stdin,
-    output: context.process.stdout,
-  });
-  const answer = await new Promise<string>((resolve) => {
-    rl.question('Continue anyway? [y/N] ', (response) => {
-      rl.close();
-      resolve(response);
-    });
-  });
-
-  if (answer.toLowerCase() === 'y' || answer.toLowerCase() === 'yes') {
-    return true;
+function logIncompleteMilestones(
+  context: CommandContext,
+  milestones: ReadonlyArray<{
+    milestoneId: string;
+    milestoneName: string;
+    mvtId: string | null;
+    mvtStatus: string | null;
+  }>
+): void {
+  context.logger.warn(MESSAGES.MVT_WARNING_HEADER);
+  for (const milestone of milestones) {
+    context.logger.warn(
+      `  ${milestone.milestoneId}: ${milestone.milestoneName} - ${milestone.mvtId ?? 'N/A'} [${milestone.mvtStatus ?? 'N/A'}]`
+    );
   }
-  context.logger.warn(MESSAGES.MVT_EXIT_CANCELLED);
-  return false;
 }
 
 /**
@@ -752,7 +725,7 @@ async function checkMvtPause(
   context: CommandContext
 ): Promise<boolean> {
   const milestones = await context.stateReader.getMilestonesMvtStatus(config);
-  const readyMilestone = milestones.find((milestone) => milestone.mvtReady);
+  const readyMilestone = milestones.find((milestone) => milestone.isMvtReady);
   if (!readyMilestone || !readyMilestone.mvtId) {
     return false;
   }
@@ -787,10 +760,7 @@ function logGate(
     results: Array<{ command: string; isSuccess: boolean; exitCode: number }>;
   }
 ): void {
-  const timestamp = new Date().toISOString();
-  logFile.write(
-    `[${timestamp}] GATE ${result.isSuccess ? 'PASSED' : 'FAILED'}\n`
-  );
+  writeLogEntry(logFile, 'GATE', result.isSuccess ? 'PASSED' : 'FAILED');
   for (const r of result.results) {
     logFile.write(
       `  - ${r.command}: ${r.isSuccess ? 'PASS' : `FAIL (exit ${r.exitCode})`}\n`

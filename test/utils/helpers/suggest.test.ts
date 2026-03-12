@@ -7,7 +7,7 @@ import { describe, it, expect } from 'vitest';
 import {
   levenshtein,
   findSimilarCommands,
-} from '../../../lib/utils/suggest.js';
+} from '../../../lib/utils/helpers/suggest.js';
 
 describe('Levenshtein Distance', () => {
   it('should return 0 for identical strings', () => {

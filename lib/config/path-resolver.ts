@@ -1,5 +1,5 @@
 import { existsSync } from 'node:fs';
-import { join, dirname } from 'node:path';
+import { join, dirname, isAbsolute, resolve, normalize } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
   CONFIG_FILENAME,
@@ -7,8 +7,8 @@ import {
   GITHUB_AGENTS_DIR as AGENTS_DIR,
 } from '@/constants.js';
 import { createError } from '@/errors.js';
-import type { IProcess } from '@/interfaces.js';
-import { log } from '@/utils/logger.js';
+import type { IProcess } from '@/interfaces/index.js';
+import { log } from '@/utils/infrastructure/logger.js';
 
 /**
  * GitHub Copilot agents directory path (relative to project root)
@@ -50,6 +50,25 @@ export function resolveTemplatesDir(): string {
 
   cachedTemplatesDir = TEMPLATES_DIR_CANDIDATES[0];
   return cachedTemplatesDir;
+}
+
+/**
+ * Resolve a configured path against a project root with a default fallback.
+ *
+ * @param configuredPath - User-configured path value
+ * @param root - Project root to resolve relative paths against
+ * @param defaultPath - Default value used when configuredPath is empty
+ * @returns Normalized absolute path
+ */
+export function resolveConfigPath(
+  configuredPath: string,
+  root: string,
+  defaultPath: string
+): string {
+  const candidate = configuredPath.trim() === '' ? defaultPath : configuredPath;
+  return isAbsolute(candidate)
+    ? normalize(candidate)
+    : resolve(root, candidate);
 }
 
 /**

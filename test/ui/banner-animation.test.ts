@@ -8,7 +8,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import type { TerminalSnapshot } from '../../lib/ui/terminal.js';
 import { VERSION } from '../../lib/ui/banner.js';
-import * as logger from '../../lib/utils/logger.js';
+import * as logger from '../../lib/utils/infrastructure/logger.js';
 
 /**
  * Create a mock terminal snapshot for testing
@@ -1479,14 +1479,14 @@ describe('renderWaveFrame', () => {
 
 describe('animateBanner', () => {
   let module: typeof import('../../lib/ui/banner-animation/index.js');
-  let signalsModule: typeof import('../../lib/utils/signals.js');
+  let signalsModule: typeof import('../../lib/utils/infrastructure/signals.js');
   let terminalModule: typeof import('../../lib/ui/terminal.js');
   let stdoutWriteSpy: ReturnType<typeof vi.spyOn>;
   let writes: string[];
 
   beforeEach(async () => {
     module = await import('../../lib/ui/banner-animation/index.js');
-    signalsModule = await import('../../lib/utils/signals.js');
+    signalsModule = await import('../../lib/utils/infrastructure/signals.js');
     terminalModule = await import('../../lib/ui/terminal.js');
     writes = [];
     stdoutWriteSpy = vi
@@ -2751,14 +2751,14 @@ describe('Performance Optimization (TASK_020)', () => {
 describe('Version Animation (TASK_016)', () => {
   let module: typeof import('../../lib/ui/banner-animation/index.js');
   let terminalModule: typeof import('../../lib/ui/terminal.js');
-  let signalsModule: typeof import('../../lib/utils/signals.js');
+  let signalsModule: typeof import('../../lib/utils/infrastructure/signals.js');
   let stdoutWriteSpy: ReturnType<typeof vi.spyOn>;
   let writes: string[];
 
   beforeEach(async () => {
     module = await import('../../lib/ui/banner-animation/index.js');
     terminalModule = await import('../../lib/ui/terminal.js');
-    signalsModule = await import('../../lib/utils/signals.js');
+    signalsModule = await import('../../lib/utils/infrastructure/signals.js');
     writes = [];
     stdoutWriteSpy = vi
       .spyOn(process.stdout, 'write')

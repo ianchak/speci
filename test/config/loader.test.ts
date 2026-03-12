@@ -3,6 +3,7 @@ import { mkdirSync, rmSync, writeFileSync, existsSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
+import type { IFileSystem } from '../../lib/interfaces/index.js';
 import {
   loadConfig,
   validateConfig,
@@ -15,7 +16,7 @@ import {
   resetConfigCache,
   getConfigIfLoaded,
   type SpeciConfig,
-} from '../../lib/config.js';
+} from '../../lib/config/index.js';
 
 describe('config', () => {
   let testDir: string;
@@ -144,7 +145,7 @@ describe('config', () => {
       });
 
       try {
-        const freshConfig = await import('../../lib/config.js');
+        const freshConfig = await import('../../lib/config/index.js');
         freshConfig.resetConfigCache();
 
         for (let index = 0; index < 100; index++) {
@@ -180,7 +181,7 @@ describe('config', () => {
       });
 
       try {
-        const freshConfig = await import('../../lib/config.js');
+        const freshConfig = await import('../../lib/config/index.js');
         freshConfig.resetConfigCache();
 
         freshConfig.getDefaults();
@@ -209,7 +210,7 @@ describe('config', () => {
       });
 
       try {
-        const freshConfig = await import('../../lib/config.js');
+        const freshConfig = await import('../../lib/config/index.js');
         freshConfig.resetConfigCache();
 
         freshConfig.getDefaults();
@@ -240,9 +241,42 @@ describe('config', () => {
       });
 
       try {
-        const freshConfig = await import('../../lib/config.js');
+        const freshConfig = await import('../../lib/config/index.js');
         freshConfig.resetConfigCache();
         expect(() => freshConfig.getDefaults()).toThrow(/invalid structure/i);
+      } finally {
+        vi.doUnmock('node:fs');
+        vi.resetModules();
+      }
+    });
+
+    it('should throw if bundled template has malformed nested field', async () => {
+      vi.resetModules();
+      const existsSyncMock = vi.fn(() => true);
+      const malformedTemplate = {
+        ...templateConfig,
+        gate: {
+          ...templateConfig.gate,
+          maxFixAttempts: -1,
+        },
+      };
+      const readFileSyncMock = vi.fn(() => JSON.stringify(malformedTemplate));
+      vi.doMock('node:fs', async () => {
+        const actual =
+          await vi.importActual<typeof import('node:fs')>('node:fs');
+        return {
+          ...actual,
+          existsSync: existsSyncMock,
+          readFileSync: readFileSyncMock,
+        };
+      });
+
+      try {
+        const freshConfig = await import('../../lib/config/index.js');
+        freshConfig.resetConfigCache();
+        expect(() => freshConfig.getDefaults()).toThrow(
+          /gate\.maxFixAttempts/i
+        );
       } finally {
         vi.doUnmock('node:fs');
         vi.resetModules();
@@ -344,6 +378,30 @@ describe('config', () => {
   });
 
   describe('loadConfig', () => {
+    function createMockFs(
+      existsSyncImpl: (path: string) => boolean,
+      readFileSyncImpl?: (path: string) => string
+    ): IFileSystem {
+      return {
+        existsSync: vi.fn(existsSyncImpl),
+        readFileSync: vi.fn((path: string) =>
+          readFileSyncImpl ? readFileSyncImpl(path) : ''
+        ),
+        writeFileSync: vi.fn(),
+        mkdirSync: vi.fn(),
+        unlinkSync: vi.fn(),
+        rmSync: vi.fn(),
+        readdirSync: vi.fn(() => []),
+        statSync: vi.fn(() => ({
+          isDirectory: () => false,
+          isFile: () => false,
+        })),
+        copyFileSync: vi.fn(),
+        readFile: vi.fn(async () => ''),
+        writeFile: vi.fn(async () => {}),
+      };
+    }
+
     it('should load config from current directory', () => {
       const configData = {
         version: '1.0.0',
@@ -361,6 +419,30 @@ describe('config', () => {
 
       expect(config.paths.progress).toBe('custom/progress.md');
       expect(config.paths.tasks).toBe('docs/tasks'); // default
+    });
+
+    it('should load config using provided filesystem abstraction', () => {
+      const configPath = join(testDir, 'speci.config.json');
+      const mockFs = createMockFs(
+        (path) => path === configPath,
+        (path) => {
+          if (path !== configPath) {
+            throw new Error(`Unexpected path: ${path}`);
+          }
+          return JSON.stringify({
+            version: '1.0.0',
+            paths: {
+              progress: 'virtual/progress.md',
+            },
+          });
+        }
+      );
+
+      const config = loadConfig({ forceRefresh: true, fs: mockFs });
+
+      expect(config.paths.progress).toBe('virtual/progress.md');
+      expect(mockFs.existsSync).toHaveBeenCalled();
+      expect(mockFs.readFileSync).toHaveBeenCalledWith(configPath, 'utf-8');
     });
 
     it('should walk up directories to find config', () => {
@@ -390,6 +472,15 @@ describe('config', () => {
       const defaults = getDefaults();
 
       expect(config).toEqual(defaults);
+    });
+
+    it('should return defaults when injected filesystem has no config file', () => {
+      const mockFs = createMockFs(() => false);
+
+      const config = loadConfig({ forceRefresh: true, fs: mockFs });
+
+      expect(config.paths.progress).toBe('docs/PROGRESS.md');
+      expect(mockFs.readFileSync).not.toHaveBeenCalled();
     });
 
     it('should throw descriptive error for malformed JSON', () => {
@@ -803,7 +894,7 @@ describe('config', () => {
       vi.resetModules();
 
       const configModuleDir = dirname(
-        fileURLToPath(new URL('../../lib/config.js', import.meta.url))
+        fileURLToPath(new URL('../../lib/config/index.js', import.meta.url))
       );
       const primaryPath = join(configModuleDir, '..', 'templates');
       const fallbackPath = join(configModuleDir, '..', '..', 'templates');
@@ -825,7 +916,7 @@ describe('config', () => {
         },
       }));
 
-      const freshConfig = await import('../../lib/config.js');
+      const freshConfig = await import('../../lib/config/index.js');
       freshConfig.resetConfigCache();
       const path = freshConfig.getAgentsTemplatePath();
 
@@ -1074,6 +1165,29 @@ describe('config', () => {
         // Cache hit should be at least 50% faster
         // (In practice it's usually 95%+ faster, but we use conservative threshold)
         expect(duration2).toBeLessThan(duration1 * 0.5);
+      });
+
+      it('uses injected logger during loadConfig', () => {
+        const injectedLogger = {
+          info: vi.fn(),
+          infoPlain: vi.fn(),
+          warnPlain: vi.fn(),
+          errorPlain: vi.fn(),
+          successPlain: vi.fn(),
+          error: vi.fn(),
+          warn: vi.fn(),
+          success: vi.fn(),
+          debug: vi.fn(),
+          muted: vi.fn(),
+          raw: vi.fn(),
+          setVerbose: vi.fn(),
+        };
+
+        loadConfig({ logger: injectedLogger });
+
+        expect(injectedLogger.debug).toHaveBeenCalledWith(
+          expect.stringContaining('Config loaded in')
+        );
       });
     });
   });

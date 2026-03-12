@@ -5,24 +5,50 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import type { IProcess } from '../../../lib/interfaces/index.js';
+import { createMockProcess } from '../../../lib/adapters/test-context.js';
+import { EXIT_CODE } from '../../../lib/constants.js';
 import {
-  registerCleanup,
-  unregisterCleanup,
-  installSignalHandlers,
-  removeSignalHandlers,
-  isRunningCleanup,
-  runCleanup,
-} from '../../../lib/utils/signals.js';
+  SignalManager,
+  type CleanupFn,
+} from '../../../lib/utils/infrastructure/signals.js';
 
 describe('Signal Handling', () => {
+  let signalManager: SignalManager;
+  let registerCleanup: (fn: CleanupFn) => void;
+  let unregisterCleanup: (fn: CleanupFn) => void;
+  let installSignalHandlers: (proc?: IProcess) => void;
+  let removeSignalHandlers: () => void;
+  let isRunningCleanup: () => boolean;
+  let runCleanup: (logger?: {
+    info(message: string): void;
+    infoPlain(message: string): void;
+    warnPlain(message: string): void;
+    errorPlain(message: string): void;
+    successPlain(message: string): void;
+    error(message: string): void;
+    warn(message: string): void;
+    success(message: string): void;
+    debug(message: string): void;
+    muted(message: string): void;
+    raw(message: string): void;
+    setVerbose(enabled: boolean): void;
+  }) => Promise<void>;
+
   beforeEach(() => {
-    // Clear any registered listeners
-    removeSignalHandlers();
+    signalManager = new SignalManager();
+    registerCleanup = signalManager.registerCleanup;
+    unregisterCleanup = signalManager.unregisterCleanup;
+    installSignalHandlers = signalManager.installSignalHandlers;
+    removeSignalHandlers = signalManager.removeSignalHandlers;
+    isRunningCleanup = signalManager.isRunningCleanup;
+    runCleanup = signalManager.runCleanup;
   });
 
   afterEach(() => {
     // Clean up after tests
     removeSignalHandlers();
+    vi.restoreAllMocks();
   });
 
   describe('Cleanup Registry', () => {
@@ -39,6 +65,18 @@ describe('Signal Handling', () => {
       unregisterCleanup(fn);
       // No error means success
       expect(true).toBe(true);
+    });
+
+    it('isolates cleanup registrations between runs', async () => {
+      const fn1 = vi.fn();
+      registerCleanup(fn1);
+      await runCleanup();
+      expect(fn1).toHaveBeenCalledTimes(1);
+
+      const fn2 = vi.fn();
+      registerCleanup(fn2);
+      await runCleanup();
+      expect(fn2).toHaveBeenCalledTimes(1);
     });
 
     it('should run cleanup functions in reverse order', async () => {
@@ -94,6 +132,34 @@ describe('Signal Handling', () => {
       consoleErrorSpy.mockRestore();
 
       expect(order).toEqual([3, 2, 1]);
+    });
+
+    it('uses injected logger for cleanup errors', async () => {
+      const injectedLogger = {
+        info: vi.fn(),
+        infoPlain: vi.fn(),
+        warnPlain: vi.fn(),
+        errorPlain: vi.fn(),
+        successPlain: vi.fn(),
+        error: vi.fn(),
+        warn: vi.fn(),
+        success: vi.fn(),
+        debug: vi.fn(),
+        muted: vi.fn(),
+        raw: vi.fn(),
+        setVerbose: vi.fn(),
+      };
+
+      registerCleanup(() => {
+        throw new Error('Injected logger cleanup error');
+      });
+
+      await expect(runCleanup(injectedLogger)).rejects.toThrow(
+        'Injected logger cleanup error'
+      );
+      expect(injectedLogger.error).toHaveBeenCalledWith(
+        expect.stringContaining('Cleanup error')
+      );
     });
 
     it('should prevent duplicate cleanup runs', async () => {
@@ -167,9 +233,103 @@ describe('Signal Handling', () => {
       removeSignalHandlers();
       expect(true).toBe(true);
     });
+
+    it('should use injected process for handler installation and removal', () => {
+      const mockProcess = createMockProcess();
+
+      installSignalHandlers(mockProcess);
+
+      expect(mockProcess.on).toHaveBeenCalledWith(
+        'SIGINT',
+        signalManager.handleSigint
+      );
+      expect(mockProcess.on).toHaveBeenCalledWith(
+        'SIGTERM',
+        signalManager.handleSigterm
+      );
+      expect(mockProcess.on).toHaveBeenCalledTimes(2);
+
+      removeSignalHandlers();
+
+      expect(mockProcess.off).toHaveBeenCalledWith(
+        'SIGINT',
+        signalManager.handleSigint
+      );
+      expect(mockProcess.off).toHaveBeenCalledWith(
+        'SIGTERM',
+        signalManager.handleSigterm
+      );
+      expect(mockProcess.off).toHaveBeenCalledTimes(2);
+    });
   });
 
   describe('Signal Handler Behavior', () => {
+    it('should use injected process exit for SIGINT cleanup path', async () => {
+      const mockProcess = createMockProcess();
+      const processExitSpy = vi
+        .spyOn(process, 'exit')
+        .mockImplementation((() => {}) as never);
+      const mockExit = vi
+        .spyOn(mockProcess, 'exit')
+        .mockImplementation((() => {}) as never);
+
+      registerCleanup(vi.fn());
+      installSignalHandlers(mockProcess);
+      signalManager.handleSigint();
+
+      await new Promise((resolve) => setTimeout(resolve, 25));
+
+      expect(mockExit).toHaveBeenCalledWith(EXIT_CODE.SIGINT);
+      expect(processExitSpy).not.toHaveBeenCalled();
+    });
+
+    it('should use injected process exit for SIGTERM cleanup path', async () => {
+      const mockProcess = createMockProcess();
+      const processExitSpy = vi
+        .spyOn(process, 'exit')
+        .mockImplementation((() => {}) as never);
+      const mockExit = vi
+        .spyOn(mockProcess, 'exit')
+        .mockImplementation((() => {}) as never);
+
+      registerCleanup(vi.fn());
+      installSignalHandlers(mockProcess);
+      signalManager.handleSigterm();
+
+      await new Promise((resolve) => setTimeout(resolve, 25));
+
+      expect(mockExit).toHaveBeenCalledWith(EXIT_CODE.SIGTERM);
+      expect(processExitSpy).not.toHaveBeenCalled();
+    });
+
+    it('should execute SIGINT success callback and exit with SIGINT code', async () => {
+      const mockProcessExit = vi
+        .spyOn(process, 'exit')
+        .mockImplementation((() => {}) as never);
+
+      registerCleanup(vi.fn());
+      installSignalHandlers();
+      process.emit('SIGINT', 'SIGINT');
+
+      await new Promise((resolve) => setTimeout(resolve, 50));
+
+      expect(mockProcessExit).toHaveBeenCalledWith(EXIT_CODE.SIGINT);
+    });
+
+    it('should execute SIGTERM success callback and exit with SIGTERM code', async () => {
+      const mockProcessExit = vi
+        .spyOn(process, 'exit')
+        .mockImplementation((() => {}) as never);
+
+      registerCleanup(vi.fn());
+      installSignalHandlers();
+      process.emit('SIGTERM', 'SIGTERM');
+
+      await new Promise((resolve) => setTimeout(resolve, 50));
+
+      expect(mockProcessExit).toHaveBeenCalledWith(EXIT_CODE.SIGTERM);
+    });
+
     it('should handle SIGINT and run cleanup', async () => {
       const fn = vi.fn();
       registerCleanup(fn);

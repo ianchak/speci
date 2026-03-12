@@ -4,8 +4,8 @@
  * Production implementation of ILogger that wraps the existing logger utility.
  */
 
-import { log, setLoggerProcess, setVerbose } from '@/utils/logger.js';
-import type { ILogger, IProcess } from '@/interfaces.js';
+import { createLogger } from '@/utils/infrastructure/logger.js';
+import type { ILogger, IProcess } from '@/interfaces/index.js';
 
 /**
  * Node.js logger adapter
@@ -13,55 +13,57 @@ import type { ILogger, IProcess } from '@/interfaces.js';
  * Implements ILogger by delegating to the existing log utility.
  */
 export class NodeLogger implements ILogger {
+  private readonly logger: ILogger;
+
   constructor(process: IProcess) {
-    setLoggerProcess(process);
+    this.logger = createLogger(process);
   }
 
   info(message: string): void {
-    log.info(message);
+    this.logger.info(message);
   }
 
   infoPlain(message: string): void {
-    log.infoPlain(message);
+    this.logger.infoPlain(message);
   }
 
   warnPlain(message: string): void {
-    log.warnPlain(message);
+    this.logger.warnPlain(message);
   }
 
   errorPlain(message: string): void {
-    log.errorPlain(message);
+    this.logger.errorPlain(message);
   }
 
   successPlain(message: string): void {
-    log.successPlain(message);
+    this.logger.successPlain(message);
   }
 
   error(message: string): void {
-    log.error(message);
+    this.logger.error(message);
   }
 
   warn(message: string): void {
-    log.warn(message);
+    this.logger.warn(message);
   }
 
   success(message: string): void {
-    log.success(message);
+    this.logger.success(message);
   }
 
   debug(message: string): void {
-    log.debug(message);
+    this.logger.debug(message);
   }
 
   muted(message: string): void {
-    log.muted(message);
+    this.logger.muted(message);
   }
 
   raw(message: string): void {
-    log.raw(message);
+    this.logger.raw(message);
   }
 
   setVerbose(enabled: boolean): void {
-    setVerbose(enabled);
+    this.logger.setVerbose(enabled);
   }
 }

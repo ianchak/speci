@@ -139,6 +139,7 @@ export class ConfigValidator {
    * @returns ValidationResult with config if valid, error if invalid
    */
   validate(): ValidationResult<SpeciConfig> {
+    this.errors = [];
     this.validateVersion()
       .validatePaths()
       .validateCopilot()
@@ -149,6 +150,15 @@ export class ConfigValidator {
       return { success: false, error: this.errors[0] };
     }
 
-    return { success: true, value: this.config as SpeciConfig };
+    return {
+      success: true,
+      value: {
+        version: this.config.version!,
+        paths: this.config.paths!,
+        copilot: this.config.copilot!,
+        gate: this.config.gate!,
+        loop: this.config.loop!,
+      },
+    };
   }
 }

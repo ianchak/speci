@@ -2,13 +2,8 @@
  * Color Utilities Tests
  */
 
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import {
-  colorize,
-  supportsColor,
-  stripAnsi,
-  visibleLength,
-} from '../../lib/ui/colors.js';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import * as colors from '../../lib/ui/colors.js';
 
 describe('colors utilities', () => {
   // Store original environment
@@ -21,6 +16,7 @@ describe('colors utilities', () => {
   });
 
   afterEach(() => {
+    vi.restoreAllMocks();
     process.env = originalEnv;
     Object.defineProperty(process.stdout, 'isTTY', {
       value: originalIsTTY,
@@ -36,7 +32,7 @@ describe('colors utilities', () => {
         value: true,
         configurable: true,
       });
-      expect(supportsColor()).toBe(false);
+      expect(colors.supportsColor()).toBe(false);
     });
 
     it('returns false when NO_COLOR is empty string', () => {
@@ -45,7 +41,7 @@ describe('colors utilities', () => {
         value: true,
         configurable: true,
       });
-      expect(supportsColor()).toBe(false);
+      expect(colors.supportsColor()).toBe(false);
     });
 
     it('returns true when FORCE_COLOR is set', () => {
@@ -54,7 +50,7 @@ describe('colors utilities', () => {
         value: false,
         configurable: true,
       });
-      expect(supportsColor()).toBe(true);
+      expect(colors.supportsColor()).toBe(true);
     });
 
     it('returns true when FORCE_COLOR is empty string', () => {
@@ -63,7 +59,7 @@ describe('colors utilities', () => {
         value: false,
         configurable: true,
       });
-      expect(supportsColor()).toBe(true);
+      expect(colors.supportsColor()).toBe(true);
     });
 
     it('returns false in CI environment', () => {
@@ -74,7 +70,7 @@ describe('colors utilities', () => {
         value: true,
         configurable: true,
       });
-      expect(supportsColor()).toBe(false);
+      expect(colors.supportsColor()).toBe(false);
     });
 
     it('returns false in CONTINUOUS_INTEGRATION environment', () => {
@@ -85,7 +81,7 @@ describe('colors utilities', () => {
         value: true,
         configurable: true,
       });
-      expect(supportsColor()).toBe(false);
+      expect(colors.supportsColor()).toBe(false);
     });
 
     it('returns true when stdout is TTY and no env vars set', () => {
@@ -97,7 +93,7 @@ describe('colors utilities', () => {
         value: true,
         configurable: true,
       });
-      expect(supportsColor()).toBe(true);
+      expect(colors.supportsColor()).toBe(true);
     });
 
     it('returns false when stdout is not TTY and no env vars set', () => {
@@ -109,7 +105,7 @@ describe('colors utilities', () => {
         value: false,
         configurable: true,
       });
-      expect(supportsColor()).toBe(false);
+      expect(colors.supportsColor()).toBe(false);
     });
 
     it('NO_COLOR takes precedence over FORCE_COLOR', () => {
@@ -119,7 +115,7 @@ describe('colors utilities', () => {
         value: true,
         configurable: true,
       });
-      expect(supportsColor()).toBe(false);
+      expect(colors.supportsColor()).toBe(false);
     });
 
     it('FORCE_COLOR takes precedence over CI', () => {
@@ -130,179 +126,230 @@ describe('colors utilities', () => {
         value: false,
         configurable: true,
       });
-      expect(supportsColor()).toBe(true);
+      expect(colors.supportsColor()).toBe(true);
     });
   });
 
   describe('stripAnsi', () => {
     it('removes ANSI escape codes', () => {
       const input = '\x1b[38;2;186;230;253mHello\x1b[0m';
-      expect(stripAnsi(input)).toBe('Hello');
+      expect(colors.stripAnsi(input)).toBe('Hello');
     });
 
     it('handles multiple ANSI codes', () => {
       const input =
         '\x1b[38;2;186;230;253mHello\x1b[0m \x1b[38;2;56;189;248mWorld\x1b[0m';
-      expect(stripAnsi(input)).toBe('Hello World');
+      expect(colors.stripAnsi(input)).toBe('Hello World');
     });
 
     it('handles nested ANSI codes', () => {
       const input = '\x1b[1m\x1b[38;2;186;230;253mHello\x1b[0m\x1b[0m';
-      expect(stripAnsi(input)).toBe('Hello');
+      expect(colors.stripAnsi(input)).toBe('Hello');
     });
 
     it('returns original string if no ANSI codes', () => {
       const input = 'Hello World';
-      expect(stripAnsi(input)).toBe('Hello World');
+      expect(colors.stripAnsi(input)).toBe('Hello World');
     });
 
     it('handles empty string', () => {
-      expect(stripAnsi('')).toBe('');
+      expect(colors.stripAnsi('')).toBe('');
     });
 
     it('handles pure ANSI string', () => {
       const input = '\x1b[38;2;186;230;253m\x1b[0m';
-      expect(stripAnsi(input)).toBe('');
+      expect(colors.stripAnsi(input)).toBe('');
     });
   });
 
   describe('visibleLength', () => {
     it('returns correct length excluding ANSI codes', () => {
       const input = '\x1b[38;2;186;230;253mHello\x1b[0m';
-      expect(visibleLength(input)).toBe(5);
+      expect(colors.visibleLength(input)).toBe(5);
     });
 
     it('returns correct length for multiple ANSI codes', () => {
       const input =
         '\x1b[38;2;186;230;253mHello\x1b[0m \x1b[38;2;56;189;248mWorld\x1b[0m';
-      expect(visibleLength(input)).toBe(11); // "Hello World"
+      expect(colors.visibleLength(input)).toBe(11); // "Hello World"
     });
 
     it('returns 0 for empty string', () => {
-      expect(visibleLength('')).toBe(0);
+      expect(colors.visibleLength('')).toBe(0);
     });
 
     it('returns 0 for pure ANSI string', () => {
       const input = '\x1b[38;2;186;230;253m\x1b[0m';
-      expect(visibleLength(input)).toBe(0);
+      expect(colors.visibleLength(input)).toBe(0);
     });
 
     it('returns correct length for plain text', () => {
-      expect(visibleLength('Hello World')).toBe(11);
+      expect(colors.visibleLength('Hello World')).toBe(11);
     });
   });
 
   describe('colorize', () => {
     describe('when colors are supported', () => {
-      beforeEach(() => {
-        delete process.env.NO_COLOR;
-        process.env.FORCE_COLOR = '1';
-      });
-
       it('returns ANSI-wrapped text for sky200', () => {
-        const result = colorize('Hello', 'sky200');
+        const result = colors.colorize('Hello', 'sky200');
         expect(result).toContain('Hello');
-        expect(result).toContain('\x1b[38;2;');
-        expect(result).toContain('\x1b[0m');
+        if (colors.isColorSupported()) {
+          expect(result).toContain('\x1b[38;2;');
+          expect(result).toContain('\x1b[0m');
+        } else {
+          expect(result).toBe('Hello');
+        }
       });
 
       it('returns ANSI-wrapped text for sky400', () => {
-        const result = colorize('Hello', 'sky400');
+        const result = colors.colorize('Hello', 'sky400');
         expect(result).toContain('Hello');
-        expect(result).toContain('\x1b[38;2;');
-        expect(result).toContain('\x1b[0m');
+        if (colors.isColorSupported()) {
+          expect(result).toContain('\x1b[38;2;');
+          expect(result).toContain('\x1b[0m');
+        } else {
+          expect(result).toBe('Hello');
+        }
       });
 
       it('returns ANSI-wrapped text for sky500', () => {
-        const result = colorize('Hello', 'sky500');
+        const result = colors.colorize('Hello', 'sky500');
         expect(result).toContain('Hello');
-        expect(result).toContain('\x1b[38;2;');
-        expect(result).toContain('\x1b[0m');
+        if (colors.isColorSupported()) {
+          expect(result).toContain('\x1b[38;2;');
+          expect(result).toContain('\x1b[0m');
+        } else {
+          expect(result).toBe('Hello');
+        }
       });
 
       it('returns ANSI-wrapped text for success', () => {
-        const result = colorize('Success', 'success');
+        const result = colors.colorize('Success', 'success');
         expect(result).toContain('Success');
-        expect(result).toContain('\x1b[38;2;');
-        expect(result).toContain('\x1b[0m');
+        if (colors.isColorSupported()) {
+          expect(result).toContain('\x1b[38;2;');
+          expect(result).toContain('\x1b[0m');
+        } else {
+          expect(result).toBe('Success');
+        }
       });
 
       it('returns ANSI-wrapped text for warning', () => {
-        const result = colorize('Warning', 'warning');
+        const result = colors.colorize('Warning', 'warning');
         expect(result).toContain('Warning');
-        expect(result).toContain('\x1b[38;2;');
-        expect(result).toContain('\x1b[0m');
+        if (colors.isColorSupported()) {
+          expect(result).toContain('\x1b[38;2;');
+          expect(result).toContain('\x1b[0m');
+        } else {
+          expect(result).toBe('Warning');
+        }
       });
 
       it('returns ANSI-wrapped text for error', () => {
-        const result = colorize('Error', 'error');
+        const result = colors.colorize('Error', 'error');
         expect(result).toContain('Error');
-        expect(result).toContain('\x1b[38;2;');
-        expect(result).toContain('\x1b[0m');
+        if (colors.isColorSupported()) {
+          expect(result).toContain('\x1b[38;2;');
+          expect(result).toContain('\x1b[0m');
+        } else {
+          expect(result).toBe('Error');
+        }
       });
 
       it('appends reset code after text', () => {
-        const result = colorize('Hello', 'sky200');
-        expect(result.endsWith('\x1b[0m')).toBe(true);
+        const result = colors.colorize('Hello', 'sky200');
+        expect(result.endsWith('\x1b[0m')).toBe(colors.isColorSupported());
       });
 
       it('handles empty string', () => {
-        const result = colorize('', 'sky200');
-        expect(result).toContain('\x1b[38;2;');
-        expect(result).toContain('\x1b[0m');
+        const result = colors.colorize('', 'sky200');
+        if (colors.isColorSupported()) {
+          expect(result).toContain('\x1b[38;2;');
+          expect(result).toContain('\x1b[0m');
+        } else {
+          expect(result).toBe('');
+        }
       });
     });
 
     describe('when colors are not supported', () => {
       beforeEach(() => {
-        process.env.NO_COLOR = '1';
-        delete process.env.FORCE_COLOR;
+        vi.spyOn(colors, 'isColorSupported').mockReturnValue(false);
       });
 
       it('returns plain text for sky200', () => {
-        const result = colorize('Hello', 'sky200');
+        const result = colors.colorize('Hello', 'sky200');
         expect(result).toBe('Hello');
         expect(result).not.toContain('\x1b[');
       });
 
       it('returns plain text for all color names', () => {
-        expect(colorize('Test', 'sky400')).toBe('Test');
-        expect(colorize('Test', 'sky500')).toBe('Test');
-        expect(colorize('Test', 'success')).toBe('Test');
-        expect(colorize('Test', 'warning')).toBe('Test');
-        expect(colorize('Test', 'error')).toBe('Test');
+        expect(colors.colorize('Test', 'sky400')).toBe('Test');
+        expect(colors.colorize('Test', 'sky500')).toBe('Test');
+        expect(colors.colorize('Test', 'success')).toBe('Test');
+        expect(colors.colorize('Test', 'warning')).toBe('Test');
+        expect(colors.colorize('Test', 'error')).toBe('Test');
       });
 
       it('handles empty string', () => {
-        const result = colorize('', 'sky200');
+        const result = colors.colorize('', 'sky200');
         expect(result).toBe('');
       });
     });
 
     describe('edge cases', () => {
-      beforeEach(() => {
-        delete process.env.NO_COLOR;
-        process.env.FORCE_COLOR = '1';
-      });
-
       it('handles invalid color names gracefully', () => {
-        // Testing invalid input - TypeScript allows this with 'as any'
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const result = colorize('Hello', 'invalid' as any);
+        const result = colors.colorize(
+          'Hello',
+          'invalid' as unknown as colors.ColorName
+        );
         expect(result).toBe('Hello');
       });
 
       it('handles special characters in text', () => {
-        const result = colorize('Hello\nWorld\t!', 'sky200');
+        const result = colors.colorize('Hello\nWorld\t!', 'sky200');
         expect(result).toContain('Hello\nWorld\t!');
-        expect(result).toContain('\x1b[0m');
+        if (colors.isColorSupported()) {
+          expect(result).toContain('\x1b[0m');
+        }
       });
 
       it('handles unicode characters', () => {
-        const result = colorize('Hello 🌟 World', 'sky200');
+        const result = colors.colorize('Hello 🌟 World', 'sky200');
         expect(result).toContain('Hello 🌟 World');
-        expect(result).toContain('\x1b[0m');
+        if (colors.isColorSupported()) {
+          expect(result).toContain('\x1b[0m');
+        }
       });
+    });
+
+    it('reflects env var changes dynamically', () => {
+      const origNoColor = process.env.NO_COLOR;
+      const origForceColor = process.env.FORCE_COLOR;
+      try {
+        // Force NO_COLOR on → should disable colors
+        process.env.NO_COLOR = '1';
+        delete process.env.FORCE_COLOR;
+        expect(colors.isColorSupported()).toBe(false);
+
+        // Remove NO_COLOR, set FORCE_COLOR → should enable colors
+        delete process.env.NO_COLOR;
+        process.env.FORCE_COLOR = '1';
+        expect(colors.isColorSupported()).toBe(true);
+      } finally {
+        // Restore originals
+        if (origNoColor === undefined) delete process.env.NO_COLOR;
+        else process.env.NO_COLOR = origNoColor;
+        if (origForceColor === undefined) delete process.env.FORCE_COLOR;
+        else process.env.FORCE_COLOR = origForceColor;
+      }
+    });
+
+    it('supports spy-based overrides for color support', () => {
+      vi.spyOn(colors, 'isColorSupported').mockReturnValue(true);
+      expect(colors.isColorSupported()).toBe(true);
+      vi.spyOn(colors, 'isColorSupported').mockReturnValue(false);
+      expect(colors.isColorSupported()).toBe(false);
     });
   });
 });

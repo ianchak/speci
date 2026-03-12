@@ -4,15 +4,49 @@
  * Tests for gate command execution and result tracking.
  */
 
-import { describe, it, expect } from 'vitest';
+import type { ChildProcess } from 'node:child_process';
+import { EventEmitter } from 'node:events';
+import { describe, it, expect, vi, afterEach } from 'vitest';
 import {
   executeGateCommand,
   runGate,
   canRetryGate,
-} from '../../../lib/utils/gate.js';
-import type { SpeciConfig } from '../../../lib/config.js';
+} from '../../../lib/utils/infrastructure/gate.js';
+import type { SpeciConfig } from '../../../lib/config/index.js';
+
+type MockChildProcess = EventEmitter & {
+  stdout: EventEmitter;
+  stderr: EventEmitter;
+  kill: (signal?: NodeJS.Signals) => boolean;
+};
+
+function createMockChildProcess(): MockChildProcess {
+  const child = new EventEmitter() as MockChildProcess;
+  child.stdout = new EventEmitter();
+  child.stderr = new EventEmitter();
+  child.kill = () => true;
+  return child;
+}
+
+async function loadExecuteGateCommandWithMockSpawn(
+  child: MockChildProcess
+): Promise<typeof executeGateCommand> {
+  vi.resetModules();
+  vi.doMock('node:child_process', () => ({
+    spawn: vi.fn(() => child as unknown as ChildProcess),
+  }));
+
+  const gateModule = await import('../../../lib/utils/infrastructure/gate.js');
+  return gateModule.executeGateCommand;
+}
 
 describe('Gate Runner', () => {
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.doUnmock('node:child_process');
+    vi.restoreAllMocks();
+  });
+
   describe('executeGateCommand()', () => {
     it('should capture stdout correctly', async () => {
       const result = await executeGateCommand('echo hello');
@@ -86,6 +120,51 @@ describe('Gate Runner', () => {
 
       expect(result.isSuccess).toBe(false);
       expect(result.exitCode).toBeGreaterThan(0);
+    });
+
+    it('should send SIGKILL when process ignores SIGTERM after timeout', async () => {
+      vi.useFakeTimers();
+      const child = createMockChildProcess();
+      const killCalls: Array<NodeJS.Signals | undefined> = [];
+      child.kill = (signal?: NodeJS.Signals) => {
+        killCalls.push(signal);
+        return true;
+      };
+      const executeWithMock = await loadExecuteGateCommandWithMockSpawn(child);
+
+      const resultPromise = executeWithMock('mock-command', { timeout: 100 });
+      await vi.advanceTimersByTimeAsync(100);
+      expect(killCalls).toEqual(['SIGTERM']);
+
+      await vi.advanceTimersByTimeAsync(5000);
+      expect(killCalls).toContain('SIGKILL');
+
+      child.emit('close', 1);
+      const result = await resultPromise;
+      expect(result.exitCode).toBe(124);
+    });
+
+    it('should clear SIGKILL timer when process closes before fallback timer fires', async () => {
+      vi.useFakeTimers();
+      const child = createMockChildProcess();
+      const killCalls: Array<NodeJS.Signals | undefined> = [];
+      child.kill = (signal?: NodeJS.Signals) => {
+        killCalls.push(signal);
+        return true;
+      };
+      const executeWithMock = await loadExecuteGateCommandWithMockSpawn(child);
+
+      const resultPromise = executeWithMock('mock-command', { timeout: 100 });
+      await vi.advanceTimersByTimeAsync(100);
+      expect(killCalls).toEqual(['SIGTERM']);
+
+      child.emit('close', 0);
+      await vi.advanceTimersByTimeAsync(5000);
+      expect(killCalls).toEqual(['SIGTERM']);
+
+      const result = await resultPromise;
+      expect(result.exitCode).toBe(124);
+      expect(result.error).toContain('timed out');
     });
   });
 
@@ -172,6 +251,36 @@ describe('Gate Runner', () => {
       expect(result.isSuccess).toBe(true);
       expect(result.results).toHaveLength(0);
       expect(result.totalDuration).toBe(0);
+    });
+
+    it('uses injected logger when provided', async () => {
+      const emptyConfig: SpeciConfig = {
+        ...mockConfig,
+        gate: {
+          ...mockConfig.gate,
+          commands: [],
+        },
+      };
+      const injectedLogger = {
+        info: vi.fn(),
+        infoPlain: vi.fn(),
+        warnPlain: vi.fn(),
+        errorPlain: vi.fn(),
+        successPlain: vi.fn(),
+        error: vi.fn(),
+        warn: vi.fn(),
+        success: vi.fn(),
+        debug: vi.fn(),
+        muted: vi.fn(),
+        raw: vi.fn(),
+        setVerbose: vi.fn(),
+      };
+
+      await runGate(emptyConfig, injectedLogger);
+
+      expect(injectedLogger.debug).toHaveBeenCalledWith(
+        'No gate commands configured, skipping gate'
+      );
     });
 
     it('should track total duration', async () => {

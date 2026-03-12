@@ -11,6 +11,7 @@ import {
   getErrorDefinition,
   formatError,
   createError,
+  type ErrorCode,
 } from '@/errors.js';
 
 describe('Error Catalog', () => {
@@ -130,43 +131,28 @@ describe('Error Catalog', () => {
     it('should return definition for valid error code ERR-INP-03', () => {
       const def = getErrorDefinition('ERR-INP-03');
       expect(def).toBeDefined();
-      expect(def?.message).toBe('Config file is malformed');
+      expect(def.message).toBe('Config file is malformed');
     });
 
     it('should return definition for valid error code ERR-STA-01', () => {
       const def = getErrorDefinition('ERR-STA-01');
       expect(def).toBeDefined();
-      expect(def?.message).toContain('Another speci instance is running');
+      expect(def.message).toContain('Another speci instance is running');
     });
 
     it('should return definition for valid error code ERR-EXE-02', () => {
       const def = getErrorDefinition('ERR-EXE-02');
       expect(def).toBeDefined();
-      expect(def?.message).toBe('Copilot execution failed');
+      expect(def.message).toBe('Copilot execution failed');
     });
 
     it('should return definition for each of the 34 error codes', () => {
-      const allCodes = Object.keys(ERROR_CODES);
+      const allCodes = Object.keys(ERROR_CODES) as ErrorCode[];
       expect(allCodes.length).toBe(34);
       for (const code of allCodes) {
         const def = getErrorDefinition(code);
         expect(def, `${code} should have a definition`).toBeDefined();
       }
-    });
-
-    it('should return undefined for non-existent error code', () => {
-      const def = getErrorDefinition('ERR-INVALID-99');
-      expect(def).toBeUndefined();
-    });
-
-    it('should return undefined for empty string', () => {
-      const def = getErrorDefinition('');
-      expect(def).toBeUndefined();
-    });
-
-    it('should return undefined for code with wrong format', () => {
-      const def = getErrorDefinition('INVALID-CODE');
-      expect(def).toBeUndefined();
     });
   });
 
@@ -195,18 +181,8 @@ describe('Error Catalog', () => {
       expect(formatted).not.toContain('Context:');
     });
 
-    it('should handle unknown error codes gracefully', () => {
-      const formatted = formatError('ERR-UNKNOWN-99');
-      expect(formatted).toBe('Unknown error code: ERR-UNKNOWN-99');
-    });
-
-    it('should handle empty error code', () => {
-      const formatted = formatError('');
-      expect(formatted).toBe('Unknown error code: ');
-    });
-
     it('should format all error codes without throwing', () => {
-      const allCodes = Object.keys(ERROR_CODES);
+      const allCodes = Object.keys(ERROR_CODES) as ErrorCode[];
       for (const code of allCodes) {
         expect(() => formatError(code)).not.toThrow();
       }
@@ -260,6 +236,14 @@ describe('Error Catalog', () => {
       expect(error.name).toBe('ERR-PRE-01');
     });
 
+    it('should set ERR-INP-02 error name to ERR-INP-02', () => {
+      const error = createError(
+        'ERR-INP-02',
+        JSON.stringify({ path: '/path/to/speci-task.agent.md' })
+      );
+      expect(error.name).toBe('ERR-INP-02');
+    });
+
     it('should set error message to formatted error', () => {
       const error = createError('ERR-PRE-01');
       const expected = formatError('ERR-PRE-01');
@@ -272,19 +256,12 @@ describe('Error Catalog', () => {
     });
 
     it('should work for all error codes', () => {
-      const allCodes = Object.keys(ERROR_CODES);
+      const allCodes = Object.keys(ERROR_CODES) as ErrorCode[];
       for (const code of allCodes) {
         const error = createError(code);
         expect(error).toBeInstanceOf(Error);
         expect(error.name).toBe(code);
       }
-    });
-
-    it('should create error with unknown code', () => {
-      const error = createError('ERR-UNKNOWN-99');
-      expect(error).toBeInstanceOf(Error);
-      expect(error.name).toBe('ERR-UNKNOWN-99');
-      expect(error.message).toContain('Unknown error code');
     });
 
     it('should preserve stack trace', () => {
@@ -421,7 +398,7 @@ describe('Error Catalog', () => {
     });
 
     it('should work with all error codes when context provided', () => {
-      const allCodes = Object.keys(ERROR_CODES);
+      const allCodes = Object.keys(ERROR_CODES) as ErrorCode[];
       for (const code of allCodes) {
         expect(() =>
           formatError(code, JSON.stringify({ test: 'value' }))
@@ -452,19 +429,19 @@ describe('Error Catalog', () => {
     it('should have ERR-INP-06 for config version incompatibility', () => {
       const def = getErrorDefinition('ERR-INP-06');
       expect(def).toBeDefined();
-      expect(def?.message).toContain('version');
+      expect(def.message).toContain('version');
     });
 
     it('should have ERR-INP-07 for unsafe path errors', () => {
       const def = getErrorDefinition('ERR-INP-07');
       expect(def).toBeDefined();
-      expect(def?.message).toContain('path');
+      expect(def.message).toContain('path');
     });
 
     it('should have ERR-INP-08 for invalid permission values', () => {
       const def = getErrorDefinition('ERR-INP-08');
       expect(def).toBeDefined();
-      expect(def?.message).toContain('permission');
+      expect(def.message).toContain('permission');
     });
 
     it('should have ERR-INP-09 for maxFixAttempts validation', () => {
@@ -480,7 +457,7 @@ describe('Error Catalog', () => {
     it('should have ERR-INP-11 for subagent prompt not found', () => {
       const def = getErrorDefinition('ERR-INP-11');
       expect(def).toBeDefined();
-      expect(def?.message).toContain('subagent');
+      expect(def.message).toContain('subagent');
     });
 
     it('should have ERR-PRE-06 for PROGRESS.md missing in run command', () => {
@@ -491,19 +468,19 @@ describe('Error Catalog', () => {
     it('should have ERR-EXE-05 for directory creation failures', () => {
       const def = getErrorDefinition('ERR-EXE-05');
       expect(def).toBeDefined();
-      expect(def?.message).toContain('directory');
+      expect(def.message).toContain('directory');
     });
 
     it('should have ERR-EXE-06 for file write failures', () => {
       const def = getErrorDefinition('ERR-EXE-06');
       expect(def).toBeDefined();
-      expect(def?.message).toContain('file');
+      expect(def.message).toContain('file');
     });
 
     it('should have ERR-EXE-07 for agent template directory not found', () => {
       const def = getErrorDefinition('ERR-EXE-07');
       expect(def).toBeDefined();
-      expect(def?.message).toContain('template');
+      expect(def.message).toContain('template');
     });
 
     it('should have ERR-EXE-08 for agent file copy failures', () => {
@@ -514,19 +491,19 @@ describe('Error Catalog', () => {
     it('should have ERR-EXE-09 for tasks directory read failures', () => {
       const def = getErrorDefinition('ERR-EXE-09');
       expect(def).toBeDefined();
-      expect(def?.message).toContain('read tasks directory');
+      expect(def.message).toContain('read tasks directory');
     });
 
     it('should have ERR-EXE-10 for clean deletion failures', () => {
       const def = getErrorDefinition('ERR-EXE-10');
       expect(def).toBeDefined();
-      expect(def?.message).toContain('delete during clean');
+      expect(def.message).toContain('delete during clean');
     });
 
     it('should have ERR-UI-01 for invalid hex color', () => {
       const def = getErrorDefinition('ERR-UI-01');
       expect(def).toBeDefined();
-      expect(def?.message).toContain('color');
+      expect(def.message).toContain('color');
     });
   });
 });

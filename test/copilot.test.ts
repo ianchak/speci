@@ -9,8 +9,9 @@ import {
   type CopilotArgsOptions,
   type AgentRunResult,
 } from '../lib/copilot.js';
-import { getDefaults, type SpeciConfig } from '../lib/config.js';
-import { log } from '../lib/utils/logger.js';
+import { createMockProcess } from '../lib/adapters/test-context.js';
+import { getDefaults, type SpeciConfig } from '../lib/config/index.js';
+import { log } from '../lib/utils/infrastructure/logger.js';
 
 // Mock child_process
 vi.mock('node:child_process', () => ({
@@ -28,7 +29,7 @@ vi.mock('node:fs', async () => {
 });
 
 // Mock logger
-vi.mock('../lib/utils/logger.js', () => ({
+vi.mock('../lib/utils/infrastructure/logger.js', () => ({
   log: {
     infoPlain: vi.fn(),
     debug: vi.fn(),
@@ -38,11 +39,10 @@ vi.mock('../lib/utils/logger.js', () => ({
 }));
 
 // Mock config resolveAgentPath
-vi.mock('../lib/config.js', async () => {
-  const actual =
-    await vi.importActual<typeof import('../lib/config.js')>(
-      '../lib/config.js'
-    );
+vi.mock('../lib/config/index.js', async () => {
+  const actual = await vi.importActual<typeof import('../lib/config/index.js')>(
+    '../lib/config/index.js'
+  );
   return {
     ...actual,
     resolveAgentPath: vi.fn((_config: SpeciConfig, agentName: string) => {
@@ -322,19 +322,73 @@ describe('copilot', () => {
       const exitCode = await promise;
       expect(exitCode).toBe(1);
     });
+
+    it('should use injected process cwd and env when provided', async () => {
+      const mockChild = new EventEmitter();
+      (spawn as ReturnType<typeof vi.fn>).mockReturnValue(mockChild);
+      const proc = createMockProcess();
+      proc.env = { TEST_ENV: '1' };
+      vi.mocked(proc.cwd).mockReturnValue('C:\\mock\\cwd');
+
+      const promise = spawnCopilot(['-p', ''], {}, proc);
+      setTimeout(() => mockChild.emit('close', 0), 10);
+
+      await promise;
+
+      expect(spawn).toHaveBeenCalledWith('copilot', ['-p', ''], {
+        stdio: 'inherit',
+        cwd: 'C:\\mock\\cwd',
+        env: { TEST_ENV: '1' },
+        shell: false,
+      });
+    });
+
+    it('should fallback to global process cwd and env when proc is omitted', async () => {
+      const mockChild = new EventEmitter();
+      (spawn as ReturnType<typeof vi.fn>).mockReturnValue(mockChild);
+
+      const promise = spawnCopilot(['-p', '']);
+      setTimeout(() => mockChild.emit('close', 0), 10);
+
+      await promise;
+
+      expect(spawn).toHaveBeenCalledWith('copilot', ['-p', ''], {
+        stdio: 'inherit',
+        cwd: process.cwd(),
+        env: process.env,
+        shell: false,
+      });
+    });
   });
 
   describe('runAgent', () => {
+    it('should forward injected process to spawnCopilot', async () => {
+      const mockChild = new EventEmitter();
+      (spawn as ReturnType<typeof vi.fn>).mockReturnValue(mockChild);
+      const proc = createMockProcess();
+      proc.env = { FORWARDED: '1' };
+      vi.mocked(proc.cwd).mockReturnValue('C:\\forwarded\\cwd');
+
+      const promise = runAgent(config, 'impl', undefined, proc);
+      setTimeout(() => mockChild.emit('close', 0), 10);
+
+      await promise;
+
+      expect(spawn).toHaveBeenCalledWith(
+        'copilot',
+        expect.any(Array),
+        expect.objectContaining({
+          cwd: 'C:\\forwarded\\cwd',
+          env: { FORWARDED: '1' },
+        })
+      );
+    });
+
     it('should return success for exit code 0', async () => {
       const mockChild = new EventEmitter();
       (spawn as ReturnType<typeof vi.fn>).mockReturnValue(mockChild);
 
-      const promise = runAgent(
-        config,
-        'impl',
-        'Test Implementation',
-        fastRetryPolicy
-      );
+      const promise = runAgent(config, 'impl', fastRetryPolicy);
 
       // Simulate success
       setTimeout(() => mockChild.emit('close', 0), 10);
@@ -350,17 +404,55 @@ describe('copilot', () => {
       }
     });
 
+    it('uses injected logger for retry warnings', async () => {
+      let callCount = 0;
+      vi.mocked(spawn).mockImplementation(() => {
+        callCount++;
+        const proc = new EventEmitter() as ChildProcess;
+        proc.stdout = new EventEmitter() as never;
+        proc.stderr = new EventEmitter() as never;
+        setTimeout(() => proc.emit('close', callCount === 1 ? 429 : 0), 10);
+        return proc;
+      });
+      const injectedLogger = {
+        info: vi.fn(),
+        infoPlain: vi.fn(),
+        warnPlain: vi.fn(),
+        errorPlain: vi.fn(),
+        successPlain: vi.fn(),
+        error: vi.fn(),
+        warn: vi.fn(),
+        success: vi.fn(),
+        debug: vi.fn(),
+        muted: vi.fn(),
+        raw: vi.fn(),
+        setVerbose: vi.fn(),
+      };
+
+      await runAgent(
+        config,
+        'impl',
+        {
+          maxRetries: 1,
+          baseDelay: 1,
+          maxDelay: 5,
+          retryableExitCodes: [429],
+        },
+        undefined,
+        injectedLogger
+      );
+
+      expect(injectedLogger.warn).toHaveBeenCalledWith(
+        expect.stringContaining('Retry 1/1')
+      );
+    });
+
     it('should create logs directory if it does not exist', async () => {
       vi.mocked(existsSync).mockReturnValueOnce(false);
       const mockChild = new EventEmitter();
       (spawn as ReturnType<typeof vi.fn>).mockReturnValue(mockChild);
 
-      const promise = runAgent(
-        config,
-        'impl',
-        'Test Implementation',
-        fastRetryPolicy
-      );
+      const promise = runAgent(config, 'impl', fastRetryPolicy);
 
       setTimeout(() => mockChild.emit('close', 0), 10);
       await promise;
@@ -374,12 +466,7 @@ describe('copilot', () => {
       const mockChild = new EventEmitter();
       (spawn as ReturnType<typeof vi.fn>).mockReturnValue(mockChild);
 
-      const promise = runAgent(
-        config,
-        'impl',
-        'Test Implementation',
-        fastRetryPolicy
-      );
+      const promise = runAgent(config, 'impl', fastRetryPolicy);
 
       setTimeout(() => mockChild.emit('close', 0), 10);
       await promise;
@@ -396,12 +483,7 @@ describe('copilot', () => {
       const mockChild = new EventEmitter();
       (spawn as ReturnType<typeof vi.fn>).mockReturnValue(mockChild);
 
-      const promise = runAgent(
-        config,
-        'impl',
-        'Test Implementation',
-        fastRetryPolicy
-      );
+      const promise = runAgent(config, 'impl', fastRetryPolicy);
 
       // Simulate failure
       setTimeout(() => mockChild.emit('close', 1), 10);
@@ -422,12 +504,7 @@ describe('copilot', () => {
         .mockReturnValueOnce(mockChild1)
         .mockReturnValueOnce(mockChild2);
 
-      const promise = runAgent(
-        config,
-        'impl',
-        'Test Implementation',
-        fastRetryPolicy
-      );
+      const promise = runAgent(config, 'impl', fastRetryPolicy);
 
       // First attempt fails with rate limit (429 -> retryable)
       setTimeout(() => mockChild1.emit('close', 429), 10);
@@ -448,12 +525,7 @@ describe('copilot', () => {
         .mockReturnValueOnce(mockChild1)
         .mockReturnValueOnce(mockChild2);
 
-      const promise = runAgent(
-        config,
-        'impl',
-        'Test Implementation',
-        fastRetryPolicy
-      );
+      const promise = runAgent(config, 'impl', fastRetryPolicy);
 
       // First attempt fails with network error (52 -> retryable)
       setTimeout(() => mockChild1.emit('close', 52), 10);
@@ -474,12 +546,7 @@ describe('copilot', () => {
         .mockReturnValueOnce(mockChild1)
         .mockReturnValueOnce(mockChild2);
 
-      const promise = runAgent(
-        config,
-        'impl',
-        'Test Implementation',
-        fastRetryPolicy
-      );
+      const promise = runAgent(config, 'impl', fastRetryPolicy);
 
       // First attempt fails with timeout (124 -> retryable)
       setTimeout(() => mockChild1.emit('close', 124), 10);
@@ -500,12 +567,7 @@ describe('copilot', () => {
         .mockReturnValueOnce(mockChild1)
         .mockReturnValueOnce(mockChild2);
 
-      const promise = runAgent(
-        config,
-        'impl',
-        'Test Implementation',
-        fastRetryPolicy
-      );
+      const promise = runAgent(config, 'impl', fastRetryPolicy);
 
       // First attempt fails with connection failure (7 -> retryable)
       setTimeout(() => mockChild1.emit('close', 7), 10);
@@ -526,12 +588,7 @@ describe('copilot', () => {
         .mockReturnValueOnce(mockChild1)
         .mockReturnValueOnce(mockChild2);
 
-      const promise = runAgent(
-        config,
-        'impl',
-        'Test Implementation',
-        fastRetryPolicy
-      );
+      const promise = runAgent(config, 'impl', fastRetryPolicy);
 
       // First attempt fails with DNS failure (6 -> retryable)
       setTimeout(() => mockChild1.emit('close', 6), 10);
@@ -549,7 +606,7 @@ describe('copilot', () => {
       const mockChild = new EventEmitter();
       (spawn as ReturnType<typeof vi.fn>).mockReturnValue(mockChild);
 
-      const promise = runAgent(config, 'impl', 'Test Implementation');
+      const promise = runAgent(config, 'impl');
 
       // Simulate ENOENT error
       setTimeout(() => {
@@ -574,7 +631,7 @@ describe('copilot', () => {
       const mockChild = new EventEmitter();
       (spawn as ReturnType<typeof vi.fn>).mockReturnValue(mockChild);
 
-      const promise = runAgent(config, 'impl', 'Test Implementation');
+      const promise = runAgent(config, 'impl');
 
       // Non-retryable exit code
       setTimeout(() => mockChild.emit('close', 1), 10);
@@ -597,7 +654,7 @@ describe('copilot', () => {
         .mockReturnValueOnce(mocks[2])
         .mockReturnValueOnce(mocks[3]);
 
-      const promise = runAgent(config, 'impl', 'Test Implementation');
+      const promise = runAgent(config, 'impl');
 
       // Emit close event for first attempt immediately
       setTimeout(() => mocks[0].emit('close', 429), 10);
@@ -631,7 +688,7 @@ describe('copilot', () => {
         const mockChild = new EventEmitter();
         (spawn as ReturnType<typeof vi.fn>).mockReturnValue(mockChild);
 
-        const promise = runAgent(config, 'impl', 'Test Implementation');
+        const promise = runAgent(config, 'impl');
         setTimeout(() => mockChild.emit('close', 0), 10);
 
         const result = await promise;
@@ -648,7 +705,7 @@ describe('copilot', () => {
         const mockChild = new EventEmitter();
         (spawn as ReturnType<typeof vi.fn>).mockReturnValue(mockChild);
 
-        const promise = runAgent(config, 'impl', 'Test Implementation');
+        const promise = runAgent(config, 'impl');
         setTimeout(() => mockChild.emit('close', 1), 10);
 
         const result = await promise;
@@ -665,7 +722,7 @@ describe('copilot', () => {
         const mockChild = new EventEmitter();
         (spawn as ReturnType<typeof vi.fn>).mockReturnValue(mockChild);
 
-        const promise = runAgent(config, 'impl', 'Test Implementation');
+        const promise = runAgent(config, 'impl');
         setTimeout(() => mockChild.emit('close', 1), 10);
 
         const result = await promise;
@@ -705,7 +762,7 @@ describe('copilot', () => {
         return proc;
       });
 
-      const result = await runAgent(config, 'test-agent', 'plan');
+      const result = await runAgent(config, 'test-agent');
 
       expect(result.isSuccess).toBe(true);
       expect(callCount).toBeGreaterThan(1); // Should have retried
@@ -729,7 +786,7 @@ describe('copilot', () => {
         return proc;
       });
 
-      const result = await runAgent(config, 'test-agent', 'plan');
+      const result = await runAgent(config, 'test-agent');
 
       expect(result.isSuccess).toBe(false);
       expect(callCount).toBe(1); // No retries for exit code 1
@@ -758,7 +815,7 @@ describe('copilot', () => {
         return proc;
       });
 
-      await runAgent(config, 'test-agent', 'plan', {
+      await runAgent(config, 'test-agent', {
         maxRetries: 2,
         baseDelay: 5,
         maxDelay: 20,
@@ -787,7 +844,7 @@ describe('copilot', () => {
         return proc;
       });
 
-      await runAgent(config, 'test-agent', 'plan', {
+      await runAgent(config, 'test-agent', {
         maxRetries: 2,
         baseDelay: 5,
         maxDelay: 20,
@@ -819,7 +876,7 @@ describe('copilot', () => {
         return proc;
       });
 
-      const result = await runAgent(config, 'test-agent', 'plan', {
+      const result = await runAgent(config, 'test-agent', {
         maxRetries: 2,
         baseDelay: 5,
         maxDelay: 20,
@@ -853,7 +910,7 @@ describe('copilot', () => {
         return proc;
       });
 
-      const promise = runAgent(config, 'test-agent', 'plan', {
+      const promise = runAgent(config, 'test-agent', {
         maxRetries: 2,
         baseDelay: 100,
         maxDelay: 200,
@@ -939,7 +996,7 @@ describe('copilot', () => {
         return proc;
       });
 
-      const result = await runAgent(config, 'test-agent', 'plan');
+      const result = await runAgent(config, 'test-agent');
 
       expect(result.isSuccess).toBe(false);
       expect(result.exitCode).toBe(127);
@@ -968,11 +1025,113 @@ describe('copilot', () => {
         return proc;
       });
 
-      const result = await runAgent(config, 'test-agent', 'plan');
+      const result = await runAgent(config, 'test-agent');
 
       // Should only attempt once (no retries for ENOENT)
       expect(callCount).toBe(1);
       // Should return proper error result
+      expect(result.isSuccess).toBe(false);
+      if (!result.isSuccess) {
+        expect(result.exitCode).toBe(127);
+        expect(result.error).toBe(
+          'Copilot CLI not found. Is it installed and in PATH?'
+        );
+      }
+    });
+
+    it('should use fallback message when a string is thrown', async () => {
+      vi.mocked(spawn).mockImplementation(() => {
+        const proc = new EventEmitter() as ChildProcess;
+        proc.stdout = new EventEmitter() as never;
+        proc.stderr = new EventEmitter() as never;
+
+        setTimeout(() => {
+          proc.emit('error', 'boom');
+        }, 10);
+
+        return proc;
+      });
+
+      const result = await runAgent(config, 'test-agent', {
+        maxRetries: 0,
+        baseDelay: 1,
+        maxDelay: 1,
+        retryableExitCodes: [429, 52, 124, 7, 6],
+      });
+
+      expect(result.isSuccess).toBe(false);
+      if (!result.isSuccess) {
+        expect(result.error).toBe('Failed after 0 retries');
+      }
+    });
+
+    it('should use fallback message when a plain object is thrown', async () => {
+      vi.mocked(spawn).mockImplementation(() => {
+        const proc = new EventEmitter() as ChildProcess;
+        proc.stdout = new EventEmitter() as never;
+        proc.stderr = new EventEmitter() as never;
+
+        setTimeout(() => {
+          proc.emit('error', { message: 'oops' });
+        }, 10);
+
+        return proc;
+      });
+
+      const result = await runAgent(config, 'test-agent', {
+        maxRetries: 0,
+        baseDelay: 1,
+        maxDelay: 1,
+        retryableExitCodes: [429, 52, 124, 7, 6],
+      });
+
+      expect(result.isSuccess).toBe(false);
+      if (!result.isSuccess) {
+        expect(result.error).toBe('Failed after 0 retries');
+      }
+    });
+
+    it('should return Error.message when an Error is thrown', async () => {
+      vi.mocked(spawn).mockImplementation(() => {
+        const proc = new EventEmitter() as ChildProcess;
+        proc.stdout = new EventEmitter() as never;
+        proc.stderr = new EventEmitter() as never;
+
+        setTimeout(() => {
+          proc.emit('error', new Error('boom'));
+        }, 10);
+
+        return proc;
+      });
+
+      const result = await runAgent(config, 'test-agent', {
+        maxRetries: 0,
+        baseDelay: 1,
+        maxDelay: 1,
+        retryableExitCodes: [429, 52, 124, 7, 6],
+      });
+
+      expect(result.isSuccess).toBe(false);
+      if (!result.isSuccess) {
+        expect(result.error).toBe('boom');
+      }
+    });
+
+    it('should treat plain-object ENOENT code as non-retryable', async () => {
+      vi.mocked(spawn).mockImplementation(() => {
+        const proc = new EventEmitter() as ChildProcess;
+        proc.stdout = new EventEmitter() as never;
+        proc.stderr = new EventEmitter() as never;
+
+        setTimeout(() => {
+          proc.emit('error', { code: 'ENOENT' });
+        }, 10);
+
+        return proc;
+      });
+
+      const result = await runAgent(config, 'test-agent');
+
       expect(result.isSuccess).toBe(false);
       if (!result.isSuccess) {
         expect(result.exitCode).toBe(127);
@@ -1002,7 +1161,7 @@ describe('copilot', () => {
         return proc;
       });
 
-      const promise = runAgent(config, 'test-agent', 'plan');
+      const promise = runAgent(config, 'test-agent');
 
       // Fast-forward through retry delay (1000ms for first retry)
       await vi.advanceTimersByTimeAsync(1100);
@@ -1032,7 +1191,7 @@ describe('copilot', () => {
         return proc;
       });
 
-      const promise = runAgent(config, 'test-agent', 'plan', {
+      const promise = runAgent(config, 'test-agent', {
         maxRetries: 2,
         baseDelay: 100,
         maxDelay: 10000,
@@ -1073,7 +1232,7 @@ describe('copilot', () => {
         return proc;
       });
 
-      const promise = runAgent(config, 'test-agent', 'plan', {
+      const promise = runAgent(config, 'test-agent', {
         maxRetries: 3,
         baseDelay: 1000,
         maxDelay: 10000,
@@ -1118,7 +1277,7 @@ describe('copilot', () => {
         return proc;
       });
 
-      const result = await runAgent(config, 'test-agent', 'plan');
+      const result = await runAgent(config, 'test-agent');
 
       expect(result.isSuccess).toBe(false);
       expect(callCount).toBe(1); // No retries
@@ -1141,7 +1300,7 @@ describe('copilot', () => {
         return proc;
       });
 
-      const promise = runAgent(config, 'test-agent', 'plan', {
+      const promise = runAgent(config, 'test-agent', {
         maxRetries: 1,
         baseDelay: 100,
         maxDelay: 10000,
@@ -1189,7 +1348,7 @@ describe('copilot', () => {
         return proc;
       });
 
-      const promise = runAgent(config, 'test-agent', 'plan', {
+      const promise = runAgent(config, 'test-agent', {
         maxRetries: 4,
         baseDelay: 1000,
         maxDelay: 20000,

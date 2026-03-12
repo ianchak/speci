@@ -61,6 +61,16 @@ export function supportsColor(): boolean {
 }
 
 /**
+ * Check whether terminal color output is currently supported.
+ *
+ * Re-evaluates on every call so that changes to NO_COLOR, FORCE_COLOR,
+ * CI env vars, or process.stdout.isTTY are picked up at runtime.
+ *
+ * @returns true if colors should be used right now
+ */
+export const isColorSupported = (): boolean => supportsColor();
+
+/**
  * Strip ANSI escape codes from string
  *
  * Removes all ANSI escape sequences to get plain text.
@@ -98,7 +108,7 @@ export function visibleLength(str: string): number {
  * @returns ANSI-wrapped text or plain text if NO_COLOR
  */
 export function colorize(text: string, color: ColorName): string {
-  if (!supportsColor()) {
+  if (!isColorSupported()) {
     return text;
   }
 
