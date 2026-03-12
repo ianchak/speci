@@ -100,12 +100,14 @@ describe('yolo command', () => {
     const context = createMockContext({ mockConfig, cwd: 'C:\\project' });
     const result = await yolo({}, context, mockConfig);
 
+    const expectedError =
+      'Missing required input\nProvide input files: --input file1.md file2.md\nOr provide prompt: --prompt "Your instructions"\nBoth can be used together';
     expect(result).toEqual({
       success: false,
       exitCode: 1,
-      error: 'Missing required input',
+      error: expectedError,
     });
-    expect(context.logger.error).toHaveBeenCalledWith('Missing required input');
+    expect(context.logger.error).toHaveBeenCalledWith(expectedError);
     expect(context.lockManager.acquire).not.toHaveBeenCalled();
     expect(planModule.plan).not.toHaveBeenCalled();
     expect(taskModule.task).not.toHaveBeenCalled();
@@ -552,7 +554,8 @@ describe('yolo command', () => {
     expect(result).toEqual({
       success: false,
       exitCode: 1,
-      error: 'Missing required input',
+      error:
+        'Missing required input\nProvide input files: --input file1.md file2.md\nOr provide prompt: --prompt "Your instructions"\nBoth can be used together',
     });
     expect(planModule.plan).not.toHaveBeenCalled();
   });
