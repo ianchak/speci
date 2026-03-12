@@ -196,8 +196,13 @@ export async function yolo(
     .requireInput(options.input, normalizedPrompt)
     .validate();
   if (!inputValidation.success) {
-    context.logger.error(inputValidation.error.message);
-    return failResult(inputValidation.error.message);
+    const { message, suggestions } = inputValidation.error;
+    const fullMessage =
+      suggestions && suggestions.length > 0
+        ? `${message}\n${suggestions.join('\n')}`
+        : message;
+    context.logger.error(fullMessage);
+    return failResult(fullMessage);
   }
 
   await context.preflight.run(
