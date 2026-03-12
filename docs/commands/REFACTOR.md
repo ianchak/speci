@@ -350,7 +350,8 @@ docs/REFACTORING_PLAN.md
 │  Builds composite prompt   │  Builds scope-aware prompt              │
 │  agent: speci-plan.agent.md │  agent: speci-refactor.agent.md         │
 │  13 subagent calls         │  15 subagent calls                      │
-│  (3 context + 10 refine)   │  (10 analysis + 5 review)               │
+│  (2 context + 1 planner    │  (10 analysis + 5 review)               │
+│   + 10 refine)             │                                         │
 │  Output: feature plan      │  Output: refactoring plan               │
 ├────────────────────────────┴─────────────────────────────────────────┤
 │  * plan requires either --input or --prompt                          │

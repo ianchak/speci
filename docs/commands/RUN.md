@@ -266,7 +266,9 @@ This is the core automation loop. It implements code, validates with gates, and 
 │                                                                  │
 │  1. Check existing lock                                          │
 │     ├─ Lock exists + no --force → prompt "Override? [y/N]"       │
-│     └─ Lock exists + --force → release & re-acquire              │
+│     │   └─ User confirms → release existing lock                 │
+│     └─ Lock exists + --force → release existing lock             │
+│     (Both paths release, then step 2 re-acquires)                │
 │                                                                  │
 │  2. Acquire lock (.speci-lock)                                   │
 │     └─ Contains: PID, timestamp, command='run'                   │
@@ -299,7 +301,10 @@ This is the core automation loop. It implements code, validates with gates, and 
 │     │                                                    │
 │     ▼                                                    │
 │  Display warnings for each ready milestone               │
-│  Prompt: "Continue anyway? [y/N]"                        │
+│                                                          │
+│  ├─ --yes flag set? → auto-continue (log info)           │
+│  ├─ Non-TTY stdin?  → auto-abort (warn & exit)           │
+│  └─ Interactive?    → Prompt: "Continue anyway? [y/N]"   │
 │     │                                                    │
 │     no → exit cleanly                                    │
 │                                                          │

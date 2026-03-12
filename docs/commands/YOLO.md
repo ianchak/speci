@@ -341,7 +341,8 @@ Since yolo composes plan → task → run, it triggers the **entire agent ecosys
 │  (called repeatedly across iterations)                                   │
 │                                                                          │
 │  ═══════════════════════════════════════════════                         │
-│  GRAND TOTAL: 7 unique agents, 33+ subagent prompts                      │
+│  GRAND TOTAL: 6 unique agents, 18+ subagent prompts                      │
+│  (plan: 13, task: 5+, run agents: 0 subagents each)                      │
 │  ═══════════════════════════════════════════════                         │
 │                                                                          │
 └──────────────────────────────────────────────────────────────────────────┘
@@ -357,7 +358,9 @@ Since yolo composes plan → task → run, it triggers the **entire agent ecosys
 │  ├── speci-impl.agent.md          ← Implementation (no subagents)        │
 │  ├── speci-review.agent.md        ← Code review (no subagents)           │
 │  ├── speci-fix.agent.md           ← Gate fix (no subagents)              │
-│  ├── speci-tidy.agent.md          ← PROGRESS cleanup (no subagents)      │
+│  └── speci-tidy.agent.md          ← PROGRESS cleanup (no subagents)      │
+│                                                                          │
+│  Not used by yolo (separate command):                                    │
 │  └── speci-refactor.agent.md      ← Refactor orchestrator (15 subagents) │
 │                                                                          │
 │  templates/agents/subagents/  (33 prompt files)                          │
@@ -384,7 +387,7 @@ Since yolo composes plan → task → run, it triggers the **entire agent ecosys
 │  ├── progress_generator.prompt.md                                        │
 │  ├── final_reviewer.prompt.md                                            │
 │  │                                                                       │
-│  │  Refactor subagents (15):                                             │
+│  │  Refactor subagents (15) — not used by yolo:                          │
 │  ├── refactor_analyze_structure.prompt.md                                │
 │  ├── refactor_analyze_types.prompt.md                                    │
 │  ├── refactor_analyze_errors.prompt.md                                   │

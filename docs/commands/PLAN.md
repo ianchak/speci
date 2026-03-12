@@ -112,14 +112,14 @@ speci plan --prompt "Build a REST API" --input docs/spec.md --output docs/plan.m
 
 ## Key Details
 
-| Aspect         | Value                                     |
-| -------------- | ----------------------------------------- |
-| Mode           | One-shot (non-interactive)                |
-| Agent          | `speci-plan.agent.md` (bundled or custom) |
-| Preflight      | **Skipped** (no Copilot/git check)        |
-| Lock           | Not acquired                              |
-| Side Effects   | May write `--output` file via agent       |
-| Error Handling | `handleCommandError()` → structured code  |
+| Aspect         | Value                                       |
+| -------------- | ------------------------------------------- |
+| Mode           | One-shot (non-interactive)                  |
+| Agent          | `speci-plan.agent.md` (bundled or custom)   |
+| Preflight      | **Skipped** (all preflight checks bypassed) |
+| Lock           | Not acquired                                |
+| Side Effects   | May write `--output` file via agent         |
+| Error Handling | `handleCommandError()` → structured code    |
 
 ## Input Validation Rules
 
