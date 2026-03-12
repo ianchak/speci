@@ -62,11 +62,9 @@ speci refactor [--scope src/utils] [--output docs/refactor-plan.md] [--verbose]
          │  ├─ Load speci.config.json         │
          │  ├─ Run preflight checks           │
          │  │   ├─ Copilot CLI installed?     │
-         │  │   ├─ Config file exists?        │
-         │  │   ├─ PROGRESS.md exists?        │
-         │  │   └─ Inside git repo?           │
+         │  │   └─ Config file exists?        │
          │  └─ Resolve agent:                 │
-         │     "refactor.agent.md"            │
+         │     "speci-refactor"               │
          └───────────────┬────────────────────┘
                          │
                          ▼
@@ -75,7 +73,8 @@ speci refactor [--scope src/utils] [--output docs/refactor-plan.md] [--verbose]
          │  ┌────────────────────────────┐  │
          │  │ Refactor Analysis          │  │
          │  │ Scope: src/utils           │  │
-         │  │ Agent: refactor.agent.md   │  │
+         │  │ Agent: speci-refactor      │  │
+         │  │        .agent.md          │  │
          │  │ Output: docs/refactor.md   │  │
          │  └────────────────────────────┘  │
          └──────────────────────────────────┘
@@ -100,7 +99,8 @@ speci refactor [--scope src/utils] [--output docs/refactor-plan.md] [--verbose]
          ┌──────────────────────────────────┐
          │  copilotRunner.buildArgs()       │
          │                                  │
-         │  ├─ --agent refactor.agent.md    │
+         │  ├─ --agent speci-refactor       │
+         │  │         .agent.md              │
          │  ├─ --prompt "<built prompt>"    │
          │  └─ --allow-all                  │
          └──────────────────────────────────┘
@@ -155,14 +155,14 @@ speci refactor [--scope src/utils] [--output docs/refactor-plan.md] [--verbose]
 
 ## Key Details
 
-| Aspect         | Value                                    |
-| -------------- | ---------------------------------------- |
-| Mode           | One-shot (non-interactive)               |
-| Agent          | `refactor.agent.md` (bundled or custom)  |
-| Preflight      | Full (Copilot, config, progress, git)    |
-| Lock           | Not acquired                             |
-| Side Effects   | May write `--output` file via agent      |
-| Error Handling | `handleCommandError()` → structured code |
+| Aspect         | Value                                         |
+| -------------- | --------------------------------------------- |
+| Mode           | One-shot (non-interactive)                    |
+| Agent          | `speci-refactor.agent.md` (bundled or custom) |
+| Preflight      | Partial (Copilot, config)                     |
+| Lock           | Not acquired                                  |
+| Side Effects   | May write `--output` file via agent           |
+| Error Handling | `handleCommandError()` → structured code      |
 
 ---
 
@@ -180,7 +180,7 @@ The refactor agent is an **orchestrator** that spawns **15 subagents** across 4 
 │  Context: MINIMAL — only dispatches, compiles proposals between phases   │
 │  Output: docs/REFACTORING_PLAN.md                                        │
 │                                                                          │
-│  Subagent prompts loaded from: .github/agents/subagents/                 │
+│  Subagent prompts loaded from: templates/agents/subagents/              │
 │                                                                          │
 └──────────────────────────────────────────────────────────────────────────┘
 ```
@@ -246,7 +246,7 @@ The refactor agent is an **orchestrator** that spawns **15 subagents** across 4 
 ```
 ┌──────────────────────────────────────────────────────────────────────────┐
 │                      Subagent Prompt Files                               │
-│                  .github/agents/subagents/                               │
+│                  templates/agents/subagents/                             │
 │                                                                          │
 │  ┌───────────────────────────────────────────────────────────────────┐   │
 │  │  ANALYSIS SUBAGENTS (10 sequential deep-dives)                    │   │
@@ -345,10 +345,10 @@ docs/REFACTORING_PLAN.md
 │  --input (files)           │  --scope (dir/glob)                     │
 │  --prompt (required*)      │  No prompt needed                       │
 │  --output                  │  --output                               │
-│  Preflight: SKIPPED        │  Preflight: FULL                        │
+│  Preflight: SKIPPED        │  Preflight: Partial (Copilot, config)    │
 │  Validates input files     │  Validates scope path/glob              │
 │  Builds composite prompt   │  Builds scope-aware prompt              │
-│  agent: plan.agent.md      │  agent: refactor.agent.md               │
+│  agent: speci-plan.agent.md │  agent: speci-refactor.agent.md         │
 │  13 subagent calls         │  15 subagent calls                      │
 │  (3 context + 10 refine)   │  (10 analysis + 5 review)               │
 │  Output: feature plan      │  Output: refactoring plan               │

@@ -41,7 +41,7 @@ speci plan --prompt "Build a REST API" --input docs/spec.md --output docs/plan.m
                              │  ├─ Skip preflight       │
                              │  │   (no Copilot check)  │
                              │  └─ Resolve agent name   │
-                             │     "plan.agent.md"      │
+                             │     "speci-plan"         │
                              └────────────┬─────────────┘
                                           │
                                           ▼
@@ -61,7 +61,8 @@ speci plan --prompt "Build a REST API" --input docs/spec.md --output docs/plan.m
                              │  Display Info Box      │
                              │  ┌──────────────────┐  │
                              │  │ Plan Generation  │  │
-                             │  │ Agent: plan.md   │  │
+                             │  │ Agent: speci-    │  │
+                             │  │  plan.agent.md   │  │
                              │  │ Output: docs/... │  │
                              │  │ Input: spec.md   │  │
                              │  └──────────────────┘  │
@@ -81,7 +82,7 @@ speci plan --prompt "Build a REST API" --input docs/spec.md --output docs/plan.m
                         │  copilotRunner.buildArgs()      │
                         │                                 │
                         │  Builds CLI args for Copilot:   │
-                        │  ├─ --agent plan.agent.md       │
+                        │  ├─ --agent speci-plan.agent.md │
                         │  ├─ --prompt "<assembled text>" │
                         │  └─ --allow-all (if configured) │
                         └─────────────────────────────────┘
@@ -111,14 +112,14 @@ speci plan --prompt "Build a REST API" --input docs/spec.md --output docs/plan.m
 
 ## Key Details
 
-| Aspect         | Value                                    |
-| -------------- | ---------------------------------------- |
-| Mode           | One-shot (non-interactive)               |
-| Agent          | `plan.agent.md` (bundled or custom)      |
-| Preflight      | **Skipped** (no Copilot/git check)       |
-| Lock           | Not acquired                             |
-| Side Effects   | May write `--output` file via agent      |
-| Error Handling | `handleCommandError()` → structured code |
+| Aspect         | Value                                     |
+| -------------- | ----------------------------------------- |
+| Mode           | One-shot (non-interactive)                |
+| Agent          | `speci-plan.agent.md` (bundled or custom) |
+| Preflight      | **Skipped** (no Copilot/git check)        |
+| Lock           | Not acquired                              |
+| Side Effects   | May write `--output` file via agent       |
+| Error Handling | `handleCommandError()` → structured code  |
 
 ## Input Validation Rules
 
@@ -151,7 +152,7 @@ The plan agent is itself an **orchestrator** that spawns **13 subagents** across
 │  Context: MINIMAL — only dispatches, never writes plan content           │
 │  Output: docs/<feature>_implementation_plan.md                           │
 │                                                                          │
-│  Subagent prompts loaded from: .github/agents/subagents/                 │
+│  Subagent prompts loaded from: templates/agents/subagents/              │
 │                                                                          │
 └──────────────────────────────────────────────────────────────────────────┘
 ```
@@ -160,7 +161,7 @@ The plan agent is itself an **orchestrator** that spawns **13 subagents** across
 
 ```
 ┌──────────────────────────────────────────────────────────────────────────┐
-│                  Plan Agent — 7 Phases, 13 Subagent Calls                │
+│                  Plan Agent — 8 Phases, 13 Subagent Calls                │
 │                                                                          │
 │  PHASE 1: Generate Plan Skeleton ─────────────── (orchestrator direct)   │
 │  │  create_file → docs/<feature>_implementation_plan.md                  │
@@ -219,7 +220,7 @@ The plan agent is itself an **orchestrator** that spawns **13 subagents** across
 ```
 ┌──────────────────────────────────────────────────────────────────────────┐
 │                      Subagent Prompt Files                               │
-│                  .github/agents/subagents/                               │
+│                  templates/agents/subagents/                             │
 │                                                                          │
 │  ┌────────────────────────────┐  ┌─────────────────────────────────┐     │
 │  │  CONTEXT GATHERING         │  │  INITIAL PLANNING               │     │

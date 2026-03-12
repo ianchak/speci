@@ -83,10 +83,8 @@ speci task --plan docs/plan.md [--clean] [--verbose]
                              │  ├─ Load speci.config.json         │
                              │  ├─ Run preflight checks           │
                              │  │   ├─ Copilot CLI installed?     │
-                             │  │   ├─ Config file exists?        │
-                             │  │   ├─ PROGRESS.md exists?        │
-                             │  │   └─ Inside git repo?           │
-                             │  └─ Resolve agent: "task.agent.md" │
+                             │  │   └─ Config file exists?        │
+                             │  └─ Resolve agent: "speci-task"    │
                              └───────────────┬────────────────────┘
                                              │
                                              ▼
@@ -95,7 +93,8 @@ speci task --plan docs/plan.md [--clean] [--verbose]
                              │  ┌────────────────────────┐  │
                              │  │ Task Generation        │  │
                              │  │ Plan: docs/plan.md     │  │
-                             │  │ Agent: task.agent.md   │  │
+                             │  │ Agent: speci-task      │  │
+                             │  │        .agent.md       │  │
                              │  └────────────────────────┘  │
                              └──────────────────────────────┘
                                              │
@@ -104,7 +103,7 @@ speci task --plan docs/plan.md [--clean] [--verbose]
                         │  copilotRunner.buildArgs()          │
                         │                                     │
                         │  Builds CLI args:                   │
-                        │  ├─ --agent task.agent.md           │
+                        │  ├─ --agent speci-task.agent.md   │
                         │  ├─ --prompt "Read the plan file    │
                         │  │   at <path> and generate         │
                         │  │   implementation tasks."         │
@@ -138,8 +137,8 @@ speci task --plan docs/plan.md [--clean] [--verbose]
 | Aspect         | Value                                     |
 | -------------- | ----------------------------------------- |
 | Mode           | One-shot (non-interactive)                |
-| Agent          | `task.agent.md` (bundled or custom)       |
-| Preflight      | Full (Copilot, config, progress, git)     |
+| Agent          | `speci-task.agent.md` (bundled or custom) |
+| Preflight      | Partial (Copilot, config)                 |
 | Lock           | Not acquired                              |
 | Side Effects   | Generates task files, updates PROGRESS.md |
 | Error Handling | `handleCommandError()` → structured code  |
@@ -183,7 +182,7 @@ The task agent is an **orchestrator** that reads a plan/source document and spaw
 │  Output: docs/tasks/TASK_*.md, docs/tasks/MVT_*.md, docs/PROGRESS.md     │
 │  State:  GENERATION_STATE.md (coordination file, deleted on completion)  │
 │                                                                          │
-│  Subagent prompts loaded from: .github/agents/subagents/                 │
+│  Subagent prompts loaded from: templates/agents/subagents/              │
 │                                                                          │
 └──────────────────────────────────────────────────────────────────────────┘
 ```
@@ -238,7 +237,7 @@ The task agent is an **orchestrator** that reads a plan/source document and spaw
 ```
 ┌──────────────────────────────────────────────────────────────────────────┐
 │                      Subagent Prompt Files                               │
-│                  .github/agents/subagents/                               │
+│                  templates/agents/subagents/                             │
 │                                                                          │
 │  ┌─────────────────────────────────────────────────────────────────┐     │
 │  │  GENERATION (called per-feature, per-milestone)                 │     │
