@@ -1,5 +1,11 @@
 # speci
 
+## 0.13.2
+
+### Patch Changes
+
+- [#8](https://github.com/ianchak/speci/pull/8) [`afc9cc9`](https://github.com/ianchak/speci/commit/afc9cc9465b8b64ed6532d98a3b0d91efc003d0a) Thanks [@ianchak](https://github.com/ianchak)! - refactor(core): complete DI injection, strengthen type safety, and extract helpers across modules
+
 ## 0.13.1
 
 ### Patch Changes
