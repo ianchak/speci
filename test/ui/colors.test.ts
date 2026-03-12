@@ -323,22 +323,33 @@ describe('colors utilities', () => {
       });
     });
 
-    it('changing env vars after module load does not affect cached color support', () => {
-      const before = colors.isColorSupported();
-      process.env.NO_COLOR =
-        process.env.NO_COLOR === undefined ? '1' : undefined;
-      process.env.FORCE_COLOR =
-        process.env.FORCE_COLOR === undefined ? '1' : undefined;
-      expect(colors.isColorSupported()).toBe(before);
+    it('reflects env var changes dynamically', () => {
+      const origNoColor = process.env.NO_COLOR;
+      const origForceColor = process.env.FORCE_COLOR;
+      try {
+        // Force NO_COLOR on → should disable colors
+        process.env.NO_COLOR = '1';
+        delete process.env.FORCE_COLOR;
+        expect(colors.isColorSupported()).toBe(false);
+
+        // Remove NO_COLOR, set FORCE_COLOR → should enable colors
+        delete process.env.NO_COLOR;
+        process.env.FORCE_COLOR = '1';
+        expect(colors.isColorSupported()).toBe(true);
+      } finally {
+        // Restore originals
+        if (origNoColor === undefined) delete process.env.NO_COLOR;
+        else process.env.NO_COLOR = origNoColor;
+        if (origForceColor === undefined) delete process.env.FORCE_COLOR;
+        else process.env.FORCE_COLOR = origForceColor;
+      }
     });
 
-    it('supports spy-based overrides for memoized color support', () => {
-      const before = colors.isColorSupported();
+    it('supports spy-based overrides for color support', () => {
       vi.spyOn(colors, 'isColorSupported').mockReturnValue(true);
       expect(colors.isColorSupported()).toBe(true);
       vi.spyOn(colors, 'isColorSupported').mockReturnValue(false);
       expect(colors.isColorSupported()).toBe(false);
-      expect(colors.supportsColor()).toBe(before);
     });
   });
 });

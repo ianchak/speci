@@ -60,14 +60,15 @@ export function supportsColor(): boolean {
   return process.stdout.isTTY ?? false;
 }
 
-const _colorSupported = supportsColor();
-
 /**
- * Get cached terminal color support result.
+ * Check whether terminal color output is currently supported.
  *
- * @returns true if colors were detected as supported at module load time
+ * Re-evaluates on every call so that changes to NO_COLOR, FORCE_COLOR,
+ * CI env vars, or process.stdout.isTTY are picked up at runtime.
+ *
+ * @returns true if colors should be used right now
  */
-export const isColorSupported = (): boolean => _colorSupported;
+export const isColorSupported = (): boolean => supportsColor();
 
 /**
  * Strip ANSI escape codes from string
