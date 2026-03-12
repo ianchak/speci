@@ -10,6 +10,8 @@
 
 AI-powered implementation loop orchestrator for GitHub Copilot. Speci automates development workflows by dispatching Copilot agents to plan, implement, review, and fix code, with quality gate validation (lint, typecheck, test) between each step.
 
+![Speci Run Screenshot](images/speci_screenshot_01.png)
+
 ## How It Works
 
 Speci operates as an autonomous loop that reads a PROGRESS.md file to determine what needs to be done, then dispatches the appropriate Copilot agent:
@@ -157,6 +159,8 @@ npm install -g speci
 ## Commands
 
 All commands support `-v, --verbose` for detailed output and `--no-color` to disable colored output.
+
+![Speci Commands Screenshot](images/speci_screenshot_02.png)
 
 ### `speci init` (alias: `i`)
 
