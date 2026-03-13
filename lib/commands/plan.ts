@@ -91,11 +91,10 @@ export async function plan(
       return failValidation(validationResult.error, context.logger);
     }
 
-    // Initialize command with shared helper (skip preflight as plan doesn't need it)
+    // Initialize command with shared helper
     const { config, agentName } = await initializeCommand({
       commandName: 'plan',
       config: preloadedConfig, // Pass pre-loaded config if provided
-      skipPreflight: true,
       context,
     });
 
