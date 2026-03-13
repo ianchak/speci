@@ -1,5 +1,11 @@
 # speci
 
+## 0.13.3
+
+### Patch Changes
+
+- [`96a5e24`](https://github.com/ianchak/speci/commit/96a5e24103d8da9f5ceba8fcd2eded0838483f14) Thanks [@ianchak](https://github.com/ianchak)! - fix(plan): enable preflight Copilot CLI check before spawning agent
+
 ## 0.13.2
 
 ### Patch Changes
