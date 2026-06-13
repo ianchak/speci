@@ -1,5 +1,11 @@
 # speci
 
+## 0.14.0
+
+### Minor Changes
+
+- [#14](https://github.com/ianchak/speci/pull/14) [`e6163dd`](https://github.com/ianchak/speci/commit/e6163dd96145de8efe65dee9ab657a54d195b61b) Thanks [@ianchak](https://github.com/ianchak)! - feat(docs): add comprehensive AGENTS.md documentation for Copilot agent context and coding standards
+
 ## 0.13.3
 
 ### Patch Changes
