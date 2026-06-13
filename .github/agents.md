@@ -1,8 +1,10 @@
-# Copilot Agent Context: speci
+# Copilot Agent Instructions: speci
+
+Use this file as project-wide context for working in the `speci` repository. Prefer the existing architecture, dependency injection boundaries, command patterns, and test layout over new conventions. Keep changes focused on the user's request, preserve unrelated user edits, and verify with the narrowest relevant command first before escalating to the full gate.
 
 ## Project Overview
 
-**speci** is a TypeScript ESM CLI tool (Node ≥22) that orchestrates Copilot-driven development workflows. It dispatches AI agents through a structured loop — **Plan → Task → Run** — with quality gates (lint / typecheck / test) between iterations, retry/fix logic, and lock-file concurrency control. It ships as the `speci` npm package with a single runtime dependency (`commander`).
+**speci** is a TypeScript ESM CLI tool (Node >=22) that orchestrates Copilot-driven development workflows. It dispatches AI agents through a structured loop — **Plan -> Task -> Run** — with quality gates (lint / typecheck / test) between iterations, retry/fix logic, and lock-file concurrency control. It ships as the `speci` npm package with a single runtime dependency (`commander`).
 
 - Entry point: `bin/speci.ts` → compiled to `dist/bin/speci.js`
 - Configuration file: `speci.config.json` (walked up from cwd)
@@ -26,8 +28,8 @@ lib/commands/         ← business logic commands
 lib/adapters/         ← Node.js implementations of interfaces
 lib/cli/              ← commander setup, command registration
 lib/ui/               ← terminal rendering, colours, glyphs, progress
-lib/utils/helpers/    ← shared command helpers (init, build names, prompts)
-lib/utils/infrastructure/ ← low-level utilities (logger, errors, gates, locks)
+lib/utils/helpers/    ← shared command helpers (init, copilot args, prompts, formatting, suggestions)
+lib/utils/infrastructure/ ← low-level utilities (logger, errors, gates, locks, signals, exit, sleep)
 lib/validation/       ← input & config validation
 ```
 
@@ -43,18 +45,18 @@ lib/validation/       ← input & config validation
 
 Barrel-exported from `lib/interfaces/index.ts`.
 
-| Interface | Domain |
-|---|---|
-| `IFileSystem` | fs reads/writes/checks |
-| `ILogger` | `info` / `warn` / `error` / `success` / `debug` / `muted` / `raw` (+ `*Plain` variants, `setVerbose`) |
-| `IProcess` | process.env, cwd, exit |
-| `IConfigLoader` | config discovery & loading |
-| `ICopilotRunner` | spawns copilot agent |
-| `IStateReader` | parses PROGRESS.md |
-| `ILockManager` | lock-file lifecycle |
-| `IGateRunner` | runs lint/typecheck/test gate |
-| `IPreflight` | pre-run checks |
-| `ISignalManager` | SIGINT/SIGTERM handling |
+| Interface        | Domain                                                                                                                                        |
+| ---------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| `IFileSystem`    | fs reads/writes/checks                                                                                                                        |
+| `ILogger`        | `info` / `warn` / `error` / `success` / `debug` / `muted` / `raw` (+ `infoPlain` / `warnPlain` / `errorPlain` / `successPlain`, `setVerbose`) |
+| `IProcess`       | process.env, cwd, exit                                                                                                                        |
+| `IConfigLoader`  | config discovery & loading                                                                                                                    |
+| `ICopilotRunner` | spawns copilot agent                                                                                                                          |
+| `IStateReader`   | parses PROGRESS.md                                                                                                                            |
+| `ILockManager`   | lock-file lifecycle                                                                                                                           |
+| `IGateRunner`    | runs lint/typecheck/test gate                                                                                                                 |
+| `IPreflight`     | pre-run checks                                                                                                                                |
+| `ISignalManager` | SIGINT/SIGTERM handling                                                                                                                       |
 
 **`CommandContext`** (`lib/interfaces/command.ts`) is the DI container passed to every command — it carries all of the above.
 
@@ -84,11 +86,12 @@ import { getDefaults } from '@/config/index.js';
 import type { SpeciConfig } from '@/types.js';
 
 // ❌ Wrong
-import { getDefaults } from '../../config/index';  // no alias, no .js
-import { SpeciConfig } from '@/types.js';           // missing `type`
+import { getDefaults } from '../../config/index'; // no alias, no .js
+import { SpeciConfig } from '@/types.js'; // missing `type`
 ```
 
 Rules:
+
 1. Use `@/` path aliases (maps to `lib/`) — never deep relative paths
 2. Always include `.js` extension (ESM requirement)
 3. Group order: `node:*` builtins → external packages → `@/` aliases → relative
@@ -96,21 +99,29 @@ Rules:
 
 ### Naming
 
-| Thing | Convention |
-|---|---|
-| Files | `kebab-case.ts` |
-| Classes | `PascalCase` |
+| Thing                     | Convention                         |
+| ------------------------- | ---------------------------------- |
+| Files                     | `kebab-case.ts`                    |
+| Classes                   | `PascalCase`                       |
 | Infrastructure interfaces | `IPascalCase` (e.g. `IFileSystem`) |
-| Functions | `camelCase` |
-| Constants | `UPPER_SNAKE_CASE` |
-| Enums & values | `PascalCase` |
-| Test files | `source-name.test.ts` |
+| Functions                 | `camelCase`                        |
+| Constants                 | `UPPER_SNAKE_CASE`                 |
+| Enums & values            | `PascalCase`                       |
+| Test files                | `source-name.test.ts`              |
 
 ### Style
 
-- JSDoc on all public exports: `@param`, `@returns`, `@throws`, `@example`
+- Keep the existing JSDoc style for public exports. Add `@param`, `@returns`, `@throws`, and `@example` when they clarify a public function, class, or interface.
 - No barrel re-exports unless creating a deliberate public API (like `lib/interfaces/index.ts`)
 - Avoid circular dependencies — use the type layer to break cycles
+
+### Agent Workflow
+
+- Read the nearby source and tests before editing; do not infer patterns from this file alone.
+- Make minimal, cohesive changes in the owning layer. Do not cross architecture boundaries to avoid a local inconvenience.
+- Prefer interface-based mocks and `test-context.ts` helpers when testing command/domain logic.
+- For user-facing behavior, update docs or command help only when the behavior actually changes.
+- Before finishing, run the most relevant test or checker. Use `npm run gate` for broad behavioral changes or before claiming the repo is fully green.
 
 ---
 
@@ -123,10 +134,11 @@ export async function myCommand(
   options: MyCommandOptions,
   context: CommandContext,
   preloadedConfig?: SpeciConfig
-): Promise<CommandResult>
+): Promise<CommandResult>;
 ```
 
 Rules:
+
 - **Never call `process.exit()`** — return `{ success: false, exitCode: 1, error: '...' }` instead
 - Always use injected `context.logger`, `context.fs`, `context.process` — never global equivalents
 - Use `initializeCommand()` from `lib/utils/helpers/command-helpers.ts` to load config and run preflight
@@ -145,16 +157,17 @@ Rules:
 
 All error codes live in `lib/errors.ts` as the `ERROR_CODES` map.
 
-| Prefix | Category |
-|---|---|
+| Prefix      | Category                  |
+| ----------- | ------------------------- |
 | `ERR-PRE-*` | Prerequisites / preflight |
-| `ERR-INP-*` | Input validation |
-| `ERR-STA-*` | State / PROGRESS.md |
-| `ERR-EXE-*` | Execution / runtime |
-| `ERR-UI-*` | UI rendering |
+| `ERR-INP-*` | Input validation          |
+| `ERR-STA-*` | State / PROGRESS.md       |
+| `ERR-EXE-*` | Execution / runtime       |
+| `ERR-UI-*`  | UI rendering              |
 
-- Use `createError(code, contextJson?)` (from `lib/errors.ts`) to create structured errors; `formatError()` renders them for display
-- Convert errors to `CommandResult` with `failResult()` / `failValidation()`, or handle them with `handleCommandError()` (from `lib/utils/infrastructure/error-handler.ts`)
+- Use `createError(code, contextJson?)` (from `lib/errors.ts`) for user-facing/domain errors; `formatError()` renders them for display
+- Convert command failures to `CommandResult` with `failResult()` / `failValidation()`, or handle them with `handleCommandError()` (from `lib/utils/infrastructure/error-handler.ts`)
+- Raw `Error` is acceptable for impossible states, validation of bundled internal assets, or defensive exhaustiveness checks when no user-facing error code is useful
 - Check existing codes before adding new ones
 
 ---
@@ -163,19 +176,27 @@ All error codes live in `lib/errors.ts` as the `ERROR_CODES` map.
 
 **Framework**: Vitest 4, Node environment, globals enabled.
 
-| Suite | Files | Timeout |
-|---|---|---|
-| Unit | `test/**/*.test.ts` (excl. `integration/`) | default |
+| Suite       | Files                                       | Timeout          |
+| ----------- | ------------------------------------------- | ---------------- |
+| Unit        | `test/**/*.test.ts` (excl. `integration/`)  | default          |
 | Integration | `test/integration/**/*.integration.test.ts` | 30 s, forks pool |
 
 **Coverage targets**: lines/statements/branches ≥ 80%, functions ≥ 70%.
 
 Conventions:
+
 - `test/` mirrors `lib/` exactly (e.g. `lib/commands/init.ts` → `test/commands/init.test.ts`)
 - Mock via interface contracts — use `test-context.ts` mock factories, not concrete adapters
 - Isolate filesystem tests with `tmpdir`; clean up in `afterEach`
 - Describe blocks use full descriptions; test names use imperative mood (`should return CommandResult on success`)
 - Integration tests perform real I/O; unit tests must be pure/mocked
+
+Verification ladder:
+
+1. Run a focused Vitest file for narrow logic changes.
+2. Run `npm run typecheck` when changing public types, command signatures, or imports.
+3. Run `npm run lint` when changing style-sensitive code paths.
+4. Run `npm run gate` when a change spans layers, touches shared helpers, or changes user-facing workflows.
 
 ---
 
@@ -219,7 +240,10 @@ Config is resolved in this priority order (later wins):
 CONFIG_FILENAME        // 'speci.config.json'
 AGENT_FILENAME_PREFIX  // 'speci-'
 ENV.SPECI_DEBUG        // 'SPECI_DEBUG'
+ENV.SPECI_ASCII        // 'SPECI_ASCII'
+ENV.SPECI_NO_ANIMATION // 'SPECI_NO_ANIMATION'
 ENV.NO_COLOR           // 'NO_COLOR'
+ENV.FORCE_COLOR        // 'FORCE_COLOR'
 EXIT_CODE.SUCCESS      // 0
 EXIT_CODE.ERROR        // 1
 EXIT_CODE.SIGINT       // 130
@@ -234,13 +258,13 @@ Always use these constants instead of hard-coding string literals.
 
 ## Do / Don't
 
-| Do | Don't |
-|---|---|
-| Use `@/` aliases + `.js` extension in imports | Use relative `../../` paths or bare names |
-| Return `CommandResult` from commands | Call `process.exit()` in command code |
-| Inject deps via `CommandContext` | Import `node-*` adapters directly in domain code |
-| Add types to `lib/types.ts` | Scatter type definitions across implementation files |
-| Use `createError()` with an `ERROR_CODES` entry | Throw raw `Error` strings |
-| Run `npm run gate` before considering work done | Skip lint/typecheck/tests |
-| Prefix unused function params with `_` | Leave unused params without `_` prefix |
-| Write tests in `test/` mirroring `lib/` | Put tests next to source in `lib/` |
+| Do                                               | Don't                                                |
+| ------------------------------------------------ | ---------------------------------------------------- |
+| Use `@/` aliases + `.js` extension in imports    | Use relative `../../` paths or bare names            |
+| Return `CommandResult` from commands             | Call `process.exit()` in command code                |
+| Inject deps via `CommandContext`                 | Import `node-*` adapters directly in domain code     |
+| Add types to `lib/types.ts`                      | Scatter type definitions across implementation files |
+| Use structured errors for user-facing failures   | Throw raw user-facing errors without context         |
+| Run relevant checks before considering work done | Skip verification                                    |
+| Prefix unused function params with `_`           | Leave unused params without `_` prefix               |
+| Write tests in `test/` mirroring `lib/`          | Put tests next to source in `lib/`                   |
