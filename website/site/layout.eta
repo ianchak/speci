@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title><%= stati.page.title ? `${stati.page.title} · Speci` : 'Speci' %></title>
+  <meta name="description" content="<%= stati.page.description ?? stati.site.description %>" />
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+  <header class="site-header">
+    <div class="container">
+      <a href="/" class="logo">
+        <span class="logo-name">speci</span>
+      </a>
+      <nav class="site-nav">
+        <a href="/getting-started/">Get Started</a>
+        <a href="/commands/">Commands</a>
+        <a href="/architecture/">Architecture</a>
+        <a href="https://github.com/ianchak/speci" class="nav-github" target="_blank" rel="noopener noreferrer">GitHub</a>
+      </nav>
+    </div>
+  </header>
+
+  <main id="main-content">
+    <%~ it.body %>
+  </main>
+
+  <footer class="site-footer">
+    <div class="container">
+      <p>
+        <a href="https://github.com/ianchak/speci">speci</a>
+        &nbsp;·&nbsp;
+        <span class="version-badge">v<%= stati.cliVersion() %></span>
+        &nbsp;·&nbsp;
+        <a href="https://opensource.org/licenses/MIT">MIT</a>
+        &nbsp;·&nbsp;
+        Built with <a href="https://stati.build" target="_blank" rel="noopener noreferrer">Stati</a>
+      </p>
+    </div>
+  </footer>
+</body>
+</html>

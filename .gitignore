@@ -40,6 +40,10 @@ tmp/
 temp/
 *.tmp
 
+# Docs site build artifacts
+website/dist/
+website/.stati/
+
 .github/agents/
 .github/prompts/
 .github/copilot-instructions.md

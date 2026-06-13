@@ -1,0 +1,15 @@
+{
+  "name": "@speci/website",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "stati dev",
+    "build": "stati build --clean",
+    "preview": "stati preview"
+  },
+  "devDependencies": {
+    "@stati/cli": "latest",
+    "@stati/core": "latest"
+  }
+}

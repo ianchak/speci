@@ -1,0 +1,22 @@
+# Netlify configuration for the Speci documentation site.
+# The build runs from the repository root so npm workspaces are available.
+
+[build]
+  command   = "npm run docs:build"
+  publish   = "website/dist"
+
+[build.environment]
+  NODE_VERSION = "22"
+  NPM_FLAGS    = "--prefer-offline"
+
+# Deploy previews (pull requests): override the base URL so internal links work.
+[context.deploy-preview]
+  command = "npm run docs:build"
+
+[context.deploy-preview.environment]
+  # DEPLOY_PRIME_URL is automatically set by Netlify to the preview URL.
+  # stati.config.ts reads it via process.env.DEPLOY_PRIME_URL.
+
+# Branch deploys for non-production branches (e.g. staging)
+[context.branch-deploy]
+  command = "npm run docs:build"
