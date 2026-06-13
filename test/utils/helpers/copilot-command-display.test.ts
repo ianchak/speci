@@ -37,7 +37,7 @@ describe('copilot-command-display', () => {
       '--agent=speci-impl',
       '--allow-all',
       '--model',
-      'gpt-5.3-codex',
+      'test-model',
       '--no-ask-user',
       '--extra-flag-with-a-very-long-value-to-force-wrapping',
     ]);

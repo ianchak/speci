@@ -38,13 +38,13 @@ describe('plan command', () => {
       copilot: {
         permissions: 'allow-all' as const,
         models: {
-          plan: 'claude-opus-4.6',
-          task: 'claude-sonnet-4.5',
-          refactor: 'claude-sonnet-4.5',
-          impl: 'gpt-5.3-codex',
-          review: 'claude-sonnet-4.5',
-          fix: 'claude-sonnet-4.5',
-          tidy: 'gpt-5.2',
+          plan: 'test-model',
+          task: 'test-model',
+          refactor: 'test-model',
+          impl: 'test-model',
+          review: 'test-model',
+          fix: 'test-model',
+          tidy: 'test-model',
         },
         extraFlags: [],
       },
@@ -191,7 +191,7 @@ describe('plan command', () => {
         ? readFileSync(configPath, 'utf8')
         : '{}';
       const config = JSON.parse(configContent);
-      config.copilot.models.plan = 'gpt-4';
+      config.copilot.models.plan = 'custom-model';
       writeFileSync(configPath, JSON.stringify(config, null, 2));
 
       // Create mock copilot runner with updated config
@@ -262,7 +262,7 @@ describe('plan command', () => {
       expect(buildArgsSpy).toHaveBeenCalled();
       const buildResult = buildArgsSpy.mock.results[0].value;
       expect(buildResult).toContain('--model');
-      expect(buildResult).toContain('gpt-4');
+      expect(buildResult).toContain('custom-model');
     });
 
     it('should include output path in prompt when --output provided', async () => {

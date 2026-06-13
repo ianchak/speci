@@ -82,7 +82,7 @@ describe('Deep Merge Type Safety (TASK_032)', () => {
           copilot: {
             permissions: 'strict',
             models: {
-              impl: 'claude-opus-4.6',
+              impl: 'test-model',
             },
           },
         })
@@ -92,7 +92,7 @@ describe('Deep Merge Type Safety (TASK_032)', () => {
 
       // Copilot settings should be merged
       expect(config.copilot.permissions).toBe('strict');
-      expect(config.copilot.models.impl).toBe('claude-opus-4.6');
+      expect(config.copilot.models.impl).toBe('test-model');
 
       // Other model settings should use required defaults
       const defaults = getDefaults();
@@ -260,8 +260,8 @@ describe('Deep Merge Type Safety (TASK_032)', () => {
           copilot: {
             permissions: 'yolo',
             models: {
-              impl: 'claude-opus-4.6',
-              review: 'claude-sonnet-4.5',
+              impl: 'test-model',
+              review: 'test-model',
             },
           },
           gate: {
@@ -281,8 +281,8 @@ describe('Deep Merge Type Safety (TASK_032)', () => {
       expect(config.paths.progress).toBe('custom/progress.md');
       expect(config.paths.tasks).toBe('custom/tasks');
       expect(config.copilot.permissions).toBe('yolo');
-      expect(config.copilot.models.impl).toBe('claude-opus-4.6');
-      expect(config.copilot.models.review).toBe('claude-sonnet-4.5');
+      expect(config.copilot.models.impl).toBe('test-model');
+      expect(config.copilot.models.review).toBe('test-model');
       expect(config.gate.commands).toEqual(['npm run format', 'npm run lint']);
       expect(config.gate.maxFixAttempts).toBe(3);
       expect(config.loop.maxIterations).toBe(50);
@@ -290,7 +290,7 @@ describe('Deep Merge Type Safety (TASK_032)', () => {
       // Default values should fill in gaps
       expect(config.paths.logs).toBe('.speci-logs');
       expect(config.paths.lock).toBe('.speci-lock');
-      expect(config.copilot.models.plan).toBe('claude-opus-4.8');
+      expect(config.copilot.models.plan).toBe(getDefaults().copilot.models.plan);
     });
   });
 });
