@@ -3277,24 +3277,27 @@ describe('Performance Benchmarks (TASK_021)', () => {
 
   describe('Memory Stability', () => {
     it('no memory leaks from timers', async () => {
-      const initialMemory = process.memoryUsage().heapUsed;
+      // Heap-byte deltas are unreliable in CI (GC isn't guaranteed to run and
+      // V8/JIT allocations add noise). A timer leak is deterministically
+      // detectable by inspecting active timer handles instead: if the
+      // animation cleans up after itself, the active timer count returns to
+      // its baseline once each run resolves.
+      const countTimers = () =>
+        process
+          .getActiveResourcesInfo()
+          .filter((resource) => resource === 'Timeout' || resource === 'Immediate')
+          .length;
+
+      const initialTimers = countTimers();
 
       // Run animation multiple times
       for (let i = 0; i < 3; i++) {
         await module.animateBanner({ duration: 200, showVersion: false });
       }
 
-      // Force garbage collection if available
-      if (global.gc) {
-        global.gc();
-      }
-
-      const finalMemory = process.memoryUsage().heapUsed;
-      const memoryGrowth = finalMemory - initialMemory;
-
-      // Memory growth should be minimal (< 6MB to account for CI/test environment variance)
-      const MAX_MEMORY_GROWTH = 6 * 1024 * 1024; // 6MB
-      expect(memoryGrowth).toBeLessThan(MAX_MEMORY_GROWTH);
+      // Once every animation has resolved, no timers should remain pending.
+      const finalTimers = countTimers();
+      expect(finalTimers).toBeLessThanOrEqual(initialTimers);
     });
 
     it('no leaks from cleanup handlers', async () => {
