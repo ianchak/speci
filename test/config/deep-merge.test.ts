@@ -290,7 +290,7 @@ describe('Deep Merge Type Safety (TASK_032)', () => {
       // Default values should fill in gaps
       expect(config.paths.logs).toBe('.speci-logs');
       expect(config.paths.lock).toBe('.speci-lock');
-      expect(config.copilot.models.plan).toBe('claude-opus-4.6');
+      expect(config.copilot.models.plan).toBe('claude-opus-4.8');
     });
   });
 });
