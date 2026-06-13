@@ -2,7 +2,7 @@
 
 Use this file as project-wide context for working in the `speci` repository. Prefer the existing architecture, dependency injection boundaries, command patterns, and test layout over new conventions. Keep changes focused on the user's request, preserve unrelated user edits, and verify with the narrowest relevant command before escalating to the full gate.
 
-> Note: generated workflow agents are installed under `.github/agents/`. This file is separate repo-level guidance for coding agents.
+> Note: workflow agents installed by `speci init` live under `.github/agents/`, which is gitignored in this repository. Their source templates live under `templates/agents/`. This file is separate repo-level guidance for coding agents.
 
 ## Project Overview
 
@@ -29,7 +29,7 @@ lib/copilot.ts        ← copilot CLI wrapper
 lib/commands/         ← business logic commands
 lib/adapters/         ← Node.js implementations of interfaces
 lib/cli/              ← commander setup, command registration
-lib/ui/               ← terminal rendering, colours, glyphs, progress
+lib/ui/               ← terminal rendering, colors, glyphs, progress
 lib/utils/helpers/    ← shared command helpers (init, copilot args, prompts, formatting, suggestions)
 lib/utils/infrastructure/ ← low-level utilities (logger, errors, gates, locks, signals, exit, sleep)
 lib/validation/       ← input & config validation
@@ -94,7 +94,7 @@ import { SpeciConfig } from '@/types.js'; // missing `type`
 
 Rules:
 
-1. Use `@/` path aliases (maps to `lib/`) — never deep relative paths
+1. Use `@/` path aliases for imports from `lib/`; reserve relative imports for same-folder/local files and repo-level config
 2. Always include `.js` extension (ESM requirement)
 3. Group order: `node:*` builtins → external packages → `@/` aliases → relative
 4. Obtain types from `lib/types.ts` or `lib/interfaces/`; never from implementations
@@ -149,10 +149,10 @@ Rules:
 
 ### Adding a new command
 
-1. Create `lib/commands/mycommand.ts` with the standard function signature above
+1. Create `lib/commands/my-command.ts` with the standard function signature above
 2. Add `registerMyCommand()` to `CommandRegistry` in `lib/cli/command-registry.ts` and call it from `registerCommands()`
-3. Create `test/commands/mycommand.test.ts` (mirrors lib structure)
-4. If the command dispatches an agent, add the source template to `templates/agents/` (e.g. `speci-mycommand.agent.md`)
+3. Create `test/commands/my-command.test.ts` (mirrors lib structure)
+4. If the command dispatches an agent, add the source template to `templates/agents/` (e.g. `speci-my-command.agent.md`)
 
 ---
 
@@ -261,13 +261,13 @@ Always use these constants instead of hard-coding string literals.
 
 ## Do / Don't
 
-| Do                                               | Don't                                                |
-| ------------------------------------------------ | ---------------------------------------------------- |
-| Use `@/` aliases + `.js` extension in imports    | Use relative `../../` paths or bare names            |
-| Return `CommandResult` from commands             | Call `process.exit()` in command code                |
-| Inject deps via `CommandContext`                 | Import `node-*` adapters directly in domain code     |
-| Add types to `lib/types.ts`                      | Scatter type definitions across implementation files |
-| Use structured errors for user-facing failures   | Throw raw user-facing errors without context         |
-| Run relevant checks before considering work done | Skip verification                                    |
-| Prefix unused function params with `_`           | Leave unused params without `_` prefix               |
-| Write tests in `test/` mirroring `lib/`          | Put tests next to source in `lib/`                   |
+| Do                                                 | Don't                                                |
+| -------------------------------------------------- | ---------------------------------------------------- |
+| Use `@/` aliases + `.js` extension for lib imports | Use deep relative `../../` paths or bare names       |
+| Return `CommandResult` from commands               | Call `process.exit()` in command code                |
+| Inject deps via `CommandContext`                   | Import `node-*` adapters directly in domain code     |
+| Add types to `lib/types.ts`                        | Scatter type definitions across implementation files |
+| Use structured errors for user-facing failures     | Throw raw user-facing errors without context         |
+| Run relevant checks before considering work done   | Skip verification                                    |
+| Prefix unused function params with `_`             | Leave unused params without `_` prefix               |
+| Write tests in `test/` mirroring `lib/`            | Put tests next to source in `lib/`                   |
