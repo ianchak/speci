@@ -154,7 +154,7 @@ describe('copilot', () => {
     });
 
     it('should include model flag when per-command model is configured', () => {
-      config.copilot.models.plan = 'gpt-4';
+      config.copilot.models.plan = 'custom-plan-model';
       const options: CopilotArgsOptions = {
         agent: 'test-agent',
         command: 'plan',
@@ -163,11 +163,11 @@ describe('copilot', () => {
       const args = buildCopilotArgs(config, options);
 
       expect(args).toContain('--model');
-      expect(args).toContain('gpt-4');
+      expect(args).toContain('custom-plan-model');
     });
 
     it('should use per-command model when command is specified', () => {
-      config.copilot.models.plan = 'claude-opus-4.5'; // per-command model
+      config.copilot.models.plan = 'custom-plan-model'; // per-command model
       const options: CopilotArgsOptions = {
         agent: 'test-agent',
         command: 'plan',
@@ -176,7 +176,7 @@ describe('copilot', () => {
       const args = buildCopilotArgs(config, options);
 
       expect(args).toContain('--model');
-      expect(args).toContain('claude-opus-4.5');
+      expect(args).toContain('custom-plan-model');
     });
 
     it('should include model flag for task command from required config', () => {

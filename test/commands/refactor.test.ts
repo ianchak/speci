@@ -287,7 +287,7 @@ describe('refactor command', () => {
         : '{}';
       const config = JSON.parse(configContent);
       config.copilot.models = config.copilot.models || {};
-      config.copilot.models.refactor = 'gpt-4';
+      config.copilot.models.refactor = 'custom-model';
       writeFileSync(configPath, JSON.stringify(config, null, 2));
 
       const spawnSpy = vi
@@ -301,7 +301,7 @@ describe('refactor command', () => {
       expect(spawnSpy).toHaveBeenCalled();
       const args = spawnSpy.mock.calls[0][0];
       expect(args).toContain('--model');
-      expect(args).toContain('gpt-4');
+      expect(args).toContain('custom-model');
     });
   });
 

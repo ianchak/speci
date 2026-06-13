@@ -424,13 +424,13 @@ Created by `speci init`. Speci discovers this file by walking up from the curren
   "copilot": {
     "permissions": "allow-all",
     "models": {
-      "plan": "claude-opus-4.6",
+      "plan": "claude-opus-4.8",
       "task": "claude-sonnet-4.6",
       "refactor": "claude-sonnet-4.6",
       "impl": "gpt-5.3-codex",
       "review": "claude-sonnet-4.6",
       "fix": "claude-sonnet-4.6",
-      "tidy": "gpt-5.2"
+      "tidy": "gpt-5.4-mini"
     },
     "extraFlags": []
   },
