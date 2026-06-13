@@ -33,13 +33,13 @@ lib/utils/infrastructure/ ← low-level utilities (logger, errors, gates, locks,
 lib/validation/       ← input & config validation
 ```
 
-### Key types (lib/types.ts)
+### Key types
 
-- `STATE` enum — `WORK_LEFT | IN_REVIEW | BLOCKED | DONE | NO_PROGRESS`
-- `SpeciConfig` — runtime config shape (`version`, `paths`, `copilot`, `gate`, `loop`)
-- `CommandResult` — `{ success: boolean; exitCode: number; error?: string }`
-- `AgentRunResult` — discriminated union on `isSuccess`
-- `GateResult`, `TaskStats`, `CurrentTask`, `CommandName`
+- `STATE` enum (`lib/types.ts`) — `WORK_LEFT | IN_REVIEW | BLOCKED | DONE | NO_PROGRESS`
+- `SpeciConfig` (`lib/types.ts`) — runtime config shape (`version`, `paths`, `copilot`, `gate`, `loop`)
+- `CommandResult` (`lib/interfaces/command.ts`) — `{ success: boolean; exitCode: number; error?: string }`
+- `AgentRunResult` (`lib/types.ts`) — discriminated union on `isSuccess`
+- `GateResult`, `TaskStats`, `CurrentTask`, `CommandName` (`lib/types.ts`)
 
 ### DI interfaces (lib/interfaces/)
 
@@ -147,9 +147,9 @@ Rules:
 ### Adding a new command
 
 1. Create `lib/commands/mycommand.ts` with the standard function signature above
-2. Add `registerMyCommandCommand()` to `CommandRegistry` in `lib/cli/command-registry.ts` and call it from `registerCommands()`
+2. Add `registerMyCommand()` to `CommandRegistry` in `lib/cli/command-registry.ts` and call it from `registerCommands()`
 3. Create `test/commands/mycommand.test.ts` (mirrors lib structure)
-4. If the command dispatches an agent, add `templates/agents/speci-mycommand.agent.md`
+4. If the command dispatches an agent, add it to `templates/agents/` (e.g. `speci-mycommand.agent.md`)
 
 ---
 
@@ -227,7 +227,7 @@ npm run release         # publish to npm
 
 Config is resolved in this priority order (later wins):
 
-1. Hardcoded defaults → `getDefaults()` in `lib/config/index.ts`
+1. Hardcoded defaults → `getDefaults()` in `lib/config/loader.ts`
 2. File config → `speci.config.json` loaded by `lib/config/loader.ts` (walks up from cwd)
 3. Environment overrides → `lib/config/env-overrides.ts`
 4. CLI flags → passed as `options` to the command function
