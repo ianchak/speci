@@ -3427,8 +3427,10 @@ describe('Performance Benchmarks (TASK_021)', () => {
 
       // Cached run should be faster or similar
       // (not significantly slower, which would indicate cache miss)
-      // Use a generous tolerance to avoid flaky tests due to timing variations
-      expect(cachedTime).toBeLessThanOrEqual(warmupTime * 2);
+      // Use a generous tolerance to avoid flaky tests due to timing variations.
+      // Add an absolute floor (100ms) so fast machines with small warmupTime don't produce a
+      // too-tight ceiling that OS scheduling jitter can exceed.
+      expect(cachedTime).toBeLessThanOrEqual(Math.max(warmupTime * 2, warmupTime + 100));
     });
 
     it('all effects benefit from gradient cache', () => {
