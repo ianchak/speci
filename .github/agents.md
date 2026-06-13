@@ -36,7 +36,7 @@ lib/validation/       ← input & config validation
 ### Key types (lib/types.ts)
 
 - `STATE` enum — `WORK_LEFT | IN_REVIEW | BLOCKED | DONE | NO_PROGRESS`
-- `SpeciConfig` — runtime config shape (`paths`, `copilot`, `gate`, `loop`)
+- `SpeciConfig` — runtime config shape (`version`, `paths`, `copilot`, `gate`, `loop`)
 - `CommandResult` — `{ success: boolean; exitCode: number; error?: string }`
 - `AgentRunResult` — discriminated union on `isSuccess`
 - `GateResult`, `TaskStats`, `CurrentTask`, `CommandName`
