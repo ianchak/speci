@@ -217,8 +217,8 @@ npm run test:coverage   # unit tests + coverage report
 npm run test:integration # integration tests
 npm run test:all        # unit + integration
 npm run changeset       # create a .changeset/*.md entry
-npm run version-packages # bump versions from changeset files
-npm run release         # publish to npm
+npm run version-packages # bump versions from changeset files (changeset version)
+npm run release         # publish to npm (changeset publish)
 ```
 
 - Husky is installed via the `prepare` script; if hooks are present, keep them aligned with `npm run gate`
