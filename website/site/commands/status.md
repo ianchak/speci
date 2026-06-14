@@ -5,20 +5,26 @@ description: Print the current PROGRESS.md state.
 
 # `speci status`
 
-Reads `PROGRESS.md` and prints the current state of all tasks without running any agents.
+Displays the current loop state and task statistics as a live fullscreen dashboard. Press `q` to quit the dashboard.
 
 ## Usage
 
 ```bash
-speci status [--verbose]
+speci status [--json] [--once] [-v]
 ```
 
 ## Options
 
-| Flag | Description |
-|------|-------------|
-| `--verbose` | Show full task details |
+| Flag            | Description                                 |
+| --------------- | ------------------------------------------- |
+| `--json`        | Output status as JSON and exit              |
+| `--once`        | Show status once and exit (non-interactive) |
+| `-v, --verbose` | Show detailed status                        |
 
 ## Output
 
-Prints a summary table of tasks with their current states (`TODO`, `IN_PROGRESS`, `IN_REVIEW`, `BLOCKED`, `DONE`) and the overall loop state (`WORK_LEFT`, `IN_REVIEW`, `BLOCKED`, `DONE`).
+By default opens a live fullscreen dashboard that refreshes automatically (press `q` to quit). Use `--once` for a single-shot summary or `--json` to emit machine-readable output.
+
+Task states: `NOT STARTED`, `IN PROGRESS`, `IN REVIEW`, `BLOCKED`, `COMPLETE`
+
+Loop states: `WORK_LEFT`, `IN_REVIEW`, `BLOCKED`, `DONE`, `NO_PROGRESS`

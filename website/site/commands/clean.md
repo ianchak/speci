@@ -10,21 +10,21 @@ Removes generated files created by `speci task` and `speci run` so you can start
 ## Usage
 
 ```bash
-speci clean [--all] [--verbose]
+speci clean [-y] [-v]
 ```
 
 ## Options
 
-| Flag | Description |
-|------|-------------|
-| `--all` | Also remove the agent template files in `.github/agents/` |
-| `--verbose` | Show which files are being removed |
+| Flag            | Description                        |
+| --------------- | ---------------------------------- |
+| `-y, --yes`     | Skip confirmation prompt           |
+| `-v, --verbose` | Show which files are being removed |
 
 ## What it removes
 
-| File | Description |
-|------|-------------|
-| `PROGRESS.md` | Task tracking file |
-| `.speci-lock` | Loop lock file |
-| `.speci-logs/` | Log directory |
-| `*.task.md` | Individual task files (project root) |
+| Path                     | Description              |
+| ------------------------ | ------------------------ |
+| `docs/tasks/` (contents) | All generated task files |
+| `docs/PROGRESS.md`       | Task tracking file       |
+
+> **Note:** `speci clean` refuses to run while another speci process holds the lock. Wait for the active run to finish first.

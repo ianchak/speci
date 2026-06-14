@@ -10,29 +10,30 @@ Central orchestration loop. Reads `PROGRESS.md` state, dispatches agents, runs g
 ## Usage
 
 ```bash
-speci run [--max-iterations 10] [--dry-run] [--force] [--yes] [--verify] [--verbose]
+speci run [--max-iterations 100] [--dry-run] [--force] [-y] [--verify] [--sleep-after] [-v]
 ```
 
 ## Options
 
-| Flag | Default | Description |
-|------|---------|-------------|
-| `--max-iterations <n>` | `10` | Maximum number of loop iterations |
-| `--dry-run` | `false` | Print what would happen without executing anything |
-| `--force` | `false` | Skip the pre-run confirmation prompt |
-| `--yes` | `false` | Auto-confirm all prompts |
-| `--verify` | `false` | Run quality gates before the first iteration |
-| `--verbose` | `false` | Show full agent output |
+| Flag                   | Default | Description                                                       |
+| ---------------------- | ------- | ----------------------------------------------------------------- |
+| `--max-iterations <n>` | `100`   | Maximum number of loop iterations                                 |
+| `--dry-run`            | `false` | Print what would happen without executing anything                |
+| `--force`              | `false` | Override existing lock                                            |
+| `-y, --yes`            | `false` | Skip confirmation prompt                                          |
+| `--verify`             | `false` | Pause on manual verification tasks (MVTs) at milestone boundaries |
+| `--sleep-after`        | `false` | Put machine to sleep after command completes                      |
+| `-v, --verbose`        | `false` | Show full agent output                                            |
 
 ## Loop states
 
-| State | Agent dispatched | Description |
-|-------|-----------------|-------------|
-| `WORK_LEFT` | `impl` | Tasks remain; implementation agent runs next |
-| `IN_REVIEW` | `review` | Completed tasks are queued for review |
-| `BLOCKED` | `tidy` | All remaining tasks are blocked |
-| `DONE` | — | All tasks complete; loop exits |
-| `NO_PROGRESS` | — | No `PROGRESS.md` found; run `speci init` |
+| State         | Agent dispatched | Description                                  |
+| ------------- | ---------------- | -------------------------------------------- |
+| `WORK_LEFT`   | `impl`           | Tasks remain; implementation agent runs next |
+| `IN_REVIEW`   | `review`         | Completed tasks are queued for review        |
+| `BLOCKED`     | `tidy`           | All remaining tasks are blocked              |
+| `DONE`        | —                | All tasks complete; loop exits               |
+| `NO_PROGRESS` | —                | No `PROGRESS.md` found; run `speci task`     |
 
 ## Gate validation
 
@@ -40,10 +41,10 @@ After every `impl` agent run, speci executes the gates defined in `speci.config.
 
 ```json
 {
-  "gates": {
-    "lint": "npm run lint",
-    "typecheck": "npm run typecheck",
-    "test": "npm test"
+  "gate": {
+    "commands": ["npm run lint", "npm run typecheck", "npm test"],
+    "maxFixAttempts": 5,
+    "strategy": "sequential"
   }
 }
 ```

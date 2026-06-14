@@ -10,18 +10,19 @@ Full pipeline orchestrator: **plan → task → run** in a single command. Chain
 ## Usage
 
 ```bash
-speci yolo --prompt "Build a REST API" --input docs/spec.md [--output docs/plan.md] [--force] [--verbose]
+speci yolo [-p "..."] [-i <files...>] [-o <path>] [--force] [--sleep-after] [-v]
 ```
 
 ## Options
 
-| Flag | Description |
-|------|-------------|
-| `-p, --prompt <text>` | Free-text prompt (passed to `speci plan`) |
-| `-i, --input <files...>` | Input files (passed to `speci plan`) |
-| `-o, --output <path>` | Plan output path (default: `docs/plan.md`) |
-| `--force` | Skip confirmation prompts |
-| `--verbose` | Show full agent output |
+| Flag                     | Description                                                               |
+| ------------------------ | ------------------------------------------------------------------------- |
+| `-p, --prompt <text>`    | Free-text prompt (passed to `speci plan`)                                 |
+| `-i, --input <files...>` | Input files (passed to `speci plan`)                                      |
+| `-o, --output <path>`    | Plan output path (default: auto-generated timestamped path under `docs/`) |
+| `--force`                | Override existing lock                                                    |
+| `--sleep-after`          | Put machine to sleep after command completes                              |
+| `-v, --verbose`          | Show full agent output                                                    |
 
 At least one of `--prompt` or `--input` is required.
 
@@ -44,7 +45,7 @@ speci yolo -p "Add OAuth2 login with GitHub" --force
 This is equivalent to running:
 
 ```bash
-speci plan -p "Add OAuth2 login with GitHub" --output docs/plan.md
-speci task --plan docs/plan.md
-speci run --force
+speci plan -p "Add OAuth2 login with GitHub" --output <timestamped-path>
+speci task -p <timestamped-path>
+speci run --yes --force
 ```

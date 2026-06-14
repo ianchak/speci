@@ -10,17 +10,18 @@ Interactive plan generation via GitHub Copilot CLI.
 ## Usage
 
 ```bash
-speci plan --prompt "Build a REST API" --input docs/spec.md --output docs/plan.md [--verbose]
+speci plan [-p "..."] [-i <files...>] [-o <path>] [--sleep-after] [-v]
 ```
 
 ## Options
 
-| Flag | Description |
-|------|-------------|
-| `-p, --prompt <text>` | Free-text prompt describing the feature or change |
-| `-i, --input <files...>` | One or more input files (spec, design docs, etc.) |
-| `-o, --output <path>` | Path to write the generated plan (default: `docs/plan.md`) |
-| `--verbose` | Show the full prompt and agent output |
+| Flag                     | Description                                                       |
+| ------------------------ | ----------------------------------------------------------------- |
+| `-p, --prompt <text>`    | Free-text prompt describing the feature or change                 |
+| `-i, --input <files...>` | One or more input files (spec, design docs, etc.)                 |
+| `-o, --output <path>`    | Path to write the generated plan (streams to terminal if omitted) |
+| `--sleep-after`          | Put machine to sleep after command completes                      |
+| `-v, --verbose`          | Show the full prompt and agent output                             |
 
 At least one of `--prompt` or `--input` is required.
 
@@ -30,7 +31,7 @@ At least one of `--prompt` or `--input` is required.
 2. **Initialise** — loads `speci.config.json`, runs preflight checks (Copilot CLI available?), resolves the `speci-plan` agent.
 3. **Build prompt** — combines input file references, the `--prompt` text, and the `--output` path hint.
 4. **Dispatch agent** — runs the `speci-plan.agent.md` via Copilot CLI and streams output.
-5. **Write plan** — saves the generated plan to the output path.
+5. **Write plan** — if `--output` is specified, saves the plan to that path; otherwise the agent streams output to the terminal.
 
 ## Example
 

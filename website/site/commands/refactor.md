@@ -10,16 +10,16 @@ One-shot codebase refactoring analysis via GitHub Copilot CLI. Dispatches the `s
 ## Usage
 
 ```bash
-speci refactor [--scope src/utils] [--output docs/refactor-plan.md] [--verbose]
+speci refactor [-s <path-or-glob>] [-o <path>] [-v]
 ```
 
 ## Options
 
-| Flag | Description |
-|------|-------------|
-| `--scope <path-or-glob>` | Limit analysis to a path or glob pattern (e.g. `src/utils`, `lib/**`) |
-| `-o, --output <path>` | Path to write the refactoring analysis (default: `docs/refactor-plan.md`) |
-| `--verbose` | Show the full prompt and agent output |
+| Flag                         | Description                                                           |
+| ---------------------------- | --------------------------------------------------------------------- |
+| `-s, --scope <path-or-glob>` | Limit analysis to a path or glob pattern (e.g. `src/utils`, `lib/**`) |
+| `-o, --output <path>`        | Path to write the refactoring analysis                                |
+| `-v, --verbose`              | Show the full prompt and agent output                                 |
 
 ## Flow
 

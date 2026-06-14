@@ -32,7 +32,7 @@ lib/
   validation/         ← input / path / config validators
   state.ts            ← PROGRESS.md state machine helpers
   copilot.ts          ← Copilot CLI invocation helpers
-  errors.ts           ← typed error classes
+  errors.ts           ← structured error codes (ERR-PRE-*, ERR-INP-*, ERR-EXE-*, ERR-STA-*)
   constants.ts        ← shared constants
 ```
 
@@ -84,4 +84,4 @@ bin → cli → commands → interfaces ← adapters
 
 ## Testing approach
 
-Unit tests pass fake adapter implementations via `CommandContext`. The `test/adapters/test-context.ts` helper builds a fully in-memory context for fast, hermetic tests. Integration tests use real adapters against temp directories.
+Unit tests pass fake adapter implementations via `CommandContext`. The `lib/adapters/test-context.ts` helper builds a fully in-memory context for fast, hermetic tests. Integration tests use real adapters against temp directories.

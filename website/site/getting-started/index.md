@@ -8,7 +8,7 @@ description: Install speci and run your first Copilot workflow in minutes.
 ## Prerequisites
 
 - **Node.js** ≥ 22
-- **GitHub Copilot** with the Copilot CLI extension enabled in VS Code
+- **GitHub Copilot CLI** installed and authenticated (`npm install -g @github/copilot`)
 - A Git repository
 
 ## Install
@@ -55,10 +55,11 @@ Speci reads `speci.config.json` in your project root. A minimal config looks lik
 
 ```json
 {
-  "gates": {
-    "lint": "npm run lint",
-    "typecheck": "npm run typecheck",
-    "test": "npm test"
+  "version": "1.0.0",
+  "gate": {
+    "commands": ["npm run lint", "npm run typecheck", "npm test"],
+    "maxFixAttempts": 5,
+    "strategy": "sequential"
   }
 }
 ```
