@@ -40,6 +40,10 @@ tmp/
 temp/
 *.tmp
 
+# Test temp directories/artifacts
+.test-*/
+.test-*
+
 # Docs site build artifacts
 website/dist/
 website/.stati/
