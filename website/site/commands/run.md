@@ -27,13 +27,13 @@ speci run [--max-iterations 100] [--dry-run] [--force] [-y] [--verify] [--sleep-
 
 ## Loop states
 
-| State         | Agent dispatched | Description                                  |
-| ------------- | ---------------- | -------------------------------------------- |
-| `WORK_LEFT`   | `impl`           | Tasks remain; implementation agent runs next |
-| `IN_REVIEW`   | `review`         | Completed tasks are queued for review        |
-| `BLOCKED`     | `tidy`           | All remaining tasks are blocked              |
-| `DONE`        | —                | All tasks complete; loop exits               |
-| `NO_PROGRESS` | —                | No `PROGRESS.md` found; run `speci task`     |
+| State         | Agent dispatched | Description                                                  |
+| ------------- | ---------------- | ------------------------------------------------------------ |
+| `WORK_LEFT`   | `impl`           | Tasks remain; implementation agent runs next                 |
+| `IN_REVIEW`   | `review`         | Tasks awaiting review; review agent evaluates implementation |
+| `BLOCKED`     | `tidy`           | All remaining tasks are blocked                              |
+| `DONE`        | —                | All tasks complete; loop exits                               |
+| `NO_PROGRESS` | —                | No `PROGRESS.md` found; run `speci task`                     |
 
 ## Gate validation
 

@@ -22,9 +22,11 @@ speci init [-u] [-v]
 
 ## What it creates
 
-| File                                     | Description                                      |
+| File / Directory                         | Description                                      |
 | ---------------------------------------- | ------------------------------------------------ |
 | `speci.config.json`                      | Project configuration (gates, agent paths, etc.) |
+| `docs/tasks/`                            | Directory for generated task files               |
+| `.speci-logs/`                           | Directory for run log files                      |
 | `.github/agents/speci-plan.agent.md`     | Plan generation agent                            |
 | `.github/agents/speci-impl.agent.md`     | Implementation agent                             |
 | `.github/agents/speci-review.agent.md`   | Review agent                                     |

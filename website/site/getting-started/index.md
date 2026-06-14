@@ -27,13 +27,13 @@ npm install -g speci
 npx speci init
 ```
 
-This creates a `speci.config.json` in your project root and copies the built-in agent templates into `.github/agents/`.
+This creates a `speci.config.json` in your project root, creates `docs/tasks/` and `.speci-logs/` directories, and copies the built-in agent templates into `.github/agents/`.
 
 ## Run your first workflow
 
 ```bash
 # 1. Generate a plan from a prompt
-npx speci plan -p "Add user authentication with JWT"
+npx speci plan -p "Add user authentication with JWT" --output docs/plan.md
 
 # 2. Break the plan into tasks
 npx speci task --plan docs/plan.md
