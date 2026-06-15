@@ -15,6 +15,7 @@
 
 import { describe, it, expect } from 'vitest';
 import * as banner from '../../lib/ui/banner.js';
+import { stripAnsi } from '../../lib/ui/colors.js';
 
 describe('Banner Backward Compatibility Regression', () => {
   describe('API Surface Validation', () => {
@@ -75,7 +76,7 @@ describe('Banner Backward Compatibility Regression', () => {
     it('includes banner art in output', () => {
       const result = banner.renderBanner();
       const firstLine = banner.BANNER_ART[0];
-      expect(result).toContain(firstLine.trim());
+      expect(stripAnsi(result)).toContain(firstLine.trim());
     });
 
     it('accepts showVersion option', () => {
