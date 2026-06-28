@@ -117,6 +117,10 @@ describe('task command', () => {
     // Create .git directory to satisfy git check
     mkdirSync('.git', { recursive: true });
 
+    // Create docs/progress so successful runs can pass completion checks.
+    mkdirSync('docs', { recursive: true });
+    writeFileSync('docs/PROGRESS.md', '# Progress\n');
+
     // Create agents directory with task agent in .github/agents/
     mkdirSync('.github/agents', { recursive: true });
     writeFileSync(
@@ -389,6 +393,9 @@ describe('task command', () => {
         cwd: testDir,
         mockConfig: testConfig,
       });
+      vi.mocked(context.fs.existsSync).mockImplementation(
+        (path: string) => path === testConfig.paths.progress
+      );
 
       const setVerboseSpy = vi
         .spyOn(context.logger, 'setVerbose')
@@ -450,6 +457,9 @@ describe('task command', () => {
       });
 
       const context = createMockContext({ cwd: testDir });
+      vi.mocked(context.fs.existsSync).mockImplementation(
+        (path: string) => path === testConfig.paths.progress
+      );
       const result = await task({ plan: 'plan.md' }, context, testConfig);
 
       expect(result).toEqual({ success: true, exitCode: 0 });
@@ -549,12 +559,22 @@ describe('task command', () => {
 
       const result = await task({ plan: 'plan.md' }, context, testConfig);
 
-      expect(result).toEqual({ success: true, exitCode: 0 });
+      expect(result).toEqual({
+        success: false,
+        exitCode: 1,
+        error:
+          'Task generation incomplete after 3 resume attempts. Re-run: speci task --plan plan.md',
+      });
       // Initial run + 3 resume attempts (max attempts) when still incomplete.
       expect(executeSpy).toHaveBeenCalledTimes(4);
       expect(context.logger.warn).toHaveBeenCalledWith(
         expect.stringContaining(
           '6 generation entries not yet COMPLETE: T-001, T-002, T-003, T-004, T-005…'
+        )
+      );
+      expect(context.logger.error).toHaveBeenCalledWith(
+        expect.stringContaining(
+          'Task generation incomplete after 3 resume attempts'
         )
       );
     });

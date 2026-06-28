@@ -229,12 +229,15 @@ export async function task(
 
     // Resume loop: re-invoke if generation is incomplete (e.g. context window cut off)
     const cwd = context.process.cwd();
-    for (let attempt = 1; attempt <= MAX_RESUME_ATTEMPTS; attempt++) {
-      const check = checkGenerationComplete(config, context, cwd);
-      if (check.complete) break;
+    let check = checkGenerationComplete(config, context, cwd);
 
+    for (
+      let attempt = 1;
+      attempt <= MAX_RESUME_ATTEMPTS && !check.complete;
+      attempt++
+    ) {
       context.logger.warn(
-        `Generation incomplete: ${check.reason}. Resuming (attempt ${attempt}/${MAX_RESUME_ATTEMPTS})…`
+        `Generation incomplete: ${check.reason ?? 'unknown reason'}. Resuming (attempt ${attempt}/${MAX_RESUME_ATTEMPTS})…`
       );
       context.logger.raw('');
 
@@ -250,6 +253,17 @@ export async function task(
       if (!resumeResult.success) {
         return resumeResult;
       }
+
+      check = checkGenerationComplete(config, context, cwd);
+    }
+
+    if (!check.complete) {
+      context.logger.error(
+        `Task generation incomplete after ${MAX_RESUME_ATTEMPTS} resume attempts: ${check.reason ?? 'unknown reason'}`
+      );
+      return failResult(
+        `Task generation incomplete after ${MAX_RESUME_ATTEMPTS} resume attempts. Re-run: speci task --plan ${planOption}`
+      );
     }
 
     return { success: true, exitCode: 0 };
