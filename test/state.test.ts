@@ -1991,6 +1991,37 @@ ${extraContent}`;
       expect(content).toContain('| Primary Error   | line1 line2 line3 |');
     });
 
+    it('should escape pipe characters so the table is not corrupted', async () => {
+      writeProgressWithHandoff();
+      const failure = makeGateFailure({
+        results: [
+          {
+            command: 'npm run typecheck',
+            isSuccess: false,
+            exitCode: 2,
+            error:
+              "Type 'string | undefined' is not assignable to type 'string'",
+          },
+        ],
+        error: "Type 'string | undefined' is not assignable to type 'string'",
+      });
+
+      await writeFailureNotes(mockConfig, failure);
+
+      const content = readFileSync(mockConfig.paths.progress, 'utf8');
+      // Pipe inside the error must be escaped so it doesn't create extra columns.
+      expect(content).toContain(
+        "| Primary Error   | Type 'string \\| undefined' is not assignable to type 'string' |"
+      );
+      // Each table row must still have exactly the opening + separator + closing pipes.
+      const primaryLine = content
+        .split('\n')
+        .find((line) => line.startsWith('| Primary Error'));
+      expect(primaryLine).toBeDefined();
+      const unescapedPipes = (primaryLine!.match(/(?<!\\)\|/g) ?? []).length;
+      expect(unescapedPipes).toBe(3);
+    });
+
     it('should use em-dash for task when no active task exists', async () => {
       // Write PROGRESS.md with all tasks COMPLETE (no active task)
       const content = `# Progress

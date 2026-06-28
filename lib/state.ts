@@ -612,6 +612,21 @@ function truncateError(text: string, maxLength: number): string {
 }
 
 /**
+ * Escape a value for safe inclusion in a single markdown table cell.
+ *
+ * Collapses newlines to spaces and escapes pipe characters so the value cannot
+ * break the table structure. This matters because gate errors frequently
+ * contain `|` (e.g. TypeScript union types like `Type 'A | B'`), which would
+ * otherwise corrupt the `### For Fix Agent` handoff table.
+ *
+ * @param value - Raw cell value
+ * @returns Single-line, pipe-escaped string
+ */
+function escapeTableCell(value: string): string {
+  return value.replace(/[\r\n]+/g, ' ').replace(/\|/g, '\\|');
+}
+
+/**
  * Write gate failure notes into the `### For Fix Agent` section of PROGRESS.md.
  *
  * Populates the structured table so the fix agent has immediate context about
@@ -694,10 +709,10 @@ export async function writeFailureNotes(
     '',
     '| Field           | Value |',
     '| --------------- | ----- |',
-    `| Task            | ${taskValue} |`,
-    `| Failed Gate     | ${failedGateValue} |`,
-    `| Primary Error   | ${primaryErrorValue} |`,
-    `| Root Cause Hint | ${rootCauseValue} |`,
+    `| Task            | ${escapeTableCell(taskValue)} |`,
+    `| Failed Gate     | ${escapeTableCell(failedGateValue)} |`,
+    `| Primary Error   | ${escapeTableCell(primaryErrorValue)} |`,
+    `| Root Cause Hint | ${escapeTableCell(rootCauseValue)} |`,
   ].join('\n');
 
   // Find the end of the existing table (next heading, horizontal rule, or EOF)
