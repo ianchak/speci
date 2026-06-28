@@ -1,5 +1,11 @@
 # speci
 
+## 0.15.0
+
+### Minor Changes
+
+- bc26399: feat(task): add automatic resume when generation state is incomplete
+
 ## 0.14.0
 
 ### Minor Changes
