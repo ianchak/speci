@@ -456,4 +456,188 @@ describe('task command', () => {
       expect(cleanSpy).not.toHaveBeenCalled();
     });
   });
+
+  describe('generation resume flow', () => {
+    it('re-invokes task generation when GENERATION_STATE has incomplete entries', async () => {
+      const context = createMockContext({
+        cwd: testDir,
+        mockConfig: testConfig,
+      });
+      const statePath = join(testDir, 'docs/GENERATION_STATE.md');
+
+      vi.spyOn(commandHelpers, 'initializeCommand').mockResolvedValue({
+        config: testConfig,
+        agentName: 'speci-task',
+        agentPath: join(testDir, '.github/agents/speci-task.agent.md'),
+      });
+
+      let stateReadCount = 0;
+      vi.mocked(context.fs.existsSync).mockImplementation((path: string) => {
+        if (path === statePath || path === testConfig.paths.progress) {
+          return true;
+        }
+        return false;
+      });
+      vi.mocked(context.fs.readFileSync).mockImplementation(() => {
+        stateReadCount += 1;
+        if (stateReadCount === 1) {
+          return [
+            '| Task ID | Gen Status | Notes |',
+            '|---|---|---|',
+            '| T-001 | IN_PROGRESS | first pass |',
+          ].join('\n');
+        }
+        return [
+          '| Task ID | Gen Status | Notes |',
+          '|---|---|---|',
+          '| T-001 | COMPLETE | resumed |',
+        ].join('\n');
+      });
+
+      const executeSpy = vi
+        .spyOn(copilotHelper, 'executeCopilotCommand')
+        .mockResolvedValue({ success: true, exitCode: 0 });
+
+      const result = await task({ plan: 'plan.md' }, context, testConfig);
+
+      expect(result).toEqual({ success: true, exitCode: 0 });
+      expect(executeSpy).toHaveBeenCalledTimes(2);
+      expect(context.copilotRunner.buildArgs).toHaveBeenCalledTimes(2);
+      expect(context.logger.warn).toHaveBeenCalledWith(
+        expect.stringContaining(
+          'Generation incomplete: 1 generation entry not yet COMPLETE'
+        )
+      );
+    });
+
+    it('handles reordered columns, separator rows, and truncates long incomplete lists', async () => {
+      const context = createMockContext({
+        cwd: testDir,
+        mockConfig: testConfig,
+      });
+      const statePath = join(testDir, 'docs/GENERATION_STATE.md');
+
+      vi.spyOn(commandHelpers, 'initializeCommand').mockResolvedValue({
+        config: testConfig,
+        agentName: 'speci-task',
+        agentPath: join(testDir, '.github/agents/speci-task.agent.md'),
+      });
+
+      vi.mocked(context.fs.existsSync).mockImplementation((path: string) => {
+        if (path === statePath || path === testConfig.paths.progress) {
+          return true;
+        }
+        return false;
+      });
+      vi.mocked(context.fs.readFileSync).mockReturnValue(
+        [
+          '| Notes | Gen Status | Task ID |',
+          '|---|---|---|',
+          '| note 1 | IN_PROGRESS | T-001 |',
+          '| note 2 | TODO | T-002 |',
+          '| note 3 | BLOCKED | T-003 |',
+          'this row should be ignored',
+          '| note 4 | IN_PROGRESS | T-004 |',
+          '| note 5 | TODO | T-005 |',
+          '| note 6 | BLOCKED | T-006 |',
+        ].join('\n')
+      );
+
+      const executeSpy = vi
+        .spyOn(copilotHelper, 'executeCopilotCommand')
+        .mockResolvedValue({ success: true, exitCode: 0 });
+
+      const result = await task({ plan: 'plan.md' }, context, testConfig);
+
+      expect(result).toEqual({ success: true, exitCode: 0 });
+      // Initial run + 3 resume attempts (max attempts) when still incomplete.
+      expect(executeSpy).toHaveBeenCalledTimes(4);
+      expect(context.logger.warn).toHaveBeenCalledWith(
+        expect.stringContaining(
+          '6 generation entries not yet COMPLETE: T-001, T-002, T-003, T-004, T-005…'
+        )
+      );
+    });
+
+    it('does not resume when generation state header is missing and progress exists', async () => {
+      const context = createMockContext({
+        cwd: testDir,
+        mockConfig: testConfig,
+      });
+      const statePath = join(testDir, 'docs/GENERATION_STATE.md');
+
+      vi.spyOn(commandHelpers, 'initializeCommand').mockResolvedValue({
+        config: testConfig,
+        agentName: 'speci-task',
+        agentPath: join(testDir, '.github/agents/speci-task.agent.md'),
+      });
+
+      vi.mocked(context.fs.existsSync).mockImplementation((path: string) => {
+        if (path === statePath || path === testConfig.paths.progress) {
+          return true;
+        }
+        return false;
+      });
+      vi.mocked(context.fs.readFileSync).mockReturnValue(
+        'no table content present'
+      );
+
+      const executeSpy = vi
+        .spyOn(copilotHelper, 'executeCopilotCommand')
+        .mockResolvedValue({ success: true, exitCode: 0 });
+
+      const result = await task({ plan: 'plan.md' }, context, testConfig);
+
+      expect(result).toEqual({ success: true, exitCode: 0 });
+      expect(executeSpy).toHaveBeenCalledTimes(1);
+      expect(context.logger.warn).not.toHaveBeenCalledWith(
+        expect.stringContaining('Generation incomplete:')
+      );
+    });
+
+    it('resumes when progress file is missing and returns resume failure immediately', async () => {
+      const context = createMockContext({
+        cwd: testDir,
+        mockConfig: testConfig,
+      });
+      const statePath = join(testDir, 'docs/GENERATION_STATE.md');
+
+      vi.spyOn(commandHelpers, 'initializeCommand').mockResolvedValue({
+        config: testConfig,
+        agentName: 'speci-task',
+        agentPath: join(testDir, '.github/agents/speci-task.agent.md'),
+      });
+
+      vi.mocked(context.fs.existsSync).mockImplementation((path: string) => {
+        if (path === statePath) {
+          return false;
+        }
+        if (path === testConfig.paths.progress) {
+          return false;
+        }
+        return false;
+      });
+
+      const executeSpy = vi
+        .spyOn(copilotHelper, 'executeCopilotCommand')
+        .mockResolvedValueOnce({ success: true, exitCode: 0 })
+        .mockResolvedValueOnce({
+          success: false,
+          exitCode: 2,
+          error: 'resume failed',
+        });
+
+      const result = await task({ plan: 'plan.md' }, context, testConfig);
+
+      expect(result).toEqual({
+        success: false,
+        exitCode: 2,
+        error: 'resume failed',
+      });
+      expect(executeSpy).toHaveBeenCalledTimes(2);
+      expect(context.logger.warn).toHaveBeenCalledWith(
+        expect.stringContaining('PROGRESS.md not found')
+      );
+    });
+  });
 });

@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { mkdirSync, writeFileSync, rmSync, chmodSync } from 'node:fs';
-import { join } from 'node:path';
+import { join, sep } from 'node:path';
 import { PathValidator } from '@/validation/path-validator.js';
 
 describe('PathValidator', () => {
@@ -177,6 +177,18 @@ describe('PathValidator', () => {
     it('should succeed when the path equals the project root', () => {
       const result = new PathValidator(testDir)
         .isWithinProject(testDir)
+        .validate();
+
+      expect(result.success).toBe(true);
+    });
+
+    it('should handle project root that already ends with a separator', () => {
+      const filePath = join(testDir, 'nested', 'file.txt');
+      mkdirSync(join(testDir, 'nested'), { recursive: true });
+      writeFileSync(filePath, 'content');
+
+      const result = new PathValidator(filePath)
+        .isWithinProject(`${testDir}${sep}`)
         .validate();
 
       expect(result.success).toBe(true);
