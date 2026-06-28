@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title><%= stati.page.title ? `${stati.page.title} · Speci` : 'Speci' %></title>
   <meta name="description" content="<%= stati.page.description ?? stati.site.description %>" />
-  <meta name="theme-color" content="#0a0e14" />
+  <meta name="theme-color" content="#07090e" />
   <meta property="og:title" content="<%= stati.page.title ? `${stati.page.title} · Speci` : 'Speci' %>" />
   <meta property="og:description" content="<%= stati.page.description ?? stati.site.description %>" />
   <meta property="og:type" content="website" />
@@ -14,13 +14,29 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="/styles.css" />
+  <script>document.documentElement.classList.add('js');</script>
 </head>
 <body>
   <div class="bg-canvas" aria-hidden="true">
     <div class="bg-grid"></div>
+    <div class="bg-spot" id="bg-spot"></div>
     <div class="bg-glow bg-glow--one"></div>
     <div class="bg-glow bg-glow--two"></div>
+    <div class="bg-beam"></div>
+    <div class="bg-scan"></div>
+    <div class="bg-vignette"></div>
     <div class="bg-noise"></div>
+  </div>
+
+  <div class="statusline">
+    <div class="container statusline-inner">
+      <span class="sl-item"><span class="dot" aria-hidden="true"></span><span class="sl-key">quickstart</span><span class="sl-val">npx&nbsp;speci ok</span></span>
+      <span class="sl-sep sl-hide-sm" aria-hidden="true">/</span>
+      <span class="sl-item sl-hide-sm"><span class="sl-key">requires</span><span class="sl-val">GitHub&nbsp;Copilot&nbsp;CLI</span></span>
+      <span class="sl-sep sl-hide-sm" aria-hidden="true">/</span>
+      <span class="sl-item sl-hide-sm"><span class="sl-key">license</span><a class="sl-val sl-link" href="https://opensource.org/licenses/MIT" target="_blank" rel="noopener noreferrer">MIT</a></span>
+      <a class="sl-tail sl-link" href="https://github.com/ianchak/speci/releases" target="_blank" rel="noopener noreferrer" aria-label="View releases on GitHub">v<%= stati.cliVersion() %></a>
+    </div>
   </div>
 
   <header class="site-header" id="site-header">
@@ -28,21 +44,23 @@
       <a href="/" class="logo" aria-label="Speci home">
         <span class="logo-mark" aria-hidden="true">
           <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M7 8l4 4-4 4" stroke="#3dd7c4"/>
-            <path d="M13 17h5" stroke="#ff7a6b"/>
+            <path d="M7 8l4 4-4 4" stroke="#38e0cb"/>
+            <path d="M13 17h5" stroke="#ff7a59"/>
           </svg>
         </span>
+        <span class="logo-prompt" aria-hidden="true">$</span>
         <span class="logo-name">speci</span>
-        <span class="logo-badge">v<%= stati.cliVersion() %></span>
+        <span class="logo-typed" id="logo-typed" aria-hidden="true"></span>
+        <span class="logo-caret" aria-hidden="true"></span>
       </a>
 
       <nav class="site-nav" id="site-nav">
-        <a href="/getting-started/">Get Started</a>
-        <a href="/commands/">Commands</a>
-        <a href="/architecture/">Architecture</a>
+        <a href="/getting-started/">get-started</a>
+        <a href="/commands/">commands</a>
+        <a href="/architecture/">architecture</a>
         <a href="https://github.com/ianchak/speci" class="nav-github" target="_blank" rel="noopener noreferrer">
           <svg viewBox="0 0 16 16" width="16" height="16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></svg>
-          <span>GitHub</span>
+          <span>github</span>
         </a>
       </nav>
 
@@ -55,40 +73,68 @@
   <main id="main-content">
     <% if (stati.page.url === '/') { %>
       <%~ stati.page.content %>
-    <% } else { %>
-      <div class="content-page">
-        <div class="container">
-          <article class="prose">
-            <%~ stati.page.content %>
-          </article>
-        </div>
+    <% } else {
+      const norm = (u) => (u === '/' ? '/' : String(u).replace(/\/+$/, ''));
+      const current = norm(stati.page.url);
+      const isActive = (u) => current === norm(u) ? ' aria-current="page"' : '';
+      const commands = [
+        ['/commands/', 'overview'],
+        ['/commands/init/', 'init'],
+        ['/commands/plan/', 'plan'],
+        ['/commands/task/', 'task'],
+        ['/commands/run/', 'run'],
+        ['/commands/refactor/', 'refactor'],
+        ['/commands/status/', 'status'],
+        ['/commands/yolo/', 'yolo'],
+        ['/commands/clean/', 'clean'],
+      ];
+    %>
+      <div class="container docs">
+        <aside class="docs-sidebar" aria-label="Documentation navigation">
+          <div class="docs-nav-group">
+            <p class="docs-nav-title">Start</p>
+            <a class="docs-nav-link" href="/getting-started/"<%~ isActive('/getting-started/') %>>get-started</a>
+            <a class="docs-nav-link" href="/architecture/"<%~ isActive('/architecture/') %>>architecture</a>
+          </div>
+          <div class="docs-nav-group">
+            <p class="docs-nav-title">Commands</p>
+            <% commands.forEach(function (c) { %>
+              <a class="docs-nav-link" href="<%= c[0] %>"<%~ isActive(c[0]) %>><%= c[1] %></a>
+            <% }) %>
+          </div>
+        </aside>
+        <article class="prose">
+          <%~ stati.page.content %>
+        </article>
       </div>
     <% } %>
   </main>
 
   <footer class="site-footer">
-    <div class="container footer-inner">
-      <div class="footer-brand">
-        <span class="logo-name">speci</span>
-        <p>AI-powered implementation loop orchestrator for GitHub Copilot.</p>
-      </div>
-      <div class="footer-links">
+    <div class="container">
+      <div class="footer-top" aria-hidden="true">speci</div>
+      <div class="footer-inner">
+        <div class="footer-brand">
+          <span class="logo-name">$ speci</span>
+          <p>AI-powered implementation loop orchestrator for GitHub Copilot. Plan, task, implement, and review — on autopilot.</p>
+        </div>
         <div class="footer-col">
           <h4>Docs</h4>
-          <a href="/getting-started/">Get Started</a>
-          <a href="/commands/">Commands</a>
-          <a href="/architecture/">Architecture</a>
+          <a href="/getting-started/">get-started</a>
+          <a href="/commands/">commands</a>
+          <a href="/architecture/">architecture</a>
         </div>
         <div class="footer-col">
           <h4>Project</h4>
-          <a href="https://github.com/ianchak/speci" target="_blank" rel="noopener noreferrer">GitHub</a>
-          <a href="https://opensource.org/licenses/MIT" target="_blank" rel="noopener noreferrer">MIT License</a>
+          <a href="https://github.com/ianchak/speci" target="_blank" rel="noopener noreferrer">github</a>
+          <a href="https://opensource.org/licenses/MIT" target="_blank" rel="noopener noreferrer">mit-license</a>
         </div>
       </div>
-    </div>
-    <div class="container footer-meta">
-      <span class="version-badge">v<%= stati.cliVersion() %></span>
-      <span>© <%= new Date().getFullYear() %> speci · Built with <a href="https://stati.build" target="_blank" rel="noopener noreferrer">Stati</a></span>
+      <div class="footer-meta">
+        <span class="version-badge">v<%= stati.cliVersion() %></span>
+        <span class="fm-sys">&#9679; system: ready</span>
+        <span>&copy; <%= new Date().getFullYear() %> speci &middot; built with <a href="https://stati.build" target="_blank" rel="noopener noreferrer">Stati</a></span>
+      </div>
     </div>
   </footer>
 
