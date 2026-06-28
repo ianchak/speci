@@ -697,6 +697,27 @@ describe('Run Command', () => {
       expect(copilot.runAgent).not.toHaveBeenCalled();
     });
 
+    it('should show task generation action in dry run for NO_PROGRESS state', async () => {
+      const context = createMockContext({
+        mockConfig: mockConfig as unknown as RuntimeSpeciConfig,
+        cwd: TEST_DIR,
+      });
+      const runtimeConfig = mockConfig as unknown as RuntimeSpeciConfig;
+      vi.mocked(context.stateReader.getState).mockResolvedValue(
+        STATE.NO_PROGRESS
+      );
+
+      const result = await run({ dryRun: true }, context, runtimeConfig);
+
+      expect(result).toEqual({ success: true, exitCode: 0 });
+      const mutedMessages = vi
+        .mocked(context.logger.muted)
+        .mock.calls.map(([message]) => message);
+      expect(mutedMessages).toContain(
+        'Action: Generate tasks (run `speci task`)'
+      );
+    });
+
     it('should force override lock when force flag is set', async () => {
       vi.spyOn(lock, 'isLocked').mockResolvedValue(true);
       vi.spyOn(lock, 'getLockInfo').mockResolvedValue({
