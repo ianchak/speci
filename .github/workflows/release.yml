@@ -69,7 +69,24 @@ jobs:
         run: npm run build
 
       - name: Version packages
-        run: npx changeset version
+        run: |
+          attempts=0
+          max_attempts=3
+          until [ "$attempts" -ge "$max_attempts" ]
+          do
+            if npx changeset version; then
+              exit 0
+            fi
+
+            attempts=$((attempts + 1))
+            if [ "$attempts" -lt "$max_attempts" ]; then
+              echo "changeset version failed (attempt $attempts/$max_attempts), retrying..."
+              sleep 5
+            fi
+          done
+
+          echo "changeset version failed after $max_attempts attempts"
+          exit 1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
