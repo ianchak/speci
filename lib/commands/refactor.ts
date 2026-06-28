@@ -26,8 +26,6 @@ export interface RefactorOptions {
   scope?: string;
   /** Output file path for refactoring plan */
   output?: string;
-  /** Custom agent path override */
-  agent?: string;
   /** Show detailed output */
   verbose?: boolean;
 }

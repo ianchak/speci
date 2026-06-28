@@ -32,8 +32,6 @@ import type { SpeciConfig } from '@/types.js';
 export interface TaskOptions {
   /** Path to plan file */
   plan?: string;
-  /** Custom agent path override */
-  agent?: string;
   /** Show detailed output */
   verbose?: boolean;
   /** Clean task files and progress before generating */

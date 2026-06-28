@@ -25,8 +25,6 @@ import type { SpeciConfig } from '@/types.js';
 export interface PlanOptions {
   /** Output file path for plan */
   output?: string;
-  /** Custom agent path override */
-  agent?: string;
   /** Initial prompt for plan generation */
   prompt?: string;
   /** Input files to include as context (design docs, specs, etc.) */
