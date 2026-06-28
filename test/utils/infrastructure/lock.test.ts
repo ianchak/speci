@@ -349,8 +349,15 @@ describe('Lock File Management', () => {
     it('calculates elapsed time in HH:MM:SS format', async () => {
       await acquireLock(mockConfig, undefined, 'run');
 
-      // Wait a bit to have some elapsed time
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      // Make elapsed time deterministic by forcing started to be in the past.
+      const lockData = JSON.parse(readFileSync(testLockPath, 'utf8')) as {
+        version: string;
+        pid: number;
+        started: string;
+        command: string;
+      };
+      lockData.started = new Date(Date.now() - 1500).toISOString();
+      writeFileSync(testLockPath, JSON.stringify(lockData), 'utf8');
 
       const info = await getLockInfo(mockConfig);
 
