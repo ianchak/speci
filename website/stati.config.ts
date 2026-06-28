@@ -6,9 +6,13 @@ const { version } = require('../package.json') as { version: string };
 
 // In Netlify deploy previews, DEPLOY_PRIME_URL is set to the preview URL.
 // In production builds, DEPLOY_URL is the production URL.
+// URL is the primary site URL (typically the production domain).
 // Fall back to localhost for local development.
 const baseUrl =
-  process.env.URL ?? process.env.DEPLOY_PRIME_URL ?? 'http://localhost:3000';
+  process.env.DEPLOY_PRIME_URL ??
+  process.env.DEPLOY_URL ??
+  process.env.URL ??
+  'http://localhost:3000';
 
 export default defineConfig({
   site: {
