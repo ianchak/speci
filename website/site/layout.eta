@@ -30,7 +30,7 @@
 
   <div class="statusline">
     <div class="container statusline-inner">
-      <span class="sl-item"><span class="dot" aria-hidden="true"></span><span class="sl-key">quickstart</span><span class="sl-val">npx&nbsp;speci ok</span></span>
+      <span class="sl-item"><span class="dot" aria-hidden="true"></span><span class="sl-key">quickstart</span><span class="sl-val">npx&nbsp;speci</span></span>
       <span class="sl-sep sl-hide-sm" aria-hidden="true">/</span>
       <span class="sl-item sl-hide-sm"><span class="sl-key">requires</span><span class="sl-val">GitHub&nbsp;Copilot&nbsp;CLI</span></span>
       <span class="sl-sep sl-hide-sm" aria-hidden="true">/</span>
