@@ -1,6 +1,6 @@
 ---
 title: speci clean
-description: Remove generated task files, PROGRESS.md, and lock files.
+description: Remove generated task files and PROGRESS.md.
 ---
 
 # `speci clean`

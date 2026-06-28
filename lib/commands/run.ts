@@ -230,9 +230,9 @@ async function mainLoop(
         return;
 
       case STATE.NO_PROGRESS:
-        context.logger.error(
-          'No PROGRESS.md found. Run `speci init` to initialize.'
-        );
+        // Defensive guard: preflight (requireProgress) normally rejects a
+        // missing PROGRESS.md before the loop starts, so this is unreachable
+        // in practice. ERR-PRE-06 carries the user-facing remediation.
         throw createError('ERR-PRE-06');
 
       case STATE.WORK_LEFT:
@@ -477,7 +477,7 @@ function getActionForState(state: STATE): string {
     case STATE.DONE:
       return 'All tasks complete (no action)';
     case STATE.NO_PROGRESS:
-      return 'Initialize project (run `speci init`)';
+      return 'Generate tasks (run `speci task`)';
   }
 }
 

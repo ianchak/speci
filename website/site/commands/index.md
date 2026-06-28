@@ -14,4 +14,4 @@ description: Full reference for all speci CLI commands.
 | `speci yolo`     | Full pipeline: plan → task → run                         | [View →](/commands/yolo/)     |
 | `speci refactor` | Analyse the codebase for refactoring opportunities       | [View →](/commands/refactor/) |
 | `speci status`   | Print the current loop state                             | [View →](/commands/status/)   |
-| `speci clean`    | Remove generated task and lock files                     | [View →](/commands/clean/)    |
+| `speci clean`    | Remove generated task files and PROGRESS.md              | [View →](/commands/clean/)    |

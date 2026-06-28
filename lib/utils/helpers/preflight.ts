@@ -149,7 +149,7 @@ export async function checkProgressExists(config: SpeciConfig): Promise<void> {
       'Progress file not found',
       `PROGRESS.md not found at: ${progressPath}`,
       [
-        'Run `speci init` to create progress tracking file',
+        'Run `speci task` to generate the progress tracking file',
         `Or create ${progressPath} manually with task table`,
       ]
     );

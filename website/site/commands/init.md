@@ -34,3 +34,4 @@ speci init [-u] [-v]
 | `.github/agents/speci-task.agent.md`     | Task generation agent                            |
 | `.github/agents/speci-tidy.agent.md`     | Blocked-state tidy agent                         |
 | `.github/agents/speci-refactor.agent.md` | Refactor analysis agent                          |
+| `.github/agents/subagents/`              | 33 multi-pass subagent prompts                   |

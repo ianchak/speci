@@ -92,12 +92,12 @@ export const ERROR_CODES: Record<ErrorCode, ErrorDefinition> = {
   'ERR-PRE-05': {
     message: 'PROGRESS.md file not found',
     cause: 'Progress tracking file does not exist',
-    solution: 'Run speci init or create docs/PROGRESS.md manually',
+    solution: 'Run speci task or create docs/PROGRESS.md manually',
   },
   'ERR-PRE-06': {
     message: 'No PROGRESS.md found in run command',
     cause: 'Run command requires PROGRESS.md to track implementation state',
-    solution: 'Run speci init to initialize project structure',
+    solution: 'Run speci task to generate tasks and PROGRESS.md',
   },
 
   // Input Errors (ERR-INP-*)
