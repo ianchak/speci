@@ -8,7 +8,7 @@
 [![TypeScript](https://img.shields.io/badge/TypeScript-strict-blue.svg)](https://www.typescriptlang.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-AI-powered implementation loop orchestrator for GitHub Copilot. Speci automates development workflows by dispatching Copilot agents to plan, implement, review, and fix code, with quality gate validation (lint, typecheck, test) between each step.
+Multi-agent implementation loop orchestrator for GitHub Copilot. Speci automates development workflows by dispatching Copilot agents to plan, implement, review, and fix code, with quality gate validation (lint, typecheck, test) between each step.
 
 ![Speci Run Screenshot](images/speci_screenshot_01.png)
 
