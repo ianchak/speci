@@ -28,6 +28,7 @@
     "node": ">=22.0.0"
   },
   "workspaces": [
+    ".",
     "website"
   ],
   "scripts": {
