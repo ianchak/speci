@@ -4,9 +4,14 @@
  * Invokes GitHub Copilot CLI in one-shot mode for task generation from a plan file.
  * The command validates the plan file exists and is readable before invoking Copilot.
  * Output streams to terminal in real-time using stdio: 'inherit'.
+ *
+ * After each Copilot run, the command checks whether generation is complete by
+ * inspecting GENERATION_STATE.md (if present). If incomplete entries remain or
+ * PROGRESS.md is still absent, the agent is re-invoked to resume — up to
+ * MAX_RESUME_ATTEMPTS times.
  */
 
-import { relative, resolve } from 'node:path';
+import { join, relative, resolve } from 'node:path';
 import { infoBox } from '@/ui/box.js';
 import { initializeCommand } from '@/utils/helpers/command-helpers.js';
 import {
@@ -16,6 +21,7 @@ import {
 } from '@/utils/infrastructure/error-handler.js';
 import { executeCopilotCommand } from '@/utils/helpers/copilot-helper.js';
 import { cleanFiles } from '@/commands/clean.js';
+import { DEFAULT_PATHS } from '@/constants.js';
 import { InputValidator, PathValidator } from '@/validation/index.js';
 import type { CommandContext, CommandResult } from '@/interfaces/index.js';
 import type { SpeciConfig } from '@/types.js';
@@ -26,12 +32,102 @@ import type { SpeciConfig } from '@/types.js';
 export interface TaskOptions {
   /** Path to plan file */
   plan?: string;
-  /** Custom agent path override */
-  agent?: string;
   /** Show detailed output */
   verbose?: boolean;
   /** Clean task files and progress before generating */
   clean?: boolean;
+}
+
+/**
+ * Maximum number of automatic resume attempts after generation cuts off.
+ */
+const MAX_RESUME_ATTEMPTS = 3;
+
+/**
+ * Parse GENERATION_STATE.md content and return Task IDs whose Gen Status ≠ COMPLETE.
+ *
+ * Detects the "Gen Status" column dynamically from the header row so the check
+ * is robust to column reordering.
+ *
+ * @param content - Raw GENERATION_STATE.md file content
+ * @returns Array of Task ID strings that are not yet COMPLETE
+ */
+function findIncompleteGenerationEntries(content: string): string[] {
+  const lines = content.split('\n');
+
+  // Find header row containing "Gen Status"
+  const headerIndex = lines.findIndex(
+    (line) => line.includes('|') && line.toLowerCase().includes('gen status')
+  );
+  if (headerIndex === -1) return [];
+
+  const headerCells = lines[headerIndex]
+    .split('|')
+    .map((c) => c.trim().toLowerCase());
+  const genStatusCol = headerCells.findIndex((c) => c === 'gen status');
+  const taskIdCol = headerCells.findIndex(
+    (c) => c === 'task id' || c === 'task'
+  );
+  if (genStatusCol === -1 || taskIdCol === -1) return [];
+
+  const incomplete: string[] = [];
+
+  for (let i = headerIndex + 1; i < lines.length; i++) {
+    const line = lines[i].trim();
+    if (!line.startsWith('|')) continue;
+    // Skip separator rows (e.g. |---|---|)
+    if (/^\|[\s|:-]+\|$/.test(line)) continue;
+
+    const cells = line.split('|').map((c) => c.trim());
+    const genStatus = cells[genStatusCol] ?? '';
+    const taskId = cells[taskIdCol] ?? '';
+
+    if (taskId && genStatus.toUpperCase() !== 'COMPLETE') {
+      incomplete.push(taskId);
+    }
+  }
+
+  return incomplete;
+}
+
+/**
+ * Determine whether task generation is complete.
+ *
+ * Checks two conditions in order:
+ * 1. If GENERATION_STATE.md exists — all entries must have Gen Status COMPLETE.
+ * 2. PROGRESS.md must exist at config.paths.progress.
+ *
+ * @param config - Speci configuration
+ * @param context - Command context for filesystem access
+ * @param cwd - Current working directory
+ * @returns Object with `complete` flag and optional human-readable `reason` when incomplete
+ */
+function checkGenerationComplete(
+  config: SpeciConfig,
+  context: CommandContext,
+  cwd: string
+): { complete: boolean; reason?: string } {
+  const statePath = join(cwd, DEFAULT_PATHS.GENERATION_STATE);
+
+  if (context.fs.existsSync(statePath)) {
+    const content = context.fs.readFileSync(statePath, 'utf8');
+    const incomplete = findIncompleteGenerationEntries(content);
+    if (incomplete.length > 0) {
+      return {
+        complete: false,
+        reason: `${incomplete.length} generation ${incomplete.length === 1 ? 'entry' : 'entries'} not yet COMPLETE: ${incomplete.slice(0, 5).join(', ')}${incomplete.length > 5 ? '…' : ''}`,
+      };
+    }
+  }
+
+  if (!context.fs.existsSync(config.paths.progress)) {
+    return {
+      complete: false,
+      reason: `PROGRESS.md not found at ${config.paths.progress}`,
+    };
+  }
+
+  return { complete: true };
 }
 
 /**
@@ -125,8 +221,52 @@ export async function task(
       command: 'task',
     });
 
-    // Execute copilot command with standard pattern
-    return await executeCopilotCommand(context, args);
+    // Execute initial generation
+    const initialResult = await executeCopilotCommand(context, args);
+    if (!initialResult.success) {
+      return initialResult;
+    }
+
+    // Resume loop: re-invoke if generation is incomplete (e.g. context window cut off)
+    const cwd = context.process.cwd();
+    let check = checkGenerationComplete(config, context, cwd);
+
+    for (
+      let attempt = 1;
+      attempt <= MAX_RESUME_ATTEMPTS && !check.complete;
+      attempt++
+    ) {
+      context.logger.warn(
+        `Generation incomplete: ${check.reason ?? 'unknown reason'}. Resuming (attempt ${attempt}/${MAX_RESUME_ATTEMPTS})…`
+      );
+      context.logger.raw('');
+
+      const resumeArgs = context.copilotRunner.buildArgs(config, {
+        prompt:
+          `Read ${DEFAULT_PATHS.GENERATION_STATE} to find incomplete entries ` +
+          `and resume task generation from where it left off.`,
+        agent: agentName,
+        command: 'task',
+      });
+
+      const resumeResult = await executeCopilotCommand(context, resumeArgs);
+      if (!resumeResult.success) {
+        return resumeResult;
+      }
+
+      check = checkGenerationComplete(config, context, cwd);
+    }
+
+    if (!check.complete) {
+      context.logger.error(
+        `Task generation incomplete after ${MAX_RESUME_ATTEMPTS} resume attempts: ${check.reason ?? 'unknown reason'}`
+      );
+      return failResult(
+        `Task generation incomplete after ${MAX_RESUME_ATTEMPTS} resume attempts. Re-run: speci task --plan ${planOption}`
+      );
+    }
+
+    return { success: true, exitCode: 0 };
   } catch (error) {
     return handleCommandError(error, 'Task', context.logger);
   }

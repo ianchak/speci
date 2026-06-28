@@ -3,7 +3,7 @@
  */
 
 import { existsSync, accessSync, constants } from 'node:fs';
-import { resolve, isAbsolute } from 'node:path';
+import { resolve, isAbsolute, sep } from 'node:path';
 import type { ValidationResult, ValidationError } from './types.js';
 
 /**
@@ -86,7 +86,13 @@ export class PathValidator {
       ? this.path
       : resolve(projectRoot, this.path);
 
-    if (!absolutePath.startsWith(projectRoot)) {
+    // Compare against a separator-terminated prefix so sibling directories
+    // that merely share a name prefix (e.g. "/proj" vs "/proj-evil") are not
+    // treated as inside the project root.
+    const rootPrefix = projectRoot.endsWith(sep)
+      ? projectRoot
+      : `${projectRoot}${sep}`;
+    if (absolutePath !== projectRoot && !absolutePath.startsWith(rootPrefix)) {
       this.errors.push({
         field: 'path',
         message: `Path must be within project: ${this.path}`,

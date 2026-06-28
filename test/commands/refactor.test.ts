@@ -240,7 +240,20 @@ describe('refactor command', () => {
 
   describe('agent path resolution', () => {
     it('should exit with error when agent file not found', async () => {
-      const result = await refactor({ agent: 'nonexistent.md' });
+      // Remove the agent file (inside the isolated temp testDir) so
+      // validateAgentFile fails before spawning copilot. The absolute path
+      // guarantees this only ever targets the per-test temp directory.
+      const agentFile = join(
+        testDir,
+        '.github',
+        'agents',
+        'speci-refactor.agent.md'
+      );
+      if (existsSync(agentFile)) {
+        rmSync(agentFile);
+      }
+
+      const result = await refactor({});
       expect(result.success).toBe(false);
       expect(result.exitCode).toBe(1);
     });

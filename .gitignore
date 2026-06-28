@@ -40,6 +40,14 @@ tmp/
 temp/
 *.tmp
 
+# Test temp directories/artifacts
+.test-*/
+.test-*
+
+# Docs site build artifacts
+website/dist/
+website/.stati/
+
 .github/agents/
 .github/prompts/
 .github/copilot-instructions.md

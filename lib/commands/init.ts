@@ -273,7 +273,7 @@ function displaySuccess(context: CommandContext): void {
   context.logger.info('Next steps:');
   context.logger.muted('  1. Generate your plan with: speci plan');
   context.logger.muted(
-    '  2. Generate your tasks and PROGRESS.md with: speci tasks'
+    '  2. Generate your tasks and PROGRESS.md with: speci task'
   );
   context.logger.muted(
     '  3. After a manual check start the implementation loop: speci run'

@@ -310,6 +310,27 @@ describe('config', () => {
       expect(result.paths.lock).toBe('.speci-lock');
     });
 
+    it('should not share nested references with cached defaults', () => {
+      // Regression: deepMerge used to keep un-overridden branches pointing at
+      // the cached defaults object, so mutating/freezing the validated config
+      // leaked into getDefaults() and crashed subsequent loads.
+      const partialConfig: Partial<SpeciConfig> = {
+        version: '1.0.0',
+        gate: { commands: ['npm test'], maxFixAttempts: 3 },
+      };
+
+      const result = validateConfig(partialConfig);
+      const defaults = getDefaults();
+
+      expect(result.paths).not.toBe(defaults.paths);
+      expect(result.copilot).not.toBe(defaults.copilot);
+      expect(result.copilot.models).not.toBe(defaults.copilot.models);
+
+      // Freezing the validated config must not freeze the defaults.
+      Object.freeze(result.paths);
+      expect(Object.isFrozen(defaults.paths)).toBe(false);
+    });
+
     it('should throw error for invalid version', () => {
       const invalidConfig = {
         version: '2.0.0',

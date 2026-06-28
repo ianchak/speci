@@ -274,6 +274,8 @@ describe('colors utilities', () => {
 
     describe('when colors are not supported', () => {
       beforeEach(() => {
+        process.env.NO_COLOR = '1';
+        delete process.env.FORCE_COLOR;
         vi.spyOn(colors, 'isColorSupported').mockReturnValue(false);
       });
 

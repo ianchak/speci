@@ -235,7 +235,12 @@ export function validateConfig(
   fs: IFileSystem = new NodeFileSystem()
 ): SpeciConfig {
   const defaults = getDefaults(fs);
-  const config = deepMerge(defaults, rawConfig);
+  // Clone defaults before merging so the returned config never shares nested
+  // object references with the cached defaults. Without this, deepMerge leaves
+  // un-overridden branches (e.g. paths/copilot) pointing at cachedDefaults,
+  // which later gets mutated by applyEnvOverrides (polluting the cache) and
+  // frozen by deepFreeze (crashing the next forceRefresh load with env vars).
+  const config = deepMerge(structuredClone(defaults), rawConfig);
 
   // Use ConfigValidator for validation
   const result = new ConfigValidator(config).validate();

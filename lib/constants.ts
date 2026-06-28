@@ -120,6 +120,8 @@ export const DEFAULT_PATHS = {
   LOGS: '.speci-logs',
   /** Default lock file path */
   LOCK: '.speci-lock',
+  /** Generation state coordination file used by speci-task agent */
+  GENERATION_STATE: 'docs/GENERATION_STATE.md',
 } as const;
 
 /**

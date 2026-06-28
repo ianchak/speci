@@ -26,6 +26,11 @@ async function main(): Promise<void> {
   // Parse arguments (without node and script path)
   const args = process.argv.slice(2);
 
+  // Derive color preference directly from argv. Commander has not parsed yet at
+  // banner time, so program.opts().color still holds its default (true) even
+  // when --no-color was passed; reading argv ensures the flag is honored.
+  const colorEnabled = !args.includes('--no-color');
+
   // Create production context
   const context = createProductionContext();
 
@@ -40,7 +45,7 @@ async function main(): Promise<void> {
 
   if (args.length === 0) {
     // No arguments: show animated banner + help
-    const result = displayBanner({ color: program.opts().color });
+    const result = displayBanner({ color: colorEnabled });
     if (result instanceof Promise) {
       await result;
     }
@@ -55,7 +60,7 @@ async function main(): Promise<void> {
   } else {
     // Regular command: show banner if appropriate, then execute
     if (shouldShowBanner(args)) {
-      const result = displayBanner({ color: program.opts().color, args });
+      const result = displayBanner({ color: colorEnabled, args });
       if (result instanceof Promise) {
         await result;
       }

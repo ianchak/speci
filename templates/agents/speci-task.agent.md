@@ -130,14 +130,16 @@ Last Updated: [ISO timestamp]
 
 ```
 PHASE 0: SETUP (orchestrator does this directly)
-├── Read <SOURCE> → Extract feature list
-├── Group into milestones (3-7 tasks each)
-├── Identify integration points (components that must be wired together)
-└── Create GENERATION_STATE.md
+├── Check if GENERATION_STATE.md already exists
+│   ├── If YES (resume): Read it, find the first entry where Gen Status ≠ COMPLETE
+│   │   and continue from there — do NOT re-process COMPLETE entries
+│   └── If NO (fresh start): Read <SOURCE>, extract features, group into milestones,
+│       identify integration points, create GENERATION_STATE.md
 
 PHASE 1: GENERATION LOOP (spawn subagents)
-├── For each milestone:
-│   ├── For each feature: spawn task_generator
+├── For each entry in GENERATION_STATE.md:
+│   ├── IF Gen Status is COMPLETE → SKIP (already done, do not re-run)
+│   ├── For each feature (Gen Status ≠ COMPLETE): spawn task_generator
 │   ├── For each task: spawn task_reviewer
 │   ├── INTEGRATION CHECK: If milestone has 2+ components that interact,
 │   │   spawn task_generator for an integration/wiring task
@@ -147,6 +149,7 @@ PHASE 1: GENERATION LOOP (spawn subagents)
 └── Update GENERATION_STATE.md after each
 
 PHASE 2: FINALIZATION (spawn subagents)
+├── Only when ALL entries in GENERATION_STATE.md have Gen Status COMPLETE
 ├── Spawn progress_generator
 └── Spawn final_reviewer
 
@@ -175,12 +178,16 @@ You are the orchestration agent. Your job is coordination only.
 
 **SETUP:**
 
-1. Read <SOURCE>, extract features, group into milestones
-2. Create <STATE> with milestone/feature list (include SOURCE path and CONTEXT)
+1. Check if <STATE> already exists
+   - If YES (resume): Read it. Find the first entry where `Gen Status` is NOT `COMPLETE`. Resume from there. Do NOT re-process any entry already marked `COMPLETE`.
+   - If NO (fresh start): Read <SOURCE>, extract features, group into milestones. Create <STATE> with milestone/feature list (include SOURCE path and CONTEXT).
 
 **GENERATION LOOP:**
-For each milestone in <STATE>:
-For each feature: 1. Spawn subagent: "Read .github/agents/subagents/task_generator.prompt.md and generate TASK_XXX for [feature] in milestone [M]" 2. Update <STATE> 3. Spawn subagent: "Read .github/agents/subagents/task_reviewer.prompt.md and review TASK_XXX" 4. Update <STATE>
+For each entry in <STATE>:
+
+- **If `Gen Status` is `COMPLETE` → SKIP this entry entirely. Do not re-run generator or reviewer.**
+
+For entries NOT yet COMPLETE: 1. Spawn subagent: "Read .github/agents/subagents/task_generator.prompt.md and generate TASK_XXX for [feature] in milestone [M]" 2. Update <STATE> 3. Spawn subagent: "Read .github/agents/subagents/task_reviewer.prompt.md and review TASK_XXX" 4. Update <STATE>
 
 After all features in a milestone: 5. INTEGRATION CHECK: Review the plan's Section 3.4 (Integration Map) and Section 4 Phase 3 (Integration & Wiring). If multiple components in this milestone need to be wired together, registered in entry points, or connected to existing systems:
 
@@ -192,6 +199,8 @@ After all features in a milestone: 5. INTEGRATION CHECK: Review the plan's Secti
 6. Spawn subagent: "Read .github/agents/subagents/mvt_generator.prompt.md and generate MVT_MX" 7. Update <STATE>
 
 **FINALIZATION:**
+
+> Only proceed here when ALL entries in <STATE> have `Gen Status: COMPLETE`.
 
 1. Spawn: "Read .github/agents/subagents/progress_generator.prompt.md and create PROGRESS.md. CRITICAL: All tasks must have Status: NOT STARTED because no implementation work has been done yet."
 2. Spawn: "Read .github/agents/subagents/final_reviewer.prompt.md and validate alignment. Verify all tasks in PROGRESS.md are marked NOT STARTED."

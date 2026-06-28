@@ -27,6 +27,9 @@
   "engines": {
     "node": ">=22.0.0"
   },
+  "workspaces": [
+    "website"
+  ],
   "scripts": {
     "dev": "npm run build &&node dist/bin/speci.js",
     "build": "tsc -p tsconfig.build.json && tsc-alias -p tsconfig.build.json",
@@ -42,7 +45,10 @@
     "test:all": "npm run test && npm run test:integration",
     "changeset": "changeset",
     "version-packages": "changeset version",
-    "release": "changeset publish"
+    "release": "changeset publish",
+    "docs:dev": "npm run dev --workspace=website",
+    "docs:build": "npm run build --workspace=website",
+    "docs:preview": "npm run preview --workspace=website"
   },
   "dependencies": {
     "commander": "^14.0.0"

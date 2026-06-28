@@ -697,6 +697,27 @@ describe('Run Command', () => {
       expect(copilot.runAgent).not.toHaveBeenCalled();
     });
 
+    it('should show task generation action in dry run for NO_PROGRESS state', async () => {
+      const context = createMockContext({
+        mockConfig: mockConfig as unknown as RuntimeSpeciConfig,
+        cwd: TEST_DIR,
+      });
+      const runtimeConfig = mockConfig as unknown as RuntimeSpeciConfig;
+      vi.mocked(context.stateReader.getState).mockResolvedValue(
+        STATE.NO_PROGRESS
+      );
+
+      const result = await run({ dryRun: true }, context, runtimeConfig);
+
+      expect(result).toEqual({ success: true, exitCode: 0 });
+      const mutedMessages = vi
+        .mocked(context.logger.muted)
+        .mock.calls.map(([message]) => message);
+      expect(mutedMessages).toContain(
+        'Action: Generate tasks (run `speci task`)'
+      );
+    });
+
     it('should force override lock when force flag is set', async () => {
       vi.spyOn(lock, 'isLocked').mockResolvedValue(true);
       vi.spyOn(lock, 'getLockInfo').mockResolvedValue({
@@ -735,6 +756,31 @@ describe('Run Command', () => {
         'Override lock and continue anyway? [y/N] '
       );
       expect(lock.acquireLock).toHaveBeenCalled();
+    });
+
+    it('releases existing lock before acquiring when user confirms override', async () => {
+      const context = createMockContext({
+        mockConfig: mockConfig as unknown as RuntimeSpeciConfig,
+        cwd: TEST_DIR,
+      });
+      const runtimeConfig = mockConfig as unknown as RuntimeSpeciConfig;
+
+      vi.mocked(context.lockManager.isLocked).mockResolvedValue(true);
+      vi.mocked(context.stateReader.getState).mockResolvedValue(STATE.DONE);
+
+      const result = await run(
+        { yes: true, prompt: vi.fn().mockResolvedValue('y') },
+        context,
+        runtimeConfig
+      );
+
+      expect(result).toEqual({ success: true, exitCode: 0 });
+      expect(context.lockManager.release).toHaveBeenCalledTimes(2);
+      const releaseOrder = vi.mocked(context.lockManager.release).mock
+        .invocationCallOrder[0];
+      const acquireOrder = vi.mocked(context.lockManager.acquire).mock
+        .invocationCallOrder[0];
+      expect(releaseOrder).toBeLessThan(acquireOrder);
     });
 
     it('should abort when lock override prompt returns n', async () => {
