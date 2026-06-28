@@ -9,7 +9,7 @@
     "preview": "stati preview"
   },
   "devDependencies": {
-    "@stati/cli": "latest",
-    "@stati/core": "latest"
+    "@stati/cli": "1.13.2",
+    "@stati/core": "1.23.3"
   }
 }
