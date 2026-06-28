@@ -158,6 +158,29 @@ describe('PathValidator', () => {
       // Relative path resolves correctly when resolved from testDir
       expect(result.success).toBe(true);
     });
+
+    it('should fail for a sibling directory sharing the root name prefix', () => {
+      // Regression: a naive startsWith(projectRoot) check would treat
+      // "<root>-evil" as inside "<root>" because of the shared string prefix.
+      const siblingPath = `${testDir}-evil/file.txt`;
+
+      const result = new PathValidator(siblingPath)
+        .isWithinProject(testDir)
+        .validate();
+
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.error.message).toContain('must be within project');
+      }
+    });
+
+    it('should succeed when the path equals the project root', () => {
+      const result = new PathValidator(testDir)
+        .isWithinProject(testDir)
+        .validate();
+
+      expect(result.success).toBe(true);
+    });
   });
 
   describe('builder pattern', () => {

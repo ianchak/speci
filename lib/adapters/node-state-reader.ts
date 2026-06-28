@@ -69,7 +69,11 @@ export class NodeStateReader implements IStateReader {
     config: SpeciConfig,
     gateFailure: GateFailureInfo
   ): Promise<void> {
-    return writeFailureNotes(config, gateFailure, { fs: this.fs });
+    await writeFailureNotes(config, gateFailure, { fs: this.fs });
+    // writeFailureNotes only resets the module-level default cache; this reader
+    // uses an instance-scoped cache, so invalidate it here to avoid serving
+    // stale PROGRESS.md content after the file is rewritten.
+    this.cache.reset();
   }
 
   async getMilestonesMvtStatus(
