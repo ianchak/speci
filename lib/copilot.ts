@@ -41,6 +41,61 @@ interface RetryPolicy {
   retryableExitCodes: number[];
 }
 
+let cachedModels: string[] | null | undefined;
+// Matches model IDs like "claude-opus-4.8" and "gpt-5.3-codex" in plain text output.
+const MODEL_ID_PATTERN = /[a-z][a-z0-9]*(?:[-.][a-z0-9]+)+/gi;
+
+function parseModelList(output: string): string[] {
+  const trimmed = output.trim();
+  if (!trimmed) return [];
+
+  const fromJson = (): string[] => {
+    try {
+      const parsed: unknown = JSON.parse(trimmed);
+      const values: string[] = [];
+      const visit = (value: unknown): void => {
+        if (typeof value === 'string') {
+          values.push(value);
+          return;
+        }
+        if (Array.isArray(value)) {
+          value.forEach(visit);
+          return;
+        }
+        if (value && typeof value === 'object') {
+          for (const [key, nested] of Object.entries(
+            value as Record<string, unknown>
+          )) {
+            if (
+              (key === 'id' || key === 'model' || key === 'name') &&
+              typeof nested === 'string'
+            ) {
+              values.push(nested);
+            } else {
+              visit(nested);
+            }
+          }
+        }
+      };
+      visit(parsed);
+      return values;
+    } catch {
+      return [];
+    }
+  };
+
+  const jsonValues = fromJson();
+  const lineValues =
+    jsonValues.length > 0
+      ? []
+      : trimmed
+          .split('\n')
+          .flatMap((line) => line.match(MODEL_ID_PATTERN) ?? []);
+
+  const values = jsonValues.length > 0 ? jsonValues : lineValues;
+  return [...new Set(values.map((value) => value.trim()).filter(Boolean))];
+}
+
 /**
  * Default retry policy
  */
@@ -136,6 +191,80 @@ export async function spawnCopilot(
       resolve(code ?? 1);
     });
   });
+}
+
+/**
+ * List currently available models from Copilot CLI.
+ * Uses per-process memory cache to avoid repeated subprocess calls.
+ */
+export async function listCopilotModels(
+  proc?: IProcess,
+  logger?: ILogger
+): Promise<string[] | null> {
+  if (cachedModels !== undefined) {
+    return cachedModels;
+  }
+
+  const resolvedLogger = logger ?? log;
+  const commands = [
+    ['models', 'list', '--json'],
+    ['model', 'list', '--json'],
+    ['models', 'list'],
+    ['model', 'list'],
+  ];
+
+  for (const args of commands) {
+    const result = await new Promise<{
+      code: number;
+      stdout: string;
+      stderr: string;
+    }>((resolve) => {
+      const child = spawn('copilot', args, {
+        stdio: ['ignore', 'pipe', 'pipe'],
+        cwd: proc?.cwd() ?? process.cwd(),
+        env: proc?.env ?? process.env,
+        shell: false,
+      });
+
+      let stdout = '';
+      let stderr = '';
+
+      child.stdout?.on('data', (chunk) => {
+        stdout += chunk.toString();
+      });
+      child.stderr?.on('data', (chunk) => {
+        stderr += chunk.toString();
+      });
+      child.on('error', () => {
+        resolve({ code: 1, stdout, stderr });
+      });
+      child.on('close', (code) => {
+        resolve({ code: code ?? 1, stdout, stderr });
+      });
+    });
+
+    if (result.code === 0) {
+      const models = parseModelList(result.stdout);
+      if (models.length > 0) {
+        cachedModels = models;
+        return cachedModels;
+      }
+    } else {
+      resolvedLogger.debug(
+        `Failed to list Copilot models with "copilot ${args.join(' ')}": ${result.stderr.trim()}`
+      );
+    }
+  }
+
+  cachedModels = null;
+  return cachedModels;
+}
+
+/**
+ * Reset cached model list (test-only).
+ */
+export function resetCopilotModelsCache(): void {
+  cachedModels = undefined;
 }
 
 /**

@@ -175,6 +175,9 @@ npx speci init
 | Flag                  | Description                                   |
 | --------------------- | --------------------------------------------- |
 | `-u, --update-agents` | Update agent files even if they already exist |
+| `--preset <name>`     | Apply model preset (`best`, `balanced`, `budget`) |
+| `--custom`            | Pick models role-by-role from live Copilot model list |
+| `--reconfigure-models`| Update `copilot.models` in existing config |
 
 **Creates:**
 
@@ -186,6 +189,15 @@ npx speci init
 ```bash
 # Update bundled agent files to the latest version
 npx speci init --update-agents
+
+# Apply a model preset during init
+npx speci init --preset balanced
+
+# Configure models role-by-role
+npx speci init --custom
+
+# Reconfigure models in an existing speci.config.json
+npx speci init --reconfigure-models
 ```
 
 ### `speci plan` (alias: `p`)
@@ -444,6 +456,8 @@ Created by `speci init`. Speci discovers this file by walking up from the curren
   }
 }
 ```
+
+Speci validates configured `copilot.models` against the live Copilot CLI model list at startup. If deprecated models are found, it warns and offers interactive remediation (replace per role, apply Balanced preset, or skip).
 
 ### Configuration Reference
 

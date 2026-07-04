@@ -15,6 +15,7 @@ vi.mock('@/copilot.js', async () => {
   return {
     ...actual,
     buildCopilotArgs: vi.fn(),
+    listCopilotModels: vi.fn(),
     spawnCopilot: vi.fn(),
     runAgent: vi.fn(),
   };
@@ -78,5 +79,18 @@ describe('NodeCopilotRunner', () => {
       expect.anything()
     );
     expect(result).toBe(expected);
+  });
+
+  it('delegates listModels to listCopilotModels', async () => {
+    const proc = createMockProcess();
+    vi.mocked(copilotModule.listCopilotModels).mockResolvedValue(['gpt-5-mini']);
+
+    const result = await adapter.listModels(proc);
+
+    expect(copilotModule.listCopilotModels).toHaveBeenCalledWith(
+      proc,
+      expect.anything()
+    );
+    expect(result).toEqual(['gpt-5-mini']);
   });
 });

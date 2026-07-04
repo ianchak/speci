@@ -14,6 +14,11 @@ import {
 import type { SpeciConfig } from '@/types.js';
 import { CONFIG_FILENAME, GITHUB_AGENTS_DIR } from '@/constants.js';
 import { createError } from '@/errors.js';
+import { listCopilotModels } from '@/copilot.js';
+import {
+  selectModelsForInit,
+  type ModelPreset,
+} from '@/utils/helpers/model-selection.js';
 import {
   handleCommandError,
   toErrorMessage,
@@ -26,6 +31,18 @@ import type { CommandContext, CommandResult } from '@/interfaces/index.js';
 export interface InitOptions {
   verbose?: boolean; // Show detailed output
   updateAgents?: boolean; // Force update agent files even if they exist
+  preset?: ModelPreset;
+  custom?: boolean;
+  reconfigureModels?: boolean;
+  prompt?: (question: string) => Promise<string>;
+}
+
+function normalizePreset(value?: string): ModelPreset | undefined {
+  if (!value) return undefined;
+  if (value === 'best' || value === 'balanced' || value === 'budget') {
+    return value;
+  }
+  return undefined;
 }
 
 /**
@@ -153,16 +170,22 @@ async function createDirectories(
  */
 async function createFiles(
   existing: ReturnType<typeof checkExistingFiles>,
+  options: InitOptions,
+  models: SpeciConfig['copilot']['models'],
   context: CommandContext
 ): Promise<void> {
   // Create speci.config.json by copying the bundled template verbatim
   if (!existing.configExists) {
     try {
-      const templateContent = context.fs.readFileSync(
-        getConfigTemplatePath(),
+      const templateContent = JSON.parse(
+        context.fs.readFileSync(getConfigTemplatePath(), 'utf8')
+      ) as SpeciConfig;
+      templateContent.copilot.models = models;
+      context.fs.writeFileSync(
+        CONFIG_FILENAME,
+        `${JSON.stringify(templateContent, null, 2)}\n`,
         'utf8'
       );
-      context.fs.writeFileSync(CONFIG_FILENAME, templateContent, 'utf8');
       context.logger.success(`Created ${CONFIG_FILENAME}`);
     } catch (error) {
       throw createError(
@@ -173,6 +196,32 @@ async function createFiles(
         })
       );
     }
+    return;
+  }
+
+  if (!options.reconfigureModels) {
+    return;
+  }
+
+  try {
+    const configContent = JSON.parse(
+      context.fs.readFileSync(CONFIG_FILENAME, 'utf8')
+    ) as SpeciConfig;
+    configContent.copilot.models = models;
+    context.fs.writeFileSync(
+      CONFIG_FILENAME,
+      `${JSON.stringify(configContent, null, 2)}\n`,
+      'utf8'
+    );
+    context.logger.success(`Updated model configuration in ${CONFIG_FILENAME}`);
+  } catch (error) {
+    throw createError(
+      'ERR-EXE-06',
+      JSON.stringify({
+        path: CONFIG_FILENAME,
+        reason: toErrorMessage(error),
+      })
+    );
   }
 }
 
@@ -307,6 +356,26 @@ export async function init(
     // Check existing files
     const existing = checkExistingFiles(config, context);
 
+    let selectedModels = config.copilot.models;
+    if (!existing.configExists || options.reconfigureModels) {
+      const liveModels = await listCopilotModels(context.process, context.logger);
+      const fallbackModels =
+        existing.configExists && options.reconfigureModels
+          ? (JSON.parse(
+              context.fs.readFileSync(CONFIG_FILENAME, 'utf8')
+            ) as SpeciConfig).copilot?.models ?? config.copilot.models
+          : config.copilot.models;
+      selectedModels = await selectModelsForInit({
+        preset: normalizePreset(options.preset),
+        custom: options.custom,
+        prompt: options.prompt,
+        logger: context.logger,
+        proc: context.process,
+        liveModels,
+        fallbackModels,
+      });
+    }
+
     // Display action summary
     displayActionSummary(config, existing, options.updateAgents, context);
 
@@ -314,7 +383,7 @@ export async function init(
     await createDirectories(config, existing, context);
 
     // Create files
-    await createFiles(existing, context);
+    await createFiles(existing, options, selectedModels, context);
 
     // Copy agent files to .github/copilot/agents/
     await copyAgentFiles(existing, options.updateAgents, context);
