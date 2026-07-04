@@ -139,6 +139,7 @@ async function pickModelForRole(
 export async function selectModelsForInit(options: {
   preset?: ModelPreset;
   custom?: boolean;
+  isFirstInit?: boolean;
   prompt?: (question: string) => Promise<string>;
   logger: ILogger;
   proc: IProcess;
@@ -148,6 +149,7 @@ export async function selectModelsForInit(options: {
   const {
     preset,
     custom,
+    isFirstInit,
     prompt,
     logger,
     proc,
@@ -162,17 +164,32 @@ export async function selectModelsForInit(options: {
     return fallbackModels;
   }
 
-  if (preset) {
-    return applyPresetModels(preset, liveModels, fallbackModels);
-  }
-
   const interactive = isInteractiveTerminal(proc, prompt);
 
-  if (!custom && !interactive) {
-    logger.warn(
-      'Non-interactive terminal detected. Applying Balanced model preset.'
-    );
-    return applyPresetModels('balanced', liveModels, fallbackModels);
+  // On first init in non-interactive mode, apply preset flag if given (for CI/automation),
+  // otherwise fall back to balanced.
+  if (!interactive) {
+    if (preset) {
+      return applyPresetModels(preset, liveModels, fallbackModels);
+    }
+    if (!custom) {
+      logger.warn(
+        'Non-interactive terminal detected. Applying Balanced model preset.'
+      );
+      return applyPresetModels('balanced', liveModels, fallbackModels);
+    }
+  }
+
+  // On first init in interactive mode, always show the preset/custom menu so the
+  // user can make an informed choice. The --preset flag pre-selects the default,
+  // but the user can still change it. --custom bypasses the choice menu directly.
+  //
+  // Outside first init (e.g. --reconfigure-models), honour --preset immediately so
+  // the flag behaves as an explicit shortcut.
+  const skipMenuForPreset = preset && !isFirstInit;
+
+  if (skipMenuForPreset) {
+    return applyPresetModels(preset, liveModels, fallbackModels);
   }
 
   let mode: 'best' | 'balanced' | 'budget' | 'custom';
@@ -180,18 +197,31 @@ export async function selectModelsForInit(options: {
   if (custom) {
     mode = 'custom';
   } else {
+    // Map preset value → (menu number, display label) for the default selection hint.
+    const PRESET_MENU: Record<
+      ModelPreset,
+      { choice: string; label: string }
+    > = {
+      best: { choice: '1', label: 'Best-in-Class' },
+      balanced: { choice: '2', label: 'Balanced' },
+      budget: { choice: '3', label: 'Budget-Friendly' },
+    };
+    const { choice: defaultChoice, label: defaultLabel } =
+      preset !== undefined ? PRESET_MENU[preset] : PRESET_MENU['balanced'];
+
     logger.infoPlain('? Choose a model preset:');
     logger.raw('  1. Best-in-Class');
     logger.raw('  2. Balanced');
     logger.raw('  3. Budget-Friendly');
-    logger.raw('  4. Custom');
+    logger.raw('  4. Custom (one-by-one)');
     const answer = (
       await promptUser(
-        '  Select 1-4 (default 2): ',
+        `  Select 1-4 (default ${defaultChoice} – ${defaultLabel}): `,
         prompt,
         proc
       )
     ).trim();
+    // Empty answer → use the --preset flag value, or 'balanced' as the ultimate fallback.
     mode =
       answer === '1'
         ? 'best'
@@ -199,7 +229,9 @@ export async function selectModelsForInit(options: {
           ? 'budget'
           : answer === '4'
             ? 'custom'
-            : 'balanced';
+            : answer === '2'
+              ? 'balanced'
+              : (preset ?? 'balanced');
   }
 
   if (mode !== 'custom') {

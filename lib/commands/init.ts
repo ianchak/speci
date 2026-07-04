@@ -368,6 +368,7 @@ export async function init(
       selectedModels = await selectModelsForInit({
         preset: normalizePreset(options.preset),
         custom: options.custom,
+        isFirstInit: !existing.configExists,
         prompt: options.prompt,
         logger: context.logger,
         proc: context.process,

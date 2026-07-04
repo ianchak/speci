@@ -81,6 +81,62 @@ describe('model-selection helper', () => {
     expect(selected.tidy).toBe('gpt-5.4-mini');
   });
 
+  it('shows menu on first init even when --preset flag is given and terminal is interactive', async () => {
+    const logger = createMockLogger();
+    const proc = createMockProcess(true);
+    const liveModels = [
+      'claude-opus-4.8',
+      'claude-sonnet-5',
+      'gpt-5.3-codex',
+      'gpt-5.4-mini',
+    ];
+
+    // Simulate user pressing Enter to accept the default (preset flag = 'best' → default '1')
+    const prompt = vi.fn().mockResolvedValue('');
+
+    const selected = await selectModelsForInit({
+      preset: 'best',
+      isFirstInit: true,
+      logger,
+      proc,
+      liveModels,
+      fallbackModels,
+      prompt,
+    });
+
+    // The prompt must have been called (menu was shown)
+    expect(prompt).toHaveBeenCalled();
+    // Accepting the default for 'best' preset should apply 'best'
+    expect(selected.plan).toBe('claude-opus-4.8');
+  });
+
+  it('skips menu and applies preset directly on --reconfigure-models (not first init)', async () => {
+    const logger = createMockLogger();
+    const proc = createMockProcess(true);
+    const liveModels = [
+      'claude-opus-4.8',
+      'claude-sonnet-5',
+      'gpt-5.3-codex',
+      'gpt-5.4-mini',
+    ];
+
+    const prompt = vi.fn().mockResolvedValue('');
+
+    const selected = await selectModelsForInit({
+      preset: 'budget',
+      isFirstInit: false,
+      logger,
+      proc,
+      liveModels,
+      fallbackModels,
+      prompt,
+    });
+
+    // Menu must NOT have been shown when isFirstInit is false and preset is given
+    expect(prompt).not.toHaveBeenCalled();
+    expect(selected.tidy).toBe('gpt-5.4-mini');
+  });
+
   it('remediates invalid configured models with balanced preset', async () => {
     let configContent = JSON.stringify(
       {
