@@ -5,7 +5,7 @@
   <%~ stati.partials.siteChrome %>
 
   <main id="main-content">
-    <%~ stati.partials.docsPage %>
+    <%~ stati.partials.homePage %>
   </main>
 
   <%~ stati.partials.footer %>

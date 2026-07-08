@@ -421,7 +421,7 @@ describe('MVT_M2: Core Libraries Integration', () => {
       expect(parseTime).toBeLessThan(100);
     });
 
-    it('should acquire lock instantly', async () => {
+    it('should acquire lock quickly', async () => {
       const config = getDefaults();
       config.paths.lock = lockPath;
 
@@ -429,7 +429,8 @@ describe('MVT_M2: Core Libraries Integration', () => {
       await acquireLock(config, undefined, 'test');
       const acquireTime = Date.now() - startTime;
 
-      expect(acquireTime).toBeLessThan(10);
+      // Account for coarse timer granularity and scheduler jitter on Windows CI.
+      expect(acquireTime).toBeLessThan(25);
 
       await releaseLock(config);
     });

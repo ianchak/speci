@@ -1,0 +1,22 @@
+<section class="section section--ruled">
+  <div class="container">
+    <div class="section-head reveal">
+      <span class="kicker">// under the hood</span>
+      <h2 class="section-title">A self-correcting iteration loop</h2>
+      <p class="section-sub">Speci reads <code>PROGRESS.md</code>, routes work to specialized agents, applies review-driven fixes automatically, and advances only after review passes.</p>
+    </div>
+    <div class="loop-wrap reveal">
+      <div class="loop">
+        <span class="loop-node" style="--i:0"><span class="nd"></span>implement</span>
+        <span class="loop-arrow">→</span>
+        <span class="loop-node" style="--i:1"><span class="nd"></span>gate</span>
+        <span class="loop-arrow">→</span>
+        <span class="loop-node alt" style="--i:2"><span class="nd"></span>fix</span>
+        <span class="loop-arrow">→</span>
+        <span class="loop-node" style="--i:3"><span class="nd"></span>review</span>
+        <span class="loop-arrow">↻</span>
+        <span class="loop-node" style="--i:4"><span class="nd"></span>next task</span>
+      </div>
+    </div>
+  </div>
+</section>

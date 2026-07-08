@@ -1,0 +1,31 @@
+<section class="hero">
+  <div class="container">
+    <div class="hero-copy reveal">
+      <span class="kicker hero-eyebrow">// autonomous copilot loop</span>
+      <h1 class="hero-title">Code the intent.<br />Go from spec to shipped code in one <span class="grad">autonomous loop.</span></h1>
+      <p class="hero-subtitle">
+        Speci pairs <strong>strong plan and task generation</strong> with an <strong>automated implementation
+        loop</strong> that can <strong>auto-fix failing gates</strong>, <strong>self-review each task</strong>,
+        and dispatch fix agents until review passes.
+      </p>
+      <div class="hero-actions">
+        <a href="/getting-started/" class="btn btn-primary">Get Started <span class="arrow">→</span></a>
+        <a href="/commands/" class="btn btn-secondary">Command Reference</a>
+      </div>
+      <div class="hero-meta">
+        <span class="hero-meta-item">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+          quality gates built in
+        </span>
+        <span class="hero-meta-item">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+          hands-free iteration
+        </span>
+        <span class="hero-meta-item">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 18l6-6-6-6"/><path d="M8 6l-6 6 6 6"/></svg>
+          node ≥ 22, zero config
+        </span>
+      </div>
+    </div>
+  </div>
+</section>

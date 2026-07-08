@@ -1,6 +1,9 @@
 ---
 title: speci refactor
 description: Analyse the codebase for refactoring opportunities via Copilot.
+sitemap:
+  priority: 0.7
+  changefreq: monthly
 ---
 
 # `speci refactor`

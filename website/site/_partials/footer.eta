@@ -1,0 +1,25 @@
+<footer class="site-footer">
+  <div class="container">
+    <div class="footer-inner">
+      <div class="footer-brand">
+        <span class="logo-name">$ speci</span>
+        <p>AI-powered implementation loop orchestrator for GitHub Copilot. Plan, task, implement, and review - on autopilot.</p>
+      </div>
+      <div class="footer-col">
+        <h4>Docs</h4>
+        <a href="/getting-started/">get-started</a>
+        <a href="/commands/">commands</a>
+        <a href="/glossary/">glossary</a>
+      </div>
+      <div class="footer-col">
+        <h4>Project</h4>
+        <a href="https://github.com/ianchak/speci" target="_blank" rel="noopener noreferrer">github</a>
+        <a href="https://opensource.org/licenses/MIT" target="_blank" rel="noopener noreferrer">mit-license</a>
+      </div>
+    </div>
+    <div class="footer-meta">
+      <span class="version-badge">v<%= stati.cliVersion() %></span>
+      <span>&copy; <%= new Date().getFullYear() %> speci &middot; built with <a href="https://stati.build" target="_blank" rel="noopener noreferrer">Stati</a></span>
+    </div>
+  </div>
+</footer>

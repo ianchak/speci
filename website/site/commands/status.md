@@ -1,6 +1,9 @@
 ---
 title: speci status
 description: Print the current PROGRESS.md state.
+sitemap:
+  priority: 0.6
+  changefreq: monthly
 ---
 
 # `speci status`

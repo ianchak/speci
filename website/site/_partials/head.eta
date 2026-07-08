@@ -1,0 +1,59 @@
+<head>
+  <% const isHome = stati.page.url === '/' || stati.page.url === ''; %>
+  <% const pageTitle = stati.page.title ? (isHome ? stati.page.title : `${stati.page.title} · Speci`) : 'Speci'; %>
+  <% const pageDescription = stati.page.description ?? stati.site.description; %>
+  <% const pageUrl = `${stati.site.baseUrl}${stati.page.url || '/'}`; %>
+  <% const socialImage = `${stati.site.baseUrl}/images/og-image.png`; %>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title><%= pageTitle %></title>
+  <meta name="description" content="<%= pageDescription %>" />
+  <meta name="theme-color" content="#07090e" />
+  <%~ stati.generateSEO(['canonical']) %>
+  <meta property="og:title" content="<%= pageTitle %>">
+  <meta property="og:description" content="<%= pageDescription %>">
+  <meta property="og:url" content="<%= pageUrl %>">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="<%= stati.site.title %>">
+  <meta property="og:locale" content="<%= stati.site.defaultLocale %>">
+  <meta property="og:image" content="<%= socialImage %>">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="626">
+  <meta property="og:image:alt" content="Speci — AI-powered Copilot workflow orchestrator">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="<%= pageTitle %>">
+  <meta name="twitter:description" content="<%= pageDescription %>">
+  <meta name="twitter:image" content="<%= socialImage %>">
+  <% if (isHome) { %>
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "SoftwareApplication",
+    "name": "Speci",
+    "description": "<%= stati.site.description %>",
+    "applicationCategory": "DeveloperApplication",
+    "operatingSystem": "macOS, Linux, Windows",
+    "url": "<%= stati.site.baseUrl %>",
+    "downloadUrl": "https://www.npmjs.com/package/speci",
+    "softwareVersion": "<%= stati.cliVersion() %>",
+    "license": "https://opensource.org/licenses/MIT",
+    "offers": {
+      "@type": "Offer",
+      "price": 0,
+      "priceCurrency": "USD"
+    },
+    "author": {
+      "@type": "Person",
+      "name": "Imre Csige",
+      "url": "https://github.com/ianchak"
+    }
+  }
+  </script>
+  <% } %>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/styles.css" />
+  <script>document.documentElement.classList.add('js');</script>
+</head>

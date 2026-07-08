@@ -23,6 +23,21 @@ export default defineConfig({
     defaultLocale: 'en-US',
   },
 
+  seo: {
+    // autoInject is disabled because SEO tags are managed explicitly
+    // via stati.generateSEO() in site/_partials/head.eta.
+    autoInject: false,
+  },
+
+  sitemap: {
+    enabled: true,
+    defaultChangeFreq: 'monthly',
+  },
+
+  robots: {
+    enabled: true,
+  },
+
   eta: {
     filters: {
       // Expose CLI version to every template as: <%= stati.cliVersion %>

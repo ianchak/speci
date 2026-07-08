@@ -1,6 +1,9 @@
 ---
 title: Getting Started
 description: Install speci and run your first Copilot workflow in minutes.
+sitemap:
+  priority: 0.9
+  changefreq: monthly
 ---
 
 # Getting Started
@@ -65,3 +68,5 @@ Speci reads `speci.config.json` in your project root. A minimal config looks lik
 ```
 
 See the [command reference](/commands/) for all available options.
+
+If you are new to speci terms, read the [Glossary](/glossary/) for quick definitions.
