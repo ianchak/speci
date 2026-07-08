@@ -1,5 +1,11 @@
 # speci
 
+## 0.15.1
+
+### Patch Changes
+
+- 8ab4944: docs(website): refresh documentation structure, command pages, and glossary content
+
 ## 0.15.0
 
 ### Minor Changes
