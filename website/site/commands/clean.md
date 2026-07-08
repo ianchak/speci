@@ -1,6 +1,9 @@
 ---
 title: speci clean
 description: Remove generated task files and PROGRESS.md.
+sitemap:
+  priority: 0.6
+  changefreq: monthly
 ---
 
 # `speci clean`

@@ -1,6 +1,9 @@
 ---
 title: Getting Started
 description: Install speci and run your first Copilot workflow in minutes.
+sitemap:
+  priority: 0.9
+  changefreq: monthly
 ---
 
 # Getting Started

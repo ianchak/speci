@@ -1,6 +1,9 @@
 ---
 title: speci task
 description: Break a plan into trackable tasks and generate PROGRESS.md.
+sitemap:
+  priority: 0.7
+  changefreq: monthly
 ---
 
 # `speci task`

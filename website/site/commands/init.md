@@ -1,6 +1,9 @@
 ---
 title: speci init
 description: Initialise speci in your project.
+sitemap:
+  priority: 0.7
+  changefreq: monthly
 ---
 
 # `speci init`

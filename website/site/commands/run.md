@@ -1,6 +1,9 @@
 ---
 title: speci run
 description: Start the autonomous Copilot implementation loop.
+sitemap:
+  priority: 0.8
+  changefreq: monthly
 ---
 
 # `speci run`

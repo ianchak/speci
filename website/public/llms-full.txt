@@ -1,0 +1,324 @@
+# Speci
+
+> AI-powered implementation loop orchestrator for GitHub Copilot. Automate plan → task → implement → review workflows with quality gate validation.
+
+Speci is a Node.js CLI tool (requires Node.js ≥ 22) that orchestrates GitHub Copilot agents in an autonomous development loop. Given a prompt or specification, it generates an implementation plan, breaks it into discrete tasks tracked in PROGRESS.md, and then iterates: dispatching an implementation agent, running configured quality gates (lint, typecheck, tests), and automatically fixing failures — all without manual intervention.
+
+The loop state machine has five states: WORK_LEFT (impl agent runs), IN_REVIEW (review agent evaluates), BLOCKED (tidy agent unblocks), DONE (loop exits cleanly), and NO_PROGRESS (no PROGRESS.md found, run `speci task` first).
+
+---
+
+## Getting Started
+
+URL: /getting-started/
+
+### Prerequisites
+
+- Node.js >= 22
+- GitHub Copilot CLI installed and authenticated (npm install -g @github/copilot)
+- A Git repository
+
+### Install
+
+One-off with npx (no install needed):
+  npx speci init
+
+Or install globally:
+  npm install -g speci
+
+### Initialise your project
+
+  npx speci init
+
+This creates a speci.config.json in your project root, creates docs/tasks/ and .speci-logs/ directories, and copies the built-in agent templates into .github/agents/.
+
+### Run your first workflow
+
+  # 1. Generate a plan from a prompt
+  npx speci plan -p "Add user authentication with JWT" --output docs/plan.md
+
+  # 2. Break the plan into tasks
+  npx speci task --plan docs/plan.md
+
+  # 3. Start the implementation loop
+  npx speci run
+
+### One-shot (yolo) mode
+
+  # Plan -> task -> run in a single command
+  npx speci yolo -p "Add user authentication with JWT"
+
+### Configuration
+
+Speci reads speci.config.json in your project root. A minimal config:
+
+  {
+    "version": "1.0.0",
+    "gate": {
+      "commands": ["npm run lint", "npm run typecheck", "npm test"],
+      "maxFixAttempts": 5,
+      "strategy": "sequential"
+    }
+  }
+
+---
+
+## Commands Overview
+
+URL: /commands/
+
+| Command          | Description                                              |
+| speci init       | Initialise speci in your project                         |
+| speci plan       | Generate a structured implementation plan via Copilot    |
+| speci task       | Break a plan into trackable tasks and create PROGRESS.md |
+| speci run        | Start the autonomous implementation loop                 |
+| speci yolo       | Full pipeline: plan -> task -> run                       |
+| speci refactor   | Analyse the codebase for refactoring opportunities       |
+| speci status     | Print the current loop state                             |
+| speci clean      | Remove generated task files and PROGRESS.md              |
+
+---
+
+## speci init
+
+URL: /commands/init/
+
+Initialise speci in an existing project. Creates speci.config.json and copies the built-in agent templates into .github/agents/.
+
+Usage:
+  speci init [-u] [-v]
+
+Options:
+  -u, --update-agents   Update agent files even if they already exist
+  -v, --verbose         Show detailed output
+
+What it creates:
+  speci.config.json                          Project configuration (gates, agent paths, etc.)
+  docs/tasks/                                Directory for generated task files
+  .speci-logs/                               Directory for run log files
+  .github/agents/speci-plan.agent.md         Plan generation agent
+  .github/agents/speci-impl.agent.md         Implementation agent
+  .github/agents/speci-review.agent.md       Review agent
+  .github/agents/speci-fix.agent.md          Gate failure fix agent
+  .github/agents/speci-task.agent.md         Task generation agent
+  .github/agents/speci-tidy.agent.md         Blocked-state tidy agent
+  .github/agents/speci-refactor.agent.md     Refactor analysis agent
+  .github/agents/subagents/                  33 multi-pass subagent prompts
+
+---
+
+## speci plan
+
+URL: /commands/plan/
+
+Interactive plan generation via GitHub Copilot CLI.
+
+Usage:
+  speci plan [-p "..."] [-i <files...>] [-o <path>] [--sleep-after] [-v]
+
+Options:
+  -p, --prompt <text>     Free-text prompt describing the feature or change
+  -i, --input <files...>  One or more input files (spec, design docs, etc.)
+  -o, --output <path>     Path to write the generated plan (streams to terminal if omitted)
+  --sleep-after           Put machine to sleep after command completes
+  -v, --verbose           Show the full prompt and agent output
+
+At least one of --prompt or --input is required.
+
+Flow:
+  1. Validate inputs — ensures --prompt or --input is provided and that input files exist.
+  2. Initialise — loads speci.config.json, runs preflight checks (Copilot CLI available?), resolves the speci-plan agent.
+  3. Build prompt — combines input file references, the --prompt text, and the --output path hint.
+  4. Dispatch agent — runs the speci-plan.agent.md via Copilot CLI and streams output.
+  5. Write plan — if --output is specified, saves the plan to that path; otherwise the agent streams output to the terminal.
+
+Example:
+  speci plan -p "Add OAuth2 login with GitHub" --output docs/auth-plan.md
+
+Next: run speci task to break the plan into tasks.
+
+---
+
+## speci task
+
+URL: /commands/task/
+
+One-shot task generation from a plan file via GitHub Copilot CLI.
+
+Usage:
+  speci task -p <path> [-c] [--sleep-after] [-v]
+
+Options:
+  -p, --plan <path>   Path to the plan file generated by speci plan (required)
+  -c, --clean         Remove existing task files and PROGRESS.md before generating
+  --sleep-after       Put machine to sleep after command completes
+  -v, --verbose       Show the full prompt and agent output
+
+Flow:
+  1. Validate --plan — the flag is required; exits with an error if missing.
+  2. Resolve path — resolves the plan file relative to the working directory.
+  3. Validate file — checks the plan file exists and is readable.
+  4. Clean (optional) — if --clean is set, removes any existing task files and PROGRESS.md.
+  5. Initialise — loads config, runs preflight, resolves the speci-task agent.
+  6. Dispatch agent — runs speci-task.agent.md with the plan file context.
+  7. Write output — agent writes individual task files and a PROGRESS.md tracking file.
+
+Example:
+  speci task --plan docs/auth-plan.md
+
+Next: run speci run to start the implementation loop.
+
+---
+
+## speci run
+
+URL: /commands/run/
+
+Central orchestration loop. Reads PROGRESS.md state, dispatches agents, runs gate validations, and iterates until all tasks are done or limits are reached.
+
+Usage:
+  speci run [--max-iterations 100] [--dry-run] [--force] [-y] [--verify] [--sleep-after] [-v]
+
+Options:
+  --max-iterations <n>   Maximum number of loop iterations (default: 100)
+  --dry-run              Print what would happen without executing anything
+  --force                Override existing lock
+  -y, --yes              Skip confirmation prompt
+  --verify               Pause on manual verification tasks (MVTs) at milestone boundaries
+  --sleep-after          Put machine to sleep after command completes
+  -v, --verbose          Show full agent output
+
+Loop states:
+  WORK_LEFT     impl agent dispatched — tasks remain; implementation agent runs next
+  IN_REVIEW     review agent dispatched — tasks awaiting review; review agent evaluates implementation
+  BLOCKED       tidy agent dispatched — all remaining tasks are blocked
+  DONE          no agent — all tasks complete; loop exits
+  NO_PROGRESS   no agent — no PROGRESS.md found; run speci task
+
+Gate validation:
+After every impl agent run, speci executes the gates defined in speci.config.json:
+  {
+    "gate": {
+      "commands": ["npm run lint", "npm run typecheck", "npm test"],
+      "maxFixAttempts": 5,
+      "strategy": "sequential"
+    }
+  }
+If any gate fails, the fix agent is dispatched (up to maxFixAttempts times). Gates are re-run after each fix attempt.
+
+High-level flow:
+  Load config -> Preflight -> Acquire lock
+    MAIN LOOP (up to maxIterations)
+      Read PROGRESS.md -> Dispatch agent
+      If WORK_LEFT: impl -> gates -> (fix loop on failure)
+      If IN_REVIEW:  review
+      If BLOCKED:    tidy
+      If DONE:       exit 0
+    Cleanup (release lock, close logs)
+
+Example:
+  speci run --max-iterations 20 --yes
+
+---
+
+## speci yolo
+
+URL: /commands/yolo/
+
+Full pipeline orchestrator: plan -> task -> run in a single command. Chains all three commands sequentially with shared config and lock management.
+
+Usage:
+  speci yolo [-p "..."] [-i <files...>] [-o <path>] [--force] [--sleep-after] [-v]
+
+Options:
+  -p, --prompt <text>     Free-text prompt (passed to speci plan)
+  -i, --input <files...>  Input files (passed to speci plan)
+  -o, --output <path>     Plan output path (default: auto-generated timestamped path under docs/)
+  --force                 Override existing lock
+  --sleep-after           Put machine to sleep after command completes
+  -v, --verbose           Show full agent output
+
+At least one of --prompt or --input is required.
+
+Pipeline:
+  Phase 1/3: plan   — generate structured plan document
+  Phase 2/3: task   — generate tasks and PROGRESS.md
+  Phase 3/3: run    — autonomous implementation loop
+
+Each phase must succeed before the next starts. A failure in any phase aborts the pipeline with a phase-aware error message.
+
+Example:
+  speci yolo -p "Add OAuth2 login with GitHub" --force
+
+This is equivalent to running:
+  speci plan -p "Add OAuth2 login with GitHub" --output <timestamped-path>
+  speci task -p <timestamped-path>
+  speci run --yes --force
+
+---
+
+## speci refactor
+
+URL: /commands/refactor/
+
+One-shot codebase refactoring analysis via GitHub Copilot CLI. Dispatches the speci-refactor agent to identify and document refactoring opportunities.
+
+Usage:
+  speci refactor [-s <path-or-glob>] [-o <path>] [-v]
+
+Options:
+  -s, --scope <path-or-glob>   Limit analysis to a path or glob pattern (e.g. src/utils, lib/**)
+  -o, --output <path>          Path to write the refactoring analysis
+  -v, --verbose                Show the full prompt and agent output
+
+Flow:
+  1. Scope validation — if --scope is a path (not a glob), resolves it and warns if it doesn't exist (non-fatal). Glob patterns are passed as-is.
+  2. Initialise — loads config, runs preflight, resolves the speci-refactor agent.
+  3. Dispatch agent — runs speci-refactor.agent.md with the scope context.
+  4. Write output — saves the refactoring analysis to the output file.
+
+Example:
+  speci refactor --scope src/api --output docs/api-refactor.md
+
+---
+
+## speci status
+
+URL: /commands/status/
+
+Displays the current loop state and task statistics as a live fullscreen dashboard. Press q to quit the dashboard.
+
+Usage:
+  speci status [--json] [--once] [-v]
+
+Options:
+  --json       Output status as JSON and exit
+  --once       Show status once and exit (non-interactive)
+  -v, --verbose  Show detailed status
+
+Output:
+By default opens a live fullscreen dashboard that refreshes automatically (press q to quit). Use --once for a single-shot summary or --json to emit machine-readable output.
+
+Task states: NOT STARTED, IN PROGRESS, IN REVIEW, BLOCKED, COMPLETE
+Loop states: WORK_LEFT, IN_REVIEW, BLOCKED, DONE, NO_PROGRESS
+
+---
+
+## speci clean
+
+URL: /commands/clean/
+
+Removes generated files created by speci task and speci run so you can start fresh.
+
+Usage:
+  speci clean [-y] [-v]
+
+Options:
+  -y, --yes      Skip confirmation prompt
+  -v, --verbose  Show which files are being removed
+
+What it removes:
+  docs/tasks/ (contents)   All generated task files
+  docs/PROGRESS.md         Task tracking file
+
+Note: speci clean refuses to run while another speci process holds the lock. Wait for the active run to finish first.
