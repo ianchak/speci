@@ -68,3 +68,5 @@ Speci reads `speci.config.json` in your project root. A minimal config looks lik
 ```
 
 See the [command reference](/commands/) for all available options.
+
+If you are new to speci terms, read the [Glossary](/glossary/) for quick definitions.

@@ -7,6 +7,7 @@
       title: 'Start',
       links: [
         ['/getting-started/', 'get-started'],
+        ['/glossary/', 'glossary'],
       ],
     },
     {
