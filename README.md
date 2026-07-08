@@ -24,82 +24,57 @@ Speci operates as an autonomous loop that reads a PROGRESS.md file to determine 
 - Gate validation runs your lint, typecheck, and test commands
 - If gates fail, a fix agent attempts repairs (up to a configurable limit)
 - Tasks marked IN_REVIEW get a review agent
+- If review fails, the task is set back to NOT STARTED with FAILED review notes, and the next loop returns to WORK_LEFT so implementation picks up that failed review work first
 - When all remaining tasks are blocked (state: BLOCKED), a tidy agent is dispatched
 - The loop continues until all tasks are DONE or limits are reached
 
 ### Workflow Diagram
 
-```
-  ┌─────────────────────────────────────────────────────────────────────┐
-  │                        speci workflow                               │
-  └─────────────────────────────────────────────────────────────────────┘
+```mermaid
+flowchart TD
+    Plan[plan agent] --> Task[task agent]
+    Task --> Run[speci run implementation loop]
 
-  ┌──────────┐      ┌──────────┐      ┌──────────────────────────────┐
-  │          │      │          │      │          speci run           │
-  │  plan    ├─────►│  task    ├─────►│    (implementation loop)     │
-  │  agent   │      │  agent   │      │                              │
-  └──────────┘      └──────────┘      └──────────────┬───────────────┘
-   Generates a       Breaks plan                     │
-   structured        into tasks &                    ▼
-   plan              PROGRESS.md          ┌─────────────────────┐
-                                          │  Read PROGRESS.md   │◄─────────────┐
-                                          │  Determine STATE    │              │
-                                          └────────┬────────────┘              │
-                         ┌─────────────────────────┼──────────────────┐        │
-                         │                         │                  │        │
-                         ▼                         ▼                  ▼        │
-                  ┌─────────────┐         ┌──────────────┐   ┌────────────┐    │
-                  │  WORK_LEFT  │         │  IN_REVIEW   │   │  BLOCKED   │    │
-                  └──────┬──────┘         └──────┬───────┘   └─────┬──────┘    │
-                         │                       │                 │           │
-                         ▼                       ▼                 ▼           │
-                  ┌─────────────┐         ┌──────────────┐   ┌────────────┐    │
-                  │    impl     │         │   review     │   │   tidy     │    │
-                  │    agent    │         │   agent      │   │   agent    │    │
-                  └──────┬──────┘         └──────┬───────┘   └─────┬──────┘    │
-                         │                       │                 │           │
-                         ▼                       │                 │           │
-                  ┌─────────────┐                │                 │           │
-                  │  run gates  │                │                 │           │
-                  │ lint/type/  │                │                 │           │
-                  │   test      │                │                 │           │
-                  └──┬──────┬───┘                │                 │           │
-                     │      │                    │                 │           │
-                pass ▼      ▼ fail               │                 │           │
-                     │ ┌─────────┐               │                 │           │
-                     │ │  fix    │               │                 │           │
-                     │ │  agent  │               │                 │           │
-                     │ └────┬────┘               │                 │           │
-                     │      │                    │                 │           │
-                     │      ▼                    │                 │           │
-                     │ ┌─────────┐               │                 │           │
-                     │ │ re-run  │               │                 │           │
-                     │ │ gates   ├──► (retry up  │                 │           │
-                     │ └─────────┘    to N times)│                 │           │
-                     │                           │                 │           │
-                     └───────────┬───────────────┘                 │           │
-                                 │                                 │           │
-                                 └────────────┬────────────────────┘           │
-                                              │                                │
-                                              ▼                                │
-                                    ┌───────────────────┐                      │
-                                    │  State changed?   │                      │
-                                    │  DONE? ─► exit    │                      │
-                                    │  otherwise ───────┼──────────────────────┘
-                                    └───────────────────┘
+  Run --> LoopCheck{Max iterations reached?}
+  LoopCheck -->|yes| ExitMax[Exit loop: max iterations reached]
+  LoopCheck -->|no| ReadState[Read PROGRESS.md and determine STATE]
+  ReadState -->|DONE| ExitDone[Exit loop]
+  ReadState -->|NO_PROGRESS| ExitNoProgress[Exit with missing PROGRESS error]
+
+    ReadState -->|WORK_LEFT| Impl[impl agent]
+    ReadState -->|IN_REVIEW| Review[review agent]
+    ReadState -->|BLOCKED| Tidy[tidy agent]
+
+    Impl --> Gates[Run gates: lint, typecheck, test]
+    Gates -->|pass| StateChanged{State changed?}
+    Gates -->|fail| Fix[fix agent]
+    Fix --> Retry[Re-run gates up to N attempts]
+    Retry -->|pass| StateChanged
+    Retry -->|still failing| ExitFail[Exit: gate retries exhausted]
+
+    Review --> ReviewDecision{Review decision}
+    ReviewDecision -->|PASSED| StateChanged
+    ReviewDecision -->|FAILED| ReviewFailed[Set task to NOT STARTED\nSet Review Status to FAILED\nWrite review failure notes]
+    ReviewFailed --> NextLoop[Next loop re-enters WORK_LEFT]
+    NextLoop --> LoopCheck
+
+    Tidy --> StateChanged
+
+    StateChanged -->|DONE| ExitDone
+    StateChanged -->|otherwise| LoopCheck
 ```
 
 ### Agent Summary
 
-| Agent      | Triggered By     | Purpose                                        |
-| ---------- | ---------------- | ---------------------------------------------- |
-| `plan`     | `speci plan`     | Generate a structured implementation plan      |
-| `task`     | `speci task`     | Break plan into tasks and create PROGRESS.md   |
-| `refactor` | `speci refactor` | Analyze codebase for refactoring opportunities |
-| `impl`     | WORK_LEFT        | Implement the next task                        |
-| `review`   | IN_REVIEW        | Review completed work for correctness          |
-| `fix`      | Gate failure     | Repair lint, typecheck, or test failures       |
-| `tidy`     | BLOCKED          | Clean up or unblock dependencies               |
+| Agent      | Triggered By     | Purpose                                        | Subagent Usage                                                                                                                                                |
+| ---------- | ---------------- | ---------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `plan`     | `speci plan`     | Generate a structured implementation plan      | 13 baseline subagent runs (3 setup/deep-dive + 10 refinement rounds; additional re-dispatches only if validation gates fail)                                  |
+| `task`     | `speci task`     | Break plan into tasks and create PROGRESS.md   | 5 subagent roles (`task_generator`, `task_reviewer`, `mvt_generator`, `progress_generator`, `final_reviewer`); invocation count is dynamic per task/milestone |
+| `refactor` | `speci refactor` | Analyze codebase for refactoring opportunities | 15 subagent runs (10 analysis loops + 5 review loops)                                                                                                         |
+| `impl`     | WORK_LEFT        | Implement the next task                        | None                                                                                                                                                          |
+| `review`   | IN_REVIEW        | Review completed work for correctness          | None                                                                                                                                                          |
+| `fix`      | Gate failure     | Repair lint, typecheck, or test failures       | None                                                                                                                                                          |
+| `tidy`     | BLOCKED          | Clean up or unblock dependencies               | None                                                                                                                                                          |
 
 ## Quick Start
 
