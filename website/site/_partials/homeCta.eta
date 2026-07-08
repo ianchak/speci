@@ -1,0 +1,13 @@
+<section class="cta">
+  <div class="container">
+    <div class="cta-inner reveal">
+      <div class="cta-prompt"><span class="prompt">$</span> npx speci init</div>
+      <h2>Put your Copilot on autopilot</h2>
+      <p>Run instantly with <code>npx speci</code> - no install required</p>
+      <div class="hero-actions" style="justify-content:center">
+        <a href="/getting-started/" class="btn btn-primary">Get Started <span class="arrow">→</span></a>
+        <a href="https://github.com/ianchak/speci" class="btn btn-secondary" target="_blank" rel="noopener noreferrer">View on GitHub</a>
+      </div>
+    </div>
+  </div>
+</section>

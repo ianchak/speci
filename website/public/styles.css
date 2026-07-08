@@ -626,22 +626,17 @@ main {
   position: relative;
   padding: clamp(3rem, 7vw, 6rem) 0 clamp(2.5rem, 5vw, 4rem);
 }
-.hero-inner {
-  display: grid;
-  grid-template-columns: 1.02fr 0.98fr;
-  gap: clamp(2rem, 4vw, 3.5rem);
-  align-items: center;
-}
 .hero-eyebrow {
   margin-bottom: 1.7rem;
 }
 
 .hero-title {
   font-family: var(--font-display);
-  font-size: var(--fs-mega);
+  font-size: clamp(2.45rem, 7vw, 5.6rem);
   font-weight: 700;
-  line-height: 0.96;
-  letter-spacing: -0.04em;
+  line-height: 0.94;
+  letter-spacing: -0.03em;
+  max-width: 15.5ch;
   margin-bottom: 1.5rem;
   text-wrap: balance;
 }
@@ -660,7 +655,7 @@ main {
 .hero-subtitle {
   font-size: var(--fs-lead);
   color: var(--text-soft);
-  max-width: 540px;
+  max-width: 760px;
   margin-bottom: 2.2rem;
   line-height: 1.6;
 }
@@ -1461,17 +1456,6 @@ main {
   background: linear-gradient(180deg, transparent, rgba(10, 13, 20, 0.6));
   margin-top: 4rem;
 }
-.footer-top {
-  font-family: var(--font-display);
-  font-size: clamp(3.5rem, 13vw, 9rem);
-  font-weight: 700;
-  letter-spacing: -0.05em;
-  line-height: 0.9;
-  color: rgba(232, 237, 244, 0.045);
-  padding: clamp(1.5rem, 4vw, 2.5rem) 0 0;
-  user-select: none;
-  pointer-events: none;
-}
 .footer-inner {
   display: grid;
   grid-template-columns: 1.5fr 1fr 1fr;
@@ -1584,9 +1568,11 @@ main {
 }
 
 @media (max-width: 920px) {
-  .hero-inner {
-    grid-template-columns: 1fr;
-    gap: 2.5rem;
+  .hero-title {
+    font-size: clamp(2.2rem, 10.5vw, 4.8rem);
+    max-width: 16.8ch;
+    line-height: 0.97;
+    letter-spacing: -0.02em;
   }
   .steps {
     grid-template-columns: repeat(2, 1fr);
@@ -1668,6 +1654,11 @@ main {
 }
 
 @media (max-width: 560px) {
+  .hero-title {
+    font-size: clamp(1.95rem, 11.2vw, 2.95rem);
+    max-width: 18ch;
+    line-height: 1;
+  }
   .steps {
     grid-template-columns: 1fr;
   }

@@ -1,0 +1,4 @@
+<%~ stati.partials.homeHero %>
+<%~ stati.partials.homePipeline %>
+<%~ stati.partials.homeLoop %>
+<%~ stati.partials.homeCta %>

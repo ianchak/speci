@@ -1,0 +1,37 @@
+<%
+  const norm = (u) => (u === '/' ? '/' : String(u).replace(/\/+$/, ''));
+  const current = norm(stati.page.url);
+  const isActive = (u) => (current === norm(u) ? ' aria-current="page"' : '');
+  const groups = [
+    {
+      title: 'Start',
+      links: [
+        ['/getting-started/', 'get-started'],
+      ],
+    },
+    {
+      title: 'Commands',
+      links: [
+        ['/commands/', 'overview'],
+        ['/commands/init/', 'init'],
+        ['/commands/plan/', 'plan'],
+        ['/commands/task/', 'task'],
+        ['/commands/run/', 'run'],
+        ['/commands/refactor/', 'refactor'],
+        ['/commands/status/', 'status'],
+        ['/commands/yolo/', 'yolo'],
+        ['/commands/clean/', 'clean'],
+      ],
+    },
+  ];
+%>
+<aside class="docs-sidebar" aria-label="Documentation navigation">
+  <% groups.forEach(function (group) { %>
+    <div class="docs-nav-group">
+      <p class="docs-nav-title"><%= group.title %></p>
+      <% group.links.forEach(function (link) { %>
+        <a class="docs-nav-link" href="<%= link[0] %>"<%~ isActive(link[0]) %>><%= link[1] %></a>
+      <% }) %>
+    </div>
+  <% }) %>
+</aside>
