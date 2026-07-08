@@ -6,8 +6,7 @@ import type { SpeciConfig } from '../../lib/types.js';
 import { createMockContext } from '../../lib/adapters/test-context.js';
 
 type PreflightHandleResult =
-  | { handled: true; exitCode: number }
-  | { handled: false };
+  { handled: true; exitCode: number } | { handled: false };
 
 describe('CommandRegistry', () => {
   let mockContext: CommandContext;
@@ -237,7 +236,7 @@ describe('CommandRegistry', () => {
       const parseSpy = vi.spyOn(registry.getProgram(), 'parseAsync');
 
       // Use a command that won't actually execute (mock the status command)
-      vi.mock('../../lib/commands/status.js', () => ({
+      vi.doMock('../../lib/commands/status.js', () => ({
         status: vi.fn().mockResolvedValue({ success: true, exitCode: 0 }),
       }));
 
@@ -245,7 +244,7 @@ describe('CommandRegistry', () => {
 
       expect(parseSpy).toHaveBeenCalled();
 
-      vi.unmock('../../lib/commands/status.js');
+      vi.doUnmock('../../lib/commands/status.js');
     });
 
     it('should execute yolo action with parsed options', async () => {
@@ -1175,7 +1174,7 @@ describe('CommandRegistry', () => {
         await import('../../lib/cli/command-registry.js');
 
       // Mock the status command to prevent it from actually running
-      vi.mock('../../lib/commands/status.js', () => ({
+      vi.doMock('../../lib/commands/status.js', () => ({
         status: vi.fn().mockResolvedValue({ success: true, exitCode: 0 }),
       }));
 
@@ -1205,7 +1204,7 @@ describe('CommandRegistry', () => {
         `Arguments: ${mockContext.process.argv.join(' ')}`
       );
 
-      vi.unmock('../../lib/commands/status.js');
+      vi.doUnmock('../../lib/commands/status.js');
     });
   });
 });
