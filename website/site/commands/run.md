@@ -1,6 +1,9 @@
 ---
 title: speci run
 description: Start the autonomous Copilot implementation loop.
+sitemap:
+  priority: 0.8
+  changefreq: monthly
 ---
 
 # `speci run`
@@ -15,15 +18,15 @@ speci run [--max-iterations 100] [--dry-run] [--force] [-y] [--verify] [--sleep-
 
 ## Options
 
-| Flag                   | Default | Description                                                       |
-| ---------------------- | ------- | ----------------------------------------------------------------- |
-| `--max-iterations <n>` | `100`   | Maximum number of loop iterations                                 |
-| `--dry-run`            | `false` | Print what would happen without executing anything                |
-| `--force`              | `false` | Override existing lock                                            |
-| `-y, --yes`            | `false` | Skip confirmation prompt                                          |
-| `--verify`             | `false` | Pause on manual verification tasks (MVTs) at milestone boundaries |
-| `--sleep-after`        | `false` | Put machine to sleep after command completes                      |
-| `-v, --verbose`        | `false` | Show full agent output                                            |
+| Flag                   | Default | Description                                                     |
+| ---------------------- | ------- | --------------------------------------------------------------- |
+| `--max-iterations <n>` | `100`   | Maximum number of loop iterations                               |
+| `--dry-run`            | `false` | Print what would happen without executing anything              |
+| `--force`              | `false` | Override existing lock                                          |
+| `-y, --yes`            | `false` | Skip confirmation prompt                                        |
+| `--verify`             | `false` | Pause on manual validation tasks (MVTs) at milestone boundaries |
+| `--sleep-after`        | `false` | Put machine to sleep after command completes                    |
+| `-v, --verbose`        | `false` | Show full agent output                                          |
 
 ## Loop states
 

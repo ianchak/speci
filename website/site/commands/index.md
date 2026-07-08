@@ -1,6 +1,9 @@
 ---
 title: Commands
 description: Full reference for all speci CLI commands.
+sitemap:
+  priority: 0.8
+  changefreq: monthly
 ---
 
 # Commands

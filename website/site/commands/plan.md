@@ -1,6 +1,9 @@
 ---
 title: speci plan
 description: Generate a structured implementation plan via GitHub Copilot.
+sitemap:
+  priority: 0.7
+  changefreq: monthly
 ---
 
 # `speci plan`

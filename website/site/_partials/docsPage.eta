@@ -1,0 +1,6 @@
+<div class="container docs">
+  <%~ stati.partials.docsSidebar %>
+  <article class="prose">
+    <%~ stati.page.content %>
+  </article>
+</div>

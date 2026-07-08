@@ -1,6 +1,9 @@
 ---
 title: speci yolo
 description: Full pipeline — plan → task → run — in a single command.
+sitemap:
+  priority: 0.7
+  changefreq: monthly
 ---
 
 # `speci yolo`

@@ -1,0 +1,23 @@
+# Speci
+
+> AI-powered implementation loop orchestrator for GitHub Copilot. Automate plan → task → implement → review workflows with quality gate validation.
+
+Speci is a Node.js CLI tool (requires Node.js ≥ 22) that orchestrates GitHub Copilot agents in an autonomous development loop. Given a prompt or specification, it generates an implementation plan, breaks it into discrete tasks tracked in PROGRESS.md, and then iterates: dispatching an implementation agent, running configured quality gates (lint, typecheck, tests), and automatically fixing failures — all without manual intervention.
+
+The loop state machine has five states: WORK_LEFT (impl agent runs), IN_REVIEW (review agent evaluates), BLOCKED (tidy agent unblocks), DONE (loop exits cleanly), and NO_PROGRESS (no PROGRESS.md found, run `speci task` first).
+
+## Getting Started
+
+- [Getting Started](/getting-started/): Install speci and run your first Copilot workflow in minutes. Covers prerequisites (Node.js ≥ 22, GitHub Copilot CLI), installation via npx or global npm, project initialisation, and a three-step quick-start workflow.
+
+## Commands
+
+- [Commands Overview](/commands/): Full reference table for all speci CLI commands with links.
+- [speci init](/commands/init/): Initialise speci in an existing project. Creates speci.config.json, docs/tasks/, .speci-logs/, and copies all seven built-in Copilot agent templates into .github/agents/.
+- [speci plan](/commands/plan/): Generate a structured implementation plan via GitHub Copilot. Accepts a free-text prompt (-p) and/or input files (-i). Streams the plan to the terminal or writes it to a file (-o).
+- [speci task](/commands/task/): Break a plan file into trackable tasks and generate PROGRESS.md. Requires --plan <path>. Use --clean to remove existing task state before regenerating.
+- [speci run](/commands/run/): Start the autonomous implementation loop. Reads PROGRESS.md state, dispatches the appropriate Copilot agent, runs quality gates after each implementation, and auto-fixes failures up to maxFixAttempts. Supports --dry-run, --max-iterations, and --verify (pauses at MVT milestones).
+- [speci yolo](/commands/yolo/): Full pipeline in one command — plan → task → run. Chains all three phases sequentially. At least one of --prompt or --input is required.
+- [speci refactor](/commands/refactor/): One-shot codebase analysis for refactoring opportunities via the speci-refactor Copilot agent. Scope with --scope <path-or-glob>, write output with --output.
+- [speci status](/commands/status/): Live fullscreen dashboard showing current loop state and per-task status. Use --once for a single-shot summary or --json for machine-readable output.
+- [speci clean](/commands/clean/): Removes docs/tasks/ contents and docs/PROGRESS.md so you can start fresh. Prompts for confirmation unless -y is set.
