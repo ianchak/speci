@@ -1,5 +1,11 @@
 # speci
 
+## 0.15.3
+
+### Patch Changes
+
+- c603218: refactor(task): defer PROGRESS.md creation until task generation is complete
+
 ## 0.15.2
 
 ### Patch Changes
