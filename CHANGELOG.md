@@ -1,5 +1,11 @@
 # speci
 
+## 0.15.4
+
+### Patch Changes
+
+- 3863445: fix(task): generate PROGRESS.md only after task generation completes
+
 ## 0.15.3
 
 ### Patch Changes
