@@ -46,17 +46,14 @@ const MAX_RESUME_ATTEMPTS = 3;
 /**
  * Build the initial task-generation prompt.
  *
- * The prompt explicitly requires both task artifacts and a progress tracker to
- * reduce incomplete generations where PROGRESS.md is never created.
+ * The prompt explicitly requires task artifacts first and defers PROGRESS.md
+ * until task generation is complete.
  */
-function buildInitialTaskPrompt(
-  planPath: string,
-  progressPath: string
-): string {
+function buildInitialTaskPrompt(planPath: string): string {
   return (
     `Read the implementation plan at ${planPath}. ` +
-    `Generate implementation task files and ensure a progress tracker exists at ${progressPath}. ` +
-    `If ${DEFAULT_PATHS.GENERATION_STATE} exists, keep it in sync with generated tasks.`
+    `Generate implementation task files and update ${DEFAULT_PATHS.GENERATION_STATE} as needed. ` +
+    `Do not create PROGRESS.md yet; only create it after all tasks are generated and complete.`
   );
 }
 
@@ -75,7 +72,7 @@ function buildResumeTaskPrompt(
   if (reason?.includes('PROGRESS.md not found')) {
     return (
       basePrompt +
-      `Create PROGRESS.md at ${progressPath} and populate it to match the generated tasks.`
+      `Do not create PROGRESS.md yet. First finish generating all tasks and make sure ${DEFAULT_PATHS.GENERATION_STATE} has no incomplete entries. Then create PROGRESS.md at ${progressPath} from the finalized task set.`
     );
   }
 
@@ -260,7 +257,7 @@ export async function task(
     // Build Copilot args for one-shot mode with plan context
     const progressPath = resolve(context.process.cwd(), config.paths.progress);
     const args = context.copilotRunner.buildArgs(config, {
-      prompt: buildInitialTaskPrompt(planPath, progressPath),
+      prompt: buildInitialTaskPrompt(planPath),
       agent: agentName,
       command: 'task',
     });
