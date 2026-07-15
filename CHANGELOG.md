@@ -1,5 +1,11 @@
 # speci
 
+## 0.15.2
+
+### Patch Changes
+
+- 4b68487: fix(yolo): prevent sleep on failed runs and ensure task generation repairs missing PROGRESS.md
+
 ## 0.15.1
 
 ### Patch Changes
