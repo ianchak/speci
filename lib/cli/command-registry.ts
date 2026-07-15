@@ -112,26 +112,23 @@ export class CommandRegistry {
         dryRun?: boolean;
       };
       let exitCode: number | undefined;
+      let shouldSleep = false;
       try {
         const result = await commandFn(options, this.context, this.config);
         if (!result.success) {
           exitCode = result.exitCode;
+        } else {
+          shouldSleep = true;
         }
       } catch (err) {
         const handled = await this.handlePreflightError(err);
         if (handled.handled) {
           exitCode = handled.exitCode;
         } else {
-          if (sleepAfter && !dryRun) {
-            await sleepAfterCommand(
-              this.context.process.platform,
-              this.context.logger
-            );
-          }
           throw err;
         }
       }
-      if (sleepAfter && !dryRun) {
+      if (sleepAfter && !dryRun && shouldSleep) {
         await sleepAfterCommand(
           this.context.process.platform,
           this.context.logger

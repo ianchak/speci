@@ -814,7 +814,7 @@ describe('CommandRegistry', () => {
         cleanup();
       });
 
-      it('IT-4: calls sleep before exit on command failure result', async () => {
+      it('IT-4: does not call sleep on command failure result', async () => {
         const { action, sleepAfterCommandMock, exitWithCleanupMock, cleanup } =
           await createActionWithMocks(async () => ({
             success: false,
@@ -826,15 +826,12 @@ describe('CommandRegistry', () => {
 
         await action({}, command);
 
-        expect(sleepAfterCommandMock).toHaveBeenCalledOnce();
+        expect(sleepAfterCommandMock).not.toHaveBeenCalled();
         expect(exitWithCleanupMock).toHaveBeenCalledWith(1);
-        expect(sleepAfterCommandMock.mock.invocationCallOrder[0]).toBeLessThan(
-          exitWithCleanupMock.mock.invocationCallOrder[0]
-        );
         cleanup();
       });
 
-      it('IT-5: calls sleep on generic thrown Error and rethrows', async () => {
+      it('IT-5: does not call sleep on generic thrown Error and rethrows', async () => {
         const { action, sleepAfterCommandMock, cleanup } =
           await createActionWithMocks(async () => {
             throw new Error('boom');
@@ -844,7 +841,7 @@ describe('CommandRegistry', () => {
         } as unknown as Command;
 
         await expect(action({}, command)).rejects.toThrow('boom');
-        expect(sleepAfterCommandMock).toHaveBeenCalledOnce();
+        expect(sleepAfterCommandMock).not.toHaveBeenCalled();
         cleanup();
       });
 
@@ -904,8 +901,8 @@ describe('CommandRegistry', () => {
         expect(optionNames).toContain('--sleep-after');
       });
 
-      it('IT-10: preserves original exit code when sleeping on failure', async () => {
-        const { action, exitWithCleanupMock, cleanup } =
+      it('IT-10: preserves original exit code when failure skips sleep', async () => {
+        const { action, sleepAfterCommandMock, exitWithCleanupMock, cleanup } =
           await createActionWithMocks(async () => ({
             success: false,
             exitCode: 1,
@@ -916,6 +913,7 @@ describe('CommandRegistry', () => {
 
         await action({}, command);
 
+        expect(sleepAfterCommandMock).not.toHaveBeenCalled();
         expect(exitWithCleanupMock).toHaveBeenCalledWith(1);
         cleanup();
       });
@@ -940,7 +938,7 @@ describe('CommandRegistry', () => {
         cleanup();
       });
 
-      it('IT-12: sleeps before exit for PreflightError path', async () => {
+      it('IT-12: does not sleep for PreflightError path', async () => {
         vi.resetModules();
         const sleepAfterCommandMock = vi.fn().mockResolvedValue(undefined);
         const exitWithCleanupMock = vi.fn(async () => undefined as never);
@@ -977,11 +975,8 @@ describe('CommandRegistry', () => {
 
         await action({}, command);
 
-        expect(sleepAfterCommandMock).toHaveBeenCalledOnce();
+        expect(sleepAfterCommandMock).not.toHaveBeenCalled();
         expect(exitWithCleanupMock).toHaveBeenCalledWith(2);
-        expect(sleepAfterCommandMock.mock.invocationCallOrder[0]).toBeLessThan(
-          exitWithCleanupMock.mock.invocationCallOrder[0]
-        );
         vi.doUnmock('@/utils/infrastructure/sleep.js');
         vi.doUnmock('@/utils/infrastructure/exit.js');
       });
@@ -1038,7 +1033,7 @@ describe('CommandRegistry', () => {
         cleanup();
       });
 
-      it('IT-16: calls sleep for non-Error throwable and rethrows value', async () => {
+      it('IT-16: does not sleep for non-Error throwable and rethrows value', async () => {
         const { action, sleepAfterCommandMock, cleanup } =
           await createActionWithMocks(async () => {
             throw 'unexpected';
@@ -1048,7 +1043,7 @@ describe('CommandRegistry', () => {
         } as unknown as Command;
 
         await expect(action({}, command)).rejects.toBe('unexpected');
-        expect(sleepAfterCommandMock).toHaveBeenCalledOnce();
+        expect(sleepAfterCommandMock).not.toHaveBeenCalled();
         cleanup();
       });
 
@@ -1105,7 +1100,7 @@ describe('CommandRegistry', () => {
         }
       });
 
-      it('IT-20: preflight handled result is consumed before exit', async () => {
+      it('IT-20: preflight handled result exits without sleep', async () => {
         vi.resetModules();
         const sleepAfterCommandMock = vi.fn().mockResolvedValue(undefined);
         const exitWithCleanupMock = vi.fn(async () => undefined as never);
@@ -1143,9 +1138,7 @@ describe('CommandRegistry', () => {
         await action({}, command);
 
         expect(exitWithCleanupMock).toHaveBeenCalledWith(2);
-        expect(sleepAfterCommandMock.mock.invocationCallOrder[0]).toBeLessThan(
-          exitWithCleanupMock.mock.invocationCallOrder[0]
-        );
+        expect(sleepAfterCommandMock).not.toHaveBeenCalled();
         vi.doUnmock('@/utils/infrastructure/sleep.js');
         vi.doUnmock('@/utils/infrastructure/exit.js');
       });

@@ -6,7 +6,7 @@ import {
   existsSync,
   readFileSync,
 } from 'node:fs';
-import { join } from 'node:path';
+import { join, resolve } from 'node:path';
 import { tmpdir } from 'node:os';
 import { createProductionContext } from '../../lib/adapters/context-factory.js';
 import { createMockContext } from '../../lib/adapters/test-context.js';
@@ -290,6 +290,24 @@ describe('task command', () => {
       expect(promptArg).toContain('plan.md');
     });
 
+    it('should require progress file creation in initial prompt', async () => {
+      const spawnSpy = vi
+        .spyOn(copilotModule, 'spawnCopilot')
+        .mockResolvedValue(0);
+
+      await task({ plan: 'plan.md' }).catch(() => {
+        // Ignore process.exit error
+      });
+
+      expect(spawnSpy).toHaveBeenCalled();
+      const args = spawnSpy.mock.calls[0][0];
+      const promptIndex = args.indexOf('-p');
+      expect(promptIndex).toBeGreaterThan(-1);
+      const promptArg = args[promptIndex + 1];
+      expect(promptArg).toContain('progress tracker exists');
+      expect(promptArg).toContain('PROGRESS.md');
+    });
+
     it('should pass model flag when specified for task agent in config', async () => {
       // Update config with per-agent model
       const configPath = join(testDir, 'speci.config.json');
@@ -393,8 +411,9 @@ describe('task command', () => {
         cwd: testDir,
         mockConfig: testConfig,
       });
+      const progressPath = resolve(testDir, testConfig.paths.progress);
       vi.mocked(context.fs.existsSync).mockImplementation(
-        (path: string) => path === testConfig.paths.progress
+        (path: string) => path === progressPath
       );
 
       const setVerboseSpy = vi
@@ -457,8 +476,9 @@ describe('task command', () => {
       });
 
       const context = createMockContext({ cwd: testDir });
+      const progressPath = resolve(testDir, testConfig.paths.progress);
       vi.mocked(context.fs.existsSync).mockImplementation(
-        (path: string) => path === testConfig.paths.progress
+        (path: string) => path === progressPath
       );
       const result = await task({ plan: 'plan.md' }, context, testConfig);
 
@@ -474,6 +494,7 @@ describe('task command', () => {
         mockConfig: testConfig,
       });
       const statePath = join(testDir, 'docs/GENERATION_STATE.md');
+      const progressPath = resolve(testDir, testConfig.paths.progress);
 
       vi.spyOn(commandHelpers, 'initializeCommand').mockResolvedValue({
         config: testConfig,
@@ -483,7 +504,7 @@ describe('task command', () => {
 
       let stateReadCount = 0;
       vi.mocked(context.fs.existsSync).mockImplementation((path: string) => {
-        if (path === statePath || path === testConfig.paths.progress) {
+        if (path === statePath || path === progressPath) {
           return true;
         }
         return false;
@@ -526,6 +547,7 @@ describe('task command', () => {
         mockConfig: testConfig,
       });
       const statePath = join(testDir, 'docs/GENERATION_STATE.md');
+      const progressPath = resolve(testDir, testConfig.paths.progress);
 
       vi.spyOn(commandHelpers, 'initializeCommand').mockResolvedValue({
         config: testConfig,
@@ -534,7 +556,7 @@ describe('task command', () => {
       });
 
       vi.mocked(context.fs.existsSync).mockImplementation((path: string) => {
-        if (path === statePath || path === testConfig.paths.progress) {
+        if (path === statePath || path === progressPath) {
           return true;
         }
         return false;
@@ -585,6 +607,7 @@ describe('task command', () => {
         mockConfig: testConfig,
       });
       const statePath = join(testDir, 'docs/GENERATION_STATE.md');
+      const progressPath = resolve(testDir, testConfig.paths.progress);
 
       vi.spyOn(commandHelpers, 'initializeCommand').mockResolvedValue({
         config: testConfig,
@@ -593,7 +616,7 @@ describe('task command', () => {
       });
 
       vi.mocked(context.fs.existsSync).mockImplementation((path: string) => {
-        if (path === statePath || path === testConfig.paths.progress) {
+        if (path === statePath || path === progressPath) {
           return true;
         }
         return false;
@@ -621,6 +644,7 @@ describe('task command', () => {
         mockConfig: testConfig,
       });
       const statePath = join(testDir, 'docs/GENERATION_STATE.md');
+      const progressPath = resolve(testDir, testConfig.paths.progress);
 
       vi.spyOn(commandHelpers, 'initializeCommand').mockResolvedValue({
         config: testConfig,
@@ -632,7 +656,7 @@ describe('task command', () => {
         if (path === statePath) {
           return false;
         }
-        if (path === testConfig.paths.progress) {
+        if (path === progressPath) {
           return false;
         }
         return false;
@@ -656,7 +680,14 @@ describe('task command', () => {
       });
       expect(executeSpy).toHaveBeenCalledTimes(2);
       expect(context.logger.warn).toHaveBeenCalledWith(
-        expect.stringContaining('PROGRESS.md not found')
+        expect.stringContaining(`PROGRESS.md not found at ${progressPath}`)
+      );
+      expect(context.copilotRunner.buildArgs).toHaveBeenNthCalledWith(
+        2,
+        testConfig,
+        expect.objectContaining({
+          prompt: expect.stringContaining('Create PROGRESS.md'),
+        })
       );
     });
   });

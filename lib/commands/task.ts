@@ -44,6 +44,48 @@ export interface TaskOptions {
 const MAX_RESUME_ATTEMPTS = 3;
 
 /**
+ * Build the initial task-generation prompt.
+ *
+ * The prompt explicitly requires both task artifacts and a progress tracker to
+ * reduce incomplete generations where PROGRESS.md is never created.
+ */
+function buildInitialTaskPrompt(
+  planPath: string,
+  progressPath: string
+): string {
+  return (
+    `Read the implementation plan at ${planPath}. ` +
+    `Generate implementation task files and ensure a progress tracker exists at ${progressPath}. ` +
+    `If ${DEFAULT_PATHS.GENERATION_STATE} exists, keep it in sync with generated tasks.`
+  );
+}
+
+/**
+ * Build a resume prompt tailored to the current incomplete-generation reason.
+ */
+function buildResumeTaskPrompt(
+  reason: string | undefined,
+  progressPath: string
+): string {
+  const reasonText = reason ?? 'unknown reason';
+  const basePrompt =
+    `Read ${DEFAULT_PATHS.GENERATION_STATE} to find incomplete entries and resume task generation. ` +
+    `Current incomplete reason: ${reasonText}. `;
+
+  if (reason?.includes('PROGRESS.md not found')) {
+    return (
+      basePrompt +
+      `Create PROGRESS.md at ${progressPath} and populate it to match the generated tasks.`
+    );
+  }
+
+  return (
+    basePrompt +
+    `Continue from where generation left off and complete remaining entries.`
+  );
+}
+
+/**
  * Parse GENERATION_STATE.md content and return Task IDs whose Gen Status ≠ COMPLETE.
  *
  * Detects the "Gen Status" column dynamically from the header row so the check
@@ -108,6 +150,7 @@ function checkGenerationComplete(
   cwd: string
 ): { complete: boolean; reason?: string } {
   const statePath = join(cwd, DEFAULT_PATHS.GENERATION_STATE);
+  const progressPath = resolve(cwd, config.paths.progress);
 
   if (context.fs.existsSync(statePath)) {
     const content = context.fs.readFileSync(statePath, 'utf8');
@@ -120,10 +163,10 @@ function checkGenerationComplete(
     }
   }
 
-  if (!context.fs.existsSync(config.paths.progress)) {
+  if (!context.fs.existsSync(progressPath)) {
     return {
       complete: false,
-      reason: `PROGRESS.md not found at ${config.paths.progress}`,
+      reason: `PROGRESS.md not found at ${progressPath}`,
     };
   }
 
@@ -215,8 +258,9 @@ export async function task(
     context.logger.raw('');
 
     // Build Copilot args for one-shot mode with plan context
+    const progressPath = resolve(context.process.cwd(), config.paths.progress);
     const args = context.copilotRunner.buildArgs(config, {
-      prompt: `Read the plan file at ${planPath} and generate implementation tasks.`,
+      prompt: buildInitialTaskPrompt(planPath, progressPath),
       agent: agentName,
       command: 'task',
     });
@@ -242,9 +286,7 @@ export async function task(
       context.logger.raw('');
 
       const resumeArgs = context.copilotRunner.buildArgs(config, {
-        prompt:
-          `Read ${DEFAULT_PATHS.GENERATION_STATE} to find incomplete entries ` +
-          `and resume task generation from where it left off.`,
+        prompt: buildResumeTaskPrompt(check.reason, progressPath),
         agent: agentName,
         command: 'task',
       });
