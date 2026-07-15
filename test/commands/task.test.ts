@@ -290,7 +290,7 @@ describe('task command', () => {
       expect(promptArg).toContain('plan.md');
     });
 
-    it('should defer progress file creation in initial prompt', async () => {
+    it('should create progress file after task generation completes', async () => {
       const spawnSpy = vi
         .spyOn(copilotModule, 'spawnCopilot')
         .mockResolvedValue(0);
@@ -304,7 +304,9 @@ describe('task command', () => {
       const promptIndex = args.indexOf('-p');
       expect(promptIndex).toBeGreaterThan(-1);
       const promptArg = args[promptIndex + 1];
-      expect(promptArg).toContain('Do not create PROGRESS.md yet');
+      expect(promptArg).toContain(
+        'After all tasks are generated and complete, create PROGRESS.md'
+      );
       expect(promptArg).toContain('PROGRESS.md');
     });
 
@@ -686,7 +688,7 @@ describe('task command', () => {
         2,
         testConfig,
         expect.objectContaining({
-          prompt: expect.stringContaining('Do not create PROGRESS.md yet'),
+          prompt: expect.stringContaining('Then create PROGRESS.md at'),
         })
       );
     });
