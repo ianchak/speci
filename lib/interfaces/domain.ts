@@ -54,6 +54,11 @@ export interface ICopilotRunner {
     agentName: string,
     proc?: IProcess
   ): Promise<AgentRunResult>;
+
+  /**
+   * Get available model IDs from Copilot CLI.
+   */
+  listModels(proc?: IProcess): Promise<string[] | null>;
 }
 
 /**

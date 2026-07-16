@@ -113,6 +113,22 @@ describe('CommandRegistry', () => {
       expect(yoloCmd?.description()).toContain('plan -> task -> run');
     });
 
+    it('registers init model configuration options', async () => {
+      const { CommandRegistry } =
+        await import('../../lib/cli/command-registry.js');
+      const registry = new CommandRegistry(mockContext, mockConfig);
+      const initCmd = registry
+        .getProgram()
+        .commands.find((cmd: Command) => cmd.name() === 'init');
+      const optionNames = initCmd?.options.map(
+        (opt: { long?: string }) => opt.long
+      );
+
+      expect(optionNames).toContain('--preset');
+      expect(optionNames).toContain('--custom');
+      expect(optionNames).toContain('--reconfigure-models');
+    });
+
     it('UT-CLI01: should register --verify option on run command', async () => {
       const { CommandRegistry } =
         await import('../../lib/cli/command-registry.js');

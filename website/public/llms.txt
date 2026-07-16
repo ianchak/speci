@@ -13,7 +13,7 @@ The loop state machine has five states: WORK_LEFT (impl agent runs), IN_REVIEW (
 ## Commands
 
 - [Commands Overview](/commands/): Full reference table for all speci CLI commands with links.
-- [speci init](/commands/init/): Initialise speci in an existing project. Creates speci.config.json, docs/tasks/, .speci-logs/, and copies all seven built-in Copilot agent templates into .github/agents/.
+- [speci init](/commands/init/): Initialise speci in an existing project. Creates speci.config.json, docs/tasks/, .speci-logs/, and copies all built-in Copilot agent templates into .github/agents/. On first init, fetches the live Copilot model list and presents a menu to choose a preset (best/balanced/budget) or configure copilot.models role-by-role. Supports --preset, --custom, and --reconfigure-models flags.
 - [speci plan](/commands/plan/): Generate a structured implementation plan via GitHub Copilot. Accepts a free-text prompt (-p) and/or input files (-i). Streams the plan to the terminal or writes it to a file (-o).
 - [speci task](/commands/task/): Break a plan file into trackable tasks and generate PROGRESS.md. Requires --plan <path>. Use --clean to remove existing task state before regenerating.
 - [speci run](/commands/run/): Start the autonomous implementation loop. Reads PROGRESS.md state, dispatches the appropriate Copilot agent, runs quality gates after each implementation, and auto-fixes failures up to maxFixAttempts. Supports --dry-run, --max-iterations, and --verify (pauses at MVT milestones).

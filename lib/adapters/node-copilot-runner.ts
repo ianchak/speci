@@ -6,6 +6,7 @@
 
 import {
   buildCopilotArgs,
+  listCopilotModels,
   spawnCopilot,
   runAgent,
   type CopilotArgsOptions,
@@ -40,5 +41,9 @@ export class NodeCopilotRunner implements ICopilotRunner {
     proc?: IProcess
   ): Promise<AgentRunResult> {
     return runAgent(config, agentName, undefined, proc, this.logger);
+  }
+
+  async listModels(proc?: IProcess): Promise<string[] | null> {
+    return listCopilotModels(proc, this.logger);
   }
 }

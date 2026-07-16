@@ -16,6 +16,8 @@ import { yolo } from '@/commands/yolo.js';
 import { status } from '@/commands/status.js';
 import { clean } from '@/commands/clean.js';
 import { findSimilarCommands } from '@/utils/helpers/suggest.js';
+import { findConfigFile } from '@/config/index.js';
+import { remediateInvalidModels } from '@/utils/helpers/model-selection.js';
 import { log } from '@/utils/infrastructure/logger.js';
 import { exitWithCleanup } from '@/utils/infrastructure/exit.js';
 import { PreflightError } from '@/utils/helpers/preflight.js';
@@ -114,7 +116,16 @@ export class CommandRegistry {
       let exitCode: number | undefined;
       let shouldSleep = false;
       try {
-        const result = await commandFn(options, this.context, this.config);
+        const commandName =
+          typeof command.name === 'function' ? command.name() : undefined;
+        let effectiveConfig = this.config;
+
+        if (!effectiveConfig && commandName && commandName !== 'init') {
+          effectiveConfig = await this.context.configLoader.load();
+          effectiveConfig = await this.validateConfiguredModels(effectiveConfig);
+        }
+
+        const result = await commandFn(options, this.context, effectiveConfig);
         if (!result.success) {
           exitCode = result.exitCode;
         } else {
@@ -140,6 +151,43 @@ export class CommandRegistry {
     };
   }
 
+  private async validateConfiguredModels(
+    config: SpeciConfig
+  ): Promise<SpeciConfig> {
+    const configPath = findConfigFile(
+      this.context.process.cwd(),
+      this.context.fs,
+      this.context.logger
+    );
+    if (!configPath) {
+      return config;
+    }
+
+    const liveModels = await this.context.copilotRunner.listModels(
+      this.context.process
+    );
+    const updatedModels = await remediateInvalidModels({
+      configPath,
+      config,
+      fs: this.context.fs,
+      proc: this.context.process,
+      logger: this.context.logger,
+      liveModels,
+    });
+
+    if (!updatedModels) {
+      return config;
+    }
+
+    return {
+      ...config,
+      copilot: {
+        ...config.copilot,
+        models: updatedModels,
+      },
+    };
+  }
+
   /**
    * Register the init command
    */
@@ -149,6 +197,15 @@ export class CommandRegistry {
       .alias('i')
       .description('Initialize Speci in current project')
       .option('-u, --update-agents', 'Update agent files even if they exist')
+      .option(
+        '--preset <preset>',
+        'Model preset for copilot.models: best, balanced, budget'
+      )
+      .option('--custom', 'Configure copilot.models role-by-role')
+      .option(
+        '--reconfigure-models',
+        'Update copilot.models in an existing speci.config.json'
+      )
       .option('-v, --verbose', 'Show detailed output')
       .addHelpText(
         'after',
@@ -156,6 +213,9 @@ export class CommandRegistry {
 Examples:
   $ speci init              Set up Speci in current project
   $ speci init -u           Update agent files to latest version
+  $ speci init --preset budget
+  $ speci init --custom
+  $ speci init --reconfigure-models
 `
       )
       .action(this.makeAction(init));

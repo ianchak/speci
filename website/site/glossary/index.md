@@ -33,7 +33,10 @@ This glossary defines the core terms used in speci docs, CLI output, and archite
 | Lock file                    | The `.speci-lock` file used to prevent concurrent `speci run` or `speci yolo` executions.                                         |
 | maxFixAttempts               | Config value controlling how many automatic fix cycles run after gate failures.                                                   |
 | maxIterations                | Maximum number of loop iterations allowed before `speci run` exits.                                                               |
-| Milestone                    | A grouped section in `PROGRESS.md` used for tracking related tasks and MVT readiness.                                             |
+| Model preset                 | A named configuration (`best`, `balanced`, `budget`) that maps each agent role to the most appropriate available Copilot model. |
+| Model role                   | One of the seven per-agent configuration slots in `copilot.models`: `plan`, `task`, `refactor`, `impl`, `review`, `fix`, `tidy`. |
+| Model validation             | Startup check that verifies configured `copilot.models` entries are present in the live Copilot model list; triggers interactive remediation if any are invalid. |
+| Milestone                    | A grouped section in `PROGRESS.md` used for tracking related tasks and MVT readiness.                                            |
 | MVT (Manual Validation Task) | A manual validation checkpoint tied to a milestone. In verify mode, the loop pauses until the MVT is marked `COMPLETE`.           |
 | NO_PROGRESS (loop state)     | State indicating no `PROGRESS.md` was found; usually resolved by running `speci task`.                                            |
 | Preflight checks             | Startup validations (Copilot CLI, git repo, config, progress file, agents) before command execution.                              |
