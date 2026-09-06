@@ -32,13 +32,15 @@ export interface InitOptions {
   reconfigureModels?: boolean; // Update copilot.models in an existing speci.config.json
   prompt?: (question: string) => Promise<string>;
   openSpecTools?: string;
-  openSpecInitRunner?: (cwd: string) => {
+  openSpecInitRunner?: (cwd: string, tools: string) => {
     status: number | null;
     error?: Error;
   };
 }
 
 const OPENSPEC_CONFIG_PATH = join('openspec', 'config.yaml');
+const OPENSPEC_SPECS_PATH = join('openspec', 'specs');
+const OPENSPEC_CHANGES_PATH = join('openspec', 'changes');
 const SPECI_COPILOT_PROMPT_KEY = 'speciCopilotPrompt';
 const SPECI_COPILOT_PROMPT = [
   'Prefer OpenSpec CLI commands over direct OpenSpec slash/skill calls.',
@@ -83,12 +85,21 @@ function initializeOpenSpec(
   ) => { status: number | null; error?: Error },
   tools: string
 ): void {
-  if (context.fs.existsSync(OPENSPEC_CONFIG_PATH)) {
+  const hasConfig = context.fs.existsSync(OPENSPEC_CONFIG_PATH);
+  const hasWorkspaceDirs =
+    context.fs.existsSync(OPENSPEC_SPECS_PATH) &&
+    context.fs.existsSync(OPENSPEC_CHANGES_PATH);
+
+  if (hasConfig && hasWorkspaceDirs) {
     ensureSpeciOpenSpecPrompt(context);
     return;
   }
 
-  context.logger.info('Initializing OpenSpec for this repository...');
+  context.logger.info(
+    hasConfig
+      ? 'Completing OpenSpec workspace initialization for this repository...'
+      : 'Initializing OpenSpec for this repository...'
+  );
   const result = runInit(context.process.cwd(), tools);
 
   if (result.error) {

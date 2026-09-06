@@ -66,6 +66,8 @@ describe('init command', () => {
 
     it('should append Speci Copilot guidance to existing OpenSpec config', async () => {
       mkdirSync('openspec', { recursive: true });
+      mkdirSync('openspec/specs', { recursive: true });
+      mkdirSync('openspec/changes', { recursive: true });
       writeFileSync('openspec/config.yaml', 'schema: spec-driven\n');
       const openSpecInitRunner = vi.fn(() => ({ status: 0 }));
 
@@ -75,6 +77,19 @@ describe('init command', () => {
       const openSpecConfig = readFileSync('openspec/config.yaml', 'utf8');
       expect(openSpecConfig).toContain('schema: spec-driven');
       expect(openSpecConfig).toContain('speciCopilotPrompt:');
+    });
+
+    it('should run OpenSpec init when config exists but workspace directories are missing', async () => {
+      mkdirSync('openspec', { recursive: true });
+      writeFileSync('openspec/config.yaml', 'schema: spec-driven\n');
+      const openSpecInitRunner = vi.fn(() => ({ status: 0 }));
+
+      await init({ openSpecInitRunner });
+
+      expect(openSpecInitRunner).toHaveBeenCalledWith(
+        testDir,
+        'github-copilot'
+      );
     });
 
     it('should pass configured OpenSpec tool selection to init runner', async () => {
