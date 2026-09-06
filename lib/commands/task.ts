@@ -56,6 +56,8 @@ function buildInitialTaskPrompt(
   return (
     `Read the implementation plan at ${planPath}. ` +
     `Generate implementation task files and update ${DEFAULT_PATHS.GENERATION_STATE} as needed. ` +
+    `For every generated TASK_XXX file, create exactly one OpenSpec change via OpenSpec CLI (prefer \`openspec new change <name> --json\`) and record the change mapping in the task metadata. ` +
+    `Use OpenSpec CLI commands (for example \`openspec status --change <name> --json\` and \`openspec instructions apply --change <name> --json\`) instead of direct OpenSpec slash/skill calls whenever possible. ` +
     `After all tasks are generated and complete, create PROGRESS.md at ${progressPath} from the finalized task set.`
   );
 }
@@ -81,7 +83,7 @@ function buildResumeTaskPrompt(
 
   return (
     basePrompt +
-    `Continue from where generation left off and complete remaining entries.`
+    `Continue from where generation left off, keep one OpenSpec change per TASK_XXX, and complete remaining entries.`
   );
 }
 

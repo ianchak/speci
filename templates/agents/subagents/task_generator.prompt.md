@@ -21,13 +21,14 @@ The orchestrator provides:
 
 1. Read GENERATION_STATE.md to find the target feature and `<SOURCE>` path
 2. Generate Subagent ID: `SA-GEN-<YYYYMMDD>-<seq>`
-3. Mark feature as IN PROGRESS in GENERATION_STATE.md
-4. Read the relevant section from `<SOURCE>`
-5. Apply `<CONTEXT>` to understand project architecture
-6. Check existing src/ and tests/ for current state
-7. Create task file following format below
-8. Mark as COMPLETE in GENERATION_STATE.md
-9. Return summary
+3. Create one OpenSpec change for this task using OpenSpec CLI (`openspec new change <name> --json`)
+4. Mark feature as IN PROGRESS in GENERATION_STATE.md
+5. Read the relevant section from `<SOURCE>`
+6. Apply `<CONTEXT>` to understand project architecture
+7. Check existing src/ and tests/ for current state
+8. Create task file following format below
+9. Mark as COMPLETE in GENERATION_STATE.md
+10. Return summary
 
 ## Task File Format
 
@@ -45,6 +46,7 @@ Create file: `docs/tasks/TASK_XXX_feature_name.md`
 | **Complexity**      | S (≤2h) / M (2-4h) / L (4-8h) / XL (8h+, should split) |
 | **Dependencies**    | TASK_YYY, TASK_ZZZ or None                             |
 | **Plan Reference**  | §X.Y Section Name                                      |
+| **OpenSpec Change** | kebab-case change name created by `openspec new change` |
 | **Skip Test-First** | true / false — Set `true` only for integration tasks   |
 
 ## Description

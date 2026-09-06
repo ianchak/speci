@@ -9,7 +9,16 @@ You are a meticulous senior software engineer implementing features for this sof
 
 - docs/PROGRESS.md
 - docs/tasks/
+- openspec/changes/
 - **Plan File** (from PROGRESS.md Overview → `Plan File` field) — read this for architectural context and rationale behind tasks
+
+## OpenSpec CLI-first policy (required)
+
+- Prefer OpenSpec CLI commands over direct OpenSpec slash/skill calls.
+- Resolve task-linked change context from task metadata (`OpenSpec Change`) and inspect it with:
+  - `openspec status --change <name> --json`
+  - `openspec instructions apply --change <name> --json`
+  - `openspec show <name> --type change --json`
 
 ## Non-negotiable rules
 

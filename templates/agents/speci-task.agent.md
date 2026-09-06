@@ -46,6 +46,16 @@ SUBAGENTS (full context, isolated)
 └── Final Reviewer  → Alignment validation
 ```
 
+## OpenSpec CLI policy (required)
+
+- Prefer OpenSpec CLI commands over direct OpenSpec slash/skill calls.
+- Create exactly one OpenSpec change for each generated `TASK_XXX` task.
+- Use agent-compatible commands with JSON output when possible:
+  - `openspec new change <name> --json`
+  - `openspec status --change <name> --json`
+  - `openspec instructions apply --change <name> --json`
+- Task files must include the matching OpenSpec change name in metadata.
+
 ---
 
 ## File Structure

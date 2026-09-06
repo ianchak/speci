@@ -5,7 +5,8 @@
  * Creates speci.config.json, directory structure, and initial files.
  */
 
-import { join, relative } from 'node:path';
+import { spawnSync } from 'node:child_process';
+import { dirname, join, relative } from 'node:path';
 import {
   getDefaults,
   getAgentsTemplatePath,
@@ -30,6 +31,74 @@ export interface InitOptions {
   updateAgents?: boolean; // Force update agent files even if they exist
   reconfigureModels?: boolean; // Update copilot.models in an existing speci.config.json
   prompt?: (question: string) => Promise<string>;
+}
+
+const OPENSPEC_CONFIG_PATH = join('openspec', 'config.yaml');
+const SPECI_COPILOT_PROMPT_KEY = 'speciCopilotPrompt';
+const SPECI_COPILOT_PROMPT = [
+  'Prefer OpenSpec CLI commands over direct OpenSpec slash/skill calls.',
+  'Use one OpenSpec change per Speci task file.',
+  'Archive each task-linked OpenSpec change after the task is reviewed and complete.',
+];
+
+function ensureSpeciOpenSpecPrompt(context: CommandContext): void {
+  const configPath = OPENSPEC_CONFIG_PATH;
+  const yamlBlock = [
+    `${SPECI_COPILOT_PROMPT_KEY}: |`,
+    ...SPECI_COPILOT_PROMPT.map((line) => `  ${line}`),
+    '',
+  ].join('\n');
+
+  if (!context.fs.existsSync(configPath)) {
+    context.fs.mkdirSync(dirname(configPath), { recursive: true });
+    context.fs.writeFileSync(
+      configPath,
+      ['schema: spec-driven', '', yamlBlock].join('\n'),
+      'utf8'
+    );
+    context.logger.success(`Created ${configPath}`);
+    return;
+  }
+
+  const content = context.fs.readFileSync(configPath, 'utf8');
+  if (content.includes(`${SPECI_COPILOT_PROMPT_KEY}:`)) {
+    return;
+  }
+
+  const normalized = content.endsWith('\n') ? content : `${content}\n`;
+  context.fs.writeFileSync(configPath, `${normalized}\n${yamlBlock}`, 'utf8');
+  context.logger.success(`Updated ${configPath} with Speci Copilot guidance`);
+}
+
+function initializeOpenSpec(context: CommandContext): void {
+  if (context.fs.existsSync(OPENSPEC_CONFIG_PATH)) {
+    ensureSpeciOpenSpecPrompt(context);
+    return;
+  }
+
+  context.logger.info('Initializing OpenSpec for this repository...');
+  const result = spawnSync(
+    'openspec',
+    ['init', '.', '--tools', 'github-copilot', '--copilot-cloud', '--no-animation'],
+    {
+      cwd: context.process.cwd(),
+      encoding: 'utf8',
+      stdio: 'pipe',
+      timeout: 30_000,
+    }
+  );
+
+  if (result.error) {
+    context.logger.warn(
+      `OpenSpec CLI init skipped (${toErrorMessage(result.error)}). Creating fallback openspec/config.yaml.`
+    );
+  } else if (result.status !== 0) {
+    context.logger.warn(
+      `OpenSpec CLI init exited with code ${String(result.status)}. Creating fallback openspec/config.yaml.`
+    );
+  }
+
+  ensureSpeciOpenSpecPrompt(context);
 }
 
 /**
@@ -307,12 +376,15 @@ async function copyAgentFiles(
 function displaySuccess(context: CommandContext): void {
   context.logger.raw('');
   context.logger.info('Next steps:');
-  context.logger.muted('  1. Generate your plan with: speci plan');
   context.logger.muted(
-    '  2. Generate your tasks and PROGRESS.md with: speci task'
+    '  1. (Optional) Inspect OpenSpec setup with: openspec status --json'
+  );
+  context.logger.muted('  2. Generate your plan with: speci plan');
+  context.logger.muted(
+    '  3. Generate your tasks and PROGRESS.md with: speci task'
   );
   context.logger.muted(
-    '  3. After a manual check start the implementation loop: speci run'
+    '  4. After a manual check start the implementation loop: speci run'
   );
   context.logger.raw('');
 }
@@ -381,6 +453,9 @@ export async function init(
 
     // Copy agent files to .github/agents/
     await copyAgentFiles(existing, options.updateAgents, context);
+
+    // Initialize OpenSpec and ensure Speci guidance is present
+    initializeOpenSpec(context);
 
     // Display success and next steps
     displaySuccess(context);

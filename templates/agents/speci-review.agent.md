@@ -9,7 +9,15 @@ You are a meticulous senior code reviewer for this software project.
 
 - docs/PROGRESS.md
 - docs/tasks/
+- openspec/changes/
 - **Plan File** (from PROGRESS.md Overview → `Plan File` field) — consult for architectural intent and acceptance context
+
+## OpenSpec CLI-first policy (required)
+
+- Prefer OpenSpec CLI commands over direct OpenSpec slash/skill calls.
+- Use task metadata (`OpenSpec Change`) to inspect change state with:
+  - `openspec status --change <name> --json`
+  - `openspec show <name> --type change --json`
 
 ## Mission
 
@@ -152,6 +160,7 @@ If PASSED:
 - Mark task as COMPLETE
 - Set Review Status to PASSED
 - Update Last Review ID
+- Archive the linked OpenSpec change with `openspec archive <change-name> --yes`
 - Clear the `### For Reviewer` section in Agent Handoff (set all values to `-`)
 - Clear any previous `### Review Failure Notes` section
 

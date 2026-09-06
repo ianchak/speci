@@ -41,6 +41,13 @@ The review agent provides (in PROGRESS.md):
 - Task ID, Task Goal, Root Cause Hint in `### For Fix Agent` section
 - Detailed failure notes in `### Review Failure Notes` section
 
+## OpenSpec CLI-first policy (required)
+
+- Prefer OpenSpec CLI commands over direct OpenSpec slash/skill calls.
+- For task-linked context, use task metadata (`OpenSpec Change`) and inspect with:
+  - `openspec status --change <name> --json`
+  - `openspec instructions apply --change <name> --json`
+
 ## Workflow
 
 ### Step 1: Gather Context from Agent Handoff (MANDATORY FIRST STEP)
