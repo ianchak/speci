@@ -45,6 +45,8 @@ let cachedModels: string[] | null | undefined;
 // Matches model IDs like "claude-opus-4.8" and "gpt-5.3-codex" in plain text output.
 const MODEL_ID_PATTERN = /[a-z][a-z0-9]*(?:[-.][a-z0-9]+)+/gi;
 
+const MODEL_LIST_TIMEOUT_MS = 10_000;
+
 function parseModelList(output: string): string[] {
   const trimmed = output.trim();
   if (!trimmed) return [];
@@ -234,16 +236,26 @@ export async function listCopilotModels(
       let stdout = '';
       let stderr = '';
 
+      // Model discovery can run at startup; never block on a hung Copilot CLI.
+      const timer = setTimeout(() => {
+        stderr = `${stderr}\nTimed out after ${MODEL_LIST_TIMEOUT_MS}ms`.trim();
+        child.kill();
+        resolve({ code: 124, stdout, stderr });
+      }, MODEL_LIST_TIMEOUT_MS);
+      timer.unref?.();
+
       child.stdout?.on('data', (chunk) => {
         stdout += chunk.toString();
       });
       child.stderr?.on('data', (chunk) => {
         stderr += chunk.toString();
       });
-      child.on('error', () => {
-        resolve({ code: 1, stdout, stderr });
+      child.on('error', (err) => {
+        clearTimeout(timer);
+        resolve({ code: 1, stdout, stderr: stderr || String(err) });
       });
       child.on('close', (code) => {
+        clearTimeout(timer);
         resolve({ code: code ?? 1, stdout, stderr });
       });
     });
