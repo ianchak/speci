@@ -31,7 +31,7 @@ import type { CommandContext, CommandResult } from '@/interfaces/index.js';
 export interface InitOptions {
   verbose?: boolean; // Show detailed output
   updateAgents?: boolean; // Force update agent files even if they exist
-  preset?: ModelPreset;
+  preset?: string; // Raw user/CLI input, validated via normalizePreset
   custom?: boolean;
   reconfigureModels?: boolean;
   prompt?: (question: string) => Promise<string>;
