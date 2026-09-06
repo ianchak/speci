@@ -31,6 +31,10 @@ export interface InitOptions {
   updateAgents?: boolean; // Force update agent files even if they exist
   reconfigureModels?: boolean; // Update copilot.models in an existing speci.config.json
   prompt?: (question: string) => Promise<string>;
+  openSpecInitRunner?: (cwd: string) => {
+    status: number | null;
+    error?: Error;
+  };
 }
 
 const OPENSPEC_CONFIG_PATH = join('openspec', 'config.yaml');
@@ -70,23 +74,17 @@ function ensureSpeciOpenSpecPrompt(context: CommandContext): void {
   context.logger.success(`Updated ${configPath} with Speci Copilot guidance`);
 }
 
-function initializeOpenSpec(context: CommandContext): void {
+function initializeOpenSpec(
+  context: CommandContext,
+  runInit: (cwd: string) => { status: number | null; error?: Error }
+): void {
   if (context.fs.existsSync(OPENSPEC_CONFIG_PATH)) {
     ensureSpeciOpenSpecPrompt(context);
     return;
   }
 
   context.logger.info('Initializing OpenSpec for this repository...');
-  const result = spawnSync(
-    'openspec',
-    ['init', '.', '--tools', 'github-copilot', '--copilot-cloud', '--no-animation'],
-    {
-      cwd: context.process.cwd(),
-      encoding: 'utf8',
-      stdio: 'pipe',
-      timeout: 30_000,
-    }
-  );
+  const result = runInit(context.process.cwd());
 
   if (result.error) {
     context.logger.warn(
@@ -99,6 +97,19 @@ function initializeOpenSpec(context: CommandContext): void {
   }
 
   ensureSpeciOpenSpecPrompt(context);
+}
+
+export function runOpenSpecInit(cwd: string) {
+  return spawnSync(
+    'openspec',
+    ['init', '.', '--tools', 'github-copilot', '--copilot-cloud', '--no-animation'],
+    {
+      cwd,
+      encoding: 'utf8',
+      stdio: 'pipe',
+      timeout: 30_000,
+    }
+  );
 }
 
 /**
@@ -455,7 +466,7 @@ export async function init(
     await copyAgentFiles(existing, options.updateAgents, context);
 
     // Initialize OpenSpec and ensure Speci guidance is present
-    initializeOpenSpec(context);
+    initializeOpenSpec(context, options.openSpecInitRunner ?? runOpenSpecInit);
 
     // Display success and next steps
     displaySuccess(context);

@@ -12,7 +12,6 @@ import { createProductionContext } from '../../lib/adapters/context-factory.js';
 import { init as initCommand } from '../../lib/commands/init.js';
 import { getDefaults } from '../../lib/config/index.js';
 import * as copilotModule from '@/copilot.js';
-import * as childProcess from 'node:child_process';
 
 const init = (
   options: Parameters<typeof initCommand>[0] = {},
@@ -51,26 +50,11 @@ describe('init command', () => {
 
   describe('default behavior', () => {
     it('should initialize OpenSpec config with Speci Copilot guidance', async () => {
-      const spawnSpy = vi
-        .spyOn(childProcess, 'spawnSync')
-        .mockReturnValue({ status: 0 } as never);
+      const openSpecInitRunner = vi.fn(() => ({ status: 0 }));
 
-      await init();
+      await init({ openSpecInitRunner });
 
-      expect(spawnSpy).toHaveBeenCalledWith(
-        'openspec',
-        [
-          'init',
-          '.',
-          '--tools',
-          'github-copilot',
-          '--copilot-cloud',
-          '--no-animation',
-        ],
-        expect.objectContaining({
-          cwd: testDir,
-        })
-      );
+      expect(openSpecInitRunner).toHaveBeenCalledWith(testDir);
       expect(existsSync('openspec/config.yaml')).toBe(true);
       const openSpecConfig = readFileSync('openspec/config.yaml', 'utf8');
       expect(openSpecConfig).toContain('speciCopilotPrompt:');
@@ -80,11 +64,11 @@ describe('init command', () => {
     it('should append Speci Copilot guidance to existing OpenSpec config', async () => {
       mkdirSync('openspec', { recursive: true });
       writeFileSync('openspec/config.yaml', 'schema: spec-driven\n');
-      const spawnSpy = vi.spyOn(childProcess, 'spawnSync');
+      const openSpecInitRunner = vi.fn(() => ({ status: 0 }));
 
-      await init();
+      await init({ openSpecInitRunner });
 
-      expect(spawnSpy).not.toHaveBeenCalled();
+      expect(openSpecInitRunner).not.toHaveBeenCalled();
       const openSpecConfig = readFileSync('openspec/config.yaml', 'utf8');
       expect(openSpecConfig).toContain('schema: spec-driven');
       expect(openSpecConfig).toContain('speciCopilotPrompt:');
