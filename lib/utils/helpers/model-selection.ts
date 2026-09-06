@@ -162,7 +162,9 @@ export async function selectModelsForInit(options: {
 
   if (!liveModels || liveModels.length === 0) {
     logger.warn(
-      'Could not fetch live Copilot models. Continuing with default model settings.'
+      currentConfig
+        ? 'Could not fetch live Copilot models. Continuing with existing model configuration.'
+        : 'Could not fetch live Copilot models. Continuing with default model settings.'
     );
     return fallbackModels;
   }

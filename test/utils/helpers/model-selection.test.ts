@@ -126,6 +126,23 @@ describe('model-selection helper', () => {
     );
   });
 
+  it('retains existing model configuration when live discovery is unavailable during reconfigure', async () => {
+    const logger = createMockLogger();
+
+    const selected = await selectModelsForInit({
+      logger,
+      proc: createMockProcess(false),
+      liveModels: null,
+      currentConfig: fallbackModels,
+      fallbackModels,
+    });
+
+    expect(selected).toBe(fallbackModels);
+    expect(logger.warn).toHaveBeenCalledWith(
+      'Could not fetch live Copilot models. Continuing with existing model configuration.'
+    );
+  });
+
   it('shows menu and applies chosen preset in interactive mode', async () => {
     const logger = createMockLogger();
     const proc = createMockProcess(true);
