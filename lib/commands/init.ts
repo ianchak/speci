@@ -174,7 +174,7 @@ async function createFiles(
   models: SpeciConfig['copilot']['models'],
   context: CommandContext
 ): Promise<void> {
-  // Create speci.config.json by copying the bundled template verbatim
+  // Create speci.config.json from the bundled template, then apply the selected copilot.models
   if (!existing.configExists) {
     try {
       const templateContent = JSON.parse(
@@ -358,12 +358,17 @@ export async function init(
 
     let selectedModels = config.copilot.models;
     if (!existing.configExists || options.reconfigureModels) {
-      const liveModels = await listCopilotModels(context.process, context.logger);
+      const liveModels = await listCopilotModels(
+        context.process,
+        context.logger
+      );
       const fallbackModels =
         existing.configExists && options.reconfigureModels
-          ? (JSON.parse(
-              context.fs.readFileSync(CONFIG_FILENAME, 'utf8')
-            ) as SpeciConfig).copilot?.models ?? config.copilot.models
+          ? ((
+              JSON.parse(
+                context.fs.readFileSync(CONFIG_FILENAME, 'utf8')
+              ) as SpeciConfig
+            ).copilot?.models ?? config.copilot.models)
           : config.copilot.models;
       selectedModels = await selectModelsForInit({
         preset: normalizePreset(options.preset),
