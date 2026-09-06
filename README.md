@@ -284,7 +284,7 @@ npx speci status
 
 **Status fields:**
 
-- Current loop state (WORK_LEFT, IN_REVIEW, BLOCKED, DONE)
+- Current loop state (WORK_LEFT, IN_REVIEW, BLOCKED, DONE, NO_PROGRESS)
 - Task statistics (total, completed, remaining, in review, blocked)
 - Lock status and current task
 

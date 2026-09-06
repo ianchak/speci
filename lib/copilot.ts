@@ -505,7 +505,7 @@ export async function runAgent(
 
     try {
       // Use the agent name directly (e.g., 'speci-plan')
-      // Copilot CLI looks for agents in .github/copilot/agents/
+      // Copilot CLI looks for agents in .github/agents/
       const agentFileName = getAgentFilename(agentName);
 
       // Ensure logs directory exists for --share output

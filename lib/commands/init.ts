@@ -253,7 +253,7 @@ function copyDirectoryRecursive(
 }
 
 /**
- * Copy agent files to .github/copilot/agents/
+ * Copy agent files to .github/agents/
  * This allows copilot CLI to use --agent flag with agent names
  * Recursively copies entire agents template directory including subagents
  * @param existing - Existing files flags
@@ -324,7 +324,7 @@ function displaySuccess(context: CommandContext): void {
  * @param context - Dependency injection context (defaults to production)
  * @param _config - Optional config override (unused, for API consistency)
  * @returns Promise resolving to command result
- * @sideEffects Creates speci.config.json, docs/ directory, .speci-logs/ directory, and copies agent files to .github/copilot/agents/
+ * @sideEffects Creates speci.config.json, docs/ directory, .speci-logs/ directory, and copies agent files to .github/agents/
  */
 export async function init(
   options: InitOptions = {},
@@ -379,7 +379,7 @@ export async function init(
     // Create files
     await createFiles(existing, options, selectedModels, context);
 
-    // Copy agent files to .github/copilot/agents/
+    // Copy agent files to .github/agents/
     await copyAgentFiles(existing, options.updateAgents, context);
 
     // Display success and next steps
