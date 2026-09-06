@@ -115,7 +115,7 @@ function initializeOpenSpec(
   ensureSpeciOpenSpecPrompt(context);
 }
 
-export function runOpenSpecInit(cwd: string, tools: string) {
+function runOpenSpecInit(cwd: string, tools: string) {
   const args = ['init', '.', '--tools', tools, '--no-animation'];
   if (tools.split(',').map((tool) => tool.trim()).includes('github-copilot')) {
     args.push('--copilot-cloud');
