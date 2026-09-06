@@ -4,6 +4,7 @@ import { existsSync, mkdirSync } from 'node:fs';
 import { EventEmitter } from 'node:events';
 import {
   buildCopilotArgs,
+  buildCopilotEnv,
   listCopilotModels,
   spawnCopilot,
   runAgent,
@@ -338,6 +339,71 @@ describe('copilot', () => {
       const shareIndex = args.indexOf('--share');
       const verboseIndex = args.indexOf('--verbose');
       expect(shareIndex).toBeLessThan(verboseIndex);
+    });
+
+    it('should use localModel.model instead of per-command model when configured', () => {
+      const localConfig = structuredClone(config);
+      localConfig.copilot.models.plan = 'custom-plan-model';
+      localConfig.copilot.localModel = {
+        baseUrl: 'http://127.0.0.1:8080/v1',
+        model: 'local-test-model',
+      };
+      const options: CopilotArgsOptions = {
+        agent: 'test-agent',
+        command: 'plan',
+      };
+
+      const args = buildCopilotArgs(localConfig, options);
+
+      expect(args).toContain('--model');
+      expect(args).toContain('local-test-model');
+      expect(args).not.toContain('custom-plan-model');
+    });
+  });
+
+  describe('buildCopilotEnv', () => {
+    it('should return the base environment unchanged when localModel is not configured', () => {
+      const proc = createMockProcess();
+      proc.env.FOO = 'bar';
+
+      const env = buildCopilotEnv(config, proc);
+
+      expect(env).toBe(proc.env);
+      expect(env.COPILOT_PROVIDER_BASE_URL).toBeUndefined();
+    });
+
+    it('should inject local model env vars when localModel is configured', () => {
+      const localConfig = structuredClone(config);
+      localConfig.copilot.localModel = {
+        baseUrl: 'http://127.0.0.1:8080/v1',
+        model: 'local-test-model',
+        providerType: 'openai',
+        apiKey: 'test-key',
+      };
+      const proc = createMockProcess();
+      proc.env.FOO = 'bar';
+
+      const env = buildCopilotEnv(localConfig, proc);
+
+      expect(env.COPILOT_PROVIDER_BASE_URL).toBe('http://127.0.0.1:8080/v1');
+      expect(env.COPILOT_MODEL).toBe('local-test-model');
+      expect(env.COPILOT_PROVIDER_TYPE).toBe('openai');
+      expect(env.COPILOT_PROVIDER_API_KEY).toBe('test-key');
+      expect(env.FOO).toBe('bar');
+    });
+
+    it('should omit optional env vars when providerType/apiKey are not set', () => {
+      const localConfig = structuredClone(config);
+      localConfig.copilot.localModel = {
+        baseUrl: 'http://127.0.0.1:8080/v1',
+        model: 'local-test-model',
+      };
+      const proc = createMockProcess();
+
+      const env = buildCopilotEnv(localConfig, proc);
+
+      expect(env.COPILOT_PROVIDER_TYPE).toBeUndefined();
+      expect(env.COPILOT_PROVIDER_API_KEY).toBeUndefined();
     });
   });
 

@@ -39,7 +39,7 @@ export interface ICopilotRunner {
    */
   spawn(
     args: string[],
-    options?: { inherit?: boolean; cwd?: string },
+    options?: { inherit?: boolean; cwd?: string; config?: SpeciConfig },
     proc?: IProcess
   ): Promise<number>;
 

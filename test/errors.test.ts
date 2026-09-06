@@ -36,6 +36,7 @@ describe('Error Catalog', () => {
         'ERR-INP-09',
         'ERR-INP-10',
         'ERR-INP-11',
+        'ERR-INP-12',
         'ERR-STA-01',
         'ERR-STA-02',
         'ERR-STA-03',
@@ -55,7 +56,7 @@ describe('Error Catalog', () => {
         'ERR-UI-01',
       ];
 
-      expect(Object.keys(ERROR_CODES)).toHaveLength(34);
+      expect(Object.keys(ERROR_CODES)).toHaveLength(35);
       for (const code of expectedCodes) {
         expect(ERROR_CODES).toHaveProperty(code);
       }
@@ -146,9 +147,9 @@ describe('Error Catalog', () => {
       expect(def.message).toBe('Copilot execution failed');
     });
 
-    it('should return definition for each of the 34 error codes', () => {
+    it('should return definition for each of the 35 error codes', () => {
       const allCodes = Object.keys(ERROR_CODES) as ErrorCode[];
-      expect(allCodes.length).toBe(34);
+      expect(allCodes.length).toBe(35);
       for (const code of allCodes) {
         const def = getErrorDefinition(code);
         expect(def, `${code} should have a definition`).toBeDefined();
@@ -458,6 +459,12 @@ describe('Error Catalog', () => {
       const def = getErrorDefinition('ERR-INP-11');
       expect(def).toBeDefined();
       expect(def.message).toContain('subagent');
+    });
+
+    it('should have ERR-INP-12 for invalid copilot.localModel config', () => {
+      const def = getErrorDefinition('ERR-INP-12');
+      expect(def).toBeDefined();
+      expect(def.message).toContain('localModel');
     });
 
     it('should have ERR-PRE-06 for PROGRESS.md missing in run command', () => {

@@ -485,6 +485,43 @@ describe('CommandRegistry', () => {
       vi.doUnmock('@/config/index.js');
       vi.doUnmock('@/utils/helpers/model-selection.js');
     });
+
+    it('skips live model validation when copilot.localModel is configured', async () => {
+      vi.resetModules();
+      const runMock = vi.fn().mockResolvedValue({ success: true, exitCode: 0 });
+      vi.doMock('@/commands/run.js', () => ({ run: runMock }));
+
+      const localModelConfig: SpeciConfig = {
+        ...mockConfig,
+        copilot: {
+          ...mockConfig.copilot,
+          localModel: {
+            baseUrl: 'http://127.0.0.1:8080/v1',
+            model: 'local-test-model',
+          },
+        },
+      };
+      vi.mocked(mockContext.configLoader.load).mockResolvedValue(
+        localModelConfig
+      );
+      const { CommandRegistry } =
+        await import('../../lib/cli/command-registry.js');
+      const registry = new CommandRegistry(mockContext);
+
+      await registry.execute(['run']);
+
+      expect(mockContext.copilotRunner.listModels).not.toHaveBeenCalled();
+      expect(runMock).toHaveBeenCalledWith(
+        expect.any(Object),
+        mockContext,
+        expect.objectContaining({
+          copilot: expect.objectContaining({
+            localModel: localModelConfig.copilot.localModel,
+          }),
+        })
+      );
+      vi.doUnmock('@/commands/run.js');
+    });
   });
 
   describe('unknown command handler', () => {

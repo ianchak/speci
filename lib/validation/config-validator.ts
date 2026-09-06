@@ -102,6 +102,51 @@ export class ConfigValidator {
   }
 
   /**
+   * Validate copilot local model (BYOK) settings
+   */
+  validateLocalModel(): this {
+    const localModel = this.config.copilot?.localModel;
+    if (!localModel) {
+      return this;
+    }
+
+    if (!localModel.baseUrl || !/^https?:\/\//.test(localModel.baseUrl)) {
+      this.errors.push({
+        field: 'copilot.localModel.baseUrl',
+        message: `Invalid copilot.localModel.baseUrl: ${localModel.baseUrl}`,
+        suggestions: [
+          'Provide a full URL including http:// or https://',
+          'Example: http://127.0.0.1:8080/v1',
+        ],
+      });
+    }
+
+    if (!localModel.model || localModel.model.trim() === '') {
+      this.errors.push({
+        field: 'copilot.localModel.model',
+        message: 'copilot.localModel.model must not be empty',
+        suggestions: [
+          'Set copilot.localModel.model to the model ID your local server serves',
+        ],
+      });
+    }
+
+    const validProviderTypes = ['openai', 'azure', 'anthropic'];
+    if (
+      localModel.providerType &&
+      !validProviderTypes.includes(localModel.providerType)
+    ) {
+      this.errors.push({
+        field: 'copilot.localModel.providerType',
+        message: `Invalid copilot.localModel.providerType: ${localModel.providerType}`,
+        suggestions: [`Valid options: ${validProviderTypes.join(', ')}`],
+      });
+    }
+
+    return this;
+  }
+
+  /**
    * Validate gate settings
    */
   validateGate(): this {
@@ -143,6 +188,7 @@ export class ConfigValidator {
     this.validateVersion()
       .validatePaths()
       .validateCopilot()
+      .validateLocalModel()
       .validateGate()
       .validateLoop();
 

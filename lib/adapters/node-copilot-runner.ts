@@ -29,7 +29,7 @@ export class NodeCopilotRunner implements ICopilotRunner {
 
   async spawn(
     args: string[],
-    options?: { inherit?: boolean; cwd?: string },
+    options?: { inherit?: boolean; cwd?: string; config?: SpeciConfig },
     proc?: IProcess
   ): Promise<number> {
     return spawnCopilot(args, options, proc);

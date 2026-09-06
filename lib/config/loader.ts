@@ -264,6 +264,10 @@ export function validateConfig(
       throw createError('ERR-INP-08');
     }
 
+    if (error.field?.startsWith('copilot.localModel')) {
+      throw createError('ERR-INP-12', JSON.stringify({ ...error }));
+    }
+
     if (error.field === 'gate.maxFixAttempts') {
       throw createError('ERR-INP-09');
     }

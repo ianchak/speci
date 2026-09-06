@@ -222,7 +222,7 @@ export async function task(
     });
 
     // Execute initial generation
-    const initialResult = await executeCopilotCommand(context, args);
+    const initialResult = await executeCopilotCommand(context, args, config);
     if (!initialResult.success) {
       return initialResult;
     }
@@ -249,7 +249,11 @@ export async function task(
         command: 'task',
       });
 
-      const resumeResult = await executeCopilotCommand(context, resumeArgs);
+      const resumeResult = await executeCopilotCommand(
+        context,
+        resumeArgs,
+        config
+      );
       if (!resumeResult.success) {
         return resumeResult;
       }

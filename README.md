@@ -451,6 +451,32 @@ Created by `speci init`. Speci discovers this file by walking up from the curren
 
 Speci validates configured `copilot.models` against the live Copilot CLI model list at startup. If deprecated models are found, it warns and offers interactive remediation (replace per role, apply Balanced preset, or skip).
 
+#### Using a local model (BYOK)
+
+To run Speci against a local/self-hosted model (Ollama, llama.cpp, vLLM, etc.) instead of GitHub-hosted models, add a `copilot.localModel` block:
+
+```json
+{
+  "copilot": {
+    "localModel": {
+      "baseUrl": "http://127.0.0.1:8080/v1",
+      "model": "qwen3.6-35b-a3b-q5",
+      "providerType": "openai",
+      "apiKey": ""
+    }
+  }
+}
+```
+
+When `copilot.localModel` is set, Speci injects `COPILOT_PROVIDER_BASE_URL`, `COPILOT_MODEL`, `COPILOT_PROVIDER_TYPE`, and `COPILOT_PROVIDER_API_KEY` into the Copilot CLI process for every invocation, overriding the per-role `copilot.models` entries, and skips live cloud model validation. Omit `copilot.localModel` (the default) to keep using GitHub-hosted models.
+
+| Field          | Required | Description                                                                |
+| -------------- | -------- | -------------------------------------------------------------------------- |
+| `baseUrl`      | Yes      | Base URL of the OpenAI-compatible (or Azure/Anthropic) endpoint            |
+| `model`        | Yes      | Model ID as served by the local endpoint                                   |
+| `providerType` | No       | `openai` (default), `azure`, or `anthropic`                                |
+| `apiKey`       | No       | API key forwarded to the provider (omit for unauthenticated local servers) |
+
 ### Configuration Reference
 
 **paths** - File and directory locations used by speci.
@@ -468,6 +494,7 @@ Speci validates configured `copilot.models` against the live Copilot CLI model l
 | ------------- | ----------- | --------------------------------------------------------- |
 | `permissions` | `allow-all` | Permission mode: `allow-all`, `yolo`, `strict`, or `none` |
 | `models`      | (see above) | Model to use for each agent type                          |
+| `localModel`  | _(unset)_   | Local/self-hosted BYOK model override (see above)         |
 | `extraFlags`  | `[]`        | Additional flags passed to the Copilot CLI                |
 
 **gate** - Quality gate configuration. Gate commands run after each implementation step.
@@ -524,19 +551,20 @@ Speci uses structured error codes for diagnostics. Use `--verbose` to see full e
 
 ### Input Errors (ERR-INP-\*)
 
-| Code       | Message                          | Solution                                                       |
-| ---------- | -------------------------------- | -------------------------------------------------------------- |
-| ERR-INP-01 | Required argument missing        | Check command usage with `--help`                              |
-| ERR-INP-02 | Agent file not found             | Verify the path, or set to `null` in config for bundled agents |
-| ERR-INP-03 | Config file is malformed         | Fix JSON syntax in `speci.config.json`                         |
-| ERR-INP-04 | Config validation failed         | Check config values against the reference above                |
-| ERR-INP-05 | Plan file not found              | Provide a valid path with `--plan`                             |
-| ERR-INP-06 | Config version is not compatible | Update to version 1.x or re-run `npx speci init`               |
-| ERR-INP-07 | Path escapes project directory   | Use paths within the project root, avoid `../` traversal       |
-| ERR-INP-08 | Invalid permissions value        | Use `allow-all`, `yolo`, `strict`, or `none`                   |
-| ERR-INP-09 | Invalid maxFixAttempts value     | Must be a non-negative integer (0 disables fix attempts)       |
-| ERR-INP-10 | Invalid maxIterations value      | Must be a positive integer                                     |
-| ERR-INP-11 | Subagent prompt not found        | Reinstall speci or provide a custom agent path                 |
+| Code       | Message                             | Solution                                                       |
+| ---------- | ----------------------------------- | -------------------------------------------------------------- |
+| ERR-INP-01 | Required argument missing           | Check command usage with `--help`                              |
+| ERR-INP-02 | Agent file not found                | Verify the path, or set to `null` in config for bundled agents |
+| ERR-INP-03 | Config file is malformed            | Fix JSON syntax in `speci.config.json`                         |
+| ERR-INP-04 | Config validation failed            | Check config values against the reference above                |
+| ERR-INP-05 | Plan file not found                 | Provide a valid path with `--plan`                             |
+| ERR-INP-06 | Config version is not compatible    | Update to version 1.x or re-run `npx speci init`               |
+| ERR-INP-07 | Path escapes project directory      | Use paths within the project root, avoid `../` traversal       |
+| ERR-INP-08 | Invalid permissions value           | Use `allow-all`, `yolo`, `strict`, or `none`                   |
+| ERR-INP-09 | Invalid maxFixAttempts value        | Must be a non-negative integer (0 disables fix attempts)       |
+| ERR-INP-10 | Invalid maxIterations value         | Must be a positive integer                                     |
+| ERR-INP-11 | Subagent prompt not found           | Reinstall speci or provide a custom agent path                 |
+| ERR-INP-12 | Invalid `copilot.localModel` config | Set a valid `baseUrl`/`model`, or remove `copilot.localModel`  |
 
 ### State Errors (ERR-STA-\*)
 
