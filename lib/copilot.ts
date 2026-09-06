@@ -93,7 +93,12 @@ function parseModelList(output: string): string[] {
           .flatMap((line) => line.match(MODEL_ID_PATTERN) ?? []);
 
   const values = jsonValues.length > 0 ? jsonValues : lineValues;
-  return [...new Set(values.map((value) => value.trim()).filter(Boolean))];
+  const normalized = values.map((value) => value.trim()).filter(Boolean);
+  const modelIds = normalized.filter((value) => {
+    const matches = value.match(MODEL_ID_PATTERN) ?? [];
+    return matches.length === 1 && matches[0] === value;
+  });
+  return [...new Set(modelIds)];
 }
 
 /**

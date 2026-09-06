@@ -4,8 +4,10 @@ import { existsSync, mkdirSync } from 'node:fs';
 import { EventEmitter } from 'node:events';
 import {
   buildCopilotArgs,
+  listCopilotModels,
   spawnCopilot,
   runAgent,
+  resetCopilotModelsCache,
   type CopilotArgsOptions,
   type AgentRunResult,
 } from '../lib/copilot.js';
@@ -62,7 +64,43 @@ describe('copilot', () => {
 
   beforeEach(() => {
     config = getDefaults();
+    resetCopilotModelsCache();
     vi.clearAllMocks();
+  });
+
+  describe('listCopilotModels', () => {
+    it('filters JSON strings to exact model IDs', async () => {
+      vi.mocked(spawn).mockImplementation(() => {
+        const proc = new EventEmitter() as ChildProcess;
+        proc.stdout = new EventEmitter() as never;
+        proc.stderr = new EventEmitter() as never;
+
+        setTimeout(() => {
+          proc.stdout?.emit(
+            'data',
+            JSON.stringify([
+              {
+                id: 'gpt-5.3-codex',
+                name: 'GPT 5.3 Codex',
+                description: 'Fast coding model',
+              },
+              {
+                model: 'claude-opus-4.8',
+                label: 'Claude Opus 4.8',
+              },
+            ])
+          );
+          proc.emit('close', 0);
+        }, 10);
+
+        return proc;
+      });
+
+      await expect(listCopilotModels()).resolves.toEqual([
+        'gpt-5.3-codex',
+        'claude-opus-4.8',
+      ]);
+    });
   });
 
   describe('buildCopilotArgs', () => {
