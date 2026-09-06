@@ -81,6 +81,35 @@ describe('model-selection helper', () => {
     expect(selected.tidy).toBe('gpt-5.4-mini');
   });
 
+  it('retains fallback models when live discovery is unavailable', async () => {
+    const logger = createMockLogger();
+
+    const selected = await selectModelsForInit({
+      logger,
+      proc: createMockProcess(false),
+      liveModels: null,
+      fallbackModels,
+    });
+
+    expect(selected).toBe(fallbackModels);
+    expect(logger.warn).toHaveBeenCalledWith(
+      'Could not fetch live Copilot models. Continuing with default model settings.'
+    );
+  });
+
+  it('uses an explicit preset in non-interactive mode', async () => {
+    const selected = await selectModelsForInit({
+      preset: 'budget',
+      logger: createMockLogger(),
+      proc: createMockProcess(false),
+      liveModels: ['gpt-5.4-mini', 'gpt-5.3-codex'],
+      fallbackModels,
+    });
+
+    expect(selected.plan).toBe('gpt-5.4-mini');
+    expect(selected.impl).toBe('gpt-5.4-mini');
+  });
+
   it('shows menu on first init even when --preset flag is given and terminal is interactive', async () => {
     const logger = createMockLogger();
     const proc = createMockProcess(true);
@@ -135,6 +164,36 @@ describe('model-selection helper', () => {
     // Menu must NOT have been shown when isFirstInit is false and preset is given
     expect(prompt).not.toHaveBeenCalled();
     expect(selected.tidy).toBe('gpt-5.4-mini');
+  });
+
+  it('supports selecting models role-by-role and retains fallbacks for invalid answers', async () => {
+    const logger = createMockLogger();
+    const prompt = vi
+      .fn()
+      .mockResolvedValueOnce('1')
+      .mockResolvedValueOnce('invalid')
+      .mockResolvedValueOnce('gpt-5.3-codex')
+      .mockResolvedValueOnce('')
+      .mockResolvedValueOnce('2')
+      .mockResolvedValueOnce('1')
+      .mockResolvedValueOnce('2');
+
+    const selected = await selectModelsForInit({
+      custom: true,
+      logger,
+      proc: createMockProcess(true),
+      liveModels: ['claude-opus-4.8', 'gpt-5.3-codex'],
+      fallbackModels,
+      prompt,
+    });
+
+    expect(selected.plan).toBe('claude-opus-4.8');
+    expect(selected.task).toBe(fallbackModels.task);
+    expect(selected.refactor).toBe('gpt-5.3-codex');
+    expect(selected.impl).toBe(fallbackModels.impl);
+    expect(logger.warn).toHaveBeenCalledWith(
+      'Invalid selection "invalid". Keeping "claude-sonnet-4.6".'
+    );
   });
 
   it('remediates invalid configured models with balanced preset', async () => {
@@ -197,5 +256,72 @@ describe('model-selection helper', () => {
 
     expect(updated?.plan).toBe('claude-opus-4.8');
     expect(configContent).toContain('"plan": "claude-opus-4.8"');
+  });
+
+  it('skips remediation when no models can be discovered', async () => {
+    const logger = createMockLogger();
+    const result = await remediateInvalidModels({
+      configPath: '/tmp/speci.config.json',
+      config: {
+        version: '1.0.0',
+        paths: {
+          progress: 'progress',
+          tasks: 'tasks',
+          logs: 'logs',
+          lock: 'lock',
+        },
+        copilot: {
+          permissions: 'allow-all',
+          models: fallbackModels,
+          extraFlags: [],
+        },
+        gate: { commands: [], maxFixAttempts: 1 },
+        loop: { maxIterations: 1 },
+      },
+      fs: {} as IFileSystem,
+      proc: createMockProcess(true),
+      logger,
+      liveModels: [],
+    });
+
+    expect(result).toBeNull();
+    expect(logger.warn).toHaveBeenCalledWith(
+      'Could not validate configured Copilot models against live availability.'
+    );
+  });
+
+  it('allows interactive remediation to be skipped', async () => {
+    const logger = createMockLogger();
+    const config = {
+      version: '1.0.0',
+      paths: {
+        progress: 'progress',
+        tasks: 'tasks',
+        logs: 'logs',
+        lock: 'lock',
+      },
+      copilot: {
+        permissions: 'allow-all' as const,
+        models: { ...fallbackModels, plan: 'deprecated-model' },
+        extraFlags: [],
+      },
+      gate: { commands: [], maxFixAttempts: 1 },
+      loop: { maxIterations: 1 },
+    };
+
+    const result = await remediateInvalidModels({
+      configPath: '/tmp/speci.config.json',
+      config,
+      fs: {} as IFileSystem,
+      proc: createMockProcess(true),
+      logger,
+      liveModels: ['claude-opus-4.8'],
+      prompt: vi.fn().mockResolvedValue('3'),
+    });
+
+    expect(result).toBeNull();
+    expect(logger.warn).toHaveBeenCalledWith(
+      'Continuing with invalid model configuration.'
+    );
   });
 });

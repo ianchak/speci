@@ -1,5 +1,11 @@
 import { beforeEach, afterEach, describe, expect, it, vi } from 'vitest';
-import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import {
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { createProductionContext } from '@/adapters/context-factory.js';
@@ -12,7 +18,10 @@ describe('init model selection', () => {
 
   beforeEach(() => {
     originalCwd = process.cwd();
-    testDir = join(tmpdir(), `speci-init-models-${Date.now()}-${Math.random()}`);
+    testDir = join(
+      tmpdir(),
+      `speci-init-models-${Date.now()}-${Math.random()}`
+    );
     mkdirSync(testDir, { recursive: true });
     process.chdir(testDir);
     vi.spyOn(copilotModule, 'listCopilotModels').mockResolvedValue([
@@ -36,6 +45,13 @@ describe('init model selection', () => {
     const config = JSON.parse(readFileSync('speci.config.json', 'utf8'));
 
     expect(config.copilot.models.tidy).toBe('gpt-5.4-mini');
+  });
+
+  it('falls back to the balanced preset for an invalid preset value', async () => {
+    await init({ preset: 'not-a-preset' }, createProductionContext());
+    const config = JSON.parse(readFileSync('speci.config.json', 'utf8'));
+
+    expect(config.copilot.models.impl).toBe('gpt-5.3-codex');
   });
 
   it('reconfigures models on existing config file', async () => {

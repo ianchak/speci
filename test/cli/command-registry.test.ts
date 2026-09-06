@@ -434,6 +434,53 @@ describe('CommandRegistry', () => {
       );
       vi.doUnmock('@/commands/run.js');
     });
+
+    it('passes remediated models to a config-consuming command', async () => {
+      vi.resetModules();
+      const runMock = vi.fn().mockResolvedValue({ success: true, exitCode: 0 });
+      const remediatedModels = {
+        ...mockConfig.copilot.models,
+        plan: 'live-model',
+      };
+      vi.doMock('@/commands/run.js', () => ({ run: runMock }));
+      vi.doMock('@/config/index.js', async () => {
+        const actual =
+          await vi.importActual<typeof import('@/config/index.js')>(
+            '@/config/index.js'
+          );
+        return {
+          ...actual,
+          findConfigFile: vi.fn(() => '/test/speci.config.json'),
+        };
+      });
+      vi.doMock('@/utils/helpers/model-selection.js', () => ({
+        remediateInvalidModels: vi.fn().mockResolvedValue(remediatedModels),
+      }));
+
+      vi.mocked(mockContext.configLoader.load).mockResolvedValue(mockConfig);
+      vi.mocked(mockContext.copilotRunner.listModels).mockResolvedValue([
+        'live-model',
+      ]);
+      const { CommandRegistry } =
+        await import('../../lib/cli/command-registry.js');
+      const registry = new CommandRegistry(mockContext);
+
+      await registry.execute(['run']);
+
+      expect(mockContext.copilotRunner.listModels).toHaveBeenCalledWith(
+        mockContext.process
+      );
+      expect(runMock).toHaveBeenCalledWith(
+        expect.any(Object),
+        mockContext,
+        expect.objectContaining({
+          copilot: expect.objectContaining({ models: remediatedModels }),
+        })
+      );
+      vi.doUnmock('@/commands/run.js');
+      vi.doUnmock('@/config/index.js');
+      vi.doUnmock('@/utils/helpers/model-selection.js');
+    });
   });
 
   describe('unknown command handler', () => {

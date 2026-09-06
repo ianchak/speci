@@ -101,6 +101,51 @@ describe('copilot', () => {
         'claude-opus-4.8',
       ]);
     });
+
+    it('logs failed discovery attempts and returns null when all commands fail', async () => {
+      vi.mocked(spawn).mockImplementation(() => {
+        const proc = new EventEmitter() as ChildProcess;
+        proc.stdout = new EventEmitter() as never;
+        proc.stderr = new EventEmitter() as never;
+        queueMicrotask(() => {
+          proc.stderr?.emit('data', 'unsupported command');
+          proc.emit('close', 1);
+        });
+        return proc;
+      });
+
+      await expect(listCopilotModels()).resolves.toBeNull();
+      expect(spawn).toHaveBeenCalledTimes(4);
+      expect(log.debug).toHaveBeenCalledWith(
+        expect.stringContaining('unsupported command')
+      );
+    });
+
+    it('continues to the next discovery command after a process error', async () => {
+      vi.mocked(spawn)
+        .mockImplementationOnce(() => {
+          const proc = new EventEmitter() as ChildProcess;
+          proc.stdout = new EventEmitter() as never;
+          proc.stderr = new EventEmitter() as never;
+          queueMicrotask(() => proc.emit('error', new Error('not found')));
+          return proc;
+        })
+        .mockImplementationOnce(() => {
+          const proc = new EventEmitter() as ChildProcess;
+          proc.stdout = new EventEmitter() as never;
+          proc.stderr = new EventEmitter() as never;
+          queueMicrotask(() => {
+            proc.stdout?.emit('data', '["gpt-5.3-codex"]');
+            proc.emit('close', 0);
+          });
+          return proc;
+        });
+
+      await expect(listCopilotModels()).resolves.toEqual(['gpt-5.3-codex']);
+      expect(log.debug).toHaveBeenCalledWith(
+        expect.stringContaining('not found')
+      );
+    });
   });
 
   describe('buildCopilotArgs', () => {
