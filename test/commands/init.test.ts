@@ -54,7 +54,10 @@ describe('init command', () => {
 
       await init({ openSpecInitRunner });
 
-      expect(openSpecInitRunner).toHaveBeenCalledWith(testDir);
+      expect(openSpecInitRunner).toHaveBeenCalledWith(
+        testDir,
+        'github-copilot'
+      );
       expect(existsSync('openspec/config.yaml')).toBe(true);
       const openSpecConfig = readFileSync('openspec/config.yaml', 'utf8');
       expect(openSpecConfig).toContain('speciCopilotPrompt:');
@@ -72,6 +75,14 @@ describe('init command', () => {
       const openSpecConfig = readFileSync('openspec/config.yaml', 'utf8');
       expect(openSpecConfig).toContain('schema: spec-driven');
       expect(openSpecConfig).toContain('speciCopilotPrompt:');
+    });
+
+    it('should pass configured OpenSpec tool selection to init runner', async () => {
+      const openSpecInitRunner = vi.fn(() => ({ status: 0 }));
+
+      await init({ openSpecInitRunner, openSpecTools: 'agents' });
+
+      expect(openSpecInitRunner).toHaveBeenCalledWith(testDir, 'agents');
     });
 
     it('should create speci.config.json with default values', async () => {

@@ -31,6 +31,7 @@ export interface InitOptions {
   updateAgents?: boolean; // Force update agent files even if they exist
   reconfigureModels?: boolean; // Update copilot.models in an existing speci.config.json
   prompt?: (question: string) => Promise<string>;
+  openSpecTools?: string;
   openSpecInitRunner?: (cwd: string) => {
     status: number | null;
     error?: Error;
@@ -70,13 +71,17 @@ function ensureSpeciOpenSpecPrompt(context: CommandContext): void {
   }
 
   const normalized = content.endsWith('\n') ? content : `${content}\n`;
-  context.fs.writeFileSync(configPath, `${normalized}\n${yamlBlock}`, 'utf8');
+  context.fs.writeFileSync(configPath, `${normalized}${yamlBlock}`, 'utf8');
   context.logger.success(`Updated ${configPath} with Speci Copilot guidance`);
 }
 
 function initializeOpenSpec(
   context: CommandContext,
-  runInit: (cwd: string) => { status: number | null; error?: Error }
+  runInit: (
+    cwd: string,
+    tools: string
+  ) => { status: number | null; error?: Error },
+  tools: string
 ): void {
   if (context.fs.existsSync(OPENSPEC_CONFIG_PATH)) {
     ensureSpeciOpenSpecPrompt(context);
@@ -84,7 +89,7 @@ function initializeOpenSpec(
   }
 
   context.logger.info('Initializing OpenSpec for this repository...');
-  const result = runInit(context.process.cwd());
+  const result = runInit(context.process.cwd(), tools);
 
   if (result.error) {
     context.logger.warn(
@@ -99,10 +104,10 @@ function initializeOpenSpec(
   ensureSpeciOpenSpecPrompt(context);
 }
 
-export function runOpenSpecInit(cwd: string) {
+export function runOpenSpecInit(cwd: string, tools: string) {
   return spawnSync(
     'openspec',
-    ['init', '.', '--tools', 'github-copilot', '--copilot-cloud', '--no-animation'],
+    ['init', '.', '--tools', tools, '--copilot-cloud', '--no-animation'],
     {
       cwd,
       encoding: 'utf8',
@@ -466,7 +471,11 @@ export async function init(
     await copyAgentFiles(existing, options.updateAgents, context);
 
     // Initialize OpenSpec and ensure Speci guidance is present
-    initializeOpenSpec(context, options.openSpecInitRunner ?? runOpenSpecInit);
+    initializeOpenSpec(
+      context,
+      options.openSpecInitRunner ?? runOpenSpecInit,
+      options.openSpecTools ?? 'github-copilot'
+    );
 
     // Display success and next steps
     displaySuccess(context);
