@@ -116,9 +116,14 @@ function initializeOpenSpec(
 }
 
 export function runOpenSpecInit(cwd: string, tools: string) {
+  const args = ['init', '.', '--tools', tools, '--no-animation'];
+  if (tools.split(',').map((tool) => tool.trim()).includes('github-copilot')) {
+    args.push('--copilot-cloud');
+  }
+
   return spawnSync(
     'openspec',
-    ['init', '.', '--tools', tools, '--copilot-cloud', '--no-animation'],
+    args,
     {
       cwd,
       encoding: 'utf8',
