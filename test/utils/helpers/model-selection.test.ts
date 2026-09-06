@@ -65,6 +65,17 @@ describe('model-selection helper', () => {
     expect(resolved.tidy).toBe('gpt-5.4-mini');
   });
 
+  it('uses the configured fallback when no live model matches a role', () => {
+    const customFallback = { ...fallbackModels, plan: 'configured-model' };
+    const resolved = applyPresetModels(
+      'balanced',
+      ['configured-model'],
+      customFallback
+    );
+
+    expect(resolved.plan).toBe('configured-model');
+  });
+
   it('uses balanced preset automatically in non-interactive init', async () => {
     const logger = createMockLogger();
     const proc = createMockProcess(false);
@@ -307,5 +318,90 @@ describe('model-selection helper', () => {
     expect(logger.warn).toHaveBeenCalledWith(
       'Continuing with invalid model configuration.'
     );
+  });
+
+  it('skips remediation in a non-interactive terminal', async () => {
+    const logger = createMockLogger();
+    const result = await remediateInvalidModels({
+      configPath: '/tmp/speci.config.json',
+      config: {
+        version: '1.0.0',
+        paths: {
+          progress: 'progress',
+          tasks: 'tasks',
+          logs: 'logs',
+          lock: 'lock',
+        },
+        copilot: {
+          permissions: 'allow-all',
+          models: { ...fallbackModels, plan: 'deprecated-model' },
+          extraFlags: [],
+        },
+        gate: { commands: [], maxFixAttempts: 1 },
+        loop: { maxIterations: 1 },
+      },
+      fs: {} as IFileSystem,
+      proc: createMockProcess(false),
+      logger,
+      liveModels: ['claude-opus-4.8'],
+    });
+
+    expect(result).toBeNull();
+    expect(logger.warn).toHaveBeenCalledWith(
+      'Non-interactive terminal detected; skipping remediation.'
+    );
+  });
+
+  it('remediates invalid roles with custom interactive selections', async () => {
+    let configContent = JSON.stringify({ copilot: { models: fallbackModels } });
+    const fs: IFileSystem = {
+      existsSync: vi.fn(() => true),
+      readFileSync: vi.fn(() => configContent),
+      writeFileSync: vi.fn((_path, data) => {
+        configContent = String(data);
+      }),
+      mkdirSync: vi.fn(),
+      unlinkSync: vi.fn(),
+      rmSync: vi.fn(),
+      readdirSync: vi.fn(() => []),
+      statSync: vi.fn(() => ({ isDirectory: () => false, isFile: () => true })),
+      copyFileSync: vi.fn(),
+      readFile: vi.fn(async () => ''),
+      writeFile: vi.fn(async () => {}),
+    };
+    const config = {
+      version: '1.0.0',
+      paths: {
+        progress: 'progress',
+        tasks: 'tasks',
+        logs: 'logs',
+        lock: 'lock',
+      },
+      copilot: {
+        permissions: 'allow-all' as const,
+        models: { ...fallbackModels, plan: 'deprecated-model' },
+        extraFlags: [],
+      },
+      gate: { commands: [], maxFixAttempts: 1 },
+      loop: { maxIterations: 1 },
+    };
+
+    const updated = await remediateInvalidModels({
+      configPath: '/tmp/speci.config.json',
+      config,
+      fs,
+      proc: createMockProcess(true),
+      logger: createMockLogger(),
+      liveModels: [
+        'claude-opus-4.8',
+        'claude-sonnet-4.6',
+        'gpt-5.3-codex',
+        'gpt-5.4-mini',
+      ],
+      prompt: vi.fn().mockResolvedValueOnce('1').mockResolvedValueOnce('1'),
+    });
+
+    expect(updated?.plan).toBe('claude-opus-4.8');
+    expect(configContent).toContain('claude-opus-4.8');
   });
 });

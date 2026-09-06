@@ -147,6 +147,101 @@ describe('copilot', () => {
         expect.stringContaining('not found')
       );
     });
+
+    it('parses model IDs from markdown output', async () => {
+      vi.mocked(spawn).mockImplementationOnce(() => {
+        const proc = new EventEmitter() as ChildProcess;
+        proc.stdout = new EventEmitter() as never;
+        proc.stderr = new EventEmitter() as never;
+        queueMicrotask(() => {
+          proc.stdout?.emit(
+            'data',
+            '| Model | Status |\n| --- | --- |\n| gpt-5.3-codex | ready |\n'
+          );
+          proc.emit('close', 0);
+        });
+        return proc;
+      });
+
+      await expect(listCopilotModels()).resolves.toEqual(['gpt-5.3-codex']);
+    });
+
+    it('parses model IDs from a JSON markdown code block', async () => {
+      vi.mocked(spawn).mockImplementationOnce(() => {
+        const proc = new EventEmitter() as ChildProcess;
+        proc.stdout = new EventEmitter() as never;
+        proc.stderr = new EventEmitter() as never;
+        queueMicrotask(() => {
+          proc.stdout?.emit('data', '```json\n["gpt-5.3-codex"]\n```');
+          proc.emit('close', 0);
+        });
+        return proc;
+      });
+
+      await expect(listCopilotModels()).resolves.toEqual(['gpt-5.3-codex']);
+    });
+
+    it('logs successful discovery with no parseable models and eventually returns null', async () => {
+      vi.mocked(spawn).mockImplementation(() => {
+        const proc = new EventEmitter() as ChildProcess;
+        proc.stdout = new EventEmitter() as never;
+        proc.stderr = new EventEmitter() as never;
+        queueMicrotask(() => proc.emit('close', 0));
+        return proc;
+      });
+
+      await expect(listCopilotModels()).resolves.toBeNull();
+      expect(log.debug).toHaveBeenCalledWith(
+        expect.stringContaining('returned no parseable models')
+      );
+    });
+
+    it('does not emit a summary when every discovery command has no output', async () => {
+      vi.mocked(spawn).mockImplementation(() => {
+        const proc = new EventEmitter() as ChildProcess;
+        proc.stdout = new EventEmitter() as never;
+        proc.stderr = new EventEmitter() as never;
+        queueMicrotask(() => proc.emit('close', 1));
+        return proc;
+      });
+
+      await expect(listCopilotModels()).resolves.toBeNull();
+      expect(log.debug).not.toHaveBeenCalledWith(
+        expect.stringContaining('Could not retrieve Copilot models from CLI')
+      );
+    });
+
+    it('uses output from a timed-out discovery command when models were emitted', async () => {
+      vi.mocked(spawn).mockImplementationOnce(() => {
+        const proc = new EventEmitter() as ChildProcess;
+        proc.stdout = new EventEmitter() as never;
+        proc.stderr = new EventEmitter() as never;
+        queueMicrotask(() => {
+          proc.stdout?.emit('data', 'gpt-5.3-codex');
+          proc.emit('close', 124);
+        });
+        return proc;
+      });
+
+      await expect(listCopilotModels()).resolves.toEqual(['gpt-5.3-codex']);
+    });
+
+    it('returns the cached model list without spawning again', async () => {
+      vi.mocked(spawn).mockImplementationOnce(() => {
+        const proc = new EventEmitter() as ChildProcess;
+        proc.stdout = new EventEmitter() as never;
+        proc.stderr = new EventEmitter() as never;
+        queueMicrotask(() => {
+          proc.stdout?.emit('data', '["gpt-5.3-codex"]');
+          proc.emit('close', 0);
+        });
+        return proc;
+      });
+
+      await listCopilotModels();
+      await expect(listCopilotModels()).resolves.toEqual(['gpt-5.3-codex']);
+      expect(spawn).toHaveBeenCalledTimes(1);
+    });
   });
 
   describe('buildCopilotArgs', () => {
