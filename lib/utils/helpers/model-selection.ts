@@ -59,7 +59,7 @@ function isInteractiveTerminal(
   proc: IProcess,
   promptFn?: (question: string) => Promise<string>
 ): boolean {
-  return Boolean(promptFn) || Boolean(proc.stdin?.isTTY);
+  return Boolean(promptFn) || Boolean(proc.stdin?.isTTY && proc.stdout?.isTTY);
 }
 
 function pickByPatterns(

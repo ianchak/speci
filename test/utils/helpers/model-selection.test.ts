@@ -92,6 +92,24 @@ describe('model-selection helper', () => {
     expect(selected.tidy).toBe('gpt-5.4-mini');
   });
 
+  it('uses balanced preset when stdout is redirected', async () => {
+    const logger = createMockLogger();
+    const proc = createMockProcess(true);
+    proc.stdout.isTTY = false;
+
+    const selected = await selectModelsForInit({
+      logger,
+      proc,
+      liveModels: ['claude-sonnet-5', 'gpt-5.3-codex', 'gpt-5.4-mini'],
+      fallbackModels,
+    });
+
+    expect(selected.impl).toBe('gpt-5.3-codex');
+    expect(logger.warn).toHaveBeenCalledWith(
+      'Non-interactive terminal detected. Applying Balanced model preset.'
+    );
+  });
+
   it('retains fallback models when live discovery is unavailable', async () => {
     const logger = createMockLogger();
 
