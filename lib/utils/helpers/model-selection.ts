@@ -99,7 +99,7 @@ async function promptForChoice(
   fallback: string,
   models: string[]
 ): Promise<string> {
-  const answer = (await promptUser(question, promptFn, proc)).trim();
+  const answer = ((await promptUser(question, promptFn, proc)) ?? '').trim();
   if (answer.length === 0) return fallback;
 
   const index = Number.parseInt(answer, 10);
@@ -282,18 +282,21 @@ export async function remediateInvalidModels(options: {
   }
 
   const nextModels = { ...config.copilot.models };
+  const balanced = applyPresetModels('balanced', liveModels, nextModels);
 
   if (action === '2') {
-    const balanced = applyPresetModels('balanced', liveModels, nextModels);
     for (const role of invalidRoles) {
       nextModels[role] = balanced[role];
     }
   } else {
     for (const role of invalidRoles) {
+      const defaultModel = liveModels.includes(nextModels[role])
+        ? nextModels[role]
+        : balanced[role];
       nextModels[role] = await pickModelForRole(
         role,
         liveModels,
-        nextModels[role],
+        defaultModel,
         logger,
         proc,
         prompt

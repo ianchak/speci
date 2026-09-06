@@ -166,19 +166,36 @@ describe('copilot', () => {
       await expect(listCopilotModels()).resolves.toEqual(['gpt-5.3-codex']);
     });
 
-    it('parses model IDs from a JSON markdown code block', async () => {
+    it('parses single-token model IDs such as o3 and filters out prose words', async () => {
       vi.mocked(spawn).mockImplementationOnce(() => {
         const proc = new EventEmitter() as ChildProcess;
         proc.stdout = new EventEmitter() as never;
         proc.stderr = new EventEmitter() as never;
         queueMicrotask(() => {
-          proc.stdout?.emit('data', '```json\n["gpt-5.3-codex"]\n```');
+          proc.stdout?.emit(
+            'data',
+            JSON.stringify([
+              'o3',
+              'gpt-4o',
+              'claude-3-5-sonnet',
+              'grok-4.5',
+              'k3',
+              'kimi-k3',
+            ])
+          );
           proc.emit('close', 0);
         });
         return proc;
       });
 
-      await expect(listCopilotModels()).resolves.toEqual(['gpt-5.3-codex']);
+      await expect(listCopilotModels()).resolves.toEqual([
+        'o3',
+        'gpt-4o',
+        'claude-3-5-sonnet',
+        'grok-4.5',
+        'k3',
+        'kimi-k3',
+      ]);
     });
 
     it('logs successful discovery with no parseable models and eventually returns null', async () => {
@@ -485,6 +502,22 @@ describe('copilot', () => {
       expect(env.COPILOT_PROVIDER_TYPE).toBe('openai');
       expect(env.COPILOT_PROVIDER_API_KEY).toBe('test-key');
       expect(env.FOO).toBe('bar');
+    });
+
+    it('should clear inherited provider env vars when localModel omits providerType/apiKey', () => {
+      const localConfig = structuredClone(config);
+      localConfig.copilot.localModel = {
+        baseUrl: 'http://127.0.0.1:8080/v1',
+        model: 'local-test-model',
+      };
+      const proc = createMockProcess();
+      proc.env.COPILOT_PROVIDER_TYPE = 'stale-type';
+      proc.env.COPILOT_PROVIDER_API_KEY = 'stale-key';
+
+      const env = buildCopilotEnv(localConfig, proc);
+
+      expect(env.COPILOT_PROVIDER_TYPE).toBeUndefined();
+      expect(env.COPILOT_PROVIDER_API_KEY).toBeUndefined();
     });
 
     it('should omit optional env vars when providerType/apiKey are not set', () => {

@@ -522,6 +522,38 @@ describe('CommandRegistry', () => {
       );
       vi.doUnmock('@/commands/run.js');
     });
+
+    it('runs model validation even when CommandRegistry receives a preloaded config', async () => {
+      vi.resetModules();
+      const runMock = vi.fn().mockResolvedValue({ success: true, exitCode: 0 });
+      vi.doMock('@/commands/run.js', () => ({ run: runMock }));
+      vi.doMock('@/config/index.js', () => ({
+        findConfigFile: vi.fn().mockReturnValue('/tmp/speci.config.json'),
+      }));
+      vi.mocked(mockContext.copilotRunner.listModels).mockResolvedValue([
+        'live-model',
+      ]);
+      const { CommandRegistry } =
+        await import('../../lib/cli/command-registry.js');
+
+      // Pass mockConfig directly to constructor (preloaded)
+      const registry = new CommandRegistry(mockContext, mockConfig);
+
+      await registry.execute(['run']);
+
+      expect(mockContext.copilotRunner.listModels).toHaveBeenCalledWith(
+        mockContext.process
+      );
+      expect(runMock).toHaveBeenCalledWith(
+        expect.any(Object),
+        mockContext,
+        expect.objectContaining({
+          version: '1.0',
+        })
+      );
+      vi.doUnmock('@/commands/run.js');
+      vi.doUnmock('@/config/index.js');
+    });
   });
 
   describe('unknown command handler', () => {

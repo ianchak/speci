@@ -119,10 +119,14 @@ export class CommandRegistry {
           typeof command.name === 'function' ? command.name() : undefined;
         let effectiveConfig = this.config;
 
-        if (!effectiveConfig && commandName && commandName !== 'init') {
-          effectiveConfig = await this.context.configLoader.load();
-          effectiveConfig =
-            await this.validateConfiguredModels(effectiveConfig);
+        if (commandName && commandName !== 'init') {
+          if (!effectiveConfig) {
+            effectiveConfig = await this.context.configLoader.load();
+          }
+          if (effectiveConfig) {
+            effectiveConfig =
+              await this.validateConfiguredModels(effectiveConfig);
+          }
         }
 
         const result = await commandFn(options, this.context, effectiveConfig);

@@ -42,8 +42,24 @@ interface RetryPolicy {
 }
 
 let cachedModels: string[] | null | undefined;
-// Matches model IDs like "claude-opus-4.8" and "gpt-5.3-codex" in plain text output.
-const MODEL_ID_PATTERN = /[a-z][a-z0-9]*(?:[-.][a-z0-9]+)+/gi;
+// Matches valid model ID strings like "o3", "claude-opus-4.8", and "gpt-5.3-codex".
+const MODEL_ID_PATTERN = /^[a-z0-9]+(?:[-._][a-z0-9]+)*$/i;
+const IGNORED_PROSE_WORDS = new Set([
+  'model',
+  'models',
+  'status',
+  'name',
+  'id',
+  'description',
+  'ready',
+  'available',
+  'space-separated',
+  'user-facing',
+  'auto-retry',
+  'non-interactive',
+]);
+const KNOWN_MODEL_TOKEN_PATTERN =
+  /^(?:[0-9]|gpt|claude|gemini|llama|mistral|o[0-9]|deepseek|codex|copilot|dall-e|grok|kimi|k[0-9]|mai|fable|qwen|phi|command|yi)/i;
 
 const MODEL_LIST_TIMEOUT_MS = 20_000;
 
@@ -105,22 +121,46 @@ function parseModelList(output: string): string[] {
       if (
         tableMatch &&
         tableMatch[1] &&
-        !tableMatch[1].toLowerCase().includes('model') &&
+        !IGNORED_PROSE_WORDS.has(tableMatch[1].toLowerCase()) &&
         !tableMatch[1].includes('---')
       ) {
         lineValues.push(tableMatch[1].trim());
         continue;
       }
-      const matches = line.match(MODEL_ID_PATTERN) ?? [];
-      lineValues.push(...matches);
+
+      const cleaned = line.replace(/^\s*(?:[-*•]|\d+\.)\s*/, '').trim();
+      if (
+        cleaned &&
+        MODEL_ID_PATTERN.test(cleaned) &&
+        !IGNORED_PROSE_WORDS.has(cleaned.toLowerCase())
+      ) {
+        lineValues.push(cleaned);
+        continue;
+      }
+
+      // Plain text line word matching
+      const words = line.split(/\s+/);
+      for (const word of words) {
+        const cleanedWord = word.replace(/^[^\w]+|[^\w]+$/g, '');
+        if (
+          cleanedWord &&
+          MODEL_ID_PATTERN.test(cleanedWord) &&
+          !IGNORED_PROSE_WORDS.has(cleanedWord.toLowerCase()) &&
+          KNOWN_MODEL_TOKEN_PATTERN.test(cleanedWord)
+        ) {
+          lineValues.push(cleanedWord);
+        }
+      }
     }
   }
 
   const values = jsonValues.length > 0 ? jsonValues : lineValues;
   const normalized = values.map((value) => value.trim()).filter(Boolean);
   const modelIds = normalized.filter((value) => {
-    const matches = value.match(MODEL_ID_PATTERN) ?? [];
-    return matches.length === 1 && matches[0] === value;
+    return (
+      MODEL_ID_PATTERN.test(value) &&
+      !IGNORED_PROSE_WORDS.has(value.toLowerCase())
+    );
   });
   return [...new Set(modelIds)];
 }
@@ -216,9 +256,13 @@ export function buildCopilotEnv(
   env.COPILOT_MODEL = localModel.model;
   if (localModel.providerType) {
     env.COPILOT_PROVIDER_TYPE = localModel.providerType;
+  } else {
+    delete env.COPILOT_PROVIDER_TYPE;
   }
   if (localModel.apiKey) {
     env.COPILOT_PROVIDER_API_KEY = localModel.apiKey;
+  } else {
+    delete env.COPILOT_PROVIDER_API_KEY;
   }
   return env;
 }

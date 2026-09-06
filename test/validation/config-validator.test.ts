@@ -247,6 +247,27 @@ describe('ConfigValidator', () => {
       }
     });
 
+    it('should reject a localModel with a numeric model id instead of throwing', () => {
+      const config = {
+        ...validConfig,
+        copilot: {
+          ...validConfig.copilot,
+          localModel: {
+            baseUrl: 'http://127.0.0.1:8080/v1',
+            model: 123 as unknown as string,
+          },
+        },
+      };
+      const result = new ConfigValidator(config)
+        .validateLocalModel()
+        .validate();
+
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.error.field).toBe('copilot.localModel.model');
+      }
+    });
+
     it('should reject a localModel with an invalid providerType', () => {
       const config = {
         ...validConfig,

@@ -288,6 +288,68 @@ describe('model-selection helper', () => {
     expect(configContent).toContain('"plan": "claude-opus-4.8"');
   });
 
+  it('uses a valid live model default when pressing Enter in interactive remediation', async () => {
+    let configContent = JSON.stringify(
+      {
+        version: '1.0.0',
+        copilot: {
+          models: {
+            ...fallbackModels,
+            plan: 'deprecated-model',
+          },
+        },
+      },
+      null,
+      2
+    );
+
+    const fs: IFileSystem = {
+      existsSync: vi.fn(() => true),
+      readFileSync: vi.fn(() => configContent),
+      writeFileSync: vi.fn((_path, data) => {
+        configContent = String(data);
+      }),
+      mkdirSync: vi.fn(),
+      unlinkSync: vi.fn(),
+      rmSync: vi.fn(),
+      readdirSync: vi.fn(() => []),
+      statSync: vi.fn(() => ({ isDirectory: () => false, isFile: () => true })),
+      copyFileSync: vi.fn(),
+      readFile: vi.fn(async () => ''),
+      writeFile: vi.fn(async () => {}),
+    };
+
+    const logger = createMockLogger();
+    const proc = createMockProcess(true);
+    const updated = await remediateInvalidModels({
+      configPath: '/tmp/speci.config.json',
+      config: {
+        version: '1.0.0',
+        paths: {
+          progress: 'docs/PROGRESS.md',
+          tasks: 'docs/tasks',
+          logs: '.speci-logs',
+          lock: '.speci-lock',
+        },
+        copilot: {
+          permissions: 'allow-all',
+          models: { ...fallbackModels, plan: 'deprecated-model' },
+          extraFlags: [],
+        },
+        gate: { commands: [], maxFixAttempts: 5 },
+        loop: { maxIterations: 10 },
+      },
+      fs,
+      proc,
+      logger,
+      liveModels: ['claude-opus-4.8', 'claude-sonnet-5'],
+      prompt: vi.fn().mockResolvedValueOnce('1').mockResolvedValueOnce(''), // 1 = pick interactively, Enter = keep default
+    });
+
+    expect(updated?.plan).toBe('claude-opus-4.8');
+    expect(updated?.plan).not.toBe('deprecated-model');
+  });
+
   it('skips remediation when no models can be discovered', async () => {
     const logger = createMockLogger();
     const result = await remediateInvalidModels({

@@ -110,7 +110,19 @@ export class ConfigValidator {
       return this;
     }
 
-    if (!localModel.baseUrl || !/^https?:\/\//.test(localModel.baseUrl)) {
+    if (typeof localModel !== 'object' || localModel === null) {
+      this.errors.push({
+        field: 'copilot.localModel',
+        message: 'copilot.localModel must be an object',
+        suggestions: ['Provide an object with baseUrl and model properties'],
+      });
+      return this;
+    }
+
+    if (
+      typeof localModel.baseUrl !== 'string' ||
+      !/^https?:\/\//.test(localModel.baseUrl)
+    ) {
       this.errors.push({
         field: 'copilot.localModel.baseUrl',
         message: `Invalid copilot.localModel.baseUrl: ${localModel.baseUrl}`,
@@ -121,7 +133,10 @@ export class ConfigValidator {
       });
     }
 
-    if (!localModel.model || localModel.model.trim() === '') {
+    if (
+      typeof localModel.model !== 'string' ||
+      localModel.model.trim() === ''
+    ) {
       this.errors.push({
         field: 'copilot.localModel.model',
         message: 'copilot.localModel.model must not be empty',
@@ -133,13 +148,27 @@ export class ConfigValidator {
 
     const validProviderTypes = ['openai', 'azure', 'anthropic'];
     if (
-      localModel.providerType &&
-      !validProviderTypes.includes(localModel.providerType)
+      localModel.providerType !== undefined &&
+      (typeof localModel.providerType !== 'string' ||
+        !validProviderTypes.includes(localModel.providerType))
     ) {
       this.errors.push({
         field: 'copilot.localModel.providerType',
         message: `Invalid copilot.localModel.providerType: ${localModel.providerType}`,
         suggestions: [`Valid options: ${validProviderTypes.join(', ')}`],
+      });
+    }
+
+    if (
+      localModel.apiKey !== undefined &&
+      typeof localModel.apiKey !== 'string'
+    ) {
+      this.errors.push({
+        field: 'copilot.localModel.apiKey',
+        message: 'copilot.localModel.apiKey must be a string',
+        suggestions: [
+          'Set copilot.localModel.apiKey to your provider API key string',
+        ],
       });
     }
 
