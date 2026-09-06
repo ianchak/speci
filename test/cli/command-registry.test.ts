@@ -486,10 +486,28 @@ describe('CommandRegistry', () => {
       vi.doUnmock('@/utils/helpers/model-selection.js');
     });
 
-    it('skips live model validation when copilot.localModel is configured', async () => {
+    it('still validates cloud roles when copilot.localModel is configured for another role', async () => {
       vi.resetModules();
       const runMock = vi.fn().mockResolvedValue({ success: true, exitCode: 0 });
+      const remediatedModels = {
+        ...mockConfig.copilot.models,
+        plan: 'live-model',
+      };
       vi.doMock('@/commands/run.js', () => ({ run: runMock }));
+      vi.doMock('@/config/index.js', async () => {
+        const actual =
+          await vi.importActual<typeof import('@/config/index.js')>(
+            '@/config/index.js'
+          );
+        return {
+          ...actual,
+          findConfigFile: vi.fn(() => '/test/speci.config.json'),
+        };
+      });
+      const remediateSpy = vi.fn().mockResolvedValue(remediatedModels);
+      vi.doMock('@/utils/helpers/model-selection.js', () => ({
+        remediateInvalidModels: remediateSpy,
+      }));
 
       const localModelConfig: SpeciConfig = {
         ...mockConfig,
@@ -504,23 +522,41 @@ describe('CommandRegistry', () => {
       vi.mocked(mockContext.configLoader.load).mockResolvedValue(
         localModelConfig
       );
+      vi.mocked(mockContext.copilotRunner.listModels).mockResolvedValue([
+        'live-model',
+      ]);
       const { CommandRegistry } =
         await import('../../lib/cli/command-registry.js');
       const registry = new CommandRegistry(mockContext);
 
       await registry.execute(['run']);
 
-      expect(mockContext.copilotRunner.listModels).not.toHaveBeenCalled();
+      // Cloud model validation still runs even though a local model is configured.
+      expect(mockContext.copilotRunner.listModels).toHaveBeenCalledWith(
+        mockContext.process
+      );
+      expect(remediateSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          config: expect.objectContaining({
+            copilot: expect.objectContaining({
+              localModel: localModelConfig.copilot.localModel,
+            }),
+          }),
+        })
+      );
       expect(runMock).toHaveBeenCalledWith(
         expect.any(Object),
         mockContext,
         expect.objectContaining({
           copilot: expect.objectContaining({
+            models: remediatedModels,
             localModel: localModelConfig.copilot.localModel,
           }),
         })
       );
       vi.doUnmock('@/commands/run.js');
+      vi.doUnmock('@/config/index.js');
+      vi.doUnmock('@/utils/helpers/model-selection.js');
     });
 
     it('runs model validation even when CommandRegistry receives a preloaded config', async () => {

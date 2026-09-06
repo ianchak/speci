@@ -453,7 +453,7 @@ Speci validates configured `copilot.models` against the live Copilot CLI model l
 
 #### Using a local model (BYOK)
 
-To run Speci against a local/self-hosted model (Ollama, llama.cpp, vLLM, etc.) instead of GitHub-hosted models, add a `copilot.localModel` block:
+To run one or more agents against a local/self-hosted model (Ollama, llama.cpp, vLLM, etc.) instead of GitHub-hosted models, add a `copilot.localModel` block and point the roles you want redirected at it:
 
 ```json
 {
@@ -463,12 +463,16 @@ To run Speci against a local/self-hosted model (Ollama, llama.cpp, vLLM, etc.) i
       "model": "qwen3.6-35b-a3b-q5",
       "providerType": "openai",
       "apiKey": ""
+    },
+    "models": {
+      "impl": "qwen3.6-35b-a3b-q5",
+      "tidy": "qwen3.6-35b-a3b-q5"
     }
   }
 }
 ```
 
-When `copilot.localModel` is set, Speci injects `COPILOT_PROVIDER_BASE_URL`, `COPILOT_MODEL`, `COPILOT_PROVIDER_TYPE`, and `COPILOT_PROVIDER_API_KEY` into the Copilot CLI process for every invocation, overriding the per-role `copilot.models` entries, and skips live cloud model validation. Omit `copilot.localModel` (the default) to keep using GitHub-hosted models.
+A role uses the local endpoint only when its `copilot.models.<role>` value matches `copilot.localModel.model` — set that role's entry to the local model ID to opt it in. Speci then injects `COPILOT_PROVIDER_BASE_URL`, `COPILOT_MODEL`, `COPILOT_PROVIDER_TYPE`, and `COPILOT_PROVIDER_API_KEY` for just that role's invocation, and skips live cloud model validation for it. All other roles keep using their own `copilot.models` entry and cloud validation as normal. Omit `copilot.localModel` (the default) to keep every role on GitHub-hosted models. `speci init -m` (reconfigure models) offers the local model as a pick per role when `copilot.localModel` is already configured.
 
 | Field          | Required | Description                                                                |
 | -------------- | -------- | -------------------------------------------------------------------------- |
@@ -494,7 +498,7 @@ When `copilot.localModel` is set, Speci injects `COPILOT_PROVIDER_BASE_URL`, `CO
 | ------------- | ----------- | --------------------------------------------------------- |
 | `permissions` | `allow-all` | Permission mode: `allow-all`, `yolo`, `strict`, or `none` |
 | `models`      | (see above) | Model to use for each agent type                          |
-| `localModel`  | _(unset)_   | Local/self-hosted BYOK model override (see above)         |
+| `localModel`  | _(unset)_   | Local/self-hosted BYOK model, opt-in per role via `models.<role>` (see above) |
 | `extraFlags`  | `[]`        | Additional flags passed to the Copilot CLI                |
 
 **gate** - Quality gate configuration. Gate commands run after each implementation step.

@@ -351,13 +351,12 @@ export async function init(
       );
       const isReconfiguring =
         existing.configExists && Boolean(options.reconfigureModels);
-      const existingConfigModels = isReconfiguring
-        ? (
-            JSON.parse(
-              context.fs.readFileSync(CONFIG_FILENAME, 'utf8')
-            ) as SpeciConfig
-          ).copilot?.models
+      const existingConfig = isReconfiguring
+        ? (JSON.parse(
+            context.fs.readFileSync(CONFIG_FILENAME, 'utf8')
+          ) as SpeciConfig)
         : undefined;
+      const existingConfigModels = existingConfig?.copilot?.models;
       const fallbackModels = existingConfigModels ?? config.copilot.models;
 
       selectedModels = await selectModelsForInit({
@@ -367,6 +366,7 @@ export async function init(
         proc: context.process,
         liveModels,
         fallbackModels,
+        localModel: existingConfig?.copilot?.localModel,
       });
     }
 

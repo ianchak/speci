@@ -64,6 +64,21 @@ describe('NodeCopilotRunner', () => {
     expect(result).toBe(0);
   });
 
+  it('forwards the command option to spawnCopilot for per-role local model resolution', async () => {
+    const args = ['--help'];
+    const spawnOptions = { config, command: 'impl' as const };
+    const proc = createMockProcess();
+    vi.mocked(copilotModule.spawnCopilot).mockResolvedValue(0);
+
+    await adapter.spawn(args, spawnOptions, proc);
+
+    expect(copilotModule.spawnCopilot).toHaveBeenCalledWith(
+      args,
+      spawnOptions,
+      proc
+    );
+  });
+
   it('delegates run to runAgent', async () => {
     const expected: AgentRunResult = { isSuccess: true, exitCode: 0 };
     const proc = createMockProcess();

@@ -100,4 +100,53 @@ describe('init model selection', () => {
     expect(config.copilot.models.impl).toBe('gpt-5.3-codex');
     expect(config.copilot.models.plan).toBe('claude-opus-4.8');
   });
+
+  it('offers the local model as a custom pick when reconfiguring an existing localModel config', async () => {
+    writeFileSync(
+      'speci.config.json',
+      JSON.stringify(
+        {
+          version: '1.0.0',
+          paths: {
+            progress: 'docs/PROGRESS.md',
+            tasks: 'docs/tasks',
+            logs: '.speci-logs',
+            lock: '.speci-lock',
+          },
+          copilot: {
+            permissions: 'allow-all',
+            models: {
+              plan: 'old-model',
+              task: 'old-model',
+              refactor: 'old-model',
+              impl: 'old-model',
+              review: 'old-model',
+              fix: 'old-model',
+              tidy: 'old-model',
+            },
+            localModel: {
+              baseUrl: 'http://127.0.0.1:8080/v1',
+              model: 'local-test-model',
+            },
+            extraFlags: [],
+          },
+          gate: { commands: ['npm test'], maxFixAttempts: 5 },
+          loop: { maxIterations: 100 },
+        },
+        null,
+        2
+      )
+    );
+
+    const prompt = vi
+      .fn()
+      .mockResolvedValueOnce('4') // Choose Custom (one-by-one)
+      .mockResolvedValueOnce('1') // plan -> local model (prepended as option 1)
+      .mockResolvedValue(''); // keep fallback for remaining roles
+    await init({ reconfigureModels: true, prompt }, createProductionContext());
+    const config = JSON.parse(readFileSync('speci.config.json', 'utf8'));
+
+    expect(config.copilot.models.plan).toBe('local-test-model');
+    expect(config.copilot.localModel.model).toBe('local-test-model');
+  });
 });

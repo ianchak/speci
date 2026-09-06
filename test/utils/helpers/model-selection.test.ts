@@ -226,6 +226,36 @@ describe('model-selection helper', () => {
     );
   });
 
+  it('offers the local model as a pick in custom mode when localModel is configured', async () => {
+    const logger = createMockLogger();
+    const localModel = {
+      baseUrl: 'http://127.0.0.1:8080/v1',
+      model: 'local-test-model',
+    };
+    const prompt = vi
+      .fn()
+      .mockResolvedValueOnce('4') // Choose Custom (one-by-one)
+      .mockResolvedValueOnce('1') // plan -> local model (index 1 since prepended)
+      .mockResolvedValueOnce('') // task -> keep fallback
+      .mockResolvedValueOnce('') // refactor -> keep fallback
+      .mockResolvedValueOnce('') // impl -> keep fallback
+      .mockResolvedValueOnce('') // review -> keep fallback
+      .mockResolvedValueOnce('') // fix -> keep fallback
+      .mockResolvedValueOnce(''); // tidy -> keep fallback
+
+    const selected = await selectModelsForInit({
+      logger,
+      proc: createMockProcess(true),
+      liveModels: ['claude-opus-4.8', 'gpt-5.3-codex'],
+      fallbackModels,
+      prompt,
+      localModel,
+    });
+
+    expect(selected.plan).toBe('local-test-model');
+    expect(logger.raw).toHaveBeenCalledWith('  1. local-test-model (local)');
+  });
+
   it('remediates invalid configured models with balanced preset', async () => {
     let configContent = JSON.stringify(
       {
@@ -500,5 +530,62 @@ describe('model-selection helper', () => {
 
     expect(updated?.plan).toBe('claude-opus-4.8');
     expect(configContent).toContain('claude-opus-4.8');
+  });
+
+  it('skips remediation for a role opted into the local model but still fixes other invalid roles', async () => {
+    let configContent = JSON.stringify({ copilot: { models: fallbackModels } });
+    const fs: IFileSystem = {
+      existsSync: vi.fn(() => true),
+      readFileSync: vi.fn(() => configContent),
+      writeFileSync: vi.fn((_path, data) => {
+        configContent = String(data);
+      }),
+      mkdirSync: vi.fn(),
+      unlinkSync: vi.fn(),
+      rmSync: vi.fn(),
+      readdirSync: vi.fn(() => []),
+      statSync: vi.fn(() => ({ isDirectory: () => false, isFile: () => true })),
+      copyFileSync: vi.fn(),
+      readFile: vi.fn(async () => ''),
+      writeFile: vi.fn(async () => {}),
+    };
+    const config: SpeciConfig = {
+      version: '1.0.0',
+      paths: {
+        progress: 'progress',
+        tasks: 'tasks',
+        logs: 'logs',
+        lock: 'lock',
+      },
+      copilot: {
+        permissions: 'allow-all',
+        models: {
+          ...fallbackModels,
+          plan: 'deprecated-model',
+          impl: 'local-test-model',
+        },
+        localModel: {
+          baseUrl: 'http://127.0.0.1:8080/v1',
+          model: 'local-test-model',
+        },
+        extraFlags: [],
+      },
+      gate: { commands: [], maxFixAttempts: 1 },
+      loop: { maxIterations: 1 },
+    };
+
+    const updated = await remediateInvalidModels({
+      configPath: '/tmp/speci.config.json',
+      config,
+      fs,
+      proc: createMockProcess(true),
+      logger: createMockLogger(),
+      liveModels: ['claude-opus-4.8', 'claude-sonnet-4.6', 'gpt-5.4-mini'],
+      prompt: vi.fn().mockResolvedValue('2'), // apply Balanced preset to affected roles
+    });
+
+    // Only the invalid cloud role (plan) is remediated; the local-opted role (impl) is untouched.
+    expect(updated?.plan).toBe('claude-opus-4.8');
+    expect(updated?.impl).toBe('local-test-model');
   });
 });

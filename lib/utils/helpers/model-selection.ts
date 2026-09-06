@@ -119,12 +119,22 @@ async function pickModelForRole(
   fallback: string,
   logger: ILogger,
   proc: IProcess,
-  promptFn?: (question: string) => Promise<string>
+  promptFn?: (question: string) => Promise<string>,
+  localModel?: SpeciConfig['copilot']['localModel']
 ): Promise<string> {
+  // Local model is offered as an extra pick, distinct from the live cloud list.
+  const cloudModels = localModel
+    ? models.filter((model) => model !== localModel.model)
+    : models;
+  const optionValues = localModel
+    ? [localModel.model, ...cloudModels]
+    : cloudModels;
+
   logger.raw('');
   logger.infoPlain(`? Model for [${role}] — ${ROLE_DESCRIPTIONS[role]}:`);
-  models.forEach((model, index) => {
-    logger.raw(`  ${index + 1}. ${model}`);
+  optionValues.forEach((model, index) => {
+    const label = localModel && index === 0 ? `${model} (local)` : model;
+    logger.raw(`  ${index + 1}. ${label}`);
   });
   return promptForChoice(
     logger,
@@ -132,7 +142,7 @@ async function pickModelForRole(
     promptFn,
     `  Select model number (Enter to keep "${fallback}"): `,
     fallback,
-    models
+    optionValues
   );
 }
 
@@ -156,9 +166,17 @@ export async function selectModelsForInit(options: {
   proc: IProcess;
   liveModels: string[] | null;
   fallbackModels: SpeciConfig['copilot']['models'];
+  localModel?: SpeciConfig['copilot']['localModel'];
 }): Promise<SpeciConfig['copilot']['models']> {
-  const { currentConfig, prompt, logger, proc, liveModels, fallbackModels } =
-    options;
+  const {
+    currentConfig,
+    prompt,
+    logger,
+    proc,
+    liveModels,
+    fallbackModels,
+    localModel,
+  } = options;
 
   if (!liveModels || liveModels.length === 0) {
     logger.warn(
@@ -216,7 +234,8 @@ export async function selectModelsForInit(options: {
       selected[role],
       logger,
       proc,
-      prompt
+      prompt,
+      localModel
     );
   }
   return selected;
@@ -250,7 +269,9 @@ export async function remediateInvalidModels(options: {
   }
 
   const invalidRoles = MODEL_ROLES.filter(
-    (role) => !liveModels.includes(config.copilot.models[role])
+    (role) =>
+      config.copilot.models[role] !== config.copilot.localModel?.model &&
+      !liveModels.includes(config.copilot.models[role])
   );
   if (invalidRoles.length === 0) return null;
 
@@ -299,7 +320,8 @@ export async function remediateInvalidModels(options: {
         defaultModel,
         logger,
         proc,
-        prompt
+        prompt,
+        config.copilot.localModel
       );
     }
   }

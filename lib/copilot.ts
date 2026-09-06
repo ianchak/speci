@@ -210,9 +210,8 @@ export function buildCopilotArgs(
     args.push('--yolo');
   }
 
-  // Model flag - local model (BYOK) takes precedence over per-command config
-  const model =
-    config.copilot.localModel?.model ?? config.copilot.models[options.command];
+  // Model flag - per-role config; set a role's model to copilot.localModel.model to route it locally
+  const model = config.copilot.models[options.command];
   args.push('--model', model);
 
   args.push('--no-ask-user');
@@ -233,21 +232,28 @@ export function buildCopilotArgs(
 /**
  * Build the process environment for a copilot CLI invocation.
  *
- * When `config.copilot.localModel` is set, injects the COPILOT_PROVIDER_*
- * and COPILOT_MODEL env vars Copilot CLI's BYOK support reads, so the CLI
- * targets the local/self-hosted endpoint instead of GitHub-hosted models.
+ * Injects the COPILOT_PROVIDER_* and COPILOT_MODEL env vars Copilot CLI's
+ * BYOK support reads only when `command`'s configured model matches
+ * `config.copilot.localModel.model` — i.e. only the roles opted into the
+ * local/self-hosted endpoint get redirected; other roles use cloud models.
  *
  * @param config - Speci configuration
  * @param proc - Optional IProcess instance to read the base environment from
+ * @param command - Role being invoked, used to check local-model opt-in
  * @returns Environment object to pass to the spawned copilot process
  */
 export function buildCopilotEnv(
   config: SpeciConfig,
-  proc?: IProcess
+  proc?: IProcess,
+  command?: CommandName
 ): NodeJS.ProcessEnv {
   const baseEnv = proc?.env ?? process.env;
   const localModel = config.copilot.localModel;
-  if (!localModel) {
+  const usesLocalModel =
+    localModel !== undefined &&
+    command !== undefined &&
+    config.copilot.models[command] === localModel.model;
+  if (!usesLocalModel || !localModel) {
     return baseEnv;
   }
 
@@ -277,16 +283,22 @@ export function buildCopilotEnv(
  */
 export async function spawnCopilot(
   args: string[],
-  options: { inherit?: boolean; cwd?: string; config?: SpeciConfig } = {},
+  options: {
+    inherit?: boolean;
+    cwd?: string;
+    config?: SpeciConfig;
+    command?: CommandName;
+  } = {},
   proc?: IProcess
 ): Promise<number> {
   const {
     inherit = true,
     cwd = proc?.cwd() ?? process.cwd(),
     config,
+    command,
   } = options;
   const env = config
-    ? buildCopilotEnv(config, proc)
+    ? buildCopilotEnv(config, proc, command)
     : (proc?.env ?? process.env);
 
   return new Promise((resolve, reject) => {
@@ -510,7 +522,11 @@ export async function runAgent(
 
       resolvedLogger.infoPlain(renderCopilotCommandBox(args));
       resolvedLogger.debug(`Spawning copilot: ${formatCopilotCommand(args)}`);
-      const exitCode = await spawnCopilot(args, { config }, proc);
+      const exitCode = await spawnCopilot(
+        args,
+        { config, command: agentName as CommandName },
+        proc
+      );
 
       if (exitCode === 0) {
         return { isSuccess: true, exitCode: 0 };

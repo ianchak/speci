@@ -162,12 +162,6 @@ export class CommandRegistry {
   private async validateConfiguredModels(
     config: SpeciConfig
   ): Promise<SpeciConfig> {
-    // Local (BYOK) models aren't part of the cloud model list, so skip
-    // live validation/remediation entirely when one is configured.
-    if (config.copilot.localModel) {
-      return config;
-    }
-
     const configPath = findConfigFile(
       this.context.process.cwd(),
       this.context.fs,

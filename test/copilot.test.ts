@@ -453,7 +453,7 @@ describe('copilot', () => {
       expect(shareIndex).toBeLessThan(verboseIndex);
     });
 
-    it('should use localModel.model instead of per-command model when configured', () => {
+    it('should use the per-role model even when localModel is configured for a different role', () => {
       const localConfig = structuredClone(config);
       localConfig.copilot.models.plan = 'custom-plan-model';
       localConfig.copilot.localModel = {
@@ -468,8 +468,26 @@ describe('copilot', () => {
       const args = buildCopilotArgs(localConfig, options);
 
       expect(args).toContain('--model');
+      expect(args).toContain('custom-plan-model');
+      expect(args).not.toContain('local-test-model');
+    });
+
+    it('should use the local model when the role is opted in via matching models entry', () => {
+      const localConfig = structuredClone(config);
+      localConfig.copilot.models.impl = 'local-test-model';
+      localConfig.copilot.localModel = {
+        baseUrl: 'http://127.0.0.1:8080/v1',
+        model: 'local-test-model',
+      };
+      const options: CopilotArgsOptions = {
+        agent: 'test-agent',
+        command: 'impl',
+      };
+
+      const args = buildCopilotArgs(localConfig, options);
+
+      expect(args).toContain('--model');
       expect(args).toContain('local-test-model');
-      expect(args).not.toContain('custom-plan-model');
     });
   });
 
@@ -478,14 +496,46 @@ describe('copilot', () => {
       const proc = createMockProcess();
       proc.env.FOO = 'bar';
 
-      const env = buildCopilotEnv(config, proc);
+      const env = buildCopilotEnv(config, proc, 'plan');
 
       expect(env).toBe(proc.env);
       expect(env.COPILOT_PROVIDER_BASE_URL).toBeUndefined();
     });
 
-    it('should inject local model env vars when localModel is configured', () => {
+    it('should return the base environment unchanged for a role not opted into the local model', () => {
       const localConfig = structuredClone(config);
+      localConfig.copilot.models.impl = 'local-test-model';
+      localConfig.copilot.localModel = {
+        baseUrl: 'http://127.0.0.1:8080/v1',
+        model: 'local-test-model',
+      };
+      const proc = createMockProcess();
+      proc.env.FOO = 'bar';
+
+      const env = buildCopilotEnv(localConfig, proc, 'plan');
+
+      expect(env).toBe(proc.env);
+      expect(env.COPILOT_PROVIDER_BASE_URL).toBeUndefined();
+    });
+
+    it('should return the base environment unchanged when no command is provided', () => {
+      const localConfig = structuredClone(config);
+      localConfig.copilot.models.impl = 'local-test-model';
+      localConfig.copilot.localModel = {
+        baseUrl: 'http://127.0.0.1:8080/v1',
+        model: 'local-test-model',
+      };
+      const proc = createMockProcess();
+
+      const env = buildCopilotEnv(localConfig, proc);
+
+      expect(env).toBe(proc.env);
+      expect(env.COPILOT_PROVIDER_BASE_URL).toBeUndefined();
+    });
+
+    it('should inject local model env vars for a role opted in via matching models entry', () => {
+      const localConfig = structuredClone(config);
+      localConfig.copilot.models.impl = 'local-test-model';
       localConfig.copilot.localModel = {
         baseUrl: 'http://127.0.0.1:8080/v1',
         model: 'local-test-model',
@@ -495,7 +545,7 @@ describe('copilot', () => {
       const proc = createMockProcess();
       proc.env.FOO = 'bar';
 
-      const env = buildCopilotEnv(localConfig, proc);
+      const env = buildCopilotEnv(localConfig, proc, 'impl');
 
       expect(env.COPILOT_PROVIDER_BASE_URL).toBe('http://127.0.0.1:8080/v1');
       expect(env.COPILOT_MODEL).toBe('local-test-model');
@@ -506,6 +556,7 @@ describe('copilot', () => {
 
     it('should clear inherited provider env vars when localModel omits providerType/apiKey', () => {
       const localConfig = structuredClone(config);
+      localConfig.copilot.models.impl = 'local-test-model';
       localConfig.copilot.localModel = {
         baseUrl: 'http://127.0.0.1:8080/v1',
         model: 'local-test-model',
@@ -514,7 +565,7 @@ describe('copilot', () => {
       proc.env.COPILOT_PROVIDER_TYPE = 'stale-type';
       proc.env.COPILOT_PROVIDER_API_KEY = 'stale-key';
 
-      const env = buildCopilotEnv(localConfig, proc);
+      const env = buildCopilotEnv(localConfig, proc, 'impl');
 
       expect(env.COPILOT_PROVIDER_TYPE).toBeUndefined();
       expect(env.COPILOT_PROVIDER_API_KEY).toBeUndefined();
@@ -522,13 +573,14 @@ describe('copilot', () => {
 
     it('should omit optional env vars when providerType/apiKey are not set', () => {
       const localConfig = structuredClone(config);
+      localConfig.copilot.models.impl = 'local-test-model';
       localConfig.copilot.localModel = {
         baseUrl: 'http://127.0.0.1:8080/v1',
         model: 'local-test-model',
       };
       const proc = createMockProcess();
 
-      const env = buildCopilotEnv(localConfig, proc);
+      const env = buildCopilotEnv(localConfig, proc, 'impl');
 
       expect(env.COPILOT_PROVIDER_TYPE).toBeUndefined();
       expect(env.COPILOT_PROVIDER_API_KEY).toBeUndefined();

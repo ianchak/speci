@@ -1,6 +1,7 @@
 import type {
   AgentRunResult,
   CleanupFn,
+  CommandName,
   CopilotArgsOptions,
   CurrentTask,
   MilestoneInfo,
@@ -39,7 +40,12 @@ export interface ICopilotRunner {
    */
   spawn(
     args: string[],
-    options?: { inherit?: boolean; cwd?: string; config?: SpeciConfig },
+    options?: {
+      inherit?: boolean;
+      cwd?: string;
+      config?: SpeciConfig;
+      command?: CommandName;
+    },
     proc?: IProcess
   ): Promise<number>;
 
