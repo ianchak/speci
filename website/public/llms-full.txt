@@ -32,6 +32,11 @@ Or install globally:
 
 This creates a speci.config.json in your project root, creates docs/tasks/ and .speci-logs/ directories, and copies the built-in agent templates into .github/agents/.
 
+On first run, speci fetches the live Copilot model list and asks you to choose a model configuration: Best-in-Class, Balanced (default), Budget-Friendly, or Custom (one-by-one). Speci validates saved model IDs against the live list at startup and offers remediation when one has been deprecated. In non-interactive environments the Balanced preset is applied automatically.
+
+  # Update models in an existing config
+  npx speci init -m
+
 ### Run your first workflow
 
   # 1. Generate a plan from a prompt
@@ -83,17 +88,35 @@ URL: /commands/
 
 URL: /commands/init/
 
-Initialise speci in an existing project. Creates speci.config.json and copies the built-in agent templates into .github/agents/.
+Initialise speci in an existing project. Creates speci.config.json, sets up copilot.models from the live Copilot model list, and copies the built-in agent templates into .github/agents/.
 
 Usage:
-  speci init [-u] [-v]
+  speci init [-u] [-v] [-m]
 
 Options:
-  -u, --update-agents   Update agent files even if they already exist
-  -v, --verbose         Show detailed output
+  -u, --update-agents       Update agent files even if they exist
+  -m, --reconfigure-models  Update copilot.models in an existing speci.config.json
+  -v, --verbose             Show detailed output
+
+Model selection:
+On first init (or when running with -m, --reconfigure-models), speci fetches the live Copilot model list, validates the current model assignments, and presents an interactive menu:
+
+  ? Choose a model configuration:
+    1. Best-in-Class
+    2. Balanced (default)
+    3. Budget-Friendly
+    4. Custom (one-by-one)
+
+Presets (1-3) assign the best available model to each role automatically.
+Custom (4) prompts you to pick a model for each of the seven roles: plan, task, refactor, impl, review, fix, and tidy.
+If a configured model is no longer available from the live Copilot list, startup validation warns and offers remediation: replace per role, apply the Balanced preset, or skip and continue.
+When reconfiguring with -m, your current model assignments are displayed before prompting. In non-interactive (CI) environments the Balanced preset is applied automatically.
+
+Local/self-hosted routing:
+If `copilot.localModel` is configured, the custom selector exposes that local endpoint as an extra per-role option. A role uses the local provider only when `copilot.models.<role>` matches `copilot.localModel.model`; Speci then injects `COPILOT_PROVIDER_BASE_URL`, `COPILOT_MODEL`, `COPILOT_PROVIDER_TYPE`, and `COPILOT_PROVIDER_API_KEY` for just that invocation. Other roles stay on their cloud model assignments and continue through the normal live validation path.
 
 What it creates:
-  speci.config.json                          Project configuration (gates, agent paths, etc.)
+  speci.config.json                          Project configuration (gates, agent paths, copilot.models, etc.)
   docs/tasks/                                Directory for generated task files
   .speci-logs/                               Directory for run log files
   .github/agents/speci-plan.agent.md         Plan generation agent

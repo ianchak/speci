@@ -212,6 +212,7 @@ export function createMockCopilotRunner(): ICopilotRunner {
     buildArgs: vi.fn(() => []),
     spawn: vi.fn(async () => 0),
     run: vi.fn(async () => mockAgentSuccess()),
+    listModels: vi.fn(async () => []),
   };
 }
 

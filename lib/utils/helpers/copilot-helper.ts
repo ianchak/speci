@@ -5,6 +5,7 @@
  */
 
 import type { CommandResult, CommandContext } from '@/interfaces/index.js';
+import type { SpeciConfig } from '@/types.js';
 import {
   formatCopilotCommand,
   renderCopilotCommandBox,
@@ -20,11 +21,13 @@ import {
  *
  * @param context - Command context with dependencies
  * @param args - Pre-built copilot CLI arguments
+ * @param config - Speci configuration (forwarded so local model env vars can be injected)
  * @returns Promise resolving to command result
  */
 export async function executeCopilotCommand(
   context: CommandContext,
-  args: string[]
+  args: string[],
+  config?: SpeciConfig
 ): Promise<CommandResult> {
   context.logger.infoPlain(renderCopilotCommandBox(args));
 
@@ -32,7 +35,10 @@ export async function executeCopilotCommand(
   context.logger.debug(`Spawning: ${formatCopilotCommand(args)}`);
 
   // Spawn copilot process with stdio:inherit
-  const exitCode = await context.copilotRunner.spawn(args, { inherit: true });
+  const exitCode = await context.copilotRunner.spawn(args, {
+    inherit: true,
+    config,
+  });
 
   // Return structured result
   if (exitCode === 0) {

@@ -102,6 +102,80 @@ export class ConfigValidator {
   }
 
   /**
+   * Validate copilot local model (BYOK) settings
+   */
+  validateLocalModel(): this {
+    const localModel = this.config.copilot?.localModel;
+    if (!localModel) {
+      return this;
+    }
+
+    if (typeof localModel !== 'object' || localModel === null) {
+      this.errors.push({
+        field: 'copilot.localModel',
+        message: 'copilot.localModel must be an object',
+        suggestions: ['Provide an object with baseUrl and model properties'],
+      });
+      return this;
+    }
+
+    if (
+      typeof localModel.baseUrl !== 'string' ||
+      !/^https?:\/\//.test(localModel.baseUrl)
+    ) {
+      this.errors.push({
+        field: 'copilot.localModel.baseUrl',
+        message: `Invalid copilot.localModel.baseUrl: ${localModel.baseUrl}`,
+        suggestions: [
+          'Provide a full URL including http:// or https://',
+          'Example: http://127.0.0.1:8080/v1',
+        ],
+      });
+    }
+
+    if (
+      typeof localModel.model !== 'string' ||
+      localModel.model.trim() === ''
+    ) {
+      this.errors.push({
+        field: 'copilot.localModel.model',
+        message: 'copilot.localModel.model must not be empty',
+        suggestions: [
+          'Set copilot.localModel.model to the model ID your local server serves',
+        ],
+      });
+    }
+
+    const validProviderTypes = ['openai', 'azure', 'anthropic'];
+    if (
+      localModel.providerType !== undefined &&
+      (typeof localModel.providerType !== 'string' ||
+        !validProviderTypes.includes(localModel.providerType))
+    ) {
+      this.errors.push({
+        field: 'copilot.localModel.providerType',
+        message: `Invalid copilot.localModel.providerType: ${localModel.providerType}`,
+        suggestions: [`Valid options: ${validProviderTypes.join(', ')}`],
+      });
+    }
+
+    if (
+      localModel.apiKey !== undefined &&
+      typeof localModel.apiKey !== 'string'
+    ) {
+      this.errors.push({
+        field: 'copilot.localModel.apiKey',
+        message: 'copilot.localModel.apiKey must be a string',
+        suggestions: [
+          'Set copilot.localModel.apiKey to your provider API key string',
+        ],
+      });
+    }
+
+    return this;
+  }
+
+  /**
    * Validate gate settings
    */
   validateGate(): this {
@@ -143,6 +217,7 @@ export class ConfigValidator {
     this.validateVersion()
       .validatePaths()
       .validateCopilot()
+      .validateLocalModel()
       .validateGate()
       .validateLoop();
 

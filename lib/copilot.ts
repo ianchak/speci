@@ -41,6 +41,130 @@ interface RetryPolicy {
   retryableExitCodes: number[];
 }
 
+let cachedModels: string[] | null | undefined;
+// Matches valid model ID strings like "o3", "claude-opus-4.8", and "gpt-5.3-codex".
+const MODEL_ID_PATTERN = /^[a-z0-9]+(?:[-._][a-z0-9]+)*$/i;
+const IGNORED_PROSE_WORDS = new Set([
+  'model',
+  'models',
+  'status',
+  'name',
+  'id',
+  'description',
+  'ready',
+  'available',
+  'space-separated',
+  'user-facing',
+  'auto-retry',
+  'non-interactive',
+]);
+const KNOWN_MODEL_TOKEN_PATTERN =
+  /^(?:[0-9]|gpt|claude|gemini|llama|mistral|o[0-9]|deepseek|codex|copilot|dall-e|grok|kimi|k[0-9]|mai|fable|qwen|phi|command|yi)/i;
+
+const MODEL_LIST_TIMEOUT_MS = 20_000;
+
+function parseModelList(output: string): string[] {
+  const trimmed = output.trim();
+  if (!trimmed) return [];
+
+  const parseJsonValues = (jsonStr: string): string[] => {
+    try {
+      const parsed: unknown = JSON.parse(jsonStr);
+      const values: string[] = [];
+      const visit = (value: unknown): void => {
+        if (typeof value === 'string') {
+          values.push(value);
+          return;
+        }
+        if (Array.isArray(value)) {
+          value.forEach(visit);
+          return;
+        }
+        if (value && typeof value === 'object') {
+          for (const [key, nested] of Object.entries(
+            value as Record<string, unknown>
+          )) {
+            if (
+              (key === 'id' || key === 'model' || key === 'name') &&
+              typeof nested === 'string'
+            ) {
+              values.push(nested);
+            } else {
+              visit(nested);
+            }
+          }
+        }
+      };
+      visit(parsed);
+      return values;
+    } catch {
+      return [];
+    }
+  };
+
+  // 1. Try direct JSON parse
+  let jsonValues = parseJsonValues(trimmed);
+
+  // 2. Try extracting JSON from markdown code block if direct JSON parse returned empty
+  if (jsonValues.length === 0) {
+    const codeBlockMatch = trimmed.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
+    if (codeBlockMatch && codeBlockMatch[1]) {
+      jsonValues = parseJsonValues(codeBlockMatch[1].trim());
+    }
+  }
+
+  // 3. Fallback to line-by-line and table parsing
+  const lineValues: string[] = [];
+  if (jsonValues.length === 0) {
+    for (const line of trimmed.split('\n')) {
+      const tableMatch = line.match(/^\s*\|\s*([a-z0-9_.-]+)\s*\|/i);
+      if (
+        tableMatch &&
+        tableMatch[1] &&
+        !IGNORED_PROSE_WORDS.has(tableMatch[1].toLowerCase()) &&
+        !tableMatch[1].includes('---')
+      ) {
+        lineValues.push(tableMatch[1].trim());
+        continue;
+      }
+
+      const cleaned = line.replace(/^\s*(?:[-*•]|\d+\.)\s*/, '').trim();
+      if (
+        cleaned &&
+        MODEL_ID_PATTERN.test(cleaned) &&
+        !IGNORED_PROSE_WORDS.has(cleaned.toLowerCase())
+      ) {
+        lineValues.push(cleaned);
+        continue;
+      }
+
+      // Plain text line word matching
+      const words = line.split(/\s+/);
+      for (const word of words) {
+        const cleanedWord = word.replace(/^[^\w]+|[^\w]+$/g, '');
+        if (
+          cleanedWord &&
+          MODEL_ID_PATTERN.test(cleanedWord) &&
+          !IGNORED_PROSE_WORDS.has(cleanedWord.toLowerCase()) &&
+          KNOWN_MODEL_TOKEN_PATTERN.test(cleanedWord)
+        ) {
+          lineValues.push(cleanedWord);
+        }
+      }
+    }
+  }
+
+  const values = jsonValues.length > 0 ? jsonValues : lineValues;
+  const normalized = values.map((value) => value.trim()).filter(Boolean);
+  const modelIds = normalized.filter((value) => {
+    return (
+      MODEL_ID_PATTERN.test(value) &&
+      !IGNORED_PROSE_WORDS.has(value.toLowerCase())
+    );
+  });
+  return [...new Set(modelIds)];
+}
+
 /**
  * Default retry policy
  */
@@ -86,7 +210,7 @@ export function buildCopilotArgs(
     args.push('--yolo');
   }
 
-  // Model flag - only per-command model is used
+  // Model flag - per-role config; set a role's model to copilot.localModel.model to route it locally
   const model = config.copilot.models[options.command];
   args.push('--model', model);
 
@@ -106,6 +230,50 @@ export function buildCopilotArgs(
 }
 
 /**
+ * Build the process environment for a copilot CLI invocation.
+ *
+ * Injects the COPILOT_PROVIDER_* and COPILOT_MODEL env vars Copilot CLI's
+ * BYOK support reads only when `command`'s configured model matches
+ * `config.copilot.localModel.model` — i.e. only the roles opted into the
+ * local/self-hosted endpoint get redirected; other roles use cloud models.
+ *
+ * @param config - Speci configuration
+ * @param proc - Optional IProcess instance to read the base environment from
+ * @param command - Role being invoked, used to check local-model opt-in
+ * @returns Environment object to pass to the spawned copilot process
+ */
+export function buildCopilotEnv(
+  config: SpeciConfig,
+  proc?: IProcess,
+  command?: CommandName
+): NodeJS.ProcessEnv {
+  const baseEnv = proc?.env ?? process.env;
+  const localModel = config.copilot.localModel;
+  const usesLocalModel =
+    localModel !== undefined &&
+    command !== undefined &&
+    config.copilot.models[command] === localModel.model;
+  if (!usesLocalModel || !localModel) {
+    return baseEnv;
+  }
+
+  const env: NodeJS.ProcessEnv = { ...baseEnv };
+  env.COPILOT_PROVIDER_BASE_URL = localModel.baseUrl;
+  env.COPILOT_MODEL = localModel.model;
+  if (localModel.providerType) {
+    env.COPILOT_PROVIDER_TYPE = localModel.providerType;
+  } else {
+    delete env.COPILOT_PROVIDER_TYPE;
+  }
+  if (localModel.apiKey) {
+    env.COPILOT_PROVIDER_API_KEY = localModel.apiKey;
+  } else {
+    delete env.COPILOT_PROVIDER_API_KEY;
+  }
+  return env;
+}
+
+/**
  * Spawn copilot CLI process
  *
  * @param args - CLI arguments
@@ -115,16 +283,29 @@ export function buildCopilotArgs(
  */
 export async function spawnCopilot(
   args: string[],
-  options: { inherit?: boolean; cwd?: string } = {},
+  options: {
+    inherit?: boolean;
+    cwd?: string;
+    config?: SpeciConfig;
+    command?: CommandName;
+  } = {},
   proc?: IProcess
 ): Promise<number> {
-  const { inherit = true, cwd = proc?.cwd() ?? process.cwd() } = options;
+  const {
+    inherit = true,
+    cwd = proc?.cwd() ?? process.cwd(),
+    config,
+    command,
+  } = options;
+  const env = config
+    ? buildCopilotEnv(config, proc, command)
+    : (proc?.env ?? process.env);
 
   return new Promise((resolve, reject) => {
     const child = spawn('copilot', args, {
       stdio: inherit ? 'inherit' : 'pipe',
       cwd,
-      env: proc?.env ?? process.env,
+      env,
       shell: false,
     });
 
@@ -136,6 +317,148 @@ export async function spawnCopilot(
       resolve(code ?? 1);
     });
   });
+}
+
+/**
+ * List currently available models from Copilot CLI.
+ * Uses per-process memory cache to avoid repeated subprocess calls.
+ */
+export async function listCopilotModels(
+  proc?: IProcess,
+  logger?: ILogger
+): Promise<string[] | null> {
+  if (cachedModels !== undefined) {
+    return cachedModels;
+  }
+
+  const resolvedLogger = logger ?? log;
+  const commands = [
+    [
+      '-p',
+      'Output only available model IDs as a plain space-separated list. No explanations.',
+      '--silent',
+      '--no-custom-instructions',
+      '--no-ask-user',
+    ],
+    [
+      '-p',
+      'list available models',
+      '--silent',
+      '--no-custom-instructions',
+      '--no-ask-user',
+    ],
+    ['models', 'list', '--json'],
+    ['model', 'list', '--json'],
+    ['models', 'list'],
+    ['model', 'list'],
+  ];
+
+  const failedAttempts: Array<{
+    command: string;
+    code: number;
+    stdout: string;
+    stderr: string;
+  }> = [];
+
+  for (const args of commands) {
+    const result = await new Promise<{
+      code: number;
+      stdout: string;
+      stderr: string;
+    }>((resolve) => {
+      const child = spawn('copilot', args, {
+        stdio: ['ignore', 'pipe', 'pipe'],
+        cwd: proc?.cwd() ?? process.cwd(),
+        env: proc?.env ?? process.env,
+        shell: false,
+      });
+
+      let stdout = '';
+      let stderr = '';
+
+      // Model discovery can run at startup; never block on a hung Copilot CLI.
+      const timer = setTimeout(() => {
+        stderr = `${stderr}\nTimed out after ${MODEL_LIST_TIMEOUT_MS}ms`.trim();
+        child.kill();
+        resolve({ code: 124, stdout, stderr });
+      }, MODEL_LIST_TIMEOUT_MS);
+      timer.unref?.();
+
+      child.stdout?.on('data', (chunk) => {
+        stdout += chunk.toString();
+      });
+      child.stderr?.on('data', (chunk) => {
+        stderr += chunk.toString();
+      });
+      child.on('error', (err) => {
+        clearTimeout(timer);
+        resolve({ code: 1, stdout, stderr: stderr || String(err) });
+      });
+      child.on('close', (code) => {
+        clearTimeout(timer);
+        resolve({ code: code ?? 1, stdout, stderr });
+      });
+    });
+
+    if (
+      result.code === 0 ||
+      (result.code === 124 && result.stdout.length > 0)
+    ) {
+      const models = parseModelList(result.stdout);
+      if (models.length > 0) {
+        cachedModels = models;
+        return cachedModels;
+      }
+      resolvedLogger.debug(
+        `Command "copilot ${args.join(' ')}" succeeded (exit ${result.code}) but returned no parseable models. Output: ${result.stdout.trim() || '(empty)'}`
+      );
+      failedAttempts.push({
+        command: `copilot ${args.join(' ')}`,
+        code: result.code,
+        stdout: result.stdout.trim(),
+        stderr: result.stderr.trim(),
+      });
+    } else {
+      const errOutput =
+        result.stderr.trim() ||
+        result.stdout.trim() ||
+        `exit code ${result.code}`;
+      resolvedLogger.debug(
+        `Failed to list Copilot models with "copilot ${args.join(' ')}": ${errOutput}`
+      );
+      failedAttempts.push({
+        command: `copilot ${args.join(' ')}`,
+        code: result.code,
+        stdout: result.stdout.trim(),
+        stderr: result.stderr.trim(),
+      });
+    }
+  }
+
+  const anyOutput = failedAttempts.some(
+    (a) => a.stderr.length > 0 || a.stdout.length > 0
+  );
+  if (anyOutput) {
+    const summary = failedAttempts
+      .map((a) => {
+        const out = [a.stderr, a.stdout].filter(Boolean).join('\n');
+        return `  - "${a.command}" (code ${a.code}):\n${out ? `    ${out.replace(/\n/g, '\n    ')}` : '    (no output)'}`;
+      })
+      .join('\n');
+    resolvedLogger.debug(
+      `Could not retrieve Copilot models from CLI:\n${summary}`
+    );
+  }
+
+  cachedModels = null;
+  return cachedModels;
+}
+
+/**
+ * Reset cached model list (test-only).
+ */
+export function resetCopilotModelsCache(): void {
+  cachedModels = undefined;
 }
 
 /**
@@ -182,7 +505,7 @@ export async function runAgent(
 
     try {
       // Use the agent name directly (e.g., 'speci-plan')
-      // Copilot CLI looks for agents in .github/copilot/agents/
+      // Copilot CLI looks for agents in .github/agents/
       const agentFileName = getAgentFilename(agentName);
 
       // Ensure logs directory exists for --share output
@@ -199,7 +522,11 @@ export async function runAgent(
 
       resolvedLogger.infoPlain(renderCopilotCommandBox(args));
       resolvedLogger.debug(`Spawning copilot: ${formatCopilotCommand(args)}`);
-      const exitCode = await spawnCopilot(args, {}, proc);
+      const exitCode = await spawnCopilot(
+        args,
+        { config, command: agentName as CommandName },
+        proc
+      );
 
       if (exitCode === 0) {
         return { isSuccess: true, exitCode: 0 };

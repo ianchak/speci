@@ -6,12 +6,13 @@
 
 import {
   buildCopilotArgs,
+  listCopilotModels,
   spawnCopilot,
   runAgent,
   type CopilotArgsOptions,
   type AgentRunResult,
 } from '@/copilot.js';
-import type { SpeciConfig } from '@/types.js';
+import type { CommandName, SpeciConfig } from '@/types.js';
 import type { ICopilotRunner, ILogger, IProcess } from '@/interfaces/index.js';
 
 /**
@@ -28,7 +29,12 @@ export class NodeCopilotRunner implements ICopilotRunner {
 
   async spawn(
     args: string[],
-    options?: { inherit?: boolean; cwd?: string },
+    options?: {
+      inherit?: boolean;
+      cwd?: string;
+      config?: SpeciConfig;
+      command?: CommandName;
+    },
     proc?: IProcess
   ): Promise<number> {
     return spawnCopilot(args, options, proc);
@@ -40,5 +46,9 @@ export class NodeCopilotRunner implements ICopilotRunner {
     proc?: IProcess
   ): Promise<AgentRunResult> {
     return runAgent(config, agentName, undefined, proc, this.logger);
+  }
+
+  async listModels(proc?: IProcess): Promise<string[] | null> {
+    return listCopilotModels(proc, this.logger);
   }
 }

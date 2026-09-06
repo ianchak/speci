@@ -65,6 +65,21 @@ export interface SpeciConfig {
       fix: string;
       tidy: string;
     };
+    /**
+     * Optional local/self-hosted model override (BYOK). When set, Copilot CLI
+     * is invoked against this endpoint instead of GitHub-hosted models —
+     * speci injects COPILOT_PROVIDER_* / COPILOT_MODEL env vars on the fly.
+     */
+    localModel?: {
+      /** Base URL of the OpenAI-compatible (or Azure/Anthropic) endpoint, e.g. http://127.0.0.1:8080/v1 */
+      baseUrl: string;
+      /** Model ID as served by the local endpoint */
+      model: string;
+      /** Provider type understood by Copilot CLI's BYOK support (default: 'openai') */
+      providerType?: 'openai' | 'azure' | 'anthropic';
+      /** Optional API key forwarded to the provider (omit for unauthenticated local servers) */
+      apiKey?: string;
+    };
     extraFlags: string[];
   };
   gate: {
@@ -95,11 +110,7 @@ export interface TaskStats {
  * Canonical task status values from PROGRESS.md task tables.
  */
 export type TaskStatus =
-  | 'NOT STARTED'
-  | 'IN PROGRESS'
-  | 'IN REVIEW'
-  | 'COMPLETE'
-  | 'BLOCKED';
+  'NOT STARTED' | 'IN PROGRESS' | 'IN REVIEW' | 'COMPLETE' | 'BLOCKED';
 
 /**
  * Current task information
@@ -133,13 +144,7 @@ export interface MilestoneInfo {
  * the agent prompt templates in templates/agents/.
  */
 export type CommandName =
-  | 'plan'
-  | 'task'
-  | 'refactor'
-  | 'impl'
-  | 'review'
-  | 'fix'
-  | 'tidy';
+  'plan' | 'task' | 'refactor' | 'impl' | 'review' | 'fix' | 'tidy';
 
 /**
  * Agent dispatch specification for run-loop orchestration.

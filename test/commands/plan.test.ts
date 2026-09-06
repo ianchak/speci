@@ -117,6 +117,7 @@ describe('plan command', () => {
       ),
       spawn: vi.fn(async () => 0),
       run: vi.fn(async () => ({ isSuccess: true, exitCode: 0 }) as const),
+      listModels: vi.fn(async () => []),
     };
 
     mockContext = createMockContext({
@@ -222,6 +223,7 @@ describe('plan command', () => {
         buildArgs: buildArgsSpy,
         spawn: spawnSpy,
         run: vi.fn(async () => ({ isSuccess: true, exitCode: 0 }) as const),
+        listModels: vi.fn(async () => []),
       };
 
       // Create real filesystem wrapper

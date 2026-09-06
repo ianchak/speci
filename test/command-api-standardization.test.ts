@@ -21,6 +21,7 @@ import { status } from '../lib/commands/status.js';
 import { createMockContext } from '../lib/adapters/test-context.js';
 import type { CommandContext, CommandResult } from '../lib/interfaces/index.js';
 import type { SpeciConfig } from '../lib/types.js';
+import * as copilotModule from '@/copilot.js';
 
 describe('Command API Standardization (TASK_027)', () => {
   let testDir: string;
@@ -76,6 +77,7 @@ describe('Command API Standardization (TASK_027)', () => {
 
     // Mock copilot runner to avoid actual spawns
     vi.spyOn(mockContext.copilotRunner, 'spawn').mockResolvedValue(0);
+    vi.spyOn(copilotModule, 'listCopilotModels').mockResolvedValue(null);
   });
 
   afterEach(() => {

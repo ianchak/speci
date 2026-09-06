@@ -1,6 +1,7 @@
 import type {
   AgentRunResult,
   CleanupFn,
+  CommandName,
   CopilotArgsOptions,
   CurrentTask,
   MilestoneInfo,
@@ -39,7 +40,12 @@ export interface ICopilotRunner {
    */
   spawn(
     args: string[],
-    options?: { inherit?: boolean; cwd?: string },
+    options?: {
+      inherit?: boolean;
+      cwd?: string;
+      config?: SpeciConfig;
+      command?: CommandName;
+    },
     proc?: IProcess
   ): Promise<number>;
 
@@ -54,6 +60,11 @@ export interface ICopilotRunner {
     agentName: string,
     proc?: IProcess
   ): Promise<AgentRunResult>;
+
+  /**
+   * Get available model IDs from Copilot CLI.
+   */
+  listModels(proc?: IProcess): Promise<string[] | null>;
 }
 
 /**

@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import {
   mkdirSync,
   rmSync,
@@ -11,6 +11,7 @@ import { tmpdir } from 'node:os';
 import { createProductionContext } from '../../lib/adapters/context-factory.js';
 import { init as initCommand } from '../../lib/commands/init.js';
 import { getDefaults } from '../../lib/config/index.js';
+import * as copilotModule from '@/copilot.js';
 
 const init = (
   options: Parameters<typeof initCommand>[0] = {},
@@ -32,6 +33,7 @@ describe('init command', () => {
     testDir = join(tmpdir(), `speci-init-test-${Date.now()}-${Math.random()}`);
     mkdirSync(testDir, { recursive: true });
     process.chdir(testDir);
+    vi.spyOn(copilotModule, 'listCopilotModels').mockResolvedValue(null);
   });
 
   afterEach(() => {
@@ -43,6 +45,7 @@ describe('init command', () => {
     if (existsSync(testDir)) {
       rmSync(testDir, { recursive: true, force: true });
     }
+    vi.restoreAllMocks();
   });
 
   describe('default behavior', () => {

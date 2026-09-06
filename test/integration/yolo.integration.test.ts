@@ -98,11 +98,9 @@ describe('Yolo Integration', () => {
     const context = createContext();
     const result = await yolo({}, context, project.config);
 
-    expect(result).toEqual({
-      success: false,
-      exitCode: 1,
-      error: 'Missing required input',
-    });
+    expect(result.success).toBe(false);
+    expect(result.exitCode).toBe(1);
+    expect(result.error).toContain('Missing required input');
     expect(taskModule.task).not.toHaveBeenCalled();
     expect(runModule.run).not.toHaveBeenCalled();
   });

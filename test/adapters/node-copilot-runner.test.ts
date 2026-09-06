@@ -15,6 +15,7 @@ vi.mock('@/copilot.js', async () => {
   return {
     ...actual,
     buildCopilotArgs: vi.fn(),
+    listCopilotModels: vi.fn(),
     spawnCopilot: vi.fn(),
     runAgent: vi.fn(),
   };
@@ -63,6 +64,21 @@ describe('NodeCopilotRunner', () => {
     expect(result).toBe(0);
   });
 
+  it('forwards the command option to spawnCopilot for per-role local model resolution', async () => {
+    const args = ['--help'];
+    const spawnOptions = { config, command: 'impl' as const };
+    const proc = createMockProcess();
+    vi.mocked(copilotModule.spawnCopilot).mockResolvedValue(0);
+
+    await adapter.spawn(args, spawnOptions, proc);
+
+    expect(copilotModule.spawnCopilot).toHaveBeenCalledWith(
+      args,
+      spawnOptions,
+      proc
+    );
+  });
+
   it('delegates run to runAgent', async () => {
     const expected: AgentRunResult = { isSuccess: true, exitCode: 0 };
     const proc = createMockProcess();
@@ -78,5 +94,20 @@ describe('NodeCopilotRunner', () => {
       expect.anything()
     );
     expect(result).toBe(expected);
+  });
+
+  it('delegates listModels to listCopilotModels', async () => {
+    const proc = createMockProcess();
+    vi.mocked(copilotModule.listCopilotModels).mockResolvedValue([
+      'gpt-5-mini',
+    ]);
+
+    const result = await adapter.listModels(proc);
+
+    expect(copilotModule.listCopilotModels).toHaveBeenCalledWith(
+      proc,
+      expect.anything()
+    );
+    expect(result).toEqual(['gpt-5-mini']);
   });
 });

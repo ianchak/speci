@@ -208,7 +208,7 @@ export async function plan(
     });
 
     // Execute copilot command with standard pattern
-    return await executeCopilotCommand(context, args);
+    return await executeCopilotCommand(context, args, config);
   } catch (error) {
     return handleCommandError(error, 'Plan', context.logger);
   }

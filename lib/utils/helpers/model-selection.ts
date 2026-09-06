@@ -1,0 +1,332 @@
+import type { IFileSystem, ILogger, IProcess } from '@/interfaces/index.js';
+import type { SpeciConfig } from '@/types.js';
+import { promptUser } from './prompt.js';
+
+export const MODEL_ROLES = [
+  'plan',
+  'task',
+  'refactor',
+  'impl',
+  'review',
+  'fix',
+  'tidy',
+] as const;
+
+export type ModelRole = (typeof MODEL_ROLES)[number];
+export type ModelPreset = 'best' | 'balanced' | 'budget';
+
+const ROLE_DESCRIPTIONS: Record<ModelRole, string> = {
+  plan: 'Orchestrates your task breakdown',
+  task: 'Generates and structures tasks',
+  refactor: 'Finds safe refactoring opportunities',
+  impl: 'Implements production code changes',
+  review: 'Reviews correctness and edge cases',
+  fix: 'Repairs failures from gates/review',
+  tidy: 'Performs cleanup and polish tasks',
+};
+
+const PRESET_ORDER: Record<ModelPreset, Record<ModelRole, RegExp[]>> = {
+  best: {
+    plan: [/claude-opus/i, /codex/i, /claude-sonnet/i, /gpt-5/i],
+    task: [/claude-sonnet/i, /gpt-5(?!.*mini)/i, /claude-opus/i, /mini/i],
+    refactor: [/claude-sonnet/i, /gpt-5(?!.*mini)/i, /claude-opus/i, /mini/i],
+    impl: [/codex/i, /gpt-5(?!.*mini)/i, /claude-opus/i, /claude-sonnet/i],
+    review: [/claude-opus/i, /claude-sonnet/i, /codex/i, /gpt-5/i],
+    fix: [/claude-sonnet/i, /codex/i, /gpt-5(?!.*mini)/i, /mini/i],
+    tidy: [/gpt-5.*mini/i, /claude-haiku/i, /flash/i, /claude-sonnet/i],
+  },
+  balanced: {
+    plan: [/claude-opus/i, /claude-sonnet/i, /codex/i, /gpt-5/i],
+    task: [/claude-sonnet/i, /gpt-5(?!.*mini)/i, /claude-haiku/i, /mini/i],
+    refactor: [/claude-sonnet/i, /gpt-5(?!.*mini)/i, /claude-haiku/i, /mini/i],
+    impl: [/codex/i, /gpt-5(?!.*mini)/i, /claude-sonnet/i, /mini/i],
+    review: [/claude-sonnet/i, /claude-opus/i, /codex/i, /gpt-5/i],
+    fix: [/claude-sonnet/i, /codex/i, /gpt-5(?!.*mini)/i, /mini/i],
+    tidy: [/gpt-5.*mini/i, /claude-haiku/i, /flash/i, /claude-sonnet/i],
+  },
+  budget: {
+    plan: [/mini/i, /flash/i, /haiku/i, /gpt-5/i],
+    task: [/mini/i, /flash/i, /haiku/i, /gpt-5/i],
+    refactor: [/mini/i, /flash/i, /haiku/i, /gpt-5/i],
+    impl: [/mini/i, /flash/i, /haiku/i, /codex/i, /gpt-5/i],
+    review: [/mini/i, /flash/i, /haiku/i, /gpt-5/i],
+    fix: [/mini/i, /flash/i, /haiku/i, /gpt-5/i],
+    tidy: [/mini/i, /flash/i, /haiku/i, /gpt-5/i],
+  },
+};
+
+function isInteractiveTerminal(
+  proc: IProcess,
+  promptFn?: (question: string) => Promise<string>
+): boolean {
+  return Boolean(promptFn) || Boolean(proc.stdin?.isTTY && proc.stdout?.isTTY);
+}
+
+function pickByPatterns(
+  models: string[],
+  patterns: RegExp[],
+  fallback: string
+): string {
+  for (const pattern of patterns) {
+    const match = models.find((model) => pattern.test(model));
+    if (match) return match;
+  }
+  if (models.includes(fallback)) return fallback;
+  return models[0] ?? fallback;
+}
+
+export function applyPresetModels(
+  preset: ModelPreset,
+  models: string[],
+  fallback: SpeciConfig['copilot']['models']
+): SpeciConfig['copilot']['models'] {
+  const resolved = { ...fallback };
+  for (const role of MODEL_ROLES) {
+    resolved[role] = pickByPatterns(
+      models,
+      PRESET_ORDER[preset][role],
+      fallback[role]
+    );
+  }
+  return resolved;
+}
+
+async function promptForChoice(
+  logger: ILogger,
+  proc: IProcess,
+  promptFn: ((question: string) => Promise<string>) | undefined,
+  question: string,
+  fallback: string,
+  models: string[]
+): Promise<string> {
+  const answer = ((await promptUser(question, promptFn, proc)) ?? '').trim();
+  if (answer.length === 0) return fallback;
+
+  const index = Number.parseInt(answer, 10);
+  if (!Number.isNaN(index) && index >= 1 && index <= models.length) {
+    return models[index - 1];
+  }
+
+  if (models.includes(answer)) return answer;
+
+  logger.warn(`Invalid selection "${answer}". Keeping "${fallback}".`);
+  return fallback;
+}
+
+async function pickModelForRole(
+  role: ModelRole,
+  models: string[],
+  fallback: string,
+  logger: ILogger,
+  proc: IProcess,
+  promptFn?: (question: string) => Promise<string>,
+  localModel?: SpeciConfig['copilot']['localModel']
+): Promise<string> {
+  // Local model is offered as an extra pick, distinct from the live cloud list.
+  const cloudModels = localModel
+    ? models.filter((model) => model !== localModel.model)
+    : models;
+  const optionValues = localModel
+    ? [localModel.model, ...cloudModels]
+    : cloudModels;
+
+  logger.raw('');
+  logger.infoPlain(`? Model for [${role}] — ${ROLE_DESCRIPTIONS[role]}:`);
+  optionValues.forEach((model, index) => {
+    const label = localModel && index === 0 ? `${model} (local)` : model;
+    logger.raw(`  ${index + 1}. ${label}`);
+  });
+  return promptForChoice(
+    logger,
+    proc,
+    promptFn,
+    `  Select model number (Enter to keep "${fallback}"): `,
+    fallback,
+    optionValues
+  );
+}
+
+export function displayModelConfiguration(
+  models: SpeciConfig['copilot']['models'],
+  logger: ILogger,
+  header: string = 'Current model configuration:'
+): void {
+  logger.raw('');
+  logger.infoPlain(header);
+  for (const role of MODEL_ROLES) {
+    logger.raw(`  ${role.padEnd(9)} → ${models[role]}`);
+  }
+  logger.raw('');
+}
+
+export async function selectModelsForInit(options: {
+  currentConfig?: SpeciConfig['copilot']['models'];
+  prompt?: (question: string) => Promise<string>;
+  logger: ILogger;
+  proc: IProcess;
+  liveModels: string[] | null;
+  fallbackModels: SpeciConfig['copilot']['models'];
+  localModel?: SpeciConfig['copilot']['localModel'];
+}): Promise<SpeciConfig['copilot']['models']> {
+  const {
+    currentConfig,
+    prompt,
+    logger,
+    proc,
+    liveModels,
+    fallbackModels,
+    localModel,
+  } = options;
+
+  if (!liveModels || liveModels.length === 0) {
+    logger.warn(
+      currentConfig
+        ? 'Could not fetch live Copilot models. Continuing with existing model configuration.'
+        : 'Could not fetch live Copilot models. Continuing with default model settings.'
+    );
+    return fallbackModels;
+  }
+
+  if (currentConfig) {
+    displayModelConfiguration(
+      currentConfig,
+      logger,
+      'Current model configuration:'
+    );
+  }
+
+  const interactive = isInteractiveTerminal(proc, prompt);
+
+  if (!interactive) {
+    logger.warn(
+      'Non-interactive terminal detected. Applying Balanced model preset.'
+    );
+    return applyPresetModels('balanced', liveModels, fallbackModels);
+  }
+
+  logger.infoPlain('? Choose a model configuration:');
+  logger.raw('  1. Best-in-Class');
+  logger.raw('  2. Balanced (default)');
+  logger.raw('  3. Budget-Friendly');
+  logger.raw('  4. Custom (one-by-one)');
+  const answer = (
+    await promptUser('  Select 1-4 (default 2 – Balanced): ', prompt, proc)
+  ).trim();
+
+  const mode: 'best' | 'balanced' | 'budget' | 'custom' =
+    answer === '1' || answer.toLowerCase() === 'best'
+      ? 'best'
+      : answer === '3' || answer.toLowerCase() === 'budget'
+        ? 'budget'
+        : answer === '4' || answer.toLowerCase() === 'custom'
+          ? 'custom'
+          : 'balanced';
+
+  if (mode !== 'custom') {
+    return applyPresetModels(mode, liveModels, fallbackModels);
+  }
+
+  const selected = { ...fallbackModels };
+  for (const role of MODEL_ROLES) {
+    selected[role] = await pickModelForRole(
+      role,
+      liveModels,
+      selected[role],
+      logger,
+      proc,
+      prompt,
+      localModel
+    );
+  }
+  return selected;
+}
+
+function updateModelsInConfigFile(
+  fs: IFileSystem,
+  configPath: string,
+  models: SpeciConfig['copilot']['models']
+): void {
+  const parsed = JSON.parse(fs.readFileSync(configPath, 'utf8')) as SpeciConfig;
+  parsed.copilot.models = { ...models };
+  fs.writeFileSync(configPath, `${JSON.stringify(parsed, null, 2)}\n`, 'utf8');
+}
+
+export async function remediateInvalidModels(options: {
+  configPath: string;
+  config: SpeciConfig;
+  fs: IFileSystem;
+  proc: IProcess;
+  logger: ILogger;
+  liveModels: string[] | null;
+  prompt?: (question: string) => Promise<string>;
+}): Promise<SpeciConfig['copilot']['models'] | null> {
+  const { configPath, config, fs, proc, logger, liveModels, prompt } = options;
+  if (!liveModels || liveModels.length === 0) {
+    logger.warn(
+      'Could not validate configured Copilot models against live availability.'
+    );
+    return null;
+  }
+
+  const invalidRoles = MODEL_ROLES.filter(
+    (role) =>
+      config.copilot.models[role] !== config.copilot.localModel?.model &&
+      !liveModels.includes(config.copilot.models[role])
+  );
+  if (invalidRoles.length === 0) return null;
+
+  logger.raw('');
+  logger.warnPlain('⚠ Model validation failed');
+  for (const role of invalidRoles) {
+    logger.warnPlain(
+      `  ${role.padEnd(8)}→ "${config.copilot.models[role]}" is no longer available`
+    );
+  }
+  logger.raw('');
+  logger.infoPlain('Run `speci init -m` to fix, or choose now:');
+  logger.infoPlain('  1. Pick replacements interactively');
+  logger.infoPlain('  2. Apply the Balanced preset to all affected roles');
+  logger.infoPlain('  3. Skip and continue anyway (may cause runtime errors)');
+
+  if (!isInteractiveTerminal(proc, prompt)) {
+    logger.warn('Non-interactive terminal detected; skipping remediation.');
+    return null;
+  }
+
+  const answer = (
+    await promptUser('  Select 1-3 (default 1): ', prompt, proc)
+  ).trim();
+  const action = answer === '2' ? '2' : answer === '3' ? '3' : '1';
+  if (action === '3') {
+    logger.warn('Continuing with invalid model configuration.');
+    return null;
+  }
+
+  const nextModels = { ...config.copilot.models };
+  const balanced = applyPresetModels('balanced', liveModels, nextModels);
+
+  if (action === '2') {
+    for (const role of invalidRoles) {
+      nextModels[role] = balanced[role];
+    }
+  } else {
+    for (const role of invalidRoles) {
+      const defaultModel = liveModels.includes(nextModels[role])
+        ? nextModels[role]
+        : balanced[role];
+      nextModels[role] = await pickModelForRole(
+        role,
+        liveModels,
+        defaultModel,
+        logger,
+        proc,
+        prompt,
+        config.copilot.localModel
+      );
+    }
+  }
+
+  updateModelsInConfigFile(fs, configPath, nextModels);
+  logger.success('Updated models in speci.config.json');
+  return nextModels;
+}

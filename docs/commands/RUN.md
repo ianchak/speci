@@ -92,11 +92,13 @@ speci run [--max-iterations 10] [--dry-run] [--force] [--yes] [--verify] [--verb
     │    │  ────          │ │ ─────────── │  │  reached        │   │
     │    │  "All tasks    │ │ ERROR:      │  │  ────────────── │   │
     │    │  complete!"    │ │ "Run speci  │  │  Warn & exit    │   │
-    │    │  return        │ │  init"      │  │                 │   │
+       │    │  return        │ │  task"      │  │                 │   │
     │    └────────────────┘ └─────────────┘  └─────────────────┘   │
     │                                                              │
     └──────────────────────────────────────────────────────────────┘
 ```
+
+When the state is `NO_PROGRESS`, preflight reports `ERR-PRE-06`; generate the missing progress file with `speci task --plan <plan-file>` before running the loop.
 
 ## `WORK_LEFT` — Implementation + Gate + Fix Cycle
 

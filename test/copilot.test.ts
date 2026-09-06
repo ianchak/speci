@@ -4,8 +4,11 @@ import { existsSync, mkdirSync } from 'node:fs';
 import { EventEmitter } from 'node:events';
 import {
   buildCopilotArgs,
+  buildCopilotEnv,
+  listCopilotModels,
   spawnCopilot,
   runAgent,
+  resetCopilotModelsCache,
   type CopilotArgsOptions,
   type AgentRunResult,
 } from '../lib/copilot.js';
@@ -62,7 +65,200 @@ describe('copilot', () => {
 
   beforeEach(() => {
     config = getDefaults();
+    resetCopilotModelsCache();
     vi.clearAllMocks();
+  });
+
+  describe('listCopilotModels', () => {
+    it('filters JSON strings to exact model IDs', async () => {
+      vi.mocked(spawn).mockImplementation(() => {
+        const proc = new EventEmitter() as ChildProcess;
+        proc.stdout = new EventEmitter() as never;
+        proc.stderr = new EventEmitter() as never;
+
+        setTimeout(() => {
+          proc.stdout?.emit(
+            'data',
+            JSON.stringify([
+              {
+                id: 'gpt-5.3-codex',
+                name: 'GPT 5.3 Codex',
+                description: 'Fast coding model',
+              },
+              {
+                model: 'claude-opus-4.8',
+                label: 'Claude Opus 4.8',
+              },
+            ])
+          );
+          proc.emit('close', 0);
+        }, 10);
+
+        return proc;
+      });
+
+      await expect(listCopilotModels()).resolves.toEqual([
+        'gpt-5.3-codex',
+        'claude-opus-4.8',
+      ]);
+    });
+
+    it('logs failed discovery attempts and returns null when all commands fail', async () => {
+      vi.mocked(spawn).mockImplementation(() => {
+        const proc = new EventEmitter() as ChildProcess;
+        proc.stdout = new EventEmitter() as never;
+        proc.stderr = new EventEmitter() as never;
+        queueMicrotask(() => {
+          proc.stderr?.emit('data', 'unsupported command');
+          proc.emit('close', 1);
+        });
+        return proc;
+      });
+
+      await expect(listCopilotModels()).resolves.toBeNull();
+      expect(spawn).toHaveBeenCalledTimes(6);
+      expect(log.debug).toHaveBeenCalledWith(
+        expect.stringContaining('unsupported command')
+      );
+    });
+
+    it('continues to the next discovery command after a process error', async () => {
+      vi.mocked(spawn)
+        .mockImplementationOnce(() => {
+          const proc = new EventEmitter() as ChildProcess;
+          proc.stdout = new EventEmitter() as never;
+          proc.stderr = new EventEmitter() as never;
+          queueMicrotask(() => proc.emit('error', new Error('not found')));
+          return proc;
+        })
+        .mockImplementationOnce(() => {
+          const proc = new EventEmitter() as ChildProcess;
+          proc.stdout = new EventEmitter() as never;
+          proc.stderr = new EventEmitter() as never;
+          queueMicrotask(() => {
+            proc.stdout?.emit('data', '["gpt-5.3-codex"]');
+            proc.emit('close', 0);
+          });
+          return proc;
+        });
+
+      await expect(listCopilotModels()).resolves.toEqual(['gpt-5.3-codex']);
+      expect(log.debug).toHaveBeenCalledWith(
+        expect.stringContaining('not found')
+      );
+    });
+
+    it('parses model IDs from markdown output', async () => {
+      vi.mocked(spawn).mockImplementationOnce(() => {
+        const proc = new EventEmitter() as ChildProcess;
+        proc.stdout = new EventEmitter() as never;
+        proc.stderr = new EventEmitter() as never;
+        queueMicrotask(() => {
+          proc.stdout?.emit(
+            'data',
+            '| Model | Status |\n| --- | --- |\n| gpt-5.3-codex | ready |\n'
+          );
+          proc.emit('close', 0);
+        });
+        return proc;
+      });
+
+      await expect(listCopilotModels()).resolves.toEqual(['gpt-5.3-codex']);
+    });
+
+    it('parses single-token model IDs such as o3 and filters out prose words', async () => {
+      vi.mocked(spawn).mockImplementationOnce(() => {
+        const proc = new EventEmitter() as ChildProcess;
+        proc.stdout = new EventEmitter() as never;
+        proc.stderr = new EventEmitter() as never;
+        queueMicrotask(() => {
+          proc.stdout?.emit(
+            'data',
+            JSON.stringify([
+              'o3',
+              'gpt-4o',
+              'claude-3-5-sonnet',
+              'grok-4.5',
+              'k3',
+              'kimi-k3',
+            ])
+          );
+          proc.emit('close', 0);
+        });
+        return proc;
+      });
+
+      await expect(listCopilotModels()).resolves.toEqual([
+        'o3',
+        'gpt-4o',
+        'claude-3-5-sonnet',
+        'grok-4.5',
+        'k3',
+        'kimi-k3',
+      ]);
+    });
+
+    it('logs successful discovery with no parseable models and eventually returns null', async () => {
+      vi.mocked(spawn).mockImplementation(() => {
+        const proc = new EventEmitter() as ChildProcess;
+        proc.stdout = new EventEmitter() as never;
+        proc.stderr = new EventEmitter() as never;
+        queueMicrotask(() => proc.emit('close', 0));
+        return proc;
+      });
+
+      await expect(listCopilotModels()).resolves.toBeNull();
+      expect(log.debug).toHaveBeenCalledWith(
+        expect.stringContaining('returned no parseable models')
+      );
+    });
+
+    it('does not emit a summary when every discovery command has no output', async () => {
+      vi.mocked(spawn).mockImplementation(() => {
+        const proc = new EventEmitter() as ChildProcess;
+        proc.stdout = new EventEmitter() as never;
+        proc.stderr = new EventEmitter() as never;
+        queueMicrotask(() => proc.emit('close', 1));
+        return proc;
+      });
+
+      await expect(listCopilotModels()).resolves.toBeNull();
+      expect(log.debug).not.toHaveBeenCalledWith(
+        expect.stringContaining('Could not retrieve Copilot models from CLI')
+      );
+    });
+
+    it('uses output from a timed-out discovery command when models were emitted', async () => {
+      vi.mocked(spawn).mockImplementationOnce(() => {
+        const proc = new EventEmitter() as ChildProcess;
+        proc.stdout = new EventEmitter() as never;
+        proc.stderr = new EventEmitter() as never;
+        queueMicrotask(() => {
+          proc.stdout?.emit('data', 'gpt-5.3-codex');
+          proc.emit('close', 124);
+        });
+        return proc;
+      });
+
+      await expect(listCopilotModels()).resolves.toEqual(['gpt-5.3-codex']);
+    });
+
+    it('returns the cached model list without spawning again', async () => {
+      vi.mocked(spawn).mockImplementationOnce(() => {
+        const proc = new EventEmitter() as ChildProcess;
+        proc.stdout = new EventEmitter() as never;
+        proc.stderr = new EventEmitter() as never;
+        queueMicrotask(() => {
+          proc.stdout?.emit('data', '["gpt-5.3-codex"]');
+          proc.emit('close', 0);
+        });
+        return proc;
+      });
+
+      await listCopilotModels();
+      await expect(listCopilotModels()).resolves.toEqual(['gpt-5.3-codex']);
+      expect(spawn).toHaveBeenCalledTimes(1);
+    });
   });
 
   describe('buildCopilotArgs', () => {
@@ -255,6 +451,139 @@ describe('copilot', () => {
       const shareIndex = args.indexOf('--share');
       const verboseIndex = args.indexOf('--verbose');
       expect(shareIndex).toBeLessThan(verboseIndex);
+    });
+
+    it('should use the per-role model even when localModel is configured for a different role', () => {
+      const localConfig = structuredClone(config);
+      localConfig.copilot.models.plan = 'custom-plan-model';
+      localConfig.copilot.localModel = {
+        baseUrl: 'http://127.0.0.1:8080/v1',
+        model: 'local-test-model',
+      };
+      const options: CopilotArgsOptions = {
+        agent: 'test-agent',
+        command: 'plan',
+      };
+
+      const args = buildCopilotArgs(localConfig, options);
+
+      expect(args).toContain('--model');
+      expect(args).toContain('custom-plan-model');
+      expect(args).not.toContain('local-test-model');
+    });
+
+    it('should use the local model when the role is opted in via matching models entry', () => {
+      const localConfig = structuredClone(config);
+      localConfig.copilot.models.impl = 'local-test-model';
+      localConfig.copilot.localModel = {
+        baseUrl: 'http://127.0.0.1:8080/v1',
+        model: 'local-test-model',
+      };
+      const options: CopilotArgsOptions = {
+        agent: 'test-agent',
+        command: 'impl',
+      };
+
+      const args = buildCopilotArgs(localConfig, options);
+
+      expect(args).toContain('--model');
+      expect(args).toContain('local-test-model');
+    });
+  });
+
+  describe('buildCopilotEnv', () => {
+    it('should return the base environment unchanged when localModel is not configured', () => {
+      const proc = createMockProcess();
+      proc.env.FOO = 'bar';
+
+      const env = buildCopilotEnv(config, proc, 'plan');
+
+      expect(env).toBe(proc.env);
+      expect(env.COPILOT_PROVIDER_BASE_URL).toBeUndefined();
+    });
+
+    it('should return the base environment unchanged for a role not opted into the local model', () => {
+      const localConfig = structuredClone(config);
+      localConfig.copilot.models.impl = 'local-test-model';
+      localConfig.copilot.localModel = {
+        baseUrl: 'http://127.0.0.1:8080/v1',
+        model: 'local-test-model',
+      };
+      const proc = createMockProcess();
+      proc.env.FOO = 'bar';
+
+      const env = buildCopilotEnv(localConfig, proc, 'plan');
+
+      expect(env).toBe(proc.env);
+      expect(env.COPILOT_PROVIDER_BASE_URL).toBeUndefined();
+    });
+
+    it('should return the base environment unchanged when no command is provided', () => {
+      const localConfig = structuredClone(config);
+      localConfig.copilot.models.impl = 'local-test-model';
+      localConfig.copilot.localModel = {
+        baseUrl: 'http://127.0.0.1:8080/v1',
+        model: 'local-test-model',
+      };
+      const proc = createMockProcess();
+
+      const env = buildCopilotEnv(localConfig, proc);
+
+      expect(env).toBe(proc.env);
+      expect(env.COPILOT_PROVIDER_BASE_URL).toBeUndefined();
+    });
+
+    it('should inject local model env vars for a role opted in via matching models entry', () => {
+      const localConfig = structuredClone(config);
+      localConfig.copilot.models.impl = 'local-test-model';
+      localConfig.copilot.localModel = {
+        baseUrl: 'http://127.0.0.1:8080/v1',
+        model: 'local-test-model',
+        providerType: 'openai',
+        apiKey: 'test-key',
+      };
+      const proc = createMockProcess();
+      proc.env.FOO = 'bar';
+
+      const env = buildCopilotEnv(localConfig, proc, 'impl');
+
+      expect(env.COPILOT_PROVIDER_BASE_URL).toBe('http://127.0.0.1:8080/v1');
+      expect(env.COPILOT_MODEL).toBe('local-test-model');
+      expect(env.COPILOT_PROVIDER_TYPE).toBe('openai');
+      expect(env.COPILOT_PROVIDER_API_KEY).toBe('test-key');
+      expect(env.FOO).toBe('bar');
+    });
+
+    it('should clear inherited provider env vars when localModel omits providerType/apiKey', () => {
+      const localConfig = structuredClone(config);
+      localConfig.copilot.models.impl = 'local-test-model';
+      localConfig.copilot.localModel = {
+        baseUrl: 'http://127.0.0.1:8080/v1',
+        model: 'local-test-model',
+      };
+      const proc = createMockProcess();
+      proc.env.COPILOT_PROVIDER_TYPE = 'stale-type';
+      proc.env.COPILOT_PROVIDER_API_KEY = 'stale-key';
+
+      const env = buildCopilotEnv(localConfig, proc, 'impl');
+
+      expect(env.COPILOT_PROVIDER_TYPE).toBeUndefined();
+      expect(env.COPILOT_PROVIDER_API_KEY).toBeUndefined();
+    });
+
+    it('should omit optional env vars when providerType/apiKey are not set', () => {
+      const localConfig = structuredClone(config);
+      localConfig.copilot.models.impl = 'local-test-model';
+      localConfig.copilot.localModel = {
+        baseUrl: 'http://127.0.0.1:8080/v1',
+        model: 'local-test-model',
+      };
+      const proc = createMockProcess();
+
+      const env = buildCopilotEnv(localConfig, proc, 'impl');
+
+      expect(env.COPILOT_PROVIDER_TYPE).toBeUndefined();
+      expect(env.COPILOT_PROVIDER_API_KEY).toBeUndefined();
     });
   });
 

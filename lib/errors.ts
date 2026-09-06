@@ -34,6 +34,7 @@ export type ErrorCode =
   | 'ERR-INP-09'
   | 'ERR-INP-10'
   | 'ERR-INP-11'
+  | 'ERR-INP-12'
   | 'ERR-STA-01'
   | 'ERR-STA-02'
   | 'ERR-STA-03'
@@ -156,6 +157,13 @@ export const ERROR_CODES: Record<ErrorCode, ErrorDefinition> = {
     message: 'Subagent prompt not found: {{subagent}}',
     cause: 'Bundled agent template file is missing from installation',
     solution: 'Reinstall speci package or use custom agent path in config',
+  },
+  'ERR-INP-12': {
+    message: 'Invalid copilot.localModel configuration',
+    cause:
+      'copilot.localModel requires a valid baseUrl (http:// or https://) and a non-empty model id',
+    solution:
+      'Set copilot.localModel.baseUrl and copilot.localModel.model in speci.config.json, or remove copilot.localModel to use cloud models',
   },
 
   // State Errors (ERR-STA-*)

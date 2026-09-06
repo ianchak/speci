@@ -183,6 +183,114 @@ describe('ConfigValidator', () => {
     });
   });
 
+  describe('validateLocalModel()', () => {
+    it('should accept config without localModel', () => {
+      const result = new ConfigValidator(validConfig)
+        .validateLocalModel()
+        .validate();
+
+      expect(result.success).toBe(true);
+    });
+
+    it('should accept a valid localModel', () => {
+      const config = {
+        ...validConfig,
+        copilot: {
+          ...validConfig.copilot,
+          localModel: {
+            baseUrl: 'http://127.0.0.1:8080/v1',
+            model: 'local-test-model',
+            providerType: 'openai' as const,
+          },
+        },
+      };
+      const result = new ConfigValidator(config)
+        .validateLocalModel()
+        .validate();
+
+      expect(result.success).toBe(true);
+    });
+
+    it('should reject a localModel with an invalid baseUrl', () => {
+      const config = {
+        ...validConfig,
+        copilot: {
+          ...validConfig.copilot,
+          localModel: { baseUrl: 'not-a-url', model: 'local-test-model' },
+        },
+      };
+      const result = new ConfigValidator(config)
+        .validateLocalModel()
+        .validate();
+
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.error.field).toBe('copilot.localModel.baseUrl');
+      }
+    });
+
+    it('should reject a localModel with an empty model id', () => {
+      const config = {
+        ...validConfig,
+        copilot: {
+          ...validConfig.copilot,
+          localModel: { baseUrl: 'http://127.0.0.1:8080/v1', model: '' },
+        },
+      };
+      const result = new ConfigValidator(config)
+        .validateLocalModel()
+        .validate();
+
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.error.field).toBe('copilot.localModel.model');
+      }
+    });
+
+    it('should reject a localModel with a numeric model id instead of throwing', () => {
+      const config = {
+        ...validConfig,
+        copilot: {
+          ...validConfig.copilot,
+          localModel: {
+            baseUrl: 'http://127.0.0.1:8080/v1',
+            model: 123 as unknown as string,
+          },
+        },
+      };
+      const result = new ConfigValidator(config)
+        .validateLocalModel()
+        .validate();
+
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.error.field).toBe('copilot.localModel.model');
+      }
+    });
+
+    it('should reject a localModel with an invalid providerType', () => {
+      const config = {
+        ...validConfig,
+        copilot: {
+          ...validConfig.copilot,
+          localModel: {
+            baseUrl: 'http://127.0.0.1:8080/v1',
+            model: 'local-test-model',
+            providerType: 'invalid' as 'openai',
+          },
+        },
+      };
+      const result = new ConfigValidator(config)
+        .validateLocalModel()
+        .validate();
+
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.error.field).toBe('copilot.localModel.providerType');
+      }
+    });
+  });
+
   describe('validateGate()', () => {
     it('should accept maxFixAttempts >= 1', () => {
       const attempts = [1, 2, 3, 5, 10];
