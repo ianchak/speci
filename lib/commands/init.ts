@@ -15,10 +15,7 @@ import type { SpeciConfig } from '@/types.js';
 import { CONFIG_FILENAME, GITHUB_AGENTS_DIR } from '@/constants.js';
 import { createError } from '@/errors.js';
 import { listCopilotModels } from '@/copilot.js';
-import {
-  selectModelsForInit,
-  type ModelPreset,
-} from '@/utils/helpers/model-selection.js';
+import { selectModelsForInit } from '@/utils/helpers/model-selection.js';
 import {
   handleCommandError,
   toErrorMessage,
@@ -31,18 +28,8 @@ import type { CommandContext, CommandResult } from '@/interfaces/index.js';
 export interface InitOptions {
   verbose?: boolean; // Show detailed output
   updateAgents?: boolean; // Force update agent files even if they exist
-  preset?: string; // Raw user/CLI input, validated via normalizePreset
-  custom?: boolean;
-  reconfigureModels?: boolean;
+  reconfigureModels?: boolean; // Update copilot.models in an existing speci.config.json
   prompt?: (question: string) => Promise<string>;
-}
-
-function normalizePreset(value?: string): ModelPreset | undefined {
-  if (!value) return undefined;
-  if (value === 'best' || value === 'balanced' || value === 'budget') {
-    return value;
-  }
-  return undefined;
 }
 
 /**
@@ -362,18 +349,19 @@ export async function init(
         context.process,
         context.logger
       );
-      const fallbackModels =
-        existing.configExists && options.reconfigureModels
-          ? ((
-              JSON.parse(
-                context.fs.readFileSync(CONFIG_FILENAME, 'utf8')
-              ) as SpeciConfig
-            ).copilot?.models ?? config.copilot.models)
-          : config.copilot.models;
+      const isReconfiguring =
+        existing.configExists && Boolean(options.reconfigureModels);
+      const existingConfigModels = isReconfiguring
+        ? (
+            JSON.parse(
+              context.fs.readFileSync(CONFIG_FILENAME, 'utf8')
+            ) as SpeciConfig
+          ).copilot?.models
+        : undefined;
+      const fallbackModels = existingConfigModels ?? config.copilot.models;
+
       selectedModels = await selectModelsForInit({
-        preset: normalizePreset(options.preset),
-        custom: options.custom,
-        isFirstInit: !existing.configExists,
+        currentConfig: isReconfiguring ? fallbackModels : undefined,
         prompt: options.prompt,
         logger: context.logger,
         proc: context.process,

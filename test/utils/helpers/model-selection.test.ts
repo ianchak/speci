@@ -97,20 +97,7 @@ describe('model-selection helper', () => {
     );
   });
 
-  it('uses an explicit preset in non-interactive mode', async () => {
-    const selected = await selectModelsForInit({
-      preset: 'budget',
-      logger: createMockLogger(),
-      proc: createMockProcess(false),
-      liveModels: ['gpt-5.4-mini', 'gpt-5.3-codex'],
-      fallbackModels,
-    });
-
-    expect(selected.plan).toBe('gpt-5.4-mini');
-    expect(selected.impl).toBe('gpt-5.4-mini');
-  });
-
-  it('shows menu on first init even when --preset flag is given and terminal is interactive', async () => {
+  it('shows menu and applies chosen preset in interactive mode', async () => {
     const logger = createMockLogger();
     const proc = createMockProcess(true);
     const liveModels = [
@@ -120,12 +107,10 @@ describe('model-selection helper', () => {
       'gpt-5.4-mini',
     ];
 
-    // Simulate user pressing Enter to accept the default (preset flag = 'best' → default '1')
-    const prompt = vi.fn().mockResolvedValue('');
+    // Simulate user selecting option 1 (Best-in-Class)
+    const prompt = vi.fn().mockResolvedValue('1');
 
     const selected = await selectModelsForInit({
-      preset: 'best',
-      isFirstInit: true,
       logger,
       proc,
       liveModels,
@@ -133,13 +118,12 @@ describe('model-selection helper', () => {
       prompt,
     });
 
-    // The prompt must have been called (menu was shown)
     expect(prompt).toHaveBeenCalled();
-    // Accepting the default for 'best' preset should apply 'best'
     expect(selected.plan).toBe('claude-opus-4.8');
+    expect(selected.tidy).toBe('gpt-5.4-mini');
   });
 
-  it('skips menu and applies preset directly on --reconfigure-models (not first init)', async () => {
+  it('displays currentConfig when reconfiguring', async () => {
     const logger = createMockLogger();
     const proc = createMockProcess(true);
     const liveModels = [
@@ -149,11 +133,10 @@ describe('model-selection helper', () => {
       'gpt-5.4-mini',
     ];
 
-    const prompt = vi.fn().mockResolvedValue('');
+    const prompt = vi.fn().mockResolvedValue('2');
 
     const selected = await selectModelsForInit({
-      preset: 'budget',
-      isFirstInit: false,
+      currentConfig: fallbackModels,
       logger,
       proc,
       liveModels,
@@ -161,15 +144,17 @@ describe('model-selection helper', () => {
       prompt,
     });
 
-    // Menu must NOT have been shown when isFirstInit is false and preset is given
-    expect(prompt).not.toHaveBeenCalled();
-    expect(selected.tidy).toBe('gpt-5.4-mini');
+    expect(logger.infoPlain).toHaveBeenCalledWith(
+      'Current model configuration:'
+    );
+    expect(selected.impl).toBe('gpt-5.3-codex');
   });
 
   it('supports selecting models role-by-role and retains fallbacks for invalid answers', async () => {
     const logger = createMockLogger();
     const prompt = vi
       .fn()
+      .mockResolvedValueOnce('4') // Choose Custom (one-by-one)
       .mockResolvedValueOnce('1')
       .mockResolvedValueOnce('invalid')
       .mockResolvedValueOnce('gpt-5.3-codex')
@@ -179,7 +164,6 @@ describe('model-selection helper', () => {
       .mockResolvedValueOnce('2');
 
     const selected = await selectModelsForInit({
-      custom: true,
       logger,
       proc: createMockProcess(true),
       liveModels: ['claude-opus-4.8', 'gpt-5.3-codex'],

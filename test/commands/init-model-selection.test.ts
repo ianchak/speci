@@ -40,21 +40,26 @@ describe('init model selection', () => {
     vi.restoreAllMocks();
   });
 
-  it('applies preset models during init', async () => {
-    await init({ preset: 'budget' }, createProductionContext());
+  it('applies selected budget preset during interactive init', async () => {
+    const prompt = vi.fn().mockResolvedValue('3');
+    await init({ prompt }, createProductionContext());
     const config = JSON.parse(readFileSync('speci.config.json', 'utf8'));
 
+    expect(prompt).toHaveBeenCalled();
     expect(config.copilot.models.tidy).toBe('gpt-5.4-mini');
   });
 
-  it('falls back to the balanced preset for an invalid preset value', async () => {
-    await init({ preset: 'not-a-preset' }, createProductionContext());
+  it('applies balanced preset by default when pressing enter', async () => {
+    const prompt = vi.fn().mockResolvedValue('');
+    await init({ prompt }, createProductionContext());
     const config = JSON.parse(readFileSync('speci.config.json', 'utf8'));
 
+    expect(prompt).toHaveBeenCalled();
     expect(config.copilot.models.impl).toBe('gpt-5.3-codex');
+    expect(config.copilot.models.plan).toBe('claude-opus-4.8');
   });
 
-  it('reconfigures models on existing config file', async () => {
+  it('reconfigures models on existing config file with interactive prompt', async () => {
     writeFileSync(
       'speci.config.json',
       JSON.stringify(
@@ -87,12 +92,11 @@ describe('init model selection', () => {
       )
     );
 
-    await init(
-      { preset: 'balanced', reconfigureModels: true },
-      createProductionContext()
-    );
+    const prompt = vi.fn().mockResolvedValue('1'); // Select Best-in-Class
+    await init({ reconfigureModels: true, prompt }, createProductionContext());
     const config = JSON.parse(readFileSync('speci.config.json', 'utf8'));
 
+    expect(prompt).toHaveBeenCalled();
     expect(config.copilot.models.impl).toBe('gpt-5.3-codex');
     expect(config.copilot.models.plan).toBe('claude-opus-4.8');
   });

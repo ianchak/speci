@@ -35,14 +35,8 @@ This creates a `speci.config.json` in your project root, creates `docs/tasks/` a
 On first run, speci fetches the live Copilot model list and asks you to choose a preset (`best`, `balanced`, `budget`) or configure each agent role individually. In non-interactive environments the **Balanced** preset is applied automatically.
 
 ```bash
-# Apply a preset non-interactively (e.g. in CI)
-npx speci init --preset balanced
-
-# Configure models one-by-one
-npx speci init --custom
-
 # Update models in an existing config
-npx speci init --reconfigure-models
+npx speci init -m
 ```
 
 ## Run your first workflow

@@ -121,7 +121,8 @@ export class CommandRegistry {
 
         if (!effectiveConfig && commandName && commandName !== 'init') {
           effectiveConfig = await this.context.configLoader.load();
-          effectiveConfig = await this.validateConfiguredModels(effectiveConfig);
+          effectiveConfig =
+            await this.validateConfiguredModels(effectiveConfig);
         }
 
         const result = await commandFn(options, this.context, effectiveConfig);
@@ -201,12 +202,7 @@ export class CommandRegistry {
       .description('Initialize Speci in current project')
       .option('-u, --update-agents', 'Update agent files even if they exist')
       .option(
-        '--preset <preset>',
-        'Model preset for copilot.models: best, balanced, budget'
-      )
-      .option('--custom', 'Configure copilot.models role-by-role')
-      .option(
-        '--reconfigure-models',
+        '-m, --reconfigure-models',
         'Update copilot.models in an existing speci.config.json'
       )
       .option('-v, --verbose', 'Show detailed output')
@@ -216,9 +212,7 @@ export class CommandRegistry {
 Examples:
   $ speci init              Set up Speci in current project
   $ speci init -u           Update agent files to latest version
-  $ speci init --preset budget
-  $ speci init --custom
-  $ speci init --reconfigure-models
+  $ speci init -m           Reconfigure Copilot models in existing config
 `
       )
       .action(this.makeAction(init));

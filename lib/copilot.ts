@@ -220,6 +220,13 @@ export async function listCopilotModels(
     ['model', 'list'],
   ];
 
+  const failedAttempts: Array<{
+    command: string;
+    code: number;
+    stdout: string;
+    stderr: string;
+  }> = [];
+
   for (const args of commands) {
     const result = await new Promise<{
       code: number;
@@ -266,11 +273,45 @@ export async function listCopilotModels(
         cachedModels = models;
         return cachedModels;
       }
-    } else {
       resolvedLogger.debug(
-        `Failed to list Copilot models with "copilot ${args.join(' ')}": ${result.stderr.trim()}`
+        `Command "copilot ${args.join(' ')}" succeeded (exit 0) but returned no parseable models. Output: ${result.stdout.trim() || '(empty)'}`
       );
+      failedAttempts.push({
+        command: `copilot ${args.join(' ')}`,
+        code: 0,
+        stdout: result.stdout.trim(),
+        stderr: result.stderr.trim(),
+      });
+    } else {
+      const errOutput =
+        result.stderr.trim() ||
+        result.stdout.trim() ||
+        `exit code ${result.code}`;
+      resolvedLogger.debug(
+        `Failed to list Copilot models with "copilot ${args.join(' ')}": ${errOutput}`
+      );
+      failedAttempts.push({
+        command: `copilot ${args.join(' ')}`,
+        code: result.code,
+        stdout: result.stdout.trim(),
+        stderr: result.stderr.trim(),
+      });
     }
+  }
+
+  const anyOutput = failedAttempts.some(
+    (a) => a.stderr.length > 0 || a.stdout.length > 0
+  );
+  if (anyOutput) {
+    const summary = failedAttempts
+      .map((a) => {
+        const out = [a.stderr, a.stdout].filter(Boolean).join('\n');
+        return `  - "${a.command}" (code ${a.code}):\n${out ? `    ${out.replace(/\n/g, '\n    ')}` : '    (no output)'}`;
+      })
+      .join('\n');
+    resolvedLogger.debug(
+      `Could not retrieve Copilot models from CLI:\n${summary}`
+    );
   }
 
   cachedModels = null;

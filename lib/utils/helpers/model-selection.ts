@@ -136,26 +136,29 @@ async function pickModelForRole(
   );
 }
 
+export function displayModelConfiguration(
+  models: SpeciConfig['copilot']['models'],
+  logger: ILogger,
+  header: string = 'Current model configuration:'
+): void {
+  logger.raw('');
+  logger.infoPlain(header);
+  for (const role of MODEL_ROLES) {
+    logger.raw(`  ${role.padEnd(9)} → ${models[role]}`);
+  }
+  logger.raw('');
+}
+
 export async function selectModelsForInit(options: {
-  preset?: ModelPreset;
-  custom?: boolean;
-  isFirstInit?: boolean;
+  currentConfig?: SpeciConfig['copilot']['models'];
   prompt?: (question: string) => Promise<string>;
   logger: ILogger;
   proc: IProcess;
   liveModels: string[] | null;
   fallbackModels: SpeciConfig['copilot']['models'];
 }): Promise<SpeciConfig['copilot']['models']> {
-  const {
-    preset,
-    custom,
-    isFirstInit,
-    prompt,
-    logger,
-    proc,
-    liveModels,
-    fallbackModels,
-  } = options;
+  const { currentConfig, prompt, logger, proc, liveModels, fallbackModels } =
+    options;
 
   if (!liveModels || liveModels.length === 0) {
     logger.warn(
@@ -164,75 +167,40 @@ export async function selectModelsForInit(options: {
     return fallbackModels;
   }
 
+  if (currentConfig) {
+    displayModelConfiguration(
+      currentConfig,
+      logger,
+      'Current model configuration:'
+    );
+  }
+
   const interactive = isInteractiveTerminal(proc, prompt);
 
-  // On first init in non-interactive mode, apply preset flag if given (for CI/automation),
-  // otherwise fall back to balanced.
   if (!interactive) {
-    if (preset) {
-      return applyPresetModels(preset, liveModels, fallbackModels);
-    }
-    if (!custom) {
-      logger.warn(
-        'Non-interactive terminal detected. Applying Balanced model preset.'
-      );
-      return applyPresetModels('balanced', liveModels, fallbackModels);
-    }
+    logger.warn(
+      'Non-interactive terminal detected. Applying Balanced model preset.'
+    );
+    return applyPresetModels('balanced', liveModels, fallbackModels);
   }
 
-  // On first init in interactive mode, always show the preset/custom menu so the
-  // user can make an informed choice. The --preset flag pre-selects the default,
-  // but the user can still change it. --custom bypasses the choice menu directly.
-  //
-  // Outside first init (e.g. --reconfigure-models), honour --preset immediately so
-  // the flag behaves as an explicit shortcut.
-  const skipMenuForPreset = preset && !isFirstInit;
+  logger.infoPlain('? Choose a model configuration:');
+  logger.raw('  1. Best-in-Class');
+  logger.raw('  2. Balanced (default)');
+  logger.raw('  3. Budget-Friendly');
+  logger.raw('  4. Custom (one-by-one)');
+  const answer = (
+    await promptUser('  Select 1-4 (default 2 – Balanced): ', prompt, proc)
+  ).trim();
 
-  if (skipMenuForPreset) {
-    return applyPresetModels(preset, liveModels, fallbackModels);
-  }
-
-  let mode: 'best' | 'balanced' | 'budget' | 'custom';
-
-  if (custom) {
-    mode = 'custom';
-  } else {
-    // Map preset value → (menu number, display label) for the default selection hint.
-    const PRESET_MENU: Record<
-      ModelPreset,
-      { choice: string; label: string }
-    > = {
-      best: { choice: '1', label: 'Best-in-Class' },
-      balanced: { choice: '2', label: 'Balanced' },
-      budget: { choice: '3', label: 'Budget-Friendly' },
-    };
-    const { choice: defaultChoice, label: defaultLabel } =
-      preset !== undefined ? PRESET_MENU[preset] : PRESET_MENU['balanced'];
-
-    logger.infoPlain('? Choose a model preset:');
-    logger.raw('  1. Best-in-Class');
-    logger.raw('  2. Balanced');
-    logger.raw('  3. Budget-Friendly');
-    logger.raw('  4. Custom (one-by-one)');
-    const answer = (
-      await promptUser(
-        `  Select 1-4 (default ${defaultChoice} – ${defaultLabel}): `,
-        prompt,
-        proc
-      )
-    ).trim();
-    // Empty answer → use the --preset flag value, or 'balanced' as the ultimate fallback.
-    mode =
-      answer === '1'
-        ? 'best'
-        : answer === '3'
-          ? 'budget'
-          : answer === '4'
-            ? 'custom'
-            : answer === '2'
-              ? 'balanced'
-              : (preset ?? 'balanced');
-  }
+  const mode: 'best' | 'balanced' | 'budget' | 'custom' =
+    answer === '1' || answer.toLowerCase() === 'best'
+      ? 'best'
+      : answer === '3' || answer.toLowerCase() === 'budget'
+        ? 'budget'
+        : answer === '4' || answer.toLowerCase() === 'custom'
+          ? 'custom'
+          : 'balanced';
 
   if (mode !== 'custom') {
     return applyPresetModels(mode, liveModels, fallbackModels);
@@ -292,14 +260,10 @@ export async function remediateInvalidModels(options: {
     );
   }
   logger.raw('');
-  logger.infoPlain('Run `speci init --reconfigure-models` to fix, or choose now:');
+  logger.infoPlain('Run `speci init -m` to fix, or choose now:');
   logger.infoPlain('  1. Pick replacements interactively');
-  logger.infoPlain(
-    '  2. Apply the Balanced preset to all affected roles'
-  );
-  logger.infoPlain(
-    '  3. Skip and continue anyway (may cause runtime errors)'
-  );
+  logger.infoPlain('  2. Apply the Balanced preset to all affected roles');
+  logger.infoPlain('  3. Skip and continue anyway (may cause runtime errors)');
 
   if (!isInteractiveTerminal(proc, prompt)) {
     logger.warn('Non-interactive terminal detected; skipping remediation.');

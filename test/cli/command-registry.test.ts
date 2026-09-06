@@ -121,12 +121,16 @@ describe('CommandRegistry', () => {
         .getProgram()
         .commands.find((cmd: Command) => cmd.name() === 'init');
       const optionNames = initCmd?.options.map(
-        (opt: { long?: string }) => opt.long
+        (opt: { long?: string; short?: string }) => opt.long
+      );
+      const shortOptions = initCmd?.options.map(
+        (opt: { long?: string; short?: string }) => opt.short
       );
 
-      expect(optionNames).toContain('--preset');
-      expect(optionNames).toContain('--custom');
       expect(optionNames).toContain('--reconfigure-models');
+      expect(shortOptions).toContain('-m');
+      expect(optionNames).not.toContain('--preset');
+      expect(optionNames).not.toContain('--custom');
     });
 
     it('UT-CLI01: should register --verify option on run command', async () => {
