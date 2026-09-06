@@ -45,15 +45,15 @@ let cachedModels: string[] | null | undefined;
 // Matches model IDs like "claude-opus-4.8" and "gpt-5.3-codex" in plain text output.
 const MODEL_ID_PATTERN = /[a-z][a-z0-9]*(?:[-.][a-z0-9]+)+/gi;
 
-const MODEL_LIST_TIMEOUT_MS = 10_000;
+const MODEL_LIST_TIMEOUT_MS = 20_000;
 
 function parseModelList(output: string): string[] {
   const trimmed = output.trim();
   if (!trimmed) return [];
 
-  const fromJson = (): string[] => {
+  const parseJsonValues = (jsonStr: string): string[] => {
     try {
-      const parsed: unknown = JSON.parse(trimmed);
+      const parsed: unknown = JSON.parse(jsonStr);
       const values: string[] = [];
       const visit = (value: unknown): void => {
         if (typeof value === 'string') {
@@ -86,13 +86,35 @@ function parseModelList(output: string): string[] {
     }
   };
 
-  const jsonValues = fromJson();
-  const lineValues =
-    jsonValues.length > 0
-      ? []
-      : trimmed
-          .split('\n')
-          .flatMap((line) => line.match(MODEL_ID_PATTERN) ?? []);
+  // 1. Try direct JSON parse
+  let jsonValues = parseJsonValues(trimmed);
+
+  // 2. Try extracting JSON from markdown code block if direct JSON parse returned empty
+  if (jsonValues.length === 0) {
+    const codeBlockMatch = trimmed.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
+    if (codeBlockMatch && codeBlockMatch[1]) {
+      jsonValues = parseJsonValues(codeBlockMatch[1].trim());
+    }
+  }
+
+  // 3. Fallback to line-by-line and table parsing
+  const lineValues: string[] = [];
+  if (jsonValues.length === 0) {
+    for (const line of trimmed.split('\n')) {
+      const tableMatch = line.match(/^\s*\|\s*([a-z0-9_.-]+)\s*\|/i);
+      if (
+        tableMatch &&
+        tableMatch[1] &&
+        !tableMatch[1].toLowerCase().includes('model') &&
+        !tableMatch[1].includes('---')
+      ) {
+        lineValues.push(tableMatch[1].trim());
+        continue;
+      }
+      const matches = line.match(MODEL_ID_PATTERN) ?? [];
+      lineValues.push(...matches);
+    }
+  }
 
   const values = jsonValues.length > 0 ? jsonValues : lineValues;
   const normalized = values.map((value) => value.trim()).filter(Boolean);
@@ -214,6 +236,20 @@ export async function listCopilotModels(
 
   const resolvedLogger = logger ?? log;
   const commands = [
+    [
+      '-p',
+      'Output only available model IDs as a plain space-separated list. No explanations.',
+      '--silent',
+      '--no-custom-instructions',
+      '--no-ask-user',
+    ],
+    [
+      '-p',
+      'list available models',
+      '--silent',
+      '--no-custom-instructions',
+      '--no-ask-user',
+    ],
     ['models', 'list', '--json'],
     ['model', 'list', '--json'],
     ['models', 'list'],
@@ -267,18 +303,21 @@ export async function listCopilotModels(
       });
     });
 
-    if (result.code === 0) {
+    if (
+      result.code === 0 ||
+      (result.code === 124 && result.stdout.length > 0)
+    ) {
       const models = parseModelList(result.stdout);
       if (models.length > 0) {
         cachedModels = models;
         return cachedModels;
       }
       resolvedLogger.debug(
-        `Command "copilot ${args.join(' ')}" succeeded (exit 0) but returned no parseable models. Output: ${result.stdout.trim() || '(empty)'}`
+        `Command "copilot ${args.join(' ')}" succeeded (exit ${result.code}) but returned no parseable models. Output: ${result.stdout.trim() || '(empty)'}`
       );
       failedAttempts.push({
         command: `copilot ${args.join(' ')}`,
-        code: 0,
+        code: result.code,
         stdout: result.stdout.trim(),
         stderr: result.stderr.trim(),
       });

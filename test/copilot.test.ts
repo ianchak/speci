@@ -115,7 +115,7 @@ describe('copilot', () => {
       });
 
       await expect(listCopilotModels()).resolves.toBeNull();
-      expect(spawn).toHaveBeenCalledTimes(4);
+      expect(spawn).toHaveBeenCalledTimes(6);
       expect(log.debug).toHaveBeenCalledWith(
         expect.stringContaining('unsupported command')
       );
