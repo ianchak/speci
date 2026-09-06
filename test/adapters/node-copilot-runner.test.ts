@@ -98,7 +98,9 @@ describe('NodeCopilotRunner', () => {
 
   it('delegates listModels to listCopilotModels', async () => {
     const proc = createMockProcess();
-    vi.mocked(copilotModule.listCopilotModels).mockResolvedValue(['gpt-5-mini']);
+    vi.mocked(copilotModule.listCopilotModels).mockResolvedValue([
+      'gpt-5-mini',
+    ]);
 
     const result = await adapter.listModels(proc);
 

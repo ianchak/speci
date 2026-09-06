@@ -494,12 +494,12 @@ A role uses the local endpoint only when its `copilot.models.<role>` value match
 
 **copilot** - Copilot CLI settings.
 
-| Field         | Default     | Description                                               |
-| ------------- | ----------- | --------------------------------------------------------- |
-| `permissions` | `allow-all` | Permission mode: `allow-all`, `yolo`, `strict`, or `none` |
-| `models`      | (see above) | Model to use for each agent type                          |
+| Field         | Default     | Description                                                                   |
+| ------------- | ----------- | ----------------------------------------------------------------------------- |
+| `permissions` | `allow-all` | Permission mode: `allow-all`, `yolo`, `strict`, or `none`                     |
+| `models`      | (see above) | Model to use for each agent type                                              |
 | `localModel`  | _(unset)_   | Local/self-hosted BYOK model, opt-in per role via `models.<role>` (see above) |
-| `extraFlags`  | `[]`        | Additional flags passed to the Copilot CLI                |
+| `extraFlags`  | `[]`        | Additional flags passed to the Copilot CLI                                    |
 
 **gate** - Quality gate configuration. Gate commands run after each implementation step.
 
