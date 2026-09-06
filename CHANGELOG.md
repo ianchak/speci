@@ -1,5 +1,13 @@
 # speci
 
+## 0.16.0
+
+### Minor Changes
+
+- 2b7251e: feat(models): add live Copilot model selection and startup validation
+- a8e7424: feat(copilot): support local/self-hosted models via copilot.localModel config, injecting COPILOT_PROVIDER_* env vars for Copilot CLI
+- a1ef05b: feat(copilot): allow per-agent opt-in to the local/self-hosted model instead of a global override
+
 ## 0.15.4
 
 ### Patch Changes
