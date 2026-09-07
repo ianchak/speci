@@ -6,6 +6,7 @@
 
 import {
   buildCopilotArgs,
+  buildCopilotPromptArgs,
   listCopilotModels,
   spawnCopilot,
   runAgent,
@@ -22,6 +23,16 @@ import type { ICopilotRunner, ILogger, IProcess } from '@/interfaces/index.js';
  */
 export class NodeCopilotRunner implements ICopilotRunner {
   constructor(private readonly logger: ILogger) {}
+
+  async generateOpenSpecConfig(
+    config: SpeciConfig,
+    prompt: string,
+    proc?: IProcess
+  ): Promise<number> {
+    const args = buildCopilotPromptArgs(config, prompt);
+    this.logger.infoPlain('Generating OpenSpec config with Copilot CLI...');
+    return spawnCopilot(args, { config, command: 'plan', inherit: true }, proc);
+  }
 
   buildArgs(config: SpeciConfig, options: CopilotArgsOptions): string[] {
     return buildCopilotArgs(config, options);

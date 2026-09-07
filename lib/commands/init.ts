@@ -30,6 +30,7 @@ export interface InitOptions {
   verbose?: boolean; // Show detailed output
   updateAgents?: boolean; // Force update agent files even if they exist
   reconfigureModels?: boolean; // Update copilot.models in an existing speci.config.json
+  updateOpenspec?: boolean; // Force update OpenSpec skills/agent files even if they exist
   prompt?: (question: string) => Promise<string>;
   openSpecTools?: string;
   openSpecInitRunner?: (
@@ -40,6 +41,15 @@ export interface InitOptions {
     status: number | null;
     error?: Error;
   };
+  openSpecUpdateRunner?: (cwd: string) => {
+    status: number | null;
+    error?: Error;
+  };
+  openSpecConfigRunner?: (
+    config: SpeciConfig,
+    prompt: string,
+    proc: CommandContext['process']
+  ) => Promise<number>;
 }
 
 const OPENSPEC_CONFIG_PATH = join('openspec', 'config.yaml');
@@ -51,6 +61,13 @@ const SPECI_COPILOT_PROMPT = [
   'Use one OpenSpec change per Speci task file.',
   'Archive each task-linked OpenSpec change after the task is reviewed and complete.',
 ];
+
+const OPENSPEC_CONFIG_GENERATION_PROMPT = `You are initializing OpenSpec for this repository.
+Inspect the repository context, including README files, package manifests, TypeScript or other language configuration, source layout, test setup, and existing contribution guidance.
+Create or replace openspec/config.yaml with valid YAML for the spec-driven OpenSpec workflow.
+Include a concise context section describing this repository's technology stack, architecture, conventions, validation commands, and domain when those details are supported by the repository.
+Preserve the required schema: spec-driven setting and any existing OpenSpec-specific settings that are still valid.
+Do not modify source code or any other files. Write the config file directly and do not return a Markdown code fence or explanatory prose.`;
 
 function ensureSpeciOpenSpecPrompt(context: CommandContext): void {
   const configPath = OPENSPEC_CONFIG_PATH;
@@ -88,18 +105,41 @@ function initializeOpenSpec(
     tools: string,
     copilotCloud?: boolean
   ) => { status: number | null; error?: Error },
+  runUpdate: (cwd: string) => { status: number | null; error?: Error },
   tools: string,
-  copilotCloud: boolean
-): void {
+  copilotCloud: boolean,
+  updateOpenSpec: boolean,
+  config: SpeciConfig,
+  runConfig: InitOptions['openSpecConfigRunner']
+): Promise<void> {
   const hasConfig = context.fs.existsSync(OPENSPEC_CONFIG_PATH);
   const hasWorkspaceDirs =
     context.fs.existsSync(OPENSPEC_SPECS_PATH) &&
     context.fs.existsSync(OPENSPEC_CHANGES_PATH);
 
   if (hasConfig && hasWorkspaceDirs) {
-    context.logger.debug('Skipping OpenSpec init: openspec/ already exists');
+    if (updateOpenSpec) {
+      context.logger.info(
+        'Updating OpenSpec skills and agent files for this repository...'
+      );
+      const updateResult = runUpdate(context.process.cwd());
+
+      if (updateResult.error) {
+        context.logger.warn(
+          `OpenSpec CLI update skipped (${toErrorMessage(updateResult.error)}).`
+        );
+      } else if (updateResult.status !== 0) {
+        context.logger.warn(
+          `OpenSpec CLI update exited with code ${String(updateResult.status)}.`
+        );
+      } else {
+        context.logger.success('Updated OpenSpec skills and agent files');
+      }
+    } else {
+      context.logger.debug('Skipping OpenSpec init: openspec/ already exists');
+    }
     ensureSpeciOpenSpecPrompt(context);
-    return;
+    return Promise.resolve();
   }
 
   context.logger.info(
@@ -119,7 +159,42 @@ function initializeOpenSpec(
     );
   }
 
-  ensureSpeciOpenSpecPrompt(context);
+  return generateOpenSpecConfig(context, config, !hasConfig, runConfig).then(
+    () => {
+      ensureSpeciOpenSpecPrompt(context);
+    }
+  );
+}
+
+async function generateOpenSpecConfig(
+  context: CommandContext,
+  config: SpeciConfig,
+  wasMissing: boolean,
+  runConfig: InitOptions['openSpecConfigRunner']
+): Promise<void> {
+  const generate =
+    runConfig ??
+    context.copilotRunner.generateOpenSpecConfig?.bind(context.copilotRunner);
+  if (!wasMissing || !generate) {
+    return;
+  }
+
+  try {
+    const exitCode = await generate(
+      config,
+      OPENSPEC_CONFIG_GENERATION_PROMPT,
+      context.process
+    );
+    if (exitCode !== 0) {
+      context.logger.warn(
+        `Copilot config generation exited with code ${String(exitCode)}. Using fallback OpenSpec config.`
+      );
+    }
+  } catch (error) {
+    context.logger.warn(
+      `Copilot config generation skipped (${toErrorMessage(error)}). Using fallback OpenSpec config.`
+    );
+  }
 }
 
 function runOpenSpecInit(cwd: string, tools: string, copilotCloud = true) {
@@ -136,6 +211,16 @@ function runOpenSpecInit(cwd: string, tools: string, copilotCloud = true) {
   // On Windows, global npm bins are .cmd shims; libuv's spawn doesn't
   // resolve them without a shell, so ENOENT would occur otherwise.
   return spawnSync('openspec', args, {
+    cwd,
+    encoding: 'utf8',
+    stdio: 'pipe',
+    timeout: 30_000,
+    shell: process.platform === 'win32',
+  });
+}
+
+function runOpenSpecUpdate(cwd: string) {
+  return spawnSync('openspec', ['update', '--force'], {
     cwd,
     encoding: 'utf8',
     stdio: 'pipe',
@@ -177,12 +262,14 @@ function checkExistingFiles(
  * @param config - Config to display
  * @param existing - Existing files flags
  * @param updateAgents - Whether to force update agent files
+ * @param updateOpenSpec - Whether to force update OpenSpec skills/agent files
  * @param context - Command context for logging
  */
 function displayActionSummary(
   config: SpeciConfig,
   existing: ReturnType<typeof checkExistingFiles>,
   updateAgents: boolean = false,
+  updateOpenSpec: boolean = false,
   context: CommandContext
 ): void {
   if (existing.configExists) {
@@ -224,7 +311,11 @@ function displayActionSummary(
   }
 
   if (existing.openSpecExists) {
-    context.logger.warn('  openspec/ already exists (will skip)');
+    if (updateOpenSpec) {
+      context.logger.success('    openspec/ skills and agents will be updated');
+    } else {
+      context.logger.warn('  openspec/ already exists (will skip)');
+    }
   } else {
     context.logger.success('    openspec/ will be initialized');
   }
@@ -497,7 +588,13 @@ export async function init(
     }
 
     // Display action summary
-    displayActionSummary(config, existing, options.updateAgents, context);
+    displayActionSummary(
+      config,
+      existing,
+      options.updateAgents,
+      options.updateOpenspec,
+      context
+    );
 
     // Create directories
     await createDirectories(config, existing, context);
@@ -521,11 +618,15 @@ export async function init(
     })();
 
     // Initialize OpenSpec and ensure Speci guidance is present
-    initializeOpenSpec(
+    await initializeOpenSpec(
       context,
       options.openSpecInitRunner ?? runOpenSpecInit,
+      options.openSpecUpdateRunner ?? runOpenSpecUpdate,
       options.openSpecTools ?? 'github-copilot',
-      !configuredLocalModel
+      !configuredLocalModel,
+      Boolean(options.updateOpenspec),
+      { ...config, copilot: { ...config.copilot, models: selectedModels } },
+      options.openSpecConfigRunner
     );
 
     // Display success and next steps

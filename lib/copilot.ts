@@ -230,6 +230,30 @@ export function buildCopilotArgs(
 }
 
 /**
+ * Build prompt-only Copilot CLI arguments for repository configuration tasks.
+ *
+ * @param config - Speci configuration used for permissions and model selection
+ * @param prompt - Instructions passed to Copilot CLI
+ * @returns Array of CLI arguments
+ */
+export function buildCopilotPromptArgs(
+  config: SpeciConfig,
+  prompt: string
+): string[] {
+  const args = ['-p', prompt, '--silent'];
+
+  if (config.copilot.permissions === 'allow-all') {
+    args.push('--allow-all');
+  } else if (config.copilot.permissions === 'yolo') {
+    args.push('--yolo');
+  }
+
+  args.push('--model', config.copilot.models.plan, '--no-ask-user');
+  args.push(...config.copilot.extraFlags);
+  return args;
+}
+
+/**
  * Build the process environment for a copilot CLI invocation.
  *
  * Injects the COPILOT_PROVIDER_* and COPILOT_MODEL env vars Copilot CLI's

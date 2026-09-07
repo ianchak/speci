@@ -17,7 +17,15 @@ const init = (
   options: Parameters<typeof initCommand>[0] = {},
   context: Parameters<typeof initCommand>[1] = createProductionContext(),
   config?: Parameters<typeof initCommand>[2]
-) => initCommand(options, context, config);
+) =>
+  initCommand(
+    {
+      openSpecConfigRunner: vi.fn(async () => 0),
+      ...options,
+    },
+    context,
+    config
+  );
 
 describe('init command', () => {
   let testDir: string;
@@ -63,6 +71,28 @@ describe('init command', () => {
       const openSpecConfig = readFileSync('openspec/config.yaml', 'utf8');
       expect(openSpecConfig).toContain('speciCopilotPrompt:');
       expect(openSpecConfig).toContain('Prefer OpenSpec CLI commands');
+    });
+
+    it('should use Copilot repository context to generate a missing config', async () => {
+      const openSpecConfigRunner = vi.fn(async (_config, _prompt, _proc) => {
+        mkdirSync('openspec', { recursive: true });
+        writeFileSync(
+          'openspec/config.yaml',
+          'schema: spec-driven\ncontext: |\n  TypeScript CLI repository\n'
+        );
+        return 0;
+      });
+
+      await init({ openSpecConfigRunner });
+
+      expect(openSpecConfigRunner).toHaveBeenCalledOnce();
+      const prompt = openSpecConfigRunner.mock.calls[0]?.[1];
+      expect(prompt).toContain('Inspect the repository context');
+      expect(prompt).toContain('README files');
+      expect(prompt).toContain('Write the config file directly');
+      expect(readFileSync('openspec/config.yaml', 'utf8')).toContain(
+        'TypeScript CLI repository'
+      );
     });
 
     it('should append Speci Copilot guidance to existing OpenSpec config', async () => {

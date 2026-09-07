@@ -206,6 +206,10 @@ export class CommandRegistry {
         '-m, --reconfigure-models',
         'Update copilot.models in an existing speci.config.json'
       )
+      .option(
+        '-o, --update-openspec',
+        'Update OpenSpec skills and agent files even if they exist'
+      )
       .option('-v, --verbose', 'Show detailed output')
       .addHelpText(
         'after',
@@ -214,6 +218,7 @@ Examples:
   $ speci init              Set up Speci in current project
   $ speci init -u           Update agent files to latest version
   $ speci init -m           Reconfigure Copilot models in existing config
+  $ speci init -o           Update OpenSpec skills and agent files
 `
       )
       .action(this.makeAction(init));

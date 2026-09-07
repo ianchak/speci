@@ -25,6 +25,19 @@ import type { IProcess } from './infrastructure.js';
  */
 export interface ICopilotRunner {
   /**
+   * Ask Copilot CLI to generate the OpenSpec configuration in the repository.
+   * @param config - Speci configuration used for model and provider settings
+   * @param prompt - Repository-aware instructions for writing openspec/config.yaml
+   * @param proc - Optional process abstraction
+   * @returns Promise resolving to the Copilot CLI exit code
+   */
+  generateOpenSpecConfig?(
+    config: SpeciConfig,
+    prompt: string,
+    proc?: IProcess
+  ): Promise<number>;
+
+  /**
    * Build copilot CLI arguments
    * @param config - Speci configuration
    * @param options - Argument building options
