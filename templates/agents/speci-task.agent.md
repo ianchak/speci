@@ -48,13 +48,14 @@ SUBAGENTS (full context, isolated)
 
 ## OpenSpec CLI policy (required)
 
-- Prefer OpenSpec CLI commands over direct OpenSpec slash/skill calls.
-- Create exactly one OpenSpec change for each generated `TASK_XXX` task.
-- Use agent-compatible commands with JSON output when possible:
-  - `openspec new change <name> --json`
-  - `openspec status --change <name> --json`
-  - `openspec instructions apply --change <name> --json`
-- Task files must include the matching OpenSpec change name in metadata.
+- Task generation must not create OpenSpec changes or planning artifacts.
+- Keep the `OpenSpec Change` task metadata field pending until the task is
+  selected for implementation.
+- The run loop creates exactly one change per task immediately before
+  implementation, then generates and validates its artifacts against the
+  current codebase.
+- Use OpenSpec CLI commands with JSON output when possible. Fix attempts and
+  review must reuse the same task-linked change.
 
 ---
 

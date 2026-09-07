@@ -21,7 +21,7 @@ The orchestrator provides:
 
 1. Read GENERATION_STATE.md to find the target feature and `<SOURCE>` path
 2. Generate Subagent ID: `SA-GEN-<YYYYMMDD>-<seq>`
-3. Create one OpenSpec change for this task using OpenSpec CLI (`openspec new change <name> --json`)
+3. Leave the OpenSpec Change metadata pending; the run loop creates the change and artifacts immediately before implementation
 4. Mark feature as IN PROGRESS in GENERATION_STATE.md
 5. Read the relevant section from `<SOURCE>`
 6. Apply `<CONTEXT>` to understand project architecture
@@ -39,15 +39,15 @@ Create file: `docs/tasks/TASK_XXX_feature_name.md`
 
 ## Metadata
 
-| Field               | Value                                                  |
-| ------------------- | ------------------------------------------------------ |
-| **Milestone**       | MX: [Milestone Name]                                   |
-| **Priority**        | High / Medium / Low                                    |
-| **Complexity**      | S (≤2h) / M (2-4h) / L (4-8h) / XL (8h+, should split) |
-| **Dependencies**    | TASK_YYY, TASK_ZZZ or None                             |
-| **Plan Reference**  | §X.Y Section Name                                      |
-| **OpenSpec Change** | kebab-case change name created by `openspec new change` |
-| **Skip Test-First** | true / false — Set `true` only for integration tasks   |
+| Field               | Value                                                                       |
+| ------------------- | --------------------------------------------------------------------------- |
+| **Milestone**       | MX: [Milestone Name]                                                        |
+| **Priority**        | High / Medium / Low                                                         |
+| **Complexity**      | S (≤2h) / M (2-4h) / L (4-8h) / XL (8h+, should split)                      |
+| **Dependencies**    | TASK_YYY, TASK_ZZZ or None                                                  |
+| **Plan Reference**  | §X.Y Section Name                                                           |
+| **OpenSpec Change** | `PENDING` until implementation preparation creates the current-state change |
+| **Skip Test-First** | true / false — Set `true` only for integration tasks                        |
 
 ## Description
 

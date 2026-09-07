@@ -290,7 +290,7 @@ describe('task command', () => {
       expect(promptArg).toContain('plan.md');
     });
 
-    it('should include OpenSpec CLI requirements in task prompt', async () => {
+    it('should defer OpenSpec preparation until implementation', async () => {
       const spawnSpy = vi
         .spyOn(copilotModule, 'spawnCopilot')
         .mockResolvedValue(0);
@@ -304,10 +304,10 @@ describe('task command', () => {
       const promptIndex = args.indexOf('-p');
       expect(promptIndex).toBeGreaterThan(-1);
       const promptArg = args[promptIndex + 1];
-      expect(promptArg).toContain('OpenSpec change');
-      expect(promptArg).toContain('openspec new change');
-      expect(promptArg).toContain('openspec status --change');
-      expect(promptArg).toContain('openspec instructions apply');
+      expect(promptArg).toContain(
+        'Do not create OpenSpec changes during task generation'
+      );
+      expect(promptArg).toContain('current codebase');
     });
 
     it('should create progress file after task generation completes', async () => {

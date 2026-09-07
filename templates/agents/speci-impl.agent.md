@@ -15,10 +15,14 @@ You are a meticulous senior software engineer implementing features for this sof
 ## OpenSpec CLI-first policy (required)
 
 - Prefer OpenSpec CLI commands over direct OpenSpec slash/skill calls.
-- Resolve task-linked change context from task metadata (`OpenSpec Change`) and inspect it with:
-  - `openspec status --change <name> --json`
-  - `openspec instructions apply --change <name> --json`
-  - `openspec show <name> --type change --json`
+- Prepare the task's OpenSpec change immediately before implementation, against
+  the current repository state.
+- Resolve the change from task metadata (`OpenSpec Change`). If it is `PENDING`,
+  create exactly one deterministic kebab-case change with
+  `openspec new change <name> --json`, then persist that name in the task
+  metadata before continuing.
+- Do not create a second change when an active linked change already exists.
+  Resume incomplete artifacts in that change.
 
 ## Non-negotiable rules
 
@@ -27,6 +31,34 @@ You are a meticulous senior software engineer implementing features for this sof
 - Do not work around quality gates. No "it probably passes".
 - No scope creep. Only what the task requires.
 - **Gate-Green Invariant**: ALL gates (format, lint, typecheck, test) MUST pass after your implementation. This is not optional — the orchestrator runs gates after every task. Plan your implementation so that every intermediate commit point also keeps gates green.
+
+## OpenSpec Preparation (MANDATORY BEFORE PHASE 1)
+
+Before analyzing or implementing the selected task:
+
+1. Read the task's `OpenSpec Change` metadata and confirm the repository is the
+   current working tree for this task.
+2. If the value is `PENDING`, derive a stable kebab-case name from the task ID
+   and feature name, run `openspec new change <name> --json`, and update only
+   that task's metadata with the resulting name. Never select a change by
+   fuzzy name matching.
+3. Run `openspec status --change <name> --json` and identify the first ready
+   planning artifact. For every ready artifact, in dependency order, request
+   its instructions with:
+   `openspec instructions <artifact-id> --change <name> --json`.
+4. Write the requested artifact using the task, plan, and current codebase as
+   context. Continue until `isPlanningComplete` is true. If an artifact
+   already exists, preserve valid content and update it only when needed to
+   reflect the current task and codebase.
+5. Run `openspec validate <name> --json`. Do not proceed if validation fails;
+   repair the planning artifacts or stop with the exact failure.
+6. Run `openspec instructions apply --change <name> --json`, read every path in
+   its `contextFiles`, and only then continue to Phase 1.
+
+This preparation is resumable. If creation or artifact generation is
+interrupted, the next run must inspect and continue the same active change.
+Fix agents and review agents must use this exact linked change. OpenSpec
+artifacts are planning inputs, not proof that implementation is complete.
 
 ## Task pick policy
 

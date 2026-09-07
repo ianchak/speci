@@ -47,7 +47,8 @@ const MAX_RESUME_ATTEMPTS = 3;
  * Build the initial task-generation prompt.
  *
  * The prompt explicitly requires task artifacts first and creates PROGRESS.md
- * only after all tasks are complete.
+ * only after all tasks are complete. OpenSpec changes are prepared later,
+ * immediately before each task is implemented against the current codebase.
  */
 function buildInitialTaskPrompt(
   planPath: string,
@@ -56,8 +57,7 @@ function buildInitialTaskPrompt(
   return (
     `Read the implementation plan at ${planPath}. ` +
     `Generate implementation task files and update ${DEFAULT_PATHS.GENERATION_STATE} as needed. ` +
-    `For every generated TASK_XXX file, create exactly one OpenSpec change via OpenSpec CLI (prefer \`openspec new change <name> --json\`) and record the change mapping in the task metadata. ` +
-    `Use OpenSpec CLI commands (for example \`openspec status --change <name> --json\` and \`openspec instructions apply --change <name> --json\`) instead of direct OpenSpec slash/skill calls whenever possible. ` +
+    `Do not create OpenSpec changes during task generation. Leave the OpenSpec Change task metadata pending until the task is selected for implementation, then prepare the change and all required artifacts against the current codebase. ` +
     `After all tasks are generated and complete, create PROGRESS.md at ${progressPath} from the finalized task set.`
   );
 }
@@ -83,7 +83,7 @@ function buildResumeTaskPrompt(
 
   return (
     basePrompt +
-    `Continue from where generation left off, keep one OpenSpec change per TASK_XXX, and complete remaining entries.`
+    `Continue from where generation left off and complete remaining task entries. Do not create OpenSpec changes until implementation begins.`
   );
 }
 

@@ -70,5 +70,5 @@ context: |
   (autonomous, agent-orchestrated implementation loops for GitHub Copilot).
 speciCopilotPrompt: |
   Prefer OpenSpec CLI commands over direct OpenSpec slash/skill calls.
-  Use one OpenSpec change per Speci task file.
+  Use one OpenSpec change per Speci task file, created and fully planned immediately before that task is implemented against the current codebase.
   Archive each task-linked OpenSpec change after the task is reviewed and complete.
