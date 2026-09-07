@@ -605,8 +605,9 @@ export async function init(
     // Copy agent files to .github/agents/
     await copyAgentFiles(existing, options.updateAgents, context);
 
+    // Read from disk so a config written earlier in this run is accounted for
     const configuredLocalModel = (() => {
-      if (!existing.configExists) return false;
+      if (!context.fs.existsSync(CONFIG_FILENAME)) return false;
       try {
         const existingConfig = JSON.parse(
           context.fs.readFileSync(CONFIG_FILENAME, 'utf8')
