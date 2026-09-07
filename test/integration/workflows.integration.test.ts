@@ -6,7 +6,12 @@
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { join } from 'node:path';
-import { createTestProject, fileExists, readTestFile } from './setup.js';
+import {
+  createTestProject,
+  fileExists,
+  readTestFile,
+  TEST_INIT_OPTIONS,
+} from './setup.js';
 import type { TestProject } from './setup.js';
 import initCommand from '@/commands/init.js';
 import planCommand from '@/commands/plan.js';
@@ -44,7 +49,7 @@ describe('Workflow Integration', () => {
         const context = createProductionContext();
         // Mock preflight to skip environment checks in integration tests
         vi.spyOn(context.preflight, 'run').mockResolvedValue(undefined);
-        const initResult = await initCommand({}, context);
+        const initResult = await initCommand(TEST_INIT_OPTIONS, context);
         expect(initResult.success).toBe(true);
         expect(fileExists(testProject.configPath)).toBe(true);
 
@@ -128,7 +133,7 @@ Last Review ID: RA-20260207-001
 
         // Step 1: Init should succeed
         await fs.rm(testProject.configPath, { force: true });
-        const initResult = await initCommand({}, context);
+        const initResult = await initCommand(TEST_INIT_OPTIONS, context);
         expect(initResult.success).toBe(true);
 
         // Step 2: Plan should fail - prompt is text, not a file
@@ -202,7 +207,7 @@ Last Review ID: RA-20260207-001
 
         // Initialize project
         await fs.rm(testProject.configPath, { force: true });
-        await initCommand({}, context);
+        await initCommand(TEST_INIT_OPTIONS, context);
 
         // Verify config persists
         const config1 = JSON.parse(await readTestFile(testProject.configPath));
@@ -226,7 +231,7 @@ Last Review ID: RA-20260207-001
 
         // Initialize project
         await fs.rm(testProject.configPath, { force: true });
-        await initCommand({}, context);
+        await initCommand(TEST_INIT_OPTIONS, context);
 
         // Modify config
         const config = JSON.parse(await readTestFile(testProject.configPath));

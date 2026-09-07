@@ -6,7 +6,12 @@
 
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { join } from 'node:path';
-import { createTestProject, fileExists, readTestFile } from './setup.js';
+import {
+  createTestProject,
+  fileExists,
+  readTestFile,
+  TEST_INIT_OPTIONS,
+} from './setup.js';
 import type { TestProject } from './setup.js';
 import initCommand from '@/commands/init.js';
 import { createProductionContext } from '@/adapters/context-factory.js';
@@ -33,7 +38,7 @@ describe('Init Command Integration', () => {
       await fs.rm(testProject.configPath, { force: true });
 
       const context = createProductionContext();
-      const result = await initCommand({}, context);
+      const result = await initCommand(TEST_INIT_OPTIONS, context);
 
       expect(result.success).toBe(true);
       expect(fileExists(testProject.configPath)).toBe(true);
@@ -65,7 +70,7 @@ describe('Init Command Integration', () => {
       );
 
       const context = createProductionContext();
-      await initCommand({}, context);
+      await initCommand(TEST_INIT_OPTIONS, context);
 
       // Verify config wasn't overwritten
       const configContent = await readTestFile(testProject.configPath);
@@ -85,7 +90,10 @@ describe('Init Command Integration', () => {
       await fs.rm(testProject.configPath, { force: true });
 
       const context = createProductionContext();
-      const result = await initCommand({ verbose: true }, context);
+      const result = await initCommand(
+        { ...TEST_INIT_OPTIONS, verbose: true },
+        context
+      );
 
       expect(result.success).toBe(true);
       expect(fileExists(testProject.configPath)).toBe(true);
@@ -103,7 +111,7 @@ describe('Init Command Integration', () => {
       await fs.rm(testProject.configPath, { force: true });
 
       const context = createProductionContext();
-      await initCommand({}, context);
+      await initCommand(TEST_INIT_OPTIONS, context);
 
       const githubDir = join(testProject.root, '.github', 'agents');
       expect(fileExists(githubDir)).toBe(true);
@@ -129,7 +137,7 @@ describe('Init Command Integration', () => {
       await fs.writeFile(badPath, 'blocking file');
 
       const context = createProductionContext();
-      const result = await initCommand({}, context);
+      const result = await initCommand(TEST_INIT_OPTIONS, context);
 
       // Should fail gracefully
       expect(result.success).toBe(false);
@@ -163,7 +171,7 @@ describe('Init Command Integration', () => {
       }
 
       const context = createProductionContext();
-      const result = await initCommand({}, context);
+      const result = await initCommand(TEST_INIT_OPTIONS, context);
 
       expect(result.success).toBe(false);
       if (!result.success) {

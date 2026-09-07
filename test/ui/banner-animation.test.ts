@@ -3211,7 +3211,7 @@ describe('Performance Benchmarks (TASK_021)', () => {
   });
 
   describe('CPU Usage (NFR-5)', () => {
-    it.skip('CPU usage remains below 25% of wall time', async () => {
+    it('CPU usage remains below 25% of wall time', async () => {
       const MAX_CPU_PERCENTAGE = 25; // NFR-5 requirement
 
       const startCpu = process.cpuUsage();
@@ -3285,8 +3285,9 @@ describe('Performance Benchmarks (TASK_021)', () => {
       const countTimers = () =>
         process
           .getActiveResourcesInfo()
-          .filter((resource) => resource === 'Timeout' || resource === 'Immediate')
-          .length;
+          .filter(
+            (resource) => resource === 'Timeout' || resource === 'Immediate'
+          ).length;
 
       const initialTimers = countTimers();
 
@@ -3430,7 +3431,9 @@ describe('Performance Benchmarks (TASK_021)', () => {
       // Use a generous tolerance to avoid flaky tests due to timing variations.
       // Add an absolute floor (100ms) so fast machines with small warmupTime don't produce a
       // too-tight ceiling that OS scheduling jitter can exceed.
-      expect(cachedTime).toBeLessThanOrEqual(Math.max(warmupTime * 2, warmupTime + 100));
+      expect(cachedTime).toBeLessThanOrEqual(
+        Math.max(warmupTime * 2, warmupTime + 100)
+      );
     });
 
     it('all effects benefit from gradient cache', () => {
@@ -3486,7 +3489,7 @@ describe('Performance Benchmarks (TASK_021)', () => {
   });
 
   describe('Integration: Full Animation Performance', () => {
-    it.skip('complete animation meets all performance targets', async () => {
+    it('complete animation meets all performance targets', async () => {
       const MAX_CPU_PERCENTAGE = 25;
       const TEST_DURATION = 200;
       const TIMING_TOLERANCE = 200;

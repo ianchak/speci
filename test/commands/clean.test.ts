@@ -1230,15 +1230,3 @@ describe('clean() integration', () => {
     expect(context.fs.unlinkSync).toHaveBeenCalledWith(config.paths.progress);
   });
 });
-
-describe.skip('task --clean', () => {
-  it('calls cleanFiles before task generation when --clean is set', () => {
-    expect(true).toBe(true);
-  });
-  it('aborts task generation when clean fails', () => {
-    expect(true).toBe(true);
-  });
-  it('proceeds normally when --clean is not set', () => {
-    expect(true).toBe(true);
-  });
-});

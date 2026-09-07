@@ -50,7 +50,7 @@ describe('Banner Animation Renderer Module', () => {
       expect(typeof module.runAnimationLoop).toBe('function');
     });
 
-    it.skip('should clamp duration to safe range [100, 5000]', async () => {
+    it('should clamp duration to safe range [100, 5000]', async () => {
       const module = await import('@/ui/banner-animation/runner.js');
 
       const mockEffect = vi.fn(() => ['', '', '', '', '', '']);
@@ -69,7 +69,7 @@ describe('Banner Animation Renderer Module', () => {
 
       // Test minimum clamping (< 100ms → 100ms)
       const promise1 = module.runAnimationLoop(mockEffect, 50, state);
-      vi.advanceTimersByTime(150);
+      await vi.advanceTimersByTimeAsync(150);
       await promise1;
       expect(state.duration).toBe(100);
 
@@ -77,7 +77,7 @@ describe('Banner Animation Renderer Module', () => {
       state.isRunning = false;
       state.currentFrame = 0;
       const promise2 = module.runAnimationLoop(mockEffect, 10000, state);
-      vi.advanceTimersByTime(200);
+      await vi.advanceTimersByTimeAsync(5200);
       await promise2;
       expect(state.duration).toBe(5000);
 
