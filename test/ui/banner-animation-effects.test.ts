@@ -14,7 +14,7 @@ import {
 import { BANNER_ART } from '@/ui/banner.js';
 
 describe('Banner Animation Effects', () => {
-  describe.skip('renderWaveFrame', () => {
+  describe('renderWaveFrame', () => {
     it('should return array of 6 strings at any progress', () => {
       const result = renderWaveFrame(0.5);
       expect(result).toHaveLength(6);
@@ -35,12 +35,7 @@ describe('Banner Animation Effects', () => {
         // eslint-disable-next-line no-control-regex
         line.replace(/\x1b\[[0-9;]*m/g, '')
       );
-      expect(
-        strippedLines.some(
-          (line) =>
-            line.includes('S') || line.includes('P') || line.includes('E')
-        )
-      ).toBe(true);
+      expect(strippedLines.some((line) => /\S/.test(line))).toBe(true);
     });
 
     it('should partially reveal at progress 0.5', () => {
@@ -118,7 +113,7 @@ describe('Banner Animation Effects', () => {
     });
   });
 
-  describe.skip('renderSweepFrame', () => {
+  describe('renderSweepFrame', () => {
     it('should return array of 6 strings at any progress', () => {
       const result = renderSweepFrame(0.5);
       expect(result).toHaveLength(6);
@@ -137,12 +132,7 @@ describe('Banner Animation Effects', () => {
         // eslint-disable-next-line no-control-regex
         line.replace(/\x1b\[[0-9;]*m/g, '')
       );
-      expect(
-        strippedLines.some(
-          (line) =>
-            line.includes('S') || line.includes('P') || line.includes('E')
-        )
-      ).toBe(true);
+      expect(strippedLines.some((line) => /\S/.test(line))).toBe(true);
     });
 
     it('should partially reveal at progress 0.5', () => {

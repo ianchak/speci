@@ -8,14 +8,54 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 
 describe('Banner Animation Terminal Module', () => {
   let originalEnv: NodeJS.ProcessEnv;
+  let originalRowsDescriptor: PropertyDescriptor | undefined;
+  let originalColumnsDescriptor: PropertyDescriptor | undefined;
+
+  function mockTerminalSize(
+    rows: number | undefined,
+    columns: number | undefined = 80
+  ): void {
+    Object.defineProperty(process.stdout, 'rows', {
+      configurable: true,
+      value: rows,
+    });
+    Object.defineProperty(process.stdout, 'columns', {
+      configurable: true,
+      value: columns,
+    });
+  }
 
   beforeEach(() => {
     originalEnv = { ...process.env };
+    originalRowsDescriptor = Object.getOwnPropertyDescriptor(
+      process.stdout,
+      'rows'
+    );
+    originalColumnsDescriptor = Object.getOwnPropertyDescriptor(
+      process.stdout,
+      'columns'
+    );
   });
 
   afterEach(() => {
     process.env = originalEnv;
     vi.restoreAllMocks();
+
+    if (originalRowsDescriptor) {
+      Object.defineProperty(process.stdout, 'rows', originalRowsDescriptor);
+    } else {
+      Reflect.deleteProperty(process.stdout, 'rows');
+    }
+
+    if (originalColumnsDescriptor) {
+      Object.defineProperty(
+        process.stdout,
+        'columns',
+        originalColumnsDescriptor
+      );
+    } else {
+      Reflect.deleteProperty(process.stdout, 'columns');
+    }
   });
 
   describe('Module Import', () => {
@@ -27,59 +67,56 @@ describe('Banner Animation Terminal Module', () => {
   });
 
   describe('hasMinimumHeight', () => {
-    it.skip('should return true when terminal height >= 10', async () => {
+    it('should return true when terminal height >= 10', async () => {
       const module = await import('@/ui/banner-animation/runner.js');
 
-      vi.spyOn(process.stdout, 'rows', 'get').mockReturnValue(10);
+      mockTerminalSize(10);
       expect(module.hasMinimumHeight()).toBe(true);
 
-      vi.spyOn(process.stdout, 'rows', 'get').mockReturnValue(20);
+      mockTerminalSize(20);
       expect(module.hasMinimumHeight()).toBe(true);
     });
 
-    it.skip('should return false when terminal height < 10', async () => {
+    it('should return false when terminal height < 10', async () => {
       const module = await import('@/ui/banner-animation/runner.js');
 
-      vi.spyOn(process.stdout, 'rows', 'get').mockReturnValue(9);
+      mockTerminalSize(9);
       expect(module.hasMinimumHeight()).toBe(false);
 
-      vi.spyOn(process.stdout, 'rows', 'get').mockReturnValue(5);
-      expect(module.hasMinimumHeight()).toBe(false);
-    });
-
-    it.skip('should return false when rows is undefined (non-TTY)', async () => {
-      const module = await import('@/ui/banner-animation/runner.js');
-
-      vi.spyOn(process.stdout, 'rows', 'get').mockReturnValue(
-        undefined as unknown as number
-      );
+      mockTerminalSize(5);
       expect(module.hasMinimumHeight()).toBe(false);
     });
 
-    it.skip('should handle edge case height = 10', async () => {
+    it('should return false when rows is undefined (non-TTY)', async () => {
       const module = await import('@/ui/banner-animation/runner.js');
 
-      vi.spyOn(process.stdout, 'rows', 'get').mockReturnValue(10);
+      mockTerminalSize(undefined);
+      expect(module.hasMinimumHeight()).toBe(false);
+    });
+
+    it('should handle edge case height = 10', async () => {
+      const module = await import('@/ui/banner-animation/runner.js');
+
+      mockTerminalSize(10);
       expect(module.hasMinimumHeight()).toBe(true);
     });
   });
 
   describe('shouldAnimate', () => {
-    it.skip('should return false when --no-color flag is set', async () => {
+    it('should return false when --no-color flag is set', async () => {
       const module = await import('@/ui/banner-animation/runner.js');
 
       Object.defineProperty(process.stdout, 'isTTY', {
         value: true,
         writable: true,
       });
-      vi.spyOn(process.stdout, 'rows', 'get').mockReturnValue(20);
-      vi.spyOn(process.stdout, 'columns', 'get').mockReturnValue(80);
+      mockTerminalSize(20);
 
       const result = module.shouldAnimate({ color: false });
       expect(result).toBe(false);
     });
 
-    it.skip('should return false when NO_COLOR environment variable is set', async () => {
+    it('should return false when NO_COLOR environment variable is set', async () => {
       const module = await import('@/ui/banner-animation/runner.js');
 
       process.env.NO_COLOR = '1';
@@ -87,14 +124,13 @@ describe('Banner Animation Terminal Module', () => {
         value: true,
         writable: true,
       });
-      vi.spyOn(process.stdout, 'rows', 'get').mockReturnValue(20);
-      vi.spyOn(process.stdout, 'columns', 'get').mockReturnValue(80);
+      mockTerminalSize(20);
 
       const result = module.shouldAnimate();
       expect(result).toBe(false);
     });
 
-    it.skip('should return false when SPECI_NO_ANIMATION is set', async () => {
+    it('should return false when SPECI_NO_ANIMATION is set', async () => {
       const module = await import('@/ui/banner-animation/runner.js');
 
       process.env.SPECI_NO_ANIMATION = '1';
@@ -102,14 +138,13 @@ describe('Banner Animation Terminal Module', () => {
         value: true,
         writable: true,
       });
-      vi.spyOn(process.stdout, 'rows', 'get').mockReturnValue(20);
-      vi.spyOn(process.stdout, 'columns', 'get').mockReturnValue(80);
+      mockTerminalSize(20);
 
       const result = module.shouldAnimate();
       expect(result).toBe(false);
     });
 
-    it.skip('should return false when not TTY', async () => {
+    it('should return false when not TTY', async () => {
       const module = await import('@/ui/banner-animation/runner.js');
 
       Object.defineProperty(process.stdout, 'isTTY', {
@@ -121,47 +156,40 @@ describe('Banner Animation Terminal Module', () => {
       expect(result).toBe(false);
     });
 
-    it.skip('should return false when terminal width < 40', async () => {
+    it('should return false when terminal width < 40', async () => {
       const module = await import('@/ui/banner-animation/runner.js');
 
       Object.defineProperty(process.stdout, 'isTTY', {
         value: true,
         writable: true,
       });
-      vi.spyOn(process.stdout, 'rows', 'get').mockReturnValue(20);
-      vi.spyOn(process.stdout, 'columns', 'get').mockReturnValue(39);
+      mockTerminalSize(20, 39);
 
       const result = module.shouldAnimate();
       expect(result).toBe(false);
     });
 
-    it.skip('should return false when terminal height < 10', async () => {
+    it('should return false when terminal height < 10', async () => {
       const module = await import('@/ui/banner-animation/runner.js');
 
       Object.defineProperty(process.stdout, 'isTTY', {
         value: true,
         writable: true,
       });
-      vi.spyOn(process.stdout, 'rows', 'get').mockReturnValue(9);
-      vi.spyOn(process.stdout, 'columns', 'get').mockReturnValue(80);
+      mockTerminalSize(9);
 
       const result = module.shouldAnimate();
       expect(result).toBe(false);
     });
 
-    it.skip('should use default dimensions when undefined', async () => {
+    it('should use default dimensions when undefined', async () => {
       const module = await import('@/ui/banner-animation/runner.js');
 
       Object.defineProperty(process.stdout, 'isTTY', {
         value: true,
         writable: true,
       });
-      vi.spyOn(process.stdout, 'rows', 'get').mockReturnValue(
-        undefined as unknown as number
-      );
-      vi.spyOn(process.stdout, 'columns', 'get').mockReturnValue(
-        undefined as unknown as number
-      );
+      mockTerminalSize(undefined, undefined);
 
       // Should use defaults: 80x24, which passes both checks
       const result = module.shouldAnimate();

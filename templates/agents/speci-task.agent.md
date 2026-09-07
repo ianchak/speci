@@ -46,6 +46,17 @@ SUBAGENTS (full context, isolated)
 └── Final Reviewer  → Alignment validation
 ```
 
+## OpenSpec CLI policy (required)
+
+- Task generation must not create OpenSpec changes or planning artifacts.
+- Keep the `OpenSpec Change` task metadata field pending until the task is
+  selected for implementation.
+- The run loop creates exactly one change per task immediately before
+  implementation, then generates and validates its artifacts against the
+  current codebase.
+- Use OpenSpec CLI commands with JSON output when possible. Fix attempts and
+  review must reuse the same task-linked change.
+
 ---
 
 ## File Structure

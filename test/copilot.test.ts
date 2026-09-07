@@ -243,6 +243,25 @@ describe('copilot', () => {
       await expect(listCopilotModels()).resolves.toEqual(['gpt-5.3-codex']);
     });
 
+    it('kills discovery processes that exceed the timeout', async () => {
+      vi.useFakeTimers();
+      const kill = vi.fn();
+      vi.mocked(spawn).mockImplementation(() => {
+        const proc = new EventEmitter() as ChildProcess;
+        proc.stdout = new EventEmitter() as never;
+        proc.stderr = new EventEmitter() as never;
+        proc.kill = kill;
+        return proc;
+      });
+
+      const promise = listCopilotModels();
+      await vi.advanceTimersByTimeAsync(20_000 * 6);
+
+      await expect(promise).resolves.toBeNull();
+      expect(kill).toHaveBeenCalledTimes(6);
+      vi.useRealTimers();
+    });
+
     it('returns the cached model list without spawning again', async () => {
       vi.mocked(spawn).mockImplementationOnce(() => {
         const proc = new EventEmitter() as ChildProcess;

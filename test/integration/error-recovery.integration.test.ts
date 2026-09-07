@@ -6,7 +6,12 @@
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { join } from 'node:path';
-import { createTestProject, fileExists, readTestFile } from './setup.js';
+import {
+  createTestProject,
+  fileExists,
+  readTestFile,
+  TEST_INIT_OPTIONS,
+} from './setup.js';
 import type { TestProject } from './setup.js';
 import initCommand from '@/commands/init.js';
 import planCommand from '@/commands/plan.js';
@@ -49,7 +54,7 @@ describe('Error Recovery Integration', () => {
         }
 
         const context = createProductionContext();
-        const result = await initCommand({}, context);
+        const result = await initCommand(TEST_INIT_OPTIONS, context);
 
         // Should fail gracefully
         expect(result.success).toBe(false);
@@ -307,7 +312,7 @@ describe('Error Recovery Integration', () => {
 
         // Initialize successfully
         await fs.rm(testProject.configPath, { force: true });
-        const initResult = await initCommand({}, context);
+        const initResult = await initCommand(TEST_INIT_OPTIONS, context);
         expect(initResult.success).toBe(true);
 
         const configBefore = await readTestFile(testProject.configPath);

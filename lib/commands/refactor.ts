@@ -190,7 +190,7 @@ export async function refactor(
     });
 
     // Execute copilot command with standard pattern
-    return await executeCopilotCommand(context, args, config);
+    return await executeCopilotCommand(context, args, config, 'refactor');
   } catch (error) {
     return handleCommandError(error, 'Refactor', context.logger);
   }

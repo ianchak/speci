@@ -5,11 +5,21 @@
  * and mocking external dependencies (like Copilot CLI).
  */
 
-import { mkdtemp, rm, mkdir, writeFile, readFile } from 'node:fs/promises';
+import { mkdtemp, rm, mkdir, writeFile, readFile, cp } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
-import type { SpeciConfig } from '@/config/index.js';
+import { getAgentsTemplatePath, type SpeciConfig } from '@/config/index.js';
+
+/**
+ * Prevent integration init tests from launching a real Copilot process while
+ * still exercising OpenSpec fallback and guidance creation.
+ */
+export const TEST_INIT_OPTIONS = {
+  openSpecInitRunner: (): { status: number } => ({ status: 0 }),
+  openSpecUpdateRunner: (): { status: number } => ({ status: 0 }),
+  openSpecConfigRunner: async (): Promise<number> => 0,
+};
 
 /**
  * Test project configuration
@@ -245,22 +255,7 @@ if (${shouldSucceed}) {
  */
 async function createMockAgentFiles(root: string): Promise<void> {
   const agentsDir = join(root, '.github', 'agents');
-  const agents = ['plan', 'task', 'refactor', 'impl', 'review', 'fix', 'tidy'];
-
-  for (const agent of agents) {
-    const agentPath = join(agentsDir, `speci-${agent}.agent.md`);
-    const content = `---
-name: speci-${agent}
-description: Mock ${agent} agent for integration testing
----
-
-# ${agent.charAt(0).toUpperCase() + agent.slice(1)} Agent
-
-This is a mock agent file used for integration testing.
-It provides minimal valid content to satisfy agent file validation.
-`;
-    await writeFile(agentPath, content);
-  }
+  await cp(getAgentsTemplatePath(), agentsDir, { recursive: true });
 }
 
 /**

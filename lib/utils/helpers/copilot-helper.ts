@@ -5,7 +5,7 @@
  */
 
 import type { CommandResult, CommandContext } from '@/interfaces/index.js';
-import type { SpeciConfig } from '@/types.js';
+import type { CommandName, SpeciConfig } from '@/types.js';
 import {
   formatCopilotCommand,
   renderCopilotCommandBox,
@@ -22,12 +22,14 @@ import {
  * @param context - Command context with dependencies
  * @param args - Pre-built copilot CLI arguments
  * @param config - Speci configuration (forwarded so local model env vars can be injected)
+ * @param command - Speci command role used for local model resolution
  * @returns Promise resolving to command result
  */
 export async function executeCopilotCommand(
   context: CommandContext,
   args: string[],
-  config?: SpeciConfig
+  config?: SpeciConfig,
+  command?: CommandName
 ): Promise<CommandResult> {
   context.logger.infoPlain(renderCopilotCommandBox(args));
 
@@ -38,6 +40,7 @@ export async function executeCopilotCommand(
   const exitCode = await context.copilotRunner.spawn(args, {
     inherit: true,
     config,
+    command,
   });
 
   // Return structured result

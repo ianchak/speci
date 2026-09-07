@@ -1,0 +1,74 @@
+schema: spec-driven
+githubCopilot:
+  cloudAgent: true
+
+context: |
+  Project: speci — a CLI tool that orchestrates a multi-agent implementation
+  loop for GitHub Copilot. It dispatches Copilot agents to plan, implement,
+  review, and fix code, running quality gates (lint, typecheck, test) between
+  steps. Iteration state is tracked in a PROGRESS.md file driven by a STATE
+  machine (WORK_LEFT, IN_REVIEW, BLOCKED, DONE, NO_PROGRESS).
+
+  Tech stack:
+    - Language: TypeScript (strict mode; no `any`), ES modules only
+    - Runtime: Node.js >= 22.0.0
+    - CLI framework: Commander.js (bin/speci.ts entry point)
+    - Testing: Vitest (unit + separate integration config), V8 coverage
+    - Tooling: ESLint, Prettier, tsc + tsc-alias build, tsx for dev, Husky,
+      Changesets for release
+    - Production dependencies are intentionally minimal (only `commander`)
+
+  Architecture (layered, dependency-inverted):
+    - lib/types.ts — shared types & STATE enum (zero runtime deps)
+    - lib/interfaces.ts — DI contracts (IFileSystem, ILogger, IConfigLoader,
+      ICopilotRunner, CommandContext)
+    - lib/adapters/*.ts — concrete DI implementations + test-context factory
+    - lib/commands/*.ts — command handlers (accept CommandContext, return
+      CommandResult)
+    - lib/cli/*.ts — CLI orchestration (CommandRegistry, banner)
+    - lib/config.ts — config loading/validation (walks up directories)
+    - lib/constants.ts — centralized string literals, env vars, exit codes
+    - lib/errors.ts — structured error codes (ERR-PRE-*, ERR-INP-*, ERR-STA-*,
+      ERR-EXE-*)
+    - lib/state.ts — PROGRESS.md parser
+    - lib/copilot.ts — Copilot CLI wrapper with retry logic
+    - lib/validation/*.ts — PathValidator, ConfigValidator, InputValidator
+      (ValidationResult discriminated union)
+    - lib/utils/*.ts — gate, lock, logger, preflight, signals
+    - lib/ui/*.ts — terminal styling (Ice Blue theme, ANSI colors, glyphs)
+    - bin/speci.ts — CLI entry
+    - templates/agents/*.md — bundled Copilot agent prompts (+ subagents/)
+    Data flow: config loading -> state detection -> agent dispatch -> gate
+    validation -> state update.
+
+  Conventions:
+    - Use `.js` extension in imports (TypeScript resolves to .ts)
+    - Use `@/` path alias for lib imports (e.g. `@/types.js`)
+    - Import types from `@/types.js`; import DI interfaces from
+      `@/interfaces.js`; never import types from implementation modules
+    - Commands use dependency injection: accept CommandContext, return
+      CommandResult
+    - No magic strings — use constants from `@/constants.js`
+    - Structured error codes from lib/errors.ts (message, cause, solution)
+    - JSDoc required on exported/public APIs
+    - Tests mirror source structure; use createMockContext() from
+      lib/adapters/test-context.ts; restore mocks in afterEach
+    - Conventional commits: feat(scope):, fix(scope):, test(scope):
+    - Create a Changeset for user-facing changes
+
+  Validation commands:
+    - npm run lint          # ESLint
+    - npm run typecheck     # tsc --noEmit (strict)
+    - npm test              # Vitest unit tests
+    - npm run test:integration  # integration tests
+    - npm run test:all      # unit + integration
+    - npm run build         # tsc + tsc-alias
+    - npm run format        # Prettier
+    - npm run gate          # lint + typecheck + test
+
+  Domain: developer tooling / AI-driven development workflow automation
+  (autonomous, agent-orchestrated implementation loops for GitHub Copilot).
+speciCopilotPrompt: |
+  Prefer OpenSpec CLI commands over direct OpenSpec slash/skill calls.
+  Use one OpenSpec change per Speci task file, created and fully planned immediately before that task is implemented against the current codebase.
+  Archive each task-linked OpenSpec change after the task is reviewed and complete.

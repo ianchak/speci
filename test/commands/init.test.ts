@@ -17,7 +17,17 @@ const init = (
   options: Parameters<typeof initCommand>[0] = {},
   context: Parameters<typeof initCommand>[1] = createProductionContext(),
   config?: Parameters<typeof initCommand>[2]
-) => initCommand(options, context, config);
+) =>
+  initCommand(
+    {
+      openSpecInitRunner: vi.fn(() => ({ status: 0 })),
+      openSpecUpdateRunner: vi.fn(() => ({ status: 0 })),
+      openSpecConfigRunner: vi.fn(async () => 0),
+      ...options,
+    },
+    context,
+    config
+  );
 
 describe('init command', () => {
   let testDir: string;
@@ -49,6 +59,177 @@ describe('init command', () => {
   });
 
   describe('default behavior', () => {
+    it('should initialize OpenSpec config with Speci Copilot guidance', async () => {
+      const openSpecInitRunner = vi.fn(() => ({ status: 0 }));
+
+      await init({ openSpecInitRunner });
+
+      expect(openSpecInitRunner).toHaveBeenCalledWith(
+        testDir,
+        'github-copilot',
+        true
+      );
+      expect(existsSync('openspec/config.yaml')).toBe(true);
+      const openSpecConfig = readFileSync('openspec/config.yaml', 'utf8');
+      expect(openSpecConfig).toContain('speciCopilotPrompt:');
+      expect(openSpecConfig).toContain('Prefer OpenSpec CLI commands');
+    });
+
+    it('should use Copilot repository context to generate a missing config', async () => {
+      const openSpecConfigRunner = vi.fn(async (_config, _prompt, _proc) => {
+        mkdirSync('openspec', { recursive: true });
+        writeFileSync(
+          'openspec/config.yaml',
+          'schema: spec-driven\ncontext: |\n  TypeScript CLI repository\n'
+        );
+        return 0;
+      });
+
+      await init({ openSpecConfigRunner });
+
+      expect(openSpecConfigRunner).toHaveBeenCalledOnce();
+      const prompt = openSpecConfigRunner.mock.calls[0]?.[1];
+      expect(prompt).toContain('Inspect the repository context');
+      expect(prompt).toContain('README files');
+      expect(prompt).toContain('Write the config file directly');
+      expect(readFileSync('openspec/config.yaml', 'utf8')).toContain(
+        'TypeScript CLI repository'
+      );
+    });
+
+    it('should append Speci Copilot guidance to existing OpenSpec config', async () => {
+      mkdirSync('openspec', { recursive: true });
+      mkdirSync('openspec/specs', { recursive: true });
+      mkdirSync('openspec/changes', { recursive: true });
+      writeFileSync('openspec/config.yaml', 'schema: spec-driven\n');
+      const openSpecInitRunner = vi.fn(() => ({ status: 0 }));
+
+      await init({ openSpecInitRunner });
+
+      expect(openSpecInitRunner).not.toHaveBeenCalled();
+      const openSpecConfig = readFileSync('openspec/config.yaml', 'utf8');
+      expect(openSpecConfig).toContain('schema: spec-driven');
+      expect(openSpecConfig).toContain('speciCopilotPrompt:');
+    });
+
+    it('should preserve existing Speci Copilot guidance', async () => {
+      mkdirSync('openspec/specs', { recursive: true });
+      mkdirSync('openspec/changes', { recursive: true });
+      writeFileSync(
+        'openspec/config.yaml',
+        'schema: spec-driven\nspeciCopilotPrompt: |\n  Existing guidance\n'
+      );
+
+      await init();
+
+      expect(readFileSync('openspec/config.yaml', 'utf8')).toBe(
+        'schema: spec-driven\nspeciCopilotPrompt: |\n  Existing guidance\n'
+      );
+    });
+
+    it('should report OpenSpec update failures without failing init', async () => {
+      mkdirSync('openspec/specs', { recursive: true });
+      mkdirSync('openspec/changes', { recursive: true });
+      writeFileSync('openspec/config.yaml', 'schema: spec-driven\n');
+      const openSpecUpdateRunner = vi.fn(() => ({ status: 2 }));
+
+      await expect(
+        init({ updateOpenspec: true, openSpecUpdateRunner })
+      ).resolves.not.toThrow();
+      expect(openSpecUpdateRunner).toHaveBeenCalledWith(testDir);
+    });
+
+    it('should handle an OpenSpec update process error without failing init', async () => {
+      mkdirSync('openspec/specs', { recursive: true });
+      mkdirSync('openspec/changes', { recursive: true });
+      writeFileSync('openspec/config.yaml', 'schema: spec-driven\n');
+      const openSpecUpdateRunner = vi.fn(() => ({
+        status: null,
+        error: new Error('openspec unavailable'),
+      }));
+
+      await expect(
+        init({ updateOpenspec: true, openSpecUpdateRunner })
+      ).resolves.not.toThrow();
+    });
+
+    it('should report a successful OpenSpec update without failing init', async () => {
+      mkdirSync('openspec/specs', { recursive: true });
+      mkdirSync('openspec/changes', { recursive: true });
+      writeFileSync('openspec/config.yaml', 'schema: spec-driven\n');
+      const openSpecUpdateRunner = vi.fn(() => ({ status: 0 }));
+
+      await expect(
+        init({ updateOpenspec: true, openSpecUpdateRunner })
+      ).resolves.not.toThrow();
+    });
+
+    it('should run OpenSpec init when config exists but workspace directories are missing', async () => {
+      mkdirSync('openspec', { recursive: true });
+      writeFileSync('openspec/config.yaml', 'schema: spec-driven\n');
+      const openSpecInitRunner = vi.fn(() => ({ status: 0 }));
+
+      await init({ openSpecInitRunner });
+
+      expect(openSpecInitRunner).toHaveBeenCalledWith(
+        testDir,
+        'github-copilot',
+        true
+      );
+    });
+
+    it('should use the fallback when Copilot config generation exits nonzero', async () => {
+      const openSpecConfigRunner = vi.fn(async () => 1);
+
+      await expect(init({ openSpecConfigRunner })).resolves.not.toThrow();
+      expect(openSpecConfigRunner).toHaveBeenCalledOnce();
+      expect(readFileSync('openspec/config.yaml', 'utf8')).toContain(
+        'speciCopilotPrompt:'
+      );
+    });
+
+    it('should use the fallback when Copilot config generation throws', async () => {
+      const openSpecConfigRunner = vi.fn(async () => {
+        throw new Error('copilot unavailable');
+      });
+
+      await expect(init({ openSpecConfigRunner })).resolves.not.toThrow();
+      expect(readFileSync('openspec/config.yaml', 'utf8')).toContain(
+        'speciCopilotPrompt:'
+      );
+    });
+
+    it('should pass configured OpenSpec tool selection to init runner', async () => {
+      const openSpecInitRunner = vi.fn(() => ({ status: 0 }));
+
+      await init({ openSpecInitRunner, openSpecTools: 'agents' });
+
+      expect(openSpecInitRunner).toHaveBeenCalledWith(testDir, 'agents', true);
+    });
+
+    it('should disable OpenSpec cloud files when a local model is configured', async () => {
+      writeFileSync(
+        'speci.config.json',
+        JSON.stringify({
+          copilot: {
+            localModel: {
+              baseUrl: 'http://127.0.0.1:8080/v1',
+              model: 'local-model',
+            },
+          },
+        })
+      );
+      const openSpecInitRunner = vi.fn(() => ({ status: 0 }));
+
+      await init({ openSpecInitRunner });
+
+      expect(openSpecInitRunner).toHaveBeenCalledWith(
+        testDir,
+        'github-copilot',
+        false
+      );
+    });
+
     it('should create speci.config.json with default values', async () => {
       await init();
 

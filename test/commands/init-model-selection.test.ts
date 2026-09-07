@@ -42,7 +42,10 @@ describe('init model selection', () => {
 
   it('applies selected budget preset during interactive init', async () => {
     const prompt = vi.fn().mockResolvedValue('3');
-    await init({ prompt }, createProductionContext());
+    await init(
+      { prompt, openSpecConfigRunner: vi.fn(async () => 0) },
+      createProductionContext()
+    );
     const config = JSON.parse(readFileSync('speci.config.json', 'utf8'));
 
     expect(prompt).toHaveBeenCalled();
@@ -51,7 +54,10 @@ describe('init model selection', () => {
 
   it('applies balanced preset by default when pressing enter', async () => {
     const prompt = vi.fn().mockResolvedValue('');
-    await init({ prompt }, createProductionContext());
+    await init(
+      { prompt, openSpecConfigRunner: vi.fn(async () => 0) },
+      createProductionContext()
+    );
     const config = JSON.parse(readFileSync('speci.config.json', 'utf8'));
 
     expect(prompt).toHaveBeenCalled();
@@ -93,7 +99,14 @@ describe('init model selection', () => {
     );
 
     const prompt = vi.fn().mockResolvedValue('1'); // Select Best-in-Class
-    await init({ reconfigureModels: true, prompt }, createProductionContext());
+    await init(
+      {
+        reconfigureModels: true,
+        prompt,
+        openSpecConfigRunner: vi.fn(async () => 0),
+      },
+      createProductionContext()
+    );
     const config = JSON.parse(readFileSync('speci.config.json', 'utf8'));
 
     expect(prompt).toHaveBeenCalled();
@@ -143,7 +156,14 @@ describe('init model selection', () => {
       .mockResolvedValueOnce('4') // Choose Custom (one-by-one)
       .mockResolvedValueOnce('1') // plan -> local model (prepended as option 1)
       .mockResolvedValue(''); // keep fallback for remaining roles
-    await init({ reconfigureModels: true, prompt }, createProductionContext());
+    await init(
+      {
+        reconfigureModels: true,
+        prompt,
+        openSpecConfigRunner: vi.fn(async () => 0),
+      },
+      createProductionContext()
+    );
     const config = JSON.parse(readFileSync('speci.config.json', 'utf8'));
 
     expect(config.copilot.models.plan).toBe('local-test-model');

@@ -5,6 +5,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { executeCopilotCommand } from '../../../lib/utils/helpers/copilot-helper.js';
 import { createMockContext } from '../../../lib/adapters/test-context.js';
+import type { SpeciConfig } from '../../../lib/types.js';
 
 describe('copilot-helper', () => {
   let context: ReturnType<typeof createMockContext>;
@@ -59,6 +60,29 @@ describe('copilot-helper', () => {
       const result = await executeCopilotCommand(context, args);
 
       expect(result).toEqual({ success: false, exitCode: 1 });
+    });
+
+    it('should forward the command role for local model environment resolution', async () => {
+      const args = ['-p', 'Generate tasks', '--agent=speci-task'];
+      const config = {
+        copilot: {
+          models: { task: 'local-model' },
+          localModel: {
+            baseUrl: 'http://127.0.0.1:8080/v1',
+            model: 'local-model',
+          },
+        },
+      } as unknown as SpeciConfig;
+
+      vi.spyOn(context.copilotRunner, 'spawn').mockResolvedValue(0);
+
+      await executeCopilotCommand(context, args, config, 'task');
+
+      expect(context.copilotRunner.spawn).toHaveBeenCalledWith(args, {
+        inherit: true,
+        config,
+        command: 'task',
+      });
     });
 
     it('should handle exit code 2 (user interruption)', async () => {

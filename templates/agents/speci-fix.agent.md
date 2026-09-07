@@ -41,6 +41,15 @@ The review agent provides (in PROGRESS.md):
 - Task ID, Task Goal, Root Cause Hint in `### For Fix Agent` section
 - Detailed failure notes in `### Review Failure Notes` section
 
+## OpenSpec CLI-first policy (required)
+
+- Prefer OpenSpec CLI commands over direct OpenSpec slash/skill calls.
+- Reuse the task's existing active change from task metadata (`OpenSpec Change`);
+  never create a replacement change for a gate or review fix.
+- For task-linked context, inspect with:
+  - `openspec status --change <name> --json`
+  - `openspec instructions apply --change <name> --json`
+
 ## Workflow
 
 ### Step 1: Gather Context from Agent Handoff (MANDATORY FIRST STEP)

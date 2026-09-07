@@ -15,6 +15,7 @@ vi.mock('@/copilot.js', async () => {
   return {
     ...actual,
     buildCopilotArgs: vi.fn(),
+    buildCopilotPromptArgs: vi.fn(),
     listCopilotModels: vi.fn(),
     spawnCopilot: vi.fn(),
     runAgent: vi.fn(),
@@ -46,6 +47,29 @@ describe('NodeCopilotRunner', () => {
       options
     );
     expect(result).toBe(expectedArgs);
+  });
+
+  it('delegates OpenSpec config generation to spawnCopilot', async () => {
+    const prompt = 'Generate the OpenSpec config';
+    const expectedArgs = ['-p', prompt, '--silent'];
+    const proc = createMockProcess();
+    vi.mocked(copilotModule.buildCopilotPromptArgs).mockReturnValue(
+      expectedArgs
+    );
+    vi.mocked(copilotModule.spawnCopilot).mockResolvedValue(0);
+
+    const result = await adapter.generateOpenSpecConfig(config, prompt, proc);
+
+    expect(copilotModule.buildCopilotPromptArgs).toHaveBeenCalledWith(
+      config,
+      prompt
+    );
+    expect(copilotModule.spawnCopilot).toHaveBeenCalledWith(
+      expectedArgs,
+      { config, command: 'plan', inherit: true },
+      proc
+    );
+    expect(result).toBe(0);
   });
 
   it('delegates spawn to spawnCopilot', async () => {
