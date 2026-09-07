@@ -16,6 +16,8 @@ import { getAgentsTemplatePath, type SpeciConfig } from '@/config/index.js';
  * still exercising OpenSpec fallback and guidance creation.
  */
 export const TEST_INIT_OPTIONS = {
+  openSpecInitRunner: (): { status: number } => ({ status: 0 }),
+  openSpecUpdateRunner: (): { status: number } => ({ status: 0 }),
   openSpecConfigRunner: async (): Promise<number> => 0,
 };
 
