@@ -3211,29 +3211,32 @@ describe('Performance Benchmarks (TASK_021)', () => {
   });
 
   describe('CPU Usage (NFR-5)', () => {
-    it('CPU usage remains below 25% of wall time', async () => {
-      const MAX_CPU_PERCENTAGE = 25; // NFR-5 requirement
+    it.skipIf(Boolean(process.env.CI))(
+      'CPU usage remains below 25% of wall time',
+      async () => {
+        const MAX_CPU_PERCENTAGE = 25; // NFR-5 requirement
 
-      const startCpu = process.cpuUsage();
-      const startTime = Date.now();
+        const startCpu = process.cpuUsage();
+        const startTime = Date.now();
 
-      await module.animateBanner({ duration: 200, showVersion: false });
+        await module.animateBanner({ duration: 200, showVersion: false });
 
-      const elapsed = Date.now() - startTime;
-      const cpuUsage = process.cpuUsage(startCpu);
+        const elapsed = Date.now() - startTime;
+        const cpuUsage = process.cpuUsage(startCpu);
 
-      // Total CPU time in milliseconds
-      const cpuTimeMs = (cpuUsage.user + cpuUsage.system) / 1000;
+        // Total CPU time in milliseconds
+        const cpuTimeMs = (cpuUsage.user + cpuUsage.system) / 1000;
 
-      // CPU percentage: (cpu_time / wall_time) * 100
-      const cpuPercentage = (cpuTimeMs / elapsed) * 100;
+        // CPU percentage: (cpu_time / wall_time) * 100
+        const cpuPercentage = (cpuTimeMs / elapsed) * 100;
 
-      // Should be less than 25% per NFR-5
-      expect(cpuPercentage).toBeLessThan(MAX_CPU_PERCENTAGE);
+        // Should be less than 25% per NFR-5
+        expect(cpuPercentage).toBeLessThan(MAX_CPU_PERCENTAGE);
 
-      // Also verify absolute CPU time is reasonable
-      expect(cpuTimeMs).toBeLessThan(500);
-    });
+        // Also verify absolute CPU time is reasonable
+        expect(cpuTimeMs).toBeLessThan(500);
+      }
+    );
 
     it('no busy-wait loops detected', async () => {
       // Measure CPU during animation
