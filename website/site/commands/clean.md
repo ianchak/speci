@@ -8,7 +8,7 @@ sitemap:
 
 # `speci clean`
 
-Removes generated files created by `speci task` and `speci run` so you can start fresh.
+Removes generated task files and `PROGRESS.md` so you can start fresh.
 
 ## Usage
 
