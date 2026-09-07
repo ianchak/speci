@@ -20,6 +20,8 @@ const init = (
 ) =>
   initCommand(
     {
+      openSpecInitRunner: vi.fn(() => ({ status: 0 })),
+      openSpecUpdateRunner: vi.fn(() => ({ status: 0 })),
       openSpecConfigRunner: vi.fn(async () => 0),
       ...options,
     },
