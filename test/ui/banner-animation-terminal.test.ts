@@ -44,7 +44,7 @@ describe('Banner Animation Terminal Module', () => {
     if (originalRowsDescriptor) {
       Object.defineProperty(process.stdout, 'rows', originalRowsDescriptor);
     } else {
-      delete process.stdout.rows;
+      Reflect.deleteProperty(process.stdout, 'rows');
     }
 
     if (originalColumnsDescriptor) {
@@ -54,7 +54,7 @@ describe('Banner Animation Terminal Module', () => {
         originalColumnsDescriptor
       );
     } else {
-      delete process.stdout.columns;
+      Reflect.deleteProperty(process.stdout, 'columns');
     }
   });
 
