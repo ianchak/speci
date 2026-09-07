@@ -97,6 +97,7 @@ function initializeOpenSpec(
     context.fs.existsSync(OPENSPEC_CHANGES_PATH);
 
   if (hasConfig && hasWorkspaceDirs) {
+    context.logger.debug('Skipping OpenSpec init: openspec/ already exists');
     ensureSpeciOpenSpecPrompt(context);
     return;
   }
@@ -157,12 +158,17 @@ function checkExistingFiles(
   tasksExists: boolean;
   logsExists: boolean;
   agentsExist: boolean;
+  openSpecExists: boolean;
 } {
   return {
     configExists: context.fs.existsSync(CONFIG_FILENAME),
     tasksExists: context.fs.existsSync(config.paths.tasks),
     logsExists: context.fs.existsSync(config.paths.logs),
     agentsExist: context.fs.existsSync(GITHUB_AGENTS_DIR),
+    openSpecExists:
+      context.fs.existsSync(OPENSPEC_CONFIG_PATH) &&
+      context.fs.existsSync(OPENSPEC_SPECS_PATH) &&
+      context.fs.existsSync(OPENSPEC_CHANGES_PATH),
   };
 }
 
@@ -215,6 +221,12 @@ function displayActionSummary(
     context.logger.success(
       `    ${GITHUB_AGENTS_DIR}/ directory will be updated`
     );
+  }
+
+  if (existing.openSpecExists) {
+    context.logger.warn('  openspec/ already exists (will skip)');
+  } else {
+    context.logger.success('    openspec/ will be initialized');
   }
 
   context.logger.raw(''); // Blank line for spacing
