@@ -8,6 +8,8 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 
 describe('Banner Animation Terminal Module', () => {
   let originalEnv: NodeJS.ProcessEnv;
+  let originalRowsDescriptor: PropertyDescriptor | undefined;
+  let originalColumnsDescriptor: PropertyDescriptor | undefined;
 
   function mockTerminalSize(
     rows: number | undefined,
@@ -25,11 +27,35 @@ describe('Banner Animation Terminal Module', () => {
 
   beforeEach(() => {
     originalEnv = { ...process.env };
+    originalRowsDescriptor = Object.getOwnPropertyDescriptor(
+      process.stdout,
+      'rows'
+    );
+    originalColumnsDescriptor = Object.getOwnPropertyDescriptor(
+      process.stdout,
+      'columns'
+    );
   });
 
   afterEach(() => {
     process.env = originalEnv;
     vi.restoreAllMocks();
+
+    if (originalRowsDescriptor) {
+      Object.defineProperty(process.stdout, 'rows', originalRowsDescriptor);
+    } else {
+      delete process.stdout.rows;
+    }
+
+    if (originalColumnsDescriptor) {
+      Object.defineProperty(
+        process.stdout,
+        'columns',
+        originalColumnsDescriptor
+      );
+    } else {
+      delete process.stdout.columns;
+    }
   });
 
   describe('Module Import', () => {
