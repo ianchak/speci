@@ -110,6 +110,58 @@ describe('init command', () => {
       expect(openSpecConfig).toContain('speciCopilotPrompt:');
     });
 
+    it('should preserve existing Speci Copilot guidance', async () => {
+      mkdirSync('openspec/specs', { recursive: true });
+      mkdirSync('openspec/changes', { recursive: true });
+      writeFileSync(
+        'openspec/config.yaml',
+        'schema: spec-driven\nspeciCopilotPrompt: |\n  Existing guidance\n'
+      );
+
+      await init();
+
+      expect(readFileSync('openspec/config.yaml', 'utf8')).toBe(
+        'schema: spec-driven\nspeciCopilotPrompt: |\n  Existing guidance\n'
+      );
+    });
+
+    it('should report OpenSpec update failures without failing init', async () => {
+      mkdirSync('openspec/specs', { recursive: true });
+      mkdirSync('openspec/changes', { recursive: true });
+      writeFileSync('openspec/config.yaml', 'schema: spec-driven\n');
+      const openSpecUpdateRunner = vi.fn(() => ({ status: 2 }));
+
+      await expect(
+        init({ updateOpenspec: true, openSpecUpdateRunner })
+      ).resolves.not.toThrow();
+      expect(openSpecUpdateRunner).toHaveBeenCalledWith(testDir);
+    });
+
+    it('should handle an OpenSpec update process error without failing init', async () => {
+      mkdirSync('openspec/specs', { recursive: true });
+      mkdirSync('openspec/changes', { recursive: true });
+      writeFileSync('openspec/config.yaml', 'schema: spec-driven\n');
+      const openSpecUpdateRunner = vi.fn(() => ({
+        status: null,
+        error: new Error('openspec unavailable'),
+      }));
+
+      await expect(
+        init({ updateOpenspec: true, openSpecUpdateRunner })
+      ).resolves.not.toThrow();
+    });
+
+    it('should report a successful OpenSpec update without failing init', async () => {
+      mkdirSync('openspec/specs', { recursive: true });
+      mkdirSync('openspec/changes', { recursive: true });
+      writeFileSync('openspec/config.yaml', 'schema: spec-driven\n');
+      const openSpecUpdateRunner = vi.fn(() => ({ status: 0 }));
+
+      await expect(
+        init({ updateOpenspec: true, openSpecUpdateRunner })
+      ).resolves.not.toThrow();
+    });
+
     it('should run OpenSpec init when config exists but workspace directories are missing', async () => {
       mkdirSync('openspec', { recursive: true });
       writeFileSync('openspec/config.yaml', 'schema: spec-driven\n');
@@ -121,6 +173,27 @@ describe('init command', () => {
         testDir,
         'github-copilot',
         true
+      );
+    });
+
+    it('should use the fallback when Copilot config generation exits nonzero', async () => {
+      const openSpecConfigRunner = vi.fn(async () => 1);
+
+      await expect(init({ openSpecConfigRunner })).resolves.not.toThrow();
+      expect(openSpecConfigRunner).toHaveBeenCalledOnce();
+      expect(readFileSync('openspec/config.yaml', 'utf8')).toContain(
+        'speciCopilotPrompt:'
+      );
+    });
+
+    it('should use the fallback when Copilot config generation throws', async () => {
+      const openSpecConfigRunner = vi.fn(async () => {
+        throw new Error('copilot unavailable');
+      });
+
+      await expect(init({ openSpecConfigRunner })).resolves.not.toThrow();
+      expect(readFileSync('openspec/config.yaml', 'utf8')).toContain(
+        'speciCopilotPrompt:'
       );
     });
 
