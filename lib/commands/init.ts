@@ -132,11 +132,14 @@ function runOpenSpecInit(cwd: string, tools: string, copilotCloud = true) {
     args.push(copilotCloud ? '--copilot-cloud' : '--no-copilot-cloud');
   }
 
+  // On Windows, global npm bins are .cmd shims; libuv's spawn doesn't
+  // resolve them without a shell, so ENOENT would occur otherwise.
   return spawnSync('openspec', args, {
     cwd,
     encoding: 'utf8',
     stdio: 'pipe',
     timeout: 30_000,
+    shell: process.platform === 'win32',
   });
 }
 
