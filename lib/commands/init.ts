@@ -32,7 +32,11 @@ export interface InitOptions {
   reconfigureModels?: boolean; // Update copilot.models in an existing speci.config.json
   prompt?: (question: string) => Promise<string>;
   openSpecTools?: string;
-  openSpecInitRunner?: (cwd: string, tools: string) => {
+  openSpecInitRunner?: (
+    cwd: string,
+    tools: string,
+    copilotCloud?: boolean
+  ) => {
     status: number | null;
     error?: Error;
   };
@@ -81,9 +85,11 @@ function initializeOpenSpec(
   context: CommandContext,
   runInit: (
     cwd: string,
-    tools: string
+    tools: string,
+    copilotCloud?: boolean
   ) => { status: number | null; error?: Error },
-  tools: string
+  tools: string,
+  copilotCloud: boolean
 ): void {
   const hasConfig = context.fs.existsSync(OPENSPEC_CONFIG_PATH);
   const hasWorkspaceDirs =
@@ -100,7 +106,7 @@ function initializeOpenSpec(
       ? 'Completing OpenSpec workspace initialization for this repository...'
       : 'Initializing OpenSpec for this repository...'
   );
-  const result = runInit(context.process.cwd(), tools);
+  const result = runInit(context.process.cwd(), tools, copilotCloud);
 
   if (result.error) {
     context.logger.warn(
@@ -115,22 +121,23 @@ function initializeOpenSpec(
   ensureSpeciOpenSpecPrompt(context);
 }
 
-function runOpenSpecInit(cwd: string, tools: string) {
+function runOpenSpecInit(cwd: string, tools: string, copilotCloud = true) {
   const args = ['init', '.', '--tools', tools, '--no-animation'];
-  if (tools.split(',').map((tool) => tool.trim()).includes('github-copilot')) {
-    args.push('--copilot-cloud');
+  if (
+    tools
+      .split(',')
+      .map((tool) => tool.trim())
+      .includes('github-copilot')
+  ) {
+    args.push(copilotCloud ? '--copilot-cloud' : '--no-copilot-cloud');
   }
 
-  return spawnSync(
-    'openspec',
-    args,
-    {
-      cwd,
-      encoding: 'utf8',
-      stdio: 'pipe',
-      timeout: 30_000,
-    }
-  );
+  return spawnSync('openspec', args, {
+    cwd,
+    encoding: 'utf8',
+    stdio: 'pipe',
+    timeout: 30_000,
+  });
 }
 
 /**
@@ -486,11 +493,24 @@ export async function init(
     // Copy agent files to .github/agents/
     await copyAgentFiles(existing, options.updateAgents, context);
 
+    const configuredLocalModel = (() => {
+      if (!existing.configExists) return false;
+      try {
+        const existingConfig = JSON.parse(
+          context.fs.readFileSync(CONFIG_FILENAME, 'utf8')
+        ) as SpeciConfig;
+        return Boolean(existingConfig.copilot?.localModel);
+      } catch {
+        return false;
+      }
+    })();
+
     // Initialize OpenSpec and ensure Speci guidance is present
     initializeOpenSpec(
       context,
       options.openSpecInitRunner ?? runOpenSpecInit,
-      options.openSpecTools ?? 'github-copilot'
+      options.openSpecTools ?? 'github-copilot',
+      !configuredLocalModel
     );
 
     // Display success and next steps

@@ -268,7 +268,12 @@ export async function task(
     });
 
     // Execute initial generation
-    const initialResult = await executeCopilotCommand(context, args, config);
+    const initialResult = await executeCopilotCommand(
+      context,
+      args,
+      config,
+      'task'
+    );
     if (!initialResult.success) {
       return initialResult;
     }
@@ -296,7 +301,8 @@ export async function task(
       const resumeResult = await executeCopilotCommand(
         context,
         resumeArgs,
-        config
+        config,
+        'task'
       );
       if (!resumeResult.success) {
         return resumeResult;

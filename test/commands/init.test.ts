@@ -56,7 +56,8 @@ describe('init command', () => {
 
       expect(openSpecInitRunner).toHaveBeenCalledWith(
         testDir,
-        'github-copilot'
+        'github-copilot',
+        true
       );
       expect(existsSync('openspec/config.yaml')).toBe(true);
       const openSpecConfig = readFileSync('openspec/config.yaml', 'utf8');
@@ -88,7 +89,8 @@ describe('init command', () => {
 
       expect(openSpecInitRunner).toHaveBeenCalledWith(
         testDir,
-        'github-copilot'
+        'github-copilot',
+        true
       );
     });
 
@@ -97,7 +99,30 @@ describe('init command', () => {
 
       await init({ openSpecInitRunner, openSpecTools: 'agents' });
 
-      expect(openSpecInitRunner).toHaveBeenCalledWith(testDir, 'agents');
+      expect(openSpecInitRunner).toHaveBeenCalledWith(testDir, 'agents', true);
+    });
+
+    it('should disable OpenSpec cloud files when a local model is configured', async () => {
+      writeFileSync(
+        'speci.config.json',
+        JSON.stringify({
+          copilot: {
+            localModel: {
+              baseUrl: 'http://127.0.0.1:8080/v1',
+              model: 'local-model',
+            },
+          },
+        })
+      );
+      const openSpecInitRunner = vi.fn(() => ({ status: 0 }));
+
+      await init({ openSpecInitRunner });
+
+      expect(openSpecInitRunner).toHaveBeenCalledWith(
+        testDir,
+        'github-copilot',
+        false
+      );
     });
 
     it('should create speci.config.json with default values', async () => {
