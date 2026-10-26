@@ -4,15 +4,17 @@ import { createRequire } from 'module';
 const require = createRequire(import.meta.url);
 const { version } = require('../package.json') as { version: string };
 
-// In Netlify deploy previews, DEPLOY_PRIME_URL is set to the preview URL.
-// In production builds, DEPLOY_URL is the production URL.
-// URL is the primary site URL (typically the production domain).
+// Canonical URLs, the sitemap and social tags are built from baseUrl.
+// Production always uses the custom domain: Netlify sets DEPLOY_PRIME_URL on
+// every build, and in production it is the branch URL (master--speci-sdd.netlify.app),
+// which Google then treats as the canonical copy of the site.
+// Deploy previews and branch deploys use their own URL so internal links work there.
 // Fall back to localhost for local development.
+const PRODUCTION_URL = 'https://speci.imrecsige.dev';
 const baseUrl =
-  process.env.DEPLOY_PRIME_URL ??
-  process.env.DEPLOY_URL ??
-  process.env.URL ??
-  'http://localhost:3000';
+  process.env.CONTEXT === 'production'
+    ? PRODUCTION_URL
+    : (process.env.DEPLOY_PRIME_URL ?? 'http://localhost:3000');
 
 export default defineConfig({
   site: {
